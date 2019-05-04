@@ -1,0 +1,15 @@
+LIBRARY
+
+EXPORTS
+  InitializeTrainingRegression
+  InitializeTrainingClassification
+  TrainingStep
+  GetCurrentModel
+  GetBestModel
+  CancelTraining
+  FreeTraining
+  InitializeInteractionRegression
+  InitializeInteractionClassification
+  GetInteractionScore
+  CancelInteraction
+  FreeInteraction

@@ -1,0 +1,14 @@
+*.pyc
+build/
+dist/
+docs/_build/
+*.egg-info/
+.coverage
+.eggs/
+*.ignore
+*.ipynb_checkpoints/
+*junit/
+lib/
+log.txt
+test-log.txt
+*.csv

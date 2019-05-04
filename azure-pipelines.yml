@@ -1,0 +1,182 @@
+jobs:
+- job: 'Build_Native'
+  strategy:
+    matrix:
+      Linux:
+        python.version: '3.6'
+        image.name: 'ubuntu-16.04'
+      Windows:
+        python.version: '3.6'
+        image.name: 'windows-2019'
+      Mac:
+        python.version: '3.6'
+        image.name: 'macOS-10.13'
+    maxParallel: 3
+  pool:
+    vmImage: '$(image.name)'
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+  - script: |
+      sudo apt-get -y install g++-multilib
+    displayName: 'Install prereq for linux.'
+    condition: in(variables['image.name'], 'ubuntu-16.04')
+  - script: |
+      chmod +x build.sh
+      ./build.sh
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Building/moving native code (linux/mac).'
+  - script: |
+      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      build.bat
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Building/moving native code. (win)'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: 'ebmcore_*'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Move binary to staging'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: native-$(image.name)
+    displayName: 'Publish native library'
+
+- job: 'Build_Package'
+  dependsOn: 'Build_Native'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'specific'
+    displayName: 'Download build artifacts'
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+  - script: python -m pip install --upgrade pip setuptools wheel
+    displayName: 'Install tools'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/ebmcore_*'
+      targetFolder: 'src/python/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move binary to Python layer'
+  - script: python setup.py bdist_wheel -d ../../staging
+    condition: succeeded()
+    workingDirectory: src/python
+    displayName: 'Build wheel'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: staging
+      contents: '*.whl'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Move wheel for Build Artifact'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: 'wheel'
+    displayName: 'Publish wheel as Build Artifact'
+
+- job: 'Test'
+  dependsOn: 'Build_Package'
+  strategy:
+    matrix:
+      LinuxPython35:
+        python.version: '3.5'
+        image.name: 'ubuntu-16.04'
+      LinuxPython36:
+        python.version: '3.6'
+        image.name: 'ubuntu-16.04'
+      LinuxPython37:
+        python.version: '3.7'
+        image.name: 'ubuntu-16.04'
+      WindowsPython35:
+        python.version: '3.5'
+        image.name: 'vs2017-win2016'
+      WindowsPython36:
+        python.version: '3.6'
+        image.name: 'vs2017-win2016'
+      WindowsPython37:
+        python.version: '3.7'
+        image.name: 'vs2017-win2016'
+      MacPython35:
+        python.version: '3.5'
+        image.name: 'macOS-10.13'
+      MacPython36:
+        python.version: '3.6'
+        image.name: 'macOS-10.13'
+      MacPython37:
+        python.version: '3.7'
+        image.name: 'macOS-10.13'
+    maxParallel: 9
+  pool:
+    vmImage: '$(image.name)'
+  steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'specific'
+    displayName: 'Download build artifacts'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/ebmcore_*.*'
+      targetFolder: 'src/python/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move binary to Python layer'
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+  - script: python -m pip install --upgrade pip setuptools wheel
+    displayName: 'Install tools'
+  - script: |
+      python -m pip install numpy scipy
+    workingDirectory: src/python
+    displayName: 'Install numpy/scipy first for mis-specified pip packages.'
+  - script: |
+      mkdir -p ~/.matplotlib
+      echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
+    condition: in(variables['image.name'], 'macOS-10.13')
+    displayName: 'Matplotlib patch for mac.'
+  - script: |
+      python -m pip install -r requirements.txt
+    workingDirectory: src/python
+    displayName: 'Install requirements'
+  - script: |
+      python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+    workingDirectory: src/python
+    displayName: 'Run pytest'
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
+    displayName: 'Publish test results'
+
+- job: 'Publish_Package'
+  dependsOn: 'Test'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'single'
+      artifactName: 'wheel'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      artifactName: 'drop'
+
+
