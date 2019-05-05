@@ -9,7 +9,7 @@ def register_log(filename, level='DEBUG'):
 
     handler = logging.handlers.WatchedFileHandler(filename)
     formatter = logging.Formatter(
-        "%(asctime)s | %(filename)-20s %(lineno)-4s %(funcName)20s() | %(message)s"
+        "%(asctime)s | %(filename)-20s %(lineno)-4s %(funcName)25s() | %(message)s"
     )
     handler.setFormatter(formatter)
 
@@ -26,5 +26,4 @@ if __name__ == '__main__':
     register_log('test-log.txt')
 
     script_path = os.path.dirname(os.path.abspath(__file__))
-    package_path = os.path.abspath(os.path.join(script_path, '..'))
-    pytest.main([package_path])
+    pytest.main(['--rootdir={0}'.format(script_path), script_path])

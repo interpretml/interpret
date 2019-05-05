@@ -47,6 +47,7 @@ setup(
             'visual/assets/udash.css',
             'visual/assets/udash.js',
             'visual/assets/favicon.ico',
+            'pytest.ini',
         ]
     },
     classifiers=[
