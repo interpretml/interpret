@@ -22,7 +22,7 @@ Let there be light.
 """
 
 name = 'interpret'
-version = '0.0.3'
+version = '0.0.4'
 setup(
     name=name,
     version=version,
