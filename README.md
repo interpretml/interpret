@@ -20,7 +20,7 @@ Historically, the most intelligible models were not very accurate, and the most 
 
 <br/>
 
-| Dataset/AUROC | Domain  | Logistic Regression | Random Forest | XGBoost        | Explainable Boosting Machine |
+| [Dataset/AUROC](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb) | Domain  | Logistic Regression | Random Forest | XGBoost        | Explainable Boosting Machine |
 |---------------|---------|:-------------------:|:-------------:|:--------------:|:----------------------------:|
 | Adult Income  | Finance | .907±.003           | .903±.002     | .922±.002      | **_.928±.002_**              |
 | Heart Disease | Medical | .895±.030           | .890±.008     | .870±.014      | **_.916±.010_**              |
