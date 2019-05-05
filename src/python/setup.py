@@ -11,13 +11,8 @@ needs_dev = {
 }.intersection(sys.argv)
 dev_tools = [
     'sphinx>=1.8.4',
-    'pytest-cov>=2.6.1',
     'flake8>=3.7.6',
-    'xgboost>=0.81',
-    'lightgbm>=2.2.3',
-    'treeinterpreter>=0.2.1',
-    'pmlb>=0.3',
-    'SALib>=1.2',
+    'pytest-cov>=2.6.1',
 ] if needs_dev else []
 
 long_description = """
@@ -107,5 +102,6 @@ setup(
         # Testing
         'pytest>=4.3.0',
         'pytest-runner>=4.4',
+        'hypothesis>=4.18.3',
     ]
 )
