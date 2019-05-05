@@ -12,3 +12,4 @@ lib/
 log.txt
 test-log.txt
 *.csv
+*.ipynb
