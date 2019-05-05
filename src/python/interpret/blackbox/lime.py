@@ -56,15 +56,23 @@ class LimeTabular(ExplainerMixin):
             lime_explanation = self.lime.explain_instance(
                 instance, pred_fn, **self.explain_kwargs
             )
-            feature_value_pairs = lime_explanation.as_list()
+
+            names = []
+            scores  = []
+            values = []
+            feature_idx_imp_pairs = lime_explanation.as_map()[1]
+            for feat_idx, imp in feature_idx_imp_pairs:
+                names.append(self.feature_names[feat_idx])
+                scores.append(imp)
+                values.append(instance[feat_idx])
             intercept = lime_explanation.intercept[1]
 
             data_dict = {
                 'type': 'univariate',
-                'names': [x[0] for x in feature_value_pairs],
+                'names': names,
                 'perf': perf_dict(y, predictions, i),
-                'scores': [x[1] for x in feature_value_pairs],
-                'values': instance,
+                'scores': scores,
+                'values': values,
                 'extra': {
                     'names': ['Intercept'],
                     'scores': [intercept],
