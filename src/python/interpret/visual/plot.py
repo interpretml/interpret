@@ -287,6 +287,7 @@ def plot_line(data_dict, title=None, xtitle="", ytitle="", name='Main', color=CO
             line=dict(width=0),
             mode='lines')
         data = [lower_bound, main_line, upper_bound]
+
     layout = go.Layout(
         title=title,
         showlegend=False,

@@ -41,7 +41,7 @@ def generate_app_mini(ctx_item, path="/"):
     app.config['suppress_callback_exceptions'] = True
     app.config['ctx_item'] = ctx_item
     app.logger.handlers = []
-    app.title = 'Interpret ML'
+    app.title = 'InterpretML'
     server = app.server
 
     # Items in drop-down.

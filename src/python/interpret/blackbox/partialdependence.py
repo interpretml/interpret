@@ -78,8 +78,9 @@ class PartialDependence(ExplainerMixin):
             'names': grid_points,
             'scores': mean,
             'values': X[:, col_idx],
-            'upper_bounds': mean + std * std_coef,
-            'lower_bounds': mean - std * std_coef,
+            # NOTE: We can take either bounds or background values, picked one.
+            # 'upper_bounds': mean + std * std_coef,
+            # 'lower_bounds': mean - std * std_coef,
             'background_scores': ice_lines,
         }
 
