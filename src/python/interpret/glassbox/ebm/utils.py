@@ -62,7 +62,6 @@ class EBMUtils:
                           intercept,
                           skip_attr_set_idxs=[]
                           ):
-        log.debug('Decision function start')
 
         if X.ndim == 1:
             X = X.reshape(1, X.shape[0])
@@ -77,10 +76,10 @@ class EBMUtils:
         for _, _, scores in scores_gen:
             score_vector += scores
 
-        if not np.all(np.isfinite(score_vector)):
-            raise Exception('Non-finite values present in log odds vector.') # pragma: no cover
-
-        log.debug('Decision function end')
+        if not np.all(np.isfinite(score_vector)): # pragma: no cover
+            msg = 'Non-finite values present in log odds vector.'
+            log.error(msg)
+            raise Exception(msg)
 
         return score_vector
 

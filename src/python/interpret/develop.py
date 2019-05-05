@@ -4,7 +4,7 @@
 import logging
 log = logging.getLogger(__name__)
 
-def register_log(filename, log_level='INFO'):
+def register_log(filename, level='DEBUG'):
     import logging.handlers
 
     handler = logging.handlers.WatchedFileHandler(filename)
@@ -14,7 +14,7 @@ def register_log(filename, log_level='INFO'):
     handler.setFormatter(formatter)
 
     root = logging.getLogger('interpret')
-    root.setLevel(log_level)
+    root.setLevel(level)
     root.addHandler(handler)
     return None
 

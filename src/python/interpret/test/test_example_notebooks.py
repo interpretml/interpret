@@ -37,7 +37,9 @@ def test_example_notebooks():
         )
     )
 
-    for entry in os.scandir(notebooks_path):
-        if entry.is_file() and entry.path.endswith('.ipynb'):
-            nb, errors = run_notebook(entry.path)
-            assert errors == []
+    # NOTE: This test runs only when you have the source repo.
+    if os.path.exists(notebooks_path):
+        for entry in os.scandir(notebooks_path):
+            if entry.is_file() and entry.path.endswith('.ipynb'):
+                nb, errors = run_notebook(entry.path)
+                assert errors == []
