@@ -103,5 +103,6 @@ setup(
         'pytest>=4.3.0',
         'pytest-runner>=4.4',
         'hypothesis>=4.18.3',
+        'nbconvert>=5.4.1',
     ]
 )
