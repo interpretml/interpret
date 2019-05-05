@@ -357,7 +357,7 @@ def _names_with_values(names, values):
     return li
 
 
-def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle=""):
+def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
     if data_dict.get('scores', None) is None:
         return None
 
@@ -394,11 +394,16 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle=""):
     y = names
     trace = go.Bar(x=x, y=y, orientation='h', marker=dict(color=color))
 
-    max_abs_x = max(np.abs(x))
+    if start_zero:
+        x_range = [0, max(x)]
+    else:
+        max_abs_x = max(np.abs(x))
+        x_range = [-max_abs_x, max_abs_x]
+
     layout = dict(
         title=title,
         yaxis=dict(automargin=True, title=ytitle),
-        xaxis=dict(range=[-max_abs_x, max_abs_x], title=xtitle),
+        xaxis=dict(range=x_range, title=xtitle),
     )
 
     figure = go.Figure(data=[trace], layout=layout)

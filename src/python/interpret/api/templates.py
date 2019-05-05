@@ -24,6 +24,9 @@ class FeatureValueExplanation(ExplanationMixin):
     def data(self, key=None):
         if key is None:
             return self._internal_obj['overall']
+
+        if self._internal_obj['specific'] is None:
+            return None
         return self._internal_obj['specific'][key]
 
     def visualize(self, key=None):

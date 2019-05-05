@@ -4,11 +4,13 @@
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils import unify_predict_fn, unify_data
+from ..utils import gen_name_from_class, gen_global_selector
+from ..visual.plot import plot_horizontal_bar, sort_take
 
 from abc import ABC, abstractmethod
 from SALib.sample import morris as morris_sampler
 from SALib.analyze import morris
-from ..utils import gen_name_from_class, gen_global_selector
+import numpy as np
 
 class SamplerMixin(ABC):
     @abstractmethod
@@ -72,28 +74,151 @@ class MorrisSensitivity(ExplainerMixin):
             problem, samples, self.predict_fn(samples)
         )
 
-        contributions = analysis['mu_star']
-        data_dict = {
+        mu = analysis['mu']
+        mu_star = analysis['mu_star']
+        sigma = analysis['sigma']
+        mu_star_conf = analysis['mu_star_conf']
+
+        mask = mu_star > 0
+        convergence_index = np.max(
+            np.array(mu_star_conf)[mask] /
+            np.array(mu_star)[mask]
+        )
+
+        overall_data_dict = {
             'names': self.feature_names,
-            'scores': contributions,
+            'scores': mu_star,
+            'convergence_index': convergence_index,
         }
+
+
+        specific_data_dicts = []
+        for feat_idx, feature_name in enumerate(self.feature_names):
+            specific_data_dict = {
+                'type': 'morris',
+                'mu': mu[feat_idx],
+                'mu_star': mu_star[feat_idx],
+                'sigma': sigma[feat_idx],
+                'mu_star_conf': mu_star_conf[feat_idx],
+            }
+            specific_data_dicts.append(specific_data_dict)
+
         internal_obj = {
-            'overall': data_dict,
-            'specific': None,
+            'overall': overall_data_dict,
+            'specific': specific_data_dicts,
         }
 
         global_selector = gen_global_selector(
-            self.data, self.feature_names, self.feature_types,
-            contributions
+            self.data, self.feature_names, self.feature_types, mu_star
         )
 
-        return FeatureValueExplanation(
+        return MorrisExplanation(
             'global', internal_obj,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
             name=name,
             selector=global_selector
         )
+
+
+class MorrisExplanation(FeatureValueExplanation):
+    """ Visualizes specifically for SA.
+    """
+    explanation_type = None
+
+    def __init__(self, explanation_type, internal_obj,
+                 feature_names=None, feature_types=None,
+                 name=None, selector=None):
+
+        super(MorrisExplanation, self).__init__(
+            explanation_type, internal_obj,
+            feature_names=feature_names,
+            feature_types=feature_types,
+            name=name,
+            selector=selector
+        )
+
+    def visualize(self, key=None):
+        data_dict = self.data(key)
+        if data_dict is None:
+            return None
+
+        if self.explanation_type == 'global' and key is None:
+            data_dict = sort_take(
+                data_dict, sort_fn=lambda x: -abs(x), top_n=15,
+                reverse_results=True,
+            )
+            title = 'Morris Sensitivity<br>Convergence Index: {0:.3f}'.format(
+                data_dict['convergence_index']
+            )
+            figure = plot_horizontal_bar(
+                data_dict,
+                start_zero=True,
+                title=title
+            )
+            return figure
+
+
+        if self.explanation_type == 'global' and key is not None:
+            multi_html_template = r"""
+                <style>
+                .container {{
+                    display: flex;
+                    justify-content: center;
+                    flex-direction: column;
+                    text-align: center;
+                    align-items: center;
+                }}
+                .row {{
+                    width: 50%;
+                    flex: none;
+                }}
+                .dotted-hr {{
+                    border: none;
+                    border-top: 1px dotted black;
+                }}
+                </style>
+                <div class='container'>
+                <div class='row'>
+                    <div>
+                        <p>
+                            <h1>Morris Analysis<br/>{feature_name}</h1>
+                        </p>
+                    </div>
+                    <hr>
+                    {analyses}
+                </div>
+                </div>
+            """
+            analysis_template = r"""
+                <p>
+                    <h2>
+                    Mu: {mu:.3f}
+                    <br/>
+                    Mu_star: {mu_star:.3f}
+                    <br/>
+                    Sigma: {sigma:.3f}
+                    <br/>
+                    Mu_star Confidence: {mu_star_conf:.3f}
+                    </h2>
+                </p>
+                <hr class='dotted-hr'/>
+            """
+
+            analysis = analysis_template.format(
+                mu=data_dict['mu'],
+                mu_star=data_dict['mu_star'],
+                sigma=data_dict['sigma'],
+                mu_star_conf=data_dict['mu_star_conf'],
+            )
+
+            html_str = multi_html_template.format(
+                feature_name=self.feature_names[key],
+                analyses=analysis,
+            )
+            return html_str
+
+        return super().visualize(key)
 
 
 def soft_min_max(values, soft_add=1, soft_bounds=1):
