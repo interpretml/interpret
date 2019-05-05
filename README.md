@@ -52,6 +52,8 @@ from interpret.glassbox import ExplainableBoostingClassifier
 
 ebm = ExplainableBoostingClassifier()
 ebm.fit(X_train, y_train)
+
+#EBM supports pandas dataframes, numpy arrays, and handles "string" data natively.
 ```
 
 Understand the model
