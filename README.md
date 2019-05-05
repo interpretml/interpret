@@ -82,8 +82,8 @@ show([logistic_regression, decision_tree])
 
 ## Example Notebooks
 
-- [Interpretable models for binary classification](https://github.com/microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Classification%20Methods.ipynb)
-- [Interpretable models for regression](https://github.com/microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Regression%20Methods.ipynb)
+- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Classification%20Methods.ipynb)
+- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Regression%20Methods.ipynb)
 - Blackbox interpretability for regression.
 - Blackbox interpretability for binary classification.
 - Deep dive into the Explainable Boosting Machine
