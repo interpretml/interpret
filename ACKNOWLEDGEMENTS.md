@@ -6,6 +6,7 @@ Thank you to everyone here for your impactful contributions!
 - Johannes Gehrke
 - Marco Ribeiro
 - Gabriel Alon
+- Giles Hooker
 - Marc Sturm
 - Noemie Elhadad
 - Walter Martin
