@@ -88,8 +88,8 @@ show([logistic_regression, decision_tree])
 
 - [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Classification%20Methods.ipynb)
 - [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Regression%20Methods.ipynb)
-- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
 - [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
+- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
 
 ## Roadmap
 
