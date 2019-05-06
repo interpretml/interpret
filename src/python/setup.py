@@ -19,16 +19,18 @@ long_description = """
 In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
 
 Let there be light.
+
+https://github.com/microsoft/interpret
 """
 
 name = 'interpret'
-version = '0.0.5'
+version = '0.0.6'
 setup(
     name=name,
     version=version,
     author='InterpretML Team',
     author_email='interpret@microsoft.com',
-    description='Nobody knows how machine learning decisions are made. Now you do.',
+    description='Fit interpretable models. Explain blackbox machine learning.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/microsoft/interpret',
