@@ -26,6 +26,8 @@ Thank you to everyone here for your impactful contributions!
 - Rogan Carr
 - Tom Finley
 - Muhammed Arrabi
+- Javier Salido
+- Steve Sweetman
 - Chris Jones
 - Joshua Allen
 - Levent Ozgur
