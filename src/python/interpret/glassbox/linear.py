@@ -6,6 +6,7 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
 from ..utils import perf_dict, hist_per_column
 from ..utils import unify_data
+from ..visual.plot import sort_take, plot_horizontal_bar
 
 from abc import abstractmethod
 from sklearn.base import is_classifier
@@ -208,12 +209,47 @@ class BaseLinear:
             'overall': overall_data_dict,
             'specific': specific_data_dicts,
         }
-        return FeatureValueExplanation(
+        return LinearExplanation(
             'global', internal_obj,
-            feature_names=self.feature_names, feature_types=self.feature_types,
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
             name=name,
             selector=self.global_selector
         )
+
+class LinearExplanation(FeatureValueExplanation):
+    """ Visualizes specifically for Linear methods.
+    """
+    explanation_type = None
+
+    def __init__(self, explanation_type, internal_obj,
+                 feature_names=None, feature_types=None,
+                 name=None, selector=None):
+
+        super(LinearExplanation, self).__init__(
+            explanation_type, internal_obj,
+            feature_names=feature_names,
+            feature_types=feature_types,
+            name=name,
+            selector=selector
+        )
+
+    def visualize(self, key=None):
+        data_dict = self.data(key)
+        if data_dict is None:
+            return None
+
+        if self.explanation_type == 'global' and key is None:
+            data_dict = sort_take(
+                data_dict, sort_fn=lambda x: -abs(x), top_n=15,
+                reverse_results=True,
+            )
+            figure = plot_horizontal_bar(
+                data_dict, title='Overall Importance:<br>Coefficients'
+            )
+            return figure
+
+        return super().visualize(key)
 
 
 class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):

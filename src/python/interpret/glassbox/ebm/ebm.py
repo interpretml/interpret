@@ -54,14 +54,16 @@ class EBMExplanation(FeatureValueExplanation):
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15,
                 reverse_results=True,
             )
-            max_abs_x = max(np.abs(data_dict['scores']))
-            figure = plot_horizontal_bar(data_dict, title='Overall Importance:<br>Mean Absolute Score')
-            figure['layout']['xaxis']['range'] = [0, max_abs_x]
+            figure = plot_horizontal_bar(
+                data_dict, title='Overall Importance:<br>Mean Absolute Score',
+                start_zero=True,
+            )
             return figure
 
         if self.explanation_type == 'global' and self.feature_types[key] == 'continuous':
             title = self.feature_names[key]
-            return plot_continuous_bar(data_dict, title=title)
+            figure = plot_continuous_bar(data_dict, title=title)
+            return figure
 
         return super().visualize(key)
 

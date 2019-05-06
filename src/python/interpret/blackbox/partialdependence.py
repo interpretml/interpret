@@ -5,7 +5,7 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
 import warnings
 from ..utils import gen_name_from_class, gen_global_selector
-from ..utils import unify_data, unify_predict_fn
+from ..utils import unify_data, unify_predict_fn, hist_per_column
 from ..visual.plot import plot_line, plot_bar
 
 
@@ -53,10 +53,12 @@ class PartialDependence(ExplainerMixin):
         num_uniq_vals = len(np.unique(X[:, col_idx]))
         if feature_type == 'categorical' or num_uniq_vals <= num_points:
             grid_points = cls._unique_grid_points(X[:, col_idx])
+            values, counts = np.unique(X[:, col_idx], return_counts=True)
         else:
             grid_points = cls._percentile_grid_points(
                 X[:, col_idx], num_points=num_points
             )
+            counts, values = np.histogram(X[:, col_idx], bins='doane')
 
         X_mut = X.copy()
         ice_lines = np.zeros((X.shape[0], grid_points.shape[0]))
@@ -78,6 +80,10 @@ class PartialDependence(ExplainerMixin):
             'names': grid_points,
             'scores': mean,
             'values': X[:, col_idx],
+            'density': {
+                'names': values,
+                'scores': counts,
+            },
             # NOTE: We can take either bounds or background values, picked one.
             # 'upper_bounds': mean + std * std_coef,
             # 'lower_bounds': mean - std * std_coef,
@@ -143,12 +149,15 @@ class PDPExplanation(ExplanationMixin):
             return None
 
         feature_type = self.feature_types[key]
+        feature_name = self.feature_names[key]
         if feature_type == 'continuous':
-            figure = plot_line(data_dict)
+            figure = plot_line(data_dict, title=feature_name)
         elif feature_type == 'categorical':
-            figure = plot_bar(data_dict)
+            figure = plot_bar(data_dict, title=feature_name)
         else:
             raise Exception(
                 'Feature type {0} is not supported.'.format(feature_type)
             )
+
+        figure['layout']['yaxis1'].update(title='Average Response')
         return figure

@@ -63,6 +63,8 @@ def plot_performance_curve(data_dict,
         main_fig, density_fig, title=title, share_xaxis=False,
     )
     figure['layout']['xaxis2'].update(title='Absolute Residuals')
+    figure['layout']['yaxis2'].update(title='Density')
+
     figure['layout']['xaxis1'].update(title=xtitle)
     figure['layout']['yaxis1'].update(title=ytitle)
     return figure
@@ -207,7 +209,11 @@ def _plot_with_density(data_dict, main_fig, title='', xtitle='', ytitle='',
                        is_categorical=False, density_name='Distribution'):
 
     bar_fig = plot_density(data_dict, name=density_name, is_categorical=is_categorical, color=COLORS[1])
-    return _two_plot(main_fig, bar_fig, title=title, share_xaxis=is_categorical)
+    figure = _two_plot(main_fig, bar_fig, title=title, share_xaxis=is_categorical)
+    figure['layout']['yaxis1'].update(title='Score')
+    figure['layout']['yaxis2'].update(title='Density')
+
+    return figure
 
 
 def _two_plot(main_fig, secondary_fig, title='', share_xaxis=True):
@@ -408,6 +414,7 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     )
 
     figure = go.Figure(data=[trace], layout=layout)
+
     return figure
 
 

@@ -290,7 +290,6 @@ class ClassHistogramExplanation(ExplanationMixin):
         x = data_dict['x']
         y = data_dict['y']
 
-        column = key
         column_name = self.feature_names[key]
 
         classes = list(sorted(set(y)))
@@ -320,9 +319,10 @@ class ClassHistogramExplanation(ExplanationMixin):
         layout = go.Layout(
             title=column_name,
             barmode='stack',
-            hoverlabel=dict(font=dict(size=25))
+            hoverlabel=dict(font=dict(size=25)),
         )
         figure = go.Figure(data, layout)
+        figure['layout']['yaxis1'].update(title='Density')
 
         return figure
 
