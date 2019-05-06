@@ -180,7 +180,8 @@ def gen_overall_plot(exp, model_idx):
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
             id='example-overall-graph-{0}'.format(model_idx),
-            figure=figure
+            figure=figure,
+            config={'displayModeBar': 'hover'},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
@@ -228,7 +229,8 @@ def gen_plot(exp, picker, model_idx, counter):
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
             id='graph-{0}-{1}'.format(model_idx, counter),
-            figure=figure
+            figure=figure,
+            config={'displayModeBar': 'hover'},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
