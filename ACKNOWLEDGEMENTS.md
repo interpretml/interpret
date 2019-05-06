@@ -3,8 +3,11 @@ Thank you to everyone here for your impactful contributions!
 - Yin Lou
 - Sarah Tan
 - Xuezhou Zhang
+- Johannes Gehrke
 - Marco Ribeiro
 - Gabriel Alon
+- Marc Sturm
+- Noemie Elhadad
 - Walter Martin
 - Eduardo de Leon
 - Ilya Mattiach
@@ -20,6 +23,7 @@ Thank you to everyone here for your impactful contributions!
 - Urszula Chajewska
 - Tanuja Bompada
 - Rogan Carr
+- Tom Finley
 - Muhammed Arrabi
 - Chris Jones
 - Joshua Allen
