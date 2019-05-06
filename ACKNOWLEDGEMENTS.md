@@ -1,1 +1,39 @@
-We are putting up a list as soon as possible. For those who've worked with us, big thanks!
+Thank you to everyone here for your impactful contributions!
+
+- Yin Lou
+- Sarah Tan
+- Xuezhou Zhang
+- Marco Ribeiro
+- Gabriel Alon
+- Walter Martin
+- Eduardo de Leon
+- Ilya Mattiach
+- Vincent Xu
+- Mehrnoosh Sameki
+- Sarah Bird
+- Daniel Schnieder
+- Brandon Horn
+- Adam Raczkowski
+- Ester de Nicolas Benito
+- Nick Craswell
+- Lucas Meyer
+- Urszula Chajewska
+- Tanuja Bompada
+- Rogan Carr
+- Muhammed Arrabi
+- Chris Jones
+- Joshua Allen
+- Levent Ozgur
+- Steve Lim
+- Sam Sun
+- Ioana Marginas
+- Gregory Ellison
+- Allan Sepillo
+- Holly Stewart
+- Nader Albussam
+- Keith Haunreiter
+- Dean Carignan
+- Tom Mereckis
+- Ken Johnston
+- Rob Mauceri
+- Eric Horvitz
