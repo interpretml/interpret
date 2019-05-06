@@ -102,7 +102,29 @@ Currently we're working on:
 
 ## Contributing
 
-If you are interested in fixing issues and contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## Acknowledgements
+
+Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
+
+<br/>
+
+We also build on top of many great packages. Please check them out!
+
+[plotly](https://github.com/plotly/plotly.py) |
+[dash](https://github.com/plotly/dash) | 
+[scikit-learn](https://github.com/scikit-learn/scikit-learn) | 
+[lime](https://github.com/marcotcr/lime) |
+[shap](https://github.com/slundberg/shap) |
+[salib](https://github.com/SALib/SALib) |
+[skope-rules](https://github.com/scikit-learn-contrib/skope-rules) |
+[gevent](https://github.com/gevent/gevent) | 
+[joblib](https://github.com/joblib/joblib) |
+[pytest](https://github.com/pytest-dev/pytest) | 
+[jupyter](https://github.com/jupyter/notebook) 
+
+
 
 ## Contact us
 
