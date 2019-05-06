@@ -16,7 +16,7 @@ InterpretML is an open-source package for training interpretable models and expl
 - Regulatory compliance - Does my model satisfy legal requirements?
 - High-risk applications - Healthcare, finance, judicial, ...
 
-Historically, the most intelligible models were not very accurate, and the most accurate models were not intelligible. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM) which has both. EBM uses modern machine learning techniques like bagging and boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
+Historically, the most intelligible models were not very accurate, and the most accurate models were not intelligible. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both. EBM uses modern machine learning techniques like bagging and boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
 
 <br/>
 
@@ -33,6 +33,8 @@ Historically, the most intelligible models were not very accurate, and the most 
 <br/>
 
 In addition to EBM, InterpretML also supports methods like LIME, SHAP, linear models, partial dependence, decision trees and rule lists.  The package makes it easy to compare and contrast models to find the best one for your needs.
+
+<a name="ebm-footnote">*</a> *EBM is a fast implementation of GA<sup>2</sup>M. Details on the algorithm can be found [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/KDD2015FinalDraftIntelligibleModels4HealthCare_igt143e-caruanaA.pdf).*
 
 ---
 
