@@ -9,6 +9,10 @@ Thank you to everyone here for your impactful contributions!
 - Giles Hooker
 - Marc Sturm
 - Noemie Elhadad
+- Steven Drucker
+- Rob DeLine
+- Fred Hohman
+- Jina Suh
 - Walter Martin
 - Eduardo de Leon
 - Ilya Mattiach
