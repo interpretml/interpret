@@ -135,7 +135,6 @@ We also build on top of many great packages. Please check them out!
 [jupyter](https://github.com/jupyter/notebook) 
 
 
-
 ## Contact us
 
 Multiple ways to get in touch:
@@ -163,7 +162,6 @@ the [Security TechCenter](https://technet.microsoft.com/en-us/security/default).
 <br/>
 <br/>
 <br/>
-
 
 <br/>
 <br/>
