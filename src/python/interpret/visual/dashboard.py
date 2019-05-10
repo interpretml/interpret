@@ -16,6 +16,7 @@ import socket
 import random
 
 import logging
+
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -29,20 +30,20 @@ class AppRunner:
         self.future = None
         if addr is None:
             # Allocate port
-            self.ip = '127.0.0.1'
+            self.ip = "127.0.0.1"
             self.port = -1
             max_attempts = 10
             for _ in range(max_attempts):
                 port = random.randint(7000, 7999)
                 if self._local_port_available(port, rais=False):
                     self.port = port
-                    log.debug('Found open port: {0}'.format(port))
+                    log.debug("Found open port: {0}".format(port))
                     break
                 else:
-                    log.debug('Port already in use: {0}'.format(port))
+                    log.debug("Port already in use: {0}".format(port))
 
             else:
-                msg = 'Could not find open port'
+                msg = "Could not find open port"
                 log.error(msg)
                 raise RuntimeError(msg)
         else:
@@ -57,30 +58,31 @@ class AppRunner:
         try:
             backlog = 5
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('127.0.0.1', port))
+            sock.bind(("127.0.0.1", port))
             sock.listen(backlog)
             sock.close()
             sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-            sock.bind(('::1', port))
+            sock.bind(("::1", port))
             sock.listen(backlog)
             sock.close()
         except socket.error as e:
             if rais:
                 raise RuntimeError(
-                    "The server is already running on port {0}".format(port))
+                    "The server is already running on port {0}".format(port)
+                )
             else:
                 return False
         return True
 
     def stop(self):
         # Shutdown
-        log.debug('Triggering shutdown')
+        log.debug("Triggering shutdown")
         try:
             url = "http://{0}:{1}/shutdown".format(self.ip, self.port)
             r = requests.post(url)
             log.debug(r)
         except requests.exceptions.RequestException as e:
-            log.debug('Dashboard stop failed: {0}'.format(e))
+            log.debug("Dashboard stop failed: {0}".format(e))
             return False
 
         try:
@@ -94,10 +96,12 @@ class AppRunner:
 
     def _run(self):
         try:
+
             class devnull:
                 write = lambda _: None
+
             server = WSGIServer((self.ip, self.port), self.app, log=devnull)
-            self.app.config['server'] = server
+            self.app.config["server"] = server
             server.serve_forever()
         except Exception as e:
             log.error(e, exc_info=True)
@@ -106,17 +110,17 @@ class AppRunner:
         return str(id(obj))
 
     def start(self):
-        log.debug('Running app runner on: {0}:{1}'.format(self.ip, self.port))
+        log.debug("Running app runner on: {0}:{1}".format(self.ip, self.port))
         self.future = self.executor.submit(lambda: self._run())
 
     def register(self, ctx, **kwargs):
         # The path to this instance should be id based.
         self.app.register(ctx, **kwargs)
 
-    def display(self, ctx, width='100%', height=800, open_link=False):
-        path = '/' + self._obj_id(ctx) + '/'
+    def display(self, ctx, width="100%", height=800, open_link=False):
+        path = "/" + self._obj_id(ctx) + "/"
         url = "http://{0}:{1}{2}".format(self.ip, self.port, path)
-        log.debug('Display URL: {0}'.format(url))
+        log.debug("Display URL: {0}".format(url))
 
         html_str = ""
         if open_link:
@@ -127,9 +131,7 @@ class AppRunner:
         html_str += """
             <iframe src="{url}" width={width} height={height} frameBorder="0"></iframe>
         """.format(
-            url=url,
-            width=width,
-            height=height
+            url=url, width=width, height=height
         )
 
         display.display_html(html_str, raw=True)
@@ -141,7 +143,7 @@ class DispatcherApp:
         self.default_app = Flask(__name__)
         self.pool = {}
         self.config = {}
-        self.app_pattern = re.compile(r'/?(.+?)(/|$)')
+        self.app_pattern = re.compile(r"/?(.+?)(/|$)")
 
     def obj_id(self, obj):
         return str(id(obj))
@@ -149,16 +151,16 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            log.debug('App Entry not found: {0}'.format(ctx_id))
+            log.debug("App Entry not found: {0}".format(ctx_id))
             app = udash.generate_app(
-                ctx, {'share_tables': share_tables}, '/' + ctx_id + '/'
+                ctx, {"share_tables": share_tables}, "/" + ctx_id + "/"
             )
             app.css.config.serve_locally = True
             app.scripts.config.serve_locally = True
 
             self.pool[ctx_id] = app.server
         else:
-            log.debug('App Entry found: {0}'.format(ctx_id))
+            log.debug("App Entry found: {0}".format(ctx_id))
 
     def _split(self, strng, sep, pos):
         strng = strng.split(sep)
@@ -167,24 +169,20 @@ class DispatcherApp:
     def __call__(self, environ, start_response):
         old_path_info = environ.get("PATH_INFO", "")
 
-        if old_path_info == '/shutdown':
-            log.debug('Shutting down.')
-            server = self.config['server']
+        if old_path_info == "/shutdown":
+            log.debug("Shutting down.")
+            server = self.config["server"]
             server.stop()
-            start_response('200 OK', [('content-type', 'text/html')])
-            return ['Shutdown'.encode('utf-8')]
+            start_response("200 OK", [("content-type", "text/html")])
+            return ["Shutdown".encode("utf-8")]
 
         match = re.search(self.app_pattern, old_path_info)
         if match is None:
-            msg = 'URL not supported: {0}'.format(old_path_info)
+            msg = "URL not supported: {0}".format(old_path_info)
             log.error(msg)
-            start_response(
-                '400 Bad Request Error',
-                [('content-type', 'text/html')]
-            )
-            return [msg.encode('utf-8')]
+            start_response("400 Bad Request Error", [("content-type", "text/html")])
+            return [msg.encode("utf-8")]
 
         ctx_id = match.group(1)
         app = self.pool[ctx_id]
         return app(environ, start_response)
-

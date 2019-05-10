@@ -44,9 +44,7 @@ def test_logistic_regression():
     feature_names = cancer.feature_names
 
     sk_lr = SKLogistic(tol=0.01, random_state=1)
-    our_lr = LogisticRegression(
-        tol=0.01, feature_names=feature_names, random_state=1
-    )
+    our_lr = LogisticRegression(tol=0.01, feature_names=feature_names, random_state=1)
 
     sk_lr.fit(X, y)
     our_lr.fit(X, y)

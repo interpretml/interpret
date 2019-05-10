@@ -10,6 +10,7 @@ import os
 from sys import platform
 import struct
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -21,30 +22,34 @@ def get_ebm_lib_path(debug=False):
         A string representing filepath.
     """
     bitsize = struct.calcsize("P") * 8
-    is_64_bit = (bitsize == 64)
+    is_64_bit = bitsize == 64
 
     script_path = os.path.dirname(os.path.abspath(__file__))
-    package_path = os.path.join(script_path, '..', '..')
+    package_path = os.path.join(script_path, "..", "..")
 
-    debug_str = '_debug' if debug else ''
-    log.info('Loading native on {0} | debug = {1}'.format(platform, debug))
+    debug_str = "_debug" if debug else ""
+    log.info("Loading native on {0} | debug = {1}".format(platform, debug))
     if platform == "linux" or platform == "linux2" and is_64_bit:
-        return os.path.join(package_path, 'lib', 'ebmcore_linux_x64{0}.so'.format(debug_str))
-    elif platform == "win32" and is_64_bit:
-        return os.path.join(package_path, 'lib', 'ebmcore_win_x64{0}.dll'.format(debug_str))
-    elif platform == "darwin" and is_64_bit:
-        return os.path.join(package_path, 'lib', 'ebmcore_mac_x64{0}.dylib'.format(debug_str))
-    else:
-        msg = "Platform {0} at {1} bit not supported for EBM".format(
-            platform, bitsize
+        return os.path.join(
+            package_path, "lib", "ebmcore_linux_x64{0}.so".format(debug_str)
         )
+    elif platform == "win32" and is_64_bit:
+        return os.path.join(
+            package_path, "lib", "ebmcore_win_x64{0}.dll".format(debug_str)
+        )
+    elif platform == "darwin" and is_64_bit:
+        return os.path.join(
+            package_path, "lib", "ebmcore_mac_x64{0}.dylib".format(debug_str)
+        )
+    else:
+        msg = "Platform {0} at {1} bit not supported for EBM".format(platform, bitsize)
         log.error(msg)
         raise Exception(msg)
 
 
 # Load correct library
 def load_library(debug=None):
-    gettrace = getattr(sys, 'gettrace', None)
+    gettrace = getattr(sys, "gettrace", None)
 
     if debug is None:
         is_debug = False
@@ -71,18 +76,18 @@ AttributeTypeNominal = 1
 class Attribute(ct.Structure):
     _fields_ = [
         # AttributeType attributeType;
-        ('attributeType', ct.c_longlong),
+        ("attributeType", ct.c_longlong),
         # int64_t hasMissing;
-        ('hasMissing', ct.c_longlong),
+        ("hasMissing", ct.c_longlong),
         # int64_t countStates;
-        ('countStates', ct.c_longlong),
+        ("countStates", ct.c_longlong),
     ]
 
 
 class AttributeSet(ct.Structure):
     _fields_ = [
         # int64_t countAttributes;
-        ('countAttributes', ct.c_longlong),
+        ("countAttributes", ct.c_longlong)
     ]
 
 
@@ -188,7 +193,7 @@ GetCurrentModel.argtypes = [
     # void * tml
     ct.c_void_p,
     # int64_t indexAttributeSet
-    ct.c_longlong
+    ct.c_longlong,
 ]
 GetCurrentModel.restype = ct.POINTER(ct.c_double)
 
@@ -198,7 +203,7 @@ GetBestModel.argtypes = [
     # void * tml
     ct.c_void_p,
     # int64_t indexAttributeSet
-    ct.c_longlong
+    ct.c_longlong,
 ]
 GetBestModel.restype = ct.POINTER(ct.c_double)
 
@@ -206,14 +211,14 @@ GetBestModel.restype = ct.POINTER(ct.c_double)
 FreeTraining = Lib.FreeTraining
 FreeTraining.argtypes = [
     # void * tml
-    ct.c_void_p,
+    ct.c_void_p
 ]
 
 
 CancelTraining = Lib.CancelTraining
 CancelTraining.argtypes = [
     # void * tml
-    ct.c_void_p,
+    ct.c_void_p
 ]
 
 InitializeInteractionClassification = Lib.InitializeInteractionClassification
@@ -231,7 +236,7 @@ InitializeInteractionClassification.argtypes = [
     # int64_t * data
     ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
     # double * predictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1)
+    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
 ]
 InitializeInteractionClassification.restype = ct.c_void_p
 
@@ -249,7 +254,7 @@ InitializeInteractionRegression.argtypes = [
     # int64_t * data
     ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
     # double * predictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1)
+    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
 ]
 InitializeInteractionRegression.restype = ct.c_void_p
 
@@ -262,34 +267,43 @@ GetInteractionScore.argtypes = [
     # int64_t * attributeIndexes
     ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
     # double * interactionScoreReturn
-    ct.POINTER(ct.c_double)
+    ct.POINTER(ct.c_double),
 ]
 GetInteractionScore.restype = ct.c_longlong
 
 FreeInteraction = Lib.FreeInteraction
 FreeInteraction.argtypes = [
     # void * tmlInteraction
-    ct.c_void_p,
+    ct.c_void_p
 ]
 
 
 CancelInteraction = Lib.CancelInteraction
 CancelInteraction.argtypes = [
     # void * tmlInteraction
-    ct.c_void_p,
+    ct.c_void_p
 ]
+
 
 class NativeEBM:
     """Lightweight wrapper for EBM C code.
     """
 
-    def __init__(self,
-                 attributes, attribute_sets,
-                 X_train, y_train, X_val, y_val,
-                 model_type='regression',
-                 num_inner_bags=0, num_classification_states=2,
-                 training_scores=None, validation_scores=None,
-                 random_state=1337):
+    def __init__(
+        self,
+        attributes,
+        attribute_sets,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        model_type="regression",
+        num_inner_bags=0,
+        num_classification_states=2,
+        training_scores=None,
+        validation_scores=None,
+        random_state=1337,
+    ):
 
         # TODO: Update documentation for training/val scores args.
         """ Initializes internal wrapper for EBM C code.
@@ -311,13 +325,14 @@ class NativeEBM:
             validation_scores: Undocumented.
             random_state: Random seed as integer.
         """
-        log.debug('Allocation start')
+        log.debug("Allocation start")
 
         # Store args
         self.attributes = attributes
         self.attribute_sets = attribute_sets
-        self.attribute_array, self.attribute_sets_array, self.attribute_set_indexes = \
-            self._convert_attribute_info_to_c(attributes, attribute_sets)
+        self.attribute_array, self.attribute_sets_array, self.attribute_set_indexes = self._convert_attribute_info_to_c(
+            attributes, attribute_sets
+        )
 
         self.X_train = X_train
         self.y_train = y_train
@@ -328,12 +343,17 @@ class NativeEBM:
         self.num_classification_states = num_classification_states
 
         # Set train/val scores to zeros if not passed.
-        self.training_scores = training_scores if \
-            training_scores is not None else np.zeros(X_train.shape[0])
-        self.validation_scores = validation_scores if \
-            validation_scores is not None else np.zeros(X_val.shape[0])
+        self.training_scores = (
+            training_scores
+            if training_scores is not None
+            else np.zeros(X_train.shape[0])
+        )
+        self.validation_scores = (
+            validation_scores
+            if validation_scores is not None
+            else np.zeros(X_val.shape[0])
+        )
         self.random_state = random_state
-
 
         # Convert n-dim arrays ready for C.
         self.X_train_f = np.asfortranarray(self.X_train)
@@ -345,40 +365,39 @@ class NativeEBM:
 
         # Allocate external resources
         if self.model_type == "regression":
-            self.y_train = self.y_train.astype('float64')
-            self.y_val = self.y_val.astype('float64')
+            self.y_train = self.y_train.astype("float64")
+            self.y_val = self.y_val.astype("float64")
             self._initialize_training_regression()
             self._initialize_interaction_regression()
-        elif self.model_type == 'classification':
-            self.y_train = self.y_train.astype('int64')
-            self.y_val = self.y_val.astype('int64')
+        elif self.model_type == "classification":
+            self.y_train = self.y_train.astype("int64")
+            self.y_val = self.y_val.astype("int64")
 
             self._initialize_training_classification()
             self._initialize_interaction_classification()
 
-        log.debug('Allocation end')
-
+        log.debug("Allocation end")
 
     def _convert_attribute_info_to_c(self, attributes, attribute_sets):
         # Create C form of attributes
         attribute_ar = (Attribute * len(attributes))()
         for idx, attribute in enumerate(attributes):
-            if attribute['type'] == 'categorical':
+            if attribute["type"] == "categorical":
                 attribute_ar[idx].attributeType = AttributeTypeNominal
             else:
                 attribute_ar[idx].attributeType = AttributeTypeOrdinal
-            attribute_ar[idx].hasMissing = 1 * attribute['has_missing']
-            attribute_ar[idx].countStates = attribute['n_bins']
+            attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
+            attribute_ar[idx].countStates = attribute["n_bins"]
 
         attribute_set_indexes = []
         attribute_sets_ar = (AttributeSet * len(attribute_sets))()
         for idx, attribute_set in enumerate(attribute_sets):
-            attribute_sets_ar[idx].countAttributes = attribute_set['n_attributes']
+            attribute_sets_ar[idx].countAttributes = attribute_set["n_attributes"]
 
-            for attr_idx in attribute_set['attributes']:
+            for attr_idx in attribute_set["attributes"]:
                 attribute_set_indexes.append(attr_idx)
 
-        attribute_set_indexes = np.array(attribute_set_indexes, dtype='int64')
+        attribute_set_indexes = np.array(attribute_set_indexes, dtype="int64")
 
         return attribute_ar, attribute_sets_ar, attribute_set_indexes
 
@@ -389,7 +408,7 @@ class NativeEBM:
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
-            self.training_scores
+            self.training_scores,
         )
 
     def _initialize_interaction_classification(self):
@@ -400,7 +419,7 @@ class NativeEBM:
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
-            self.training_scores
+            self.training_scores,
         )
 
     def _initialize_training_regression(self):
@@ -419,7 +438,7 @@ class NativeEBM:
             self.y_val,
             self.X_val_f,
             self.validation_scores,
-            self.num_inner_bags
+            self.num_inner_bags,
         )
 
     def _initialize_training_classification(self):
@@ -439,34 +458,39 @@ class NativeEBM:
             self.y_val,
             self.X_val_f,
             self.validation_scores,
-            self.num_inner_bags
+            self.num_inner_bags,
         )
 
     def close(self):
         """ Deallocates C objects used to train EBM. """
-        log.debug('Deallocation start')
+        log.debug("Deallocation start")
         FreeTraining(self.model_pointer)
         FreeInteraction(self.interaction_pointer)
-        log.debug('Deallocation end')
+        log.debug("Deallocation end")
 
     def fast_interaction_score(self, attribute_index_tuple):
         """ Provides score for an attribute interaction. Higher is better."""
-        log.debug('Fast interaction score start')
+        log.debug("Fast interaction score start")
         score = ct.c_double(0.0)
         GetInteractionScore(
             self.interaction_pointer,
             len(attribute_index_tuple),
             np.array(attribute_index_tuple, dtype=np.int64),
-            ct.byref(score)
+            ct.byref(score),
         )
-        log.debug('Fast interaction score end')
+        log.debug("Fast interaction score end")
         return score.value
 
-    def training_step(self,
-                      attribute_set_index,
-                      training_step_episodes=1, learning_rate=0.01,
-                      max_tree_splits=2, min_cases_for_split=2,
-                      training_weights=0, validation_weights=0):
+    def training_step(
+        self,
+        attribute_set_index,
+        training_step_episodes=1,
+        learning_rate=0.01,
+        max_tree_splits=2,
+        min_cases_for_split=2,
+        training_weights=0,
+        validation_weights=0,
+    ):
 
         """ Conducts a training step per feature
             by growing a shallow decision tree.
@@ -484,7 +508,7 @@ class NativeEBM:
         Returns:
             Validation loss for the training step.
         """
-        log.debug('Training step start')
+        log.debug("Training step start")
 
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
@@ -496,10 +520,10 @@ class NativeEBM:
                 min_cases_for_split,
                 training_weights,
                 validation_weights,
-                ct.byref(metric_output)
+                ct.byref(metric_output),
             )
 
-        log.debug('Training step end')
+        log.debug("Training step end")
         return metric_output.value
 
     def _get_attribute_set_shape(self, attribute_set_index):
@@ -507,8 +531,8 @@ class NativeEBM:
         dimensions = []
         attr_idxs = []
         attribute_set = self.attribute_sets[attribute_set_index]
-        for _, attr_idx in enumerate(attribute_set['attributes']):
-            n_bins = self.attributes[attr_idx]['n_bins']
+        for _, attr_idx in enumerate(attribute_set["attributes"]):
+            n_bins = self.attributes[attr_idx]["n_bins"]
             attr_idxs.append(attr_idx)
             dimensions.append(n_bins)
         shape = tuple(dimensions)
@@ -528,8 +552,7 @@ class NativeEBM:
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
-            array_p, shape,
-            dtype=np.double, order='F', own_data=False
+            array_p, shape, dtype=np.double, order="F", own_data=False
         )
         return array.copy()
 
@@ -547,15 +570,12 @@ class NativeEBM:
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
-            array_p, shape,
-            dtype=np.double, order='F', own_data=False
+            array_p, shape, dtype=np.double, order="F", own_data=False
         )
         return array.copy()
 
 
-def make_nd_array(
-        c_pointer, shape,
-        dtype=np.float64, order='C', own_data=True):
+def make_nd_array(c_pointer, shape, dtype=np.float64, order="C", own_data=True):
     """ Returns an ndarray based from a C array.
 
     Code largely borrowed from:

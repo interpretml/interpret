@@ -24,4 +24,3 @@ class JobLibProvider(ComputeProvider):
 
 class AzureMLProvider(ComputeProvider):
     pass
-

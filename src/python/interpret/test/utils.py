@@ -11,39 +11,30 @@ from sklearn.base import is_classifier
 
 
 def synthetic_regression():
-    dataset = _synthetic('regression')
+    dataset = _synthetic("regression")
     return dataset
 
 
 def synthetic_classification():
-    dataset = _synthetic('classification')
+    dataset = _synthetic("classification")
     return dataset
 
 
-def _synthetic(mode='regression'):
+def _synthetic(mode="regression"):
     n_rows = 100
-    X_df = pd.DataFrame(np.random.randn(n_rows, 4), columns=list('ABCD'))
-    if mode == 'classification':
-        y_df = pd.DataFrame(np.random.randint(2, size=n_rows), columns=list('Y'))
+    X_df = pd.DataFrame(np.random.randn(n_rows, 4), columns=list("ABCD"))
+    if mode == "classification":
+        y_df = pd.DataFrame(np.random.randint(2, size=n_rows), columns=list("Y"))
     else:
-        y_df = pd.DataFrame(np.random.randn(n_rows, 1), columns=list('Y'))
+        y_df = pd.DataFrame(np.random.randn(n_rows, 1), columns=list("Y"))
     X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
         X_df, y_df, test_size=0.20, random_state=1
     )
 
     dataset = {
-        'full': {
-            'X': X_df,
-            'y': y_df,
-        },
-        'train': {
-            'X': X_df_train,
-            'y': y_df_train,
-        },
-        'test': {
-            'X': X_df_test,
-            'y': y_df_test,
-        },
+        "full": {"X": X_df, "y": y_df},
+        "train": {"X": X_df_train, "y": y_df_train},
+        "test": {"X": X_df_test, "y": y_df_test},
     }
 
     return dataset
@@ -56,11 +47,24 @@ def boston_regression():
 def adult_classification():
     df = pd.read_csv(
         "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
-        header=None).sample(frac=0.01, random_state=42)
+        header=None,
+    ).sample(frac=0.01, random_state=42)
     df.columns = [
-        "Age", "WorkClass", "fnlwgt", "Education", "EducationNum",
-        "MaritalStatus", "Occupation", "Relationship", "Race", "Gender",
-        "CapitalGain", "CapitalLoss", "HoursPerWeek", "NativeCountry", "Income"
+        "Age",
+        "WorkClass",
+        "fnlwgt",
+        "Education",
+        "EducationNum",
+        "MaritalStatus",
+        "Occupation",
+        "Relationship",
+        "Race",
+        "Gender",
+        "CapitalGain",
+        "CapitalLoss",
+        "HoursPerWeek",
+        "NativeCountry",
+        "Income",
     ]
     train_cols = df.columns[0:-1]
     label = df.columns[-1]
@@ -71,18 +75,9 @@ def adult_classification():
     )
 
     dataset = {
-        'full': {
-            'X': X_df,
-            'y': y_df,
-        },
-        'train': {
-            'X': X_df_train,
-            'y': y_df_train,
-        },
-        'test': {
-            'X': X_df_test,
-            'y': y_df_test,
-        },
+        "full": {"X": X_df, "y": y_df},
+        "train": {"X": X_df_train, "y": y_df_train},
+        "test": {"X": X_df_test, "y": y_df_test},
     }
 
     return dataset
@@ -106,8 +101,7 @@ def valid_predict_proba(explainer, X):
 
     predictions = explainer.predict_proba(X)
     all_finite = np.isfinite(predictions).all()
-    within_bounds = (predictions >= 0.0).all() and \
-                    (predictions <= 1.0).all()
+    within_bounds = (predictions >= 0.0).all() and (predictions <= 1.0).all()
 
     all_valid &= all_finite
     all_valid &= within_bounds
@@ -153,8 +147,8 @@ def valid_internal_obj(obj):
     if obj is None:
         return True
 
-    overall = obj.get('overall', False)
-    specific = obj.get('specific', False)
+    overall = obj.get("overall", False)
+    specific = obj.get("specific", False)
     if overall is False:
         return False
     if specific is False:

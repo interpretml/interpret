@@ -11,12 +11,10 @@ import numpy as np
 
 
 class PR(ExplainerMixin):
-    available_explanations = ['perf']
-    explainer_type = 'perf'
+    available_explanations = ["perf"]
+    explainer_type = "perf"
 
-    def __init__(self, predict_fn,
-                 feature_names=None, feature_types=None,
-                 **kwargs):
+    def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
         self.predict_fn = predict_fn
         self.kwargs = kwargs
         self.feature_names = feature_names
@@ -36,42 +34,33 @@ class PR(ExplainerMixin):
         ap = average_precision_score(y, scores)
 
         abs_residuals = np.abs(y - scores)
-        counts, values = np.histogram(abs_residuals, bins='doane')
+        counts, values = np.histogram(abs_residuals, bins="doane")
 
         overall_dict = {
-            'type': 'perf_curve',
-            'density': {
-                'names': values,
-                'scores': counts,
-            },
-            'scores': scores,
-            'x_values': recall,
-            'y_values': precision,
-            'threshold': thresh,
-            'auc': ap,
+            "type": "perf_curve",
+            "density": {"names": values, "scores": counts},
+            "scores": scores,
+            "x_values": recall,
+            "y_values": precision,
+            "threshold": thresh,
+            "auc": ap,
         }
-        internal_obj = {
-            'overall': overall_dict,
-            'specific': None,
-        }
+        internal_obj = {"overall": overall_dict, "specific": None}
 
         return PRExplanation(
-            'perf',
+            "perf",
             internal_obj,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
-            name=name
+            name=name,
         )
 
 
-
 class ROC(ExplainerMixin):
-    available_explanations = ['perf']
-    explainer_type = 'perf'
+    available_explanations = ["perf"]
+    explainer_type = "perf"
 
-    def __init__(self, predict_fn,
-                 feature_names=None, feature_types=None,
-                 **kwargs):
+    def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
         self.predict_fn = predict_fn
         self.kwargs = kwargs
         self.feature_names = feature_names
@@ -91,40 +80,40 @@ class ROC(ExplainerMixin):
         roc_auc = auc(fpr, tpr)
 
         abs_residuals = np.abs(y - scores)
-        counts, values = np.histogram(abs_residuals, bins='doane')
+        counts, values = np.histogram(abs_residuals, bins="doane")
 
         overall_dict = {
-            'type': 'perf_curve',
-            'density': {
-                'names': values,
-                'scores': counts,
-            },
-            'scores': scores,
-            'x_values': fpr,
-            'y_values': tpr,
-            'threshold': thresh,
-            'auc': roc_auc,
+            "type": "perf_curve",
+            "density": {"names": values, "scores": counts},
+            "scores": scores,
+            "x_values": fpr,
+            "y_values": tpr,
+            "threshold": thresh,
+            "auc": roc_auc,
         }
-        internal_obj = {
-            'overall': overall_dict,
-            'specific': None,
-        }
+        internal_obj = {"overall": overall_dict, "specific": None}
 
         return ROCExplanation(
-            'perf',
+            "perf",
             internal_obj,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
-            name=name
+            name=name,
         )
 
 
 class ROCExplanation(ExplanationMixin):
     explanation_type = None
 
-    def __init__(self, explanation_type, internal_obj,
-                 feature_names=None, feature_types=None,
-                 name=None, selector=None):
+    def __init__(
+        self,
+        explanation_type,
+        internal_obj,
+        feature_names=None,
+        feature_types=None,
+        name=None,
+        selector=None,
+    ):
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -134,7 +123,7 @@ class ROCExplanation(ExplanationMixin):
 
     def data(self, key=None):
         if key is None:
-            return self._internal_obj['overall']
+            return self._internal_obj["overall"]
         return None
 
     def visualize(self, key=None):
@@ -144,19 +133,26 @@ class ROCExplanation(ExplanationMixin):
 
         return plot_performance_curve(
             data_dict,
-            xtitle='FPR',
-            ytitle='TPR',
+            xtitle="FPR",
+            ytitle="TPR",
             baseline=True,
-            title='ROC Curve: ' + self.name,
-            auc_prefix='AUC'
+            title="ROC Curve: " + self.name,
+            auc_prefix="AUC",
         )
+
 
 class PRExplanation(ExplanationMixin):
     explanation_type = None
 
-    def __init__(self, explanation_type, internal_obj,
-                 feature_names=None, feature_types=None,
-                 name=None, selector=None):
+    def __init__(
+        self,
+        explanation_type,
+        internal_obj,
+        feature_names=None,
+        feature_types=None,
+        name=None,
+        selector=None,
+    ):
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -166,7 +162,7 @@ class PRExplanation(ExplanationMixin):
 
     def data(self, key=None):
         if key is None:
-            return self._internal_obj['overall']
+            return self._internal_obj["overall"]
         return None
 
     def visualize(self, key=None):
@@ -176,9 +172,9 @@ class PRExplanation(ExplanationMixin):
 
         return plot_performance_curve(
             data_dict,
-            xtitle='Recall',
-            ytitle='Precision',
+            xtitle="Recall",
+            ytitle="Precision",
             baseline=False,
-            title= 'PR Curve: ' + self.name,
-            auc_prefix= 'Average Precision'
+            title="PR Curve: " + self.name,
+            auc_prefix="Average Precision",
         )

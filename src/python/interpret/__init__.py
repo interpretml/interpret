@@ -4,6 +4,7 @@
 # Set default logging handler
 import logging
 from logging import NullHandler
+
 logging.getLogger(__name__).addHandler(NullHandler())
 
 # Set name of package

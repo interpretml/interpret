@@ -44,9 +44,7 @@ def test_dt():
     feature_names = cancer.feature_names
 
     sk_dt = SKDT(random_state=1, max_depth=3)
-    our_dt = ClassificationTree(
-        feature_names=feature_names, random_state=1
-    )
+    our_dt = ClassificationTree(feature_names=feature_names, random_state=1)
 
     sk_dt.fit(X, y)
     our_dt.fit(X, y)

@@ -12,16 +12,18 @@ from pandas.core.generic import NDFrame
 from pandas.core.series import Series
 
 import logging
+
 log = logging.getLogger(__name__)
+
 
 def perf_dict(y, y_hat, i):
     if y is None:
         return None
 
     di = {}
-    di['actual'] = y[i]
-    di['predicted'] = y_hat[i]
-    di['residual'] = y[i] - y_hat[i]
+    di["actual"] = y[i]
+    di["predicted"] = y_hat[i]
+    di["residual"] = y[i] - y_hat[i]
 
     return di
 
@@ -32,56 +34,48 @@ def hist_per_column(arr, feature_types=None):
 
     if feature_types is not None:
         for i, feat_type in enumerate(feature_types):
-            if feat_type == 'continuous':
-                count, bin_edge = np.histogram(arr[:, i], bins='doane')
+            if feat_type == "continuous":
+                count, bin_edge = np.histogram(arr[:, i], bins="doane")
                 counts.append(count)
                 bin_edges.append(bin_edge)
-            elif feat_type == 'categorical':
-                #Todo: check if this call
+            elif feat_type == "categorical":
+                # Todo: check if this call
                 bin_edge, count = np.unique(arr[:, i], return_counts=True)
                 counts.append(count)
                 bin_edges.append(bin_edge)
     else:
         for i in range(arr.shape[1]):
-            count, bin_edge = np.histogram(arr[:, i], bins='doane')
+            count, bin_edge = np.histogram(arr[:, i], bins="doane")
             counts.append(count)
             bin_edges.append(bin_edge)
     return counts, bin_edges
 
 
-def gen_global_selector(
-        X, feature_names, feature_types,
-        importance_scores, round=3
-):
+def gen_global_selector(X, feature_names, feature_types, importance_scores, round=3):
     records = []
 
     for feat_idx, _ in enumerate(feature_names):
         record = {}
-        record['Name'] = feature_names[feat_idx]
-        record['Type'] = feature_types[feat_idx]
+        record["Name"] = feature_names[feat_idx]
+        record["Type"] = feature_types[feat_idx]
 
         if feat_idx < X.shape[1]:
             col_vals = X[:, feat_idx]
-            record['# Unique'] = len(np.unique(col_vals))
+            record["# Unique"] = len(np.unique(col_vals))
             nz_count = np.count_nonzero(col_vals)
-            record['% Non-zero'] = nz_count / X.shape[0]
+            record["% Non-zero"] = nz_count / X.shape[0]
         else:
-            record['# Unique'] = np.nan
-            record['% Non-zero'] = np.nan
-
+            record["# Unique"] = np.nan
+            record["% Non-zero"] = np.nan
 
         if importance_scores is None:
-            record['Importance'] = np.nan
+            record["Importance"] = np.nan
         else:
-            record['Importance'] = importance_scores[feat_idx]
+            record["Importance"] = importance_scores[feat_idx]
 
         records.append(record)
 
-    columns = [
-        'Name', 'Type',
-        '# Unique', '% Non-zero',
-        'Importance'
-    ]
+    columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
@@ -89,30 +83,25 @@ def gen_global_selector(
         return df
 
 
-def gen_local_selector(
-        X, y, y_hat, round=3
-):
+def gen_local_selector(X, y, y_hat, round=3):
     records = []
 
     for i in range(X.shape[0]):
         record = {}
-        record['Predicted'] = y_hat[i]
+        record["Predicted"] = y_hat[i]
         if y is not None:
-            record['Actual'] = y[i]
+            record["Actual"] = y[i]
             resid = y[i] - y_hat[i]
-            record['Residual'] = resid
-            record['AbsResidual'] = np.abs(resid)
+            record["Residual"] = resid
+            record["AbsResidual"] = np.abs(resid)
         else:
-            record['Actual'] = np.nan
-            record['Residual'] = np.nan
-            record['AbsResidual'] = np.nan
+            record["Actual"] = np.nan
+            record["Residual"] = np.nan
+            record["AbsResidual"] = np.nan
 
         records.append(record)
 
-    columns = [
-        'Predicted', 'Actual',
-        'Residual', 'AbsResidual'
-    ]
+    columns = ["Predicted", "Actual", "Residual", "AbsResidual"]
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
@@ -135,7 +124,7 @@ def gen_name_from_class(obj):
         gen_name_from_class.cache[class_name] = itertools.count(0)
     identifier = next(gen_name_from_class.cache[class_name])
 
-    return str(obj.__class__.__name__) + '_' + str(identifier)
+    return str(obj.__class__.__name__) + "_" + str(identifier)
 
 
 gen_name_from_class.cache = {}
@@ -152,9 +141,7 @@ def gen_feat_val_list(features, values):
         A sorted list of feature-value tuples.
     """
     sorted_feat_val_list = sorted(
-        zip(features, values),
-        key=lambda x: abs(x[1]),
-        reverse=True
+        zip(features, values), key=lambda x: abs(x[1]), reverse=True
     )
     return sorted_feat_val_list
 
@@ -211,7 +198,7 @@ def unify_vector(data):
     elif isinstance(data, NDFrame) and data.shape[1] == 1:
         new_data = data.iloc[:, 0].values
     else:
-        msg = 'Could not unify data of type: {0}'.format(type(data))
+        msg = "Could not unify data of type: {0}".format(type(data))
         log.warning(msg)
         raise Exception(msg)
 
@@ -241,29 +228,33 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
             new_feature_names = feature_names
 
         if feature_types is None:
-            unique_counts = np.apply_along_axis(lambda a:len(set(a)),axis=0,
-                                                arr=data)
-            new_feature_types = [_assign_feature_type(feature_type, unique_counts[index])
-                                 for index, feature_type in enumerate(data.dtypes)]
+            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+            new_feature_types = [
+                _assign_feature_type(feature_type, unique_counts[index])
+                for index, feature_type in enumerate(data.dtypes)
+            ]
         else:
             new_feature_types = feature_types
     elif isinstance(data, np.ndarray):
         new_data = data
 
         if feature_names is None:
-            new_feature_names = ['feature_' + str(i) for i in range(data.shape[1])]
+            new_feature_names = ["feature_" + str(i) for i in range(data.shape[1])]
         else:
             new_feature_names = feature_names
 
         if feature_types is None:
-            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0,
-                                                arr=data)
-            new_feature_types = [_assign_feature_type(feature_type, unique_counts[index])
-                                 for index, feature_type in enumerate([data.dtype] * len(new_feature_names))]
+            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+            new_feature_types = [
+                _assign_feature_type(feature_type, unique_counts[index])
+                for index, feature_type in enumerate(
+                    [data.dtype] * len(new_feature_names)
+                )
+            ]
         else:
             new_feature_types = feature_types
     else:
-        msg = 'Could not unify data of type: {0}'.format(type(data))
+        msg = "Could not unify data of type: {0}".format(type(data))
         log.warning(msg)
         raise Exception(msg)
 
@@ -289,9 +280,13 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
     schema = OrderedDict()
     col_number = 0
     if isinstance(X, np.ndarray):
-        log.warning("Passing a numpy array to schema autogen when it should be dataframe.")
+        log.warning(
+            "Passing a numpy array to schema autogen when it should be dataframe."
+        )
         if feature_names is None:
-            X = pd.DataFrame(X, columns=['col_' + str(i) for i in range(X.shape[1])]).infer_objects()
+            X = pd.DataFrame(
+                X, columns=["col_" + str(i) for i in range(X.shape[1])]
+            ).infer_objects()
         else:
             X = pd.DataFrame(X, columns=feature_names).infer_objects()
     if isinstance(X, NDFrame):
@@ -301,24 +296,24 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
                 # schema[name]['type'] = 'continuous'
                 # TODO: Fix this once we know it works.
                 if len(set(X[name])) > ordinal_max_items:
-                    schema[name]['type'] = 'continuous'
+                    schema[name]["type"] = "continuous"
                 else:
                     # TODO: Work with ordinal later.
-                    schema[name]['type'] = 'categorical'
+                    schema[name]["type"] = "categorical"
                     # schema[name]['type'] = 'ordinal'
                     # schema[name]['order'] = list(set(X[name]))
             elif is_string_dtype(col_dtype):
-                schema[name]['type'] = 'categorical'
+                schema[name]["type"] = "categorical"
             else:
                 warnings.warn("Unknown column: " + name, RuntimeWarning)
-                schema[name]['type'] = 'unknown'
-            schema[name]['column_number'] = col_number
+                schema[name]["type"] = "unknown"
+            schema[name]["column_number"] = col_number
             col_number += 1
 
         # Override if feature_types is passed as arg.
         if feature_types is not None:
             for idx, name in enumerate(X.dtypes.index):
-                schema[name]['type'] = feature_types[idx]
+                schema[name]["type"] = feature_types[idx]
     else:
         raise TypeError("GA2M only supports numpy arrays or pandas dataframes.")
 
@@ -326,9 +321,11 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
 
 
 def _assign_feature_type(feature_type, unique_count=0):
-    if is_string_dtype(feature_type) or (is_numeric_dtype(feature_type) and unique_count <= 2):
-        return 'categorical'
+    if is_string_dtype(feature_type) or (
+        is_numeric_dtype(feature_type) and unique_count <= 2
+    ):
+        return "categorical"
     elif is_numeric_dtype(feature_type):
-        return 'continuous'
+        return "continuous"
     else:
-        return 'unknown'
+        return "unknown"

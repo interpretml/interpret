@@ -15,13 +15,13 @@ def test_that_explainer_throws_exceptions_for_incomplete():
 
 def test_that_explainer_works_for_complete():
     class CompleteExplainer(ExplainerMixin):
-        available_explanations = ['performance']
-        explainer_type = 'blackbox'
+        available_explanations = ["performance"]
+        explainer_type = "blackbox"
 
     try:
         explainer = CompleteExplainer()
-        assert explainer.available_explanations == ['performance']
-        assert explainer.explainer_type == 'blackbox'
+        assert explainer.available_explanations == ["performance"]
+        assert explainer.explainer_type == "blackbox"
     except Exception as _:
         pytest.fail("Unexpected exception raised.")
 
@@ -36,10 +36,10 @@ def test_that_explanation_throws_exceptions_for_incomplete():
 
 def test_that_explanation_works_for_complete():
     class CompleteExplanation(ExplanationMixin):
-        _internal_object = {'overall': None, 'specific': [None]}
-        explanation_type = 'performance'
+        _internal_object = {"overall": None, "specific": [None]}
+        explanation_type = "performance"
         selector = None
-        name = ''
+        name = ""
 
         def visualize(self, key=None):
             data_dict = self.data(key)
@@ -48,8 +48,8 @@ def test_that_explanation_works_for_complete():
 
         def data(self, key=None):
             if key is None:
-                return self._internal_object['overall']
-            return self._internal_object['specific'][key]
+                return self._internal_object["overall"]
+            return self._internal_object["specific"][key]
 
     try:
         explanation = CompleteExplanation()

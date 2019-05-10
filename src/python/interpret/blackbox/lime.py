@@ -12,36 +12,38 @@ import warnings
 
 # TODO: Make kwargs explicit.
 class LimeTabular(ExplainerMixin):
-    available_explanations = ['local']
-    explainer_type = 'blackbox'
+    available_explanations = ["local"]
+    explainer_type = "blackbox"
 
-    def __init__(self, predict_fn, data, sampler=None,
-                 feature_names=None, feature_types=None,
-                 explain_kwargs={}, **kwargs):
+    def __init__(
+        self,
+        predict_fn,
+        data,
+        sampler=None,
+        feature_names=None,
+        feature_types=None,
+        explain_kwargs={},
+        **kwargs
+    ):
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
             data, None, feature_names, feature_types
         )
         self.predict_fn = unify_predict_fn(predict_fn, self.data)
 
-        if sampler is not None: # pragma: no cover
-            warnings.warn('Sampler interface not currently supported.')
+        if sampler is not None:  # pragma: no cover
+            warnings.warn("Sampler interface not currently supported.")
 
         self.sampler = sampler
         self.explain_kwargs = explain_kwargs
 
         self.kwargs = kwargs
-        final_kwargs = {
-            'mode': 'regression'
-        }
+        final_kwargs = {"mode": "regression"}
         if self.feature_names:
-            final_kwargs['feature_names'] = self.feature_names
+            final_kwargs["feature_names"] = self.feature_names
         final_kwargs.update(self.kwargs)
 
-        self.lime = LimeTabularExplainer(
-            self.data,
-            **final_kwargs
-        )
+        self.lime = LimeTabularExplainer(self.data, **final_kwargs)
 
     def explain_local(self, X, y=None, name=None):
         if name is None:
@@ -58,7 +60,7 @@ class LimeTabular(ExplainerMixin):
             )
 
             names = []
-            scores  = []
+            scores = []
             values = []
             feature_idx_imp_pairs = lime_explanation.as_map()[1]
             for feat_idx, imp in feature_idx_imp_pairs:
@@ -68,30 +70,23 @@ class LimeTabular(ExplainerMixin):
             intercept = lime_explanation.intercept[1]
 
             data_dict = {
-                'type': 'univariate',
-                'names': names,
-                'perf': perf_dict(y, predictions, i),
-                'scores': scores,
-                'values': values,
-                'extra': {
-                    'names': ['Intercept'],
-                    'scores': [intercept],
-                    'values': [1],
-                }
+                "type": "univariate",
+                "names": names,
+                "perf": perf_dict(y, predictions, i),
+                "scores": scores,
+                "values": values,
+                "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {
-            'overall': None,
-            'specific': data_dicts,
-        }
+        internal_obj = {"overall": None, "specific": data_dicts}
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(
-            'local', internal_obj,
-            feature_names=self.feature_names, feature_types=self.feature_types,
+            "local",
+            internal_obj,
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
             name=name,
-            selector=selector
+            selector=selector,
         )
-
-

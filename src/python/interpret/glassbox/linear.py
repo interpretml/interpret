@@ -15,6 +15,7 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.linear_model import Lasso as SKLinear
 
+
 class BaseLinear:
     """ Logistic regression.
 
@@ -23,13 +24,13 @@ class BaseLinear:
     https://github.com/scikit-learn/scikit-learn
 
     """
-    available_explanations = ['local', 'global']
-    explainer_type = 'model'
 
-    def __init__(self,
-                 feature_names=None, feature_types=None,
-                 linear_class=SKLinear,
-                 **kwargs):
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
+    def __init__(
+        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+    ):
         """ Initializes logistic regression.
         """
         self.feature_names = feature_names
@@ -64,7 +65,7 @@ class BaseLinear:
         self.categorical_uniq_ = {}
 
         for i, feature_type in enumerate(self.feature_types):
-            if feature_type == 'categorical':
+            if feature_type == "categorical":
                 self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
 
         self.global_selector = gen_global_selector(
@@ -115,35 +116,34 @@ class BaseLinear:
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             data_dict = {}
-            data_dict['data_type'] = 'univariate'
+            data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            data_dict['perf'] = perf_dict(y, predictions, i)
+            data_dict["perf"] = perf_dict(y, predictions, i)
 
             # Names/scores
-            data_dict['names'] = self.feature_names
-            data_dict['scores'] = scores
+            data_dict["names"] = self.feature_names
+            data_dict["scores"] = scores
 
             # Values
-            data_dict['values'] = instance
+            data_dict["values"] = instance
 
-            data_dict['extra'] = {
-                'names': ['Intercept'],
-                'scores': [intercept],
-                'values': [1],
+            data_dict["extra"] = {
+                "names": ["Intercept"],
+                "scores": [intercept],
+                "values": [1],
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {
-            'overall': None,
-            'specific': data_dicts,
-        }
+        internal_obj = {"overall": None, "specific": data_dicts}
 
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(
-            'local', internal_obj,
-            feature_names=self.feature_names, feature_types=self.feature_types,
+            "local",
+            internal_obj,
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
             name=name,
             selector=selector,
         )
@@ -170,12 +170,9 @@ class BaseLinear:
             coef = sk_model_.coef_
 
         overall_data_dict = {
-            'names': self.feature_names,
-            'scores': list(coef),
-            'extra': {
-                'names': ['Intercept'],
-                'scores': [intercept],
-            }
+            "names": self.feature_names,
+            "scores": list(coef),
+            "extra": {"names": ["Intercept"], "scores": [intercept]},
         }
 
         specific_data_dicts = []
@@ -186,8 +183,8 @@ class BaseLinear:
 
             feat_type = self.feature_types[index]
 
-            if feat_type == 'continuous':
-                #Generate x, y points to plot from coef for continuous features
+            if feat_type == "continuous":
+                # Generate x, y points to plot from coef for continuous features
                 grid_points = np.linspace(feat_min, feat_max, 30)
             else:
                 grid_points = np.array(self.categorical_uniq_[index])
@@ -195,43 +192,50 @@ class BaseLinear:
             y_scores = feat_coef * grid_points
 
             data_dict = {
-                'names': grid_points,
-                'scores': y_scores,
-                'density': {
-                    'scores': self.bin_counts_[index],
-                    'names': self.bin_edges_[index]
-                }
+                "names": grid_points,
+                "scores": y_scores,
+                "density": {
+                    "scores": self.bin_counts_[index],
+                    "names": self.bin_edges_[index],
+                },
             }
 
             specific_data_dicts.append(data_dict)
 
-        internal_obj = {
-            'overall': overall_data_dict,
-            'specific': specific_data_dicts,
-        }
+        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
         return LinearExplanation(
-            'global', internal_obj,
+            "global",
+            internal_obj,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
             name=name,
-            selector=self.global_selector
+            selector=self.global_selector,
         )
+
 
 class LinearExplanation(FeatureValueExplanation):
     """ Visualizes specifically for Linear methods.
     """
+
     explanation_type = None
 
-    def __init__(self, explanation_type, internal_obj,
-                 feature_names=None, feature_types=None,
-                 name=None, selector=None):
+    def __init__(
+        self,
+        explanation_type,
+        internal_obj,
+        feature_names=None,
+        feature_types=None,
+        name=None,
+        selector=None,
+    ):
 
         super(LinearExplanation, self).__init__(
-            explanation_type, internal_obj,
+            explanation_type,
+            internal_obj,
             feature_names=feature_names,
             feature_types=feature_types,
             name=name,
-            selector=selector
+            selector=selector,
         )
 
     def visualize(self, key=None):
@@ -239,13 +243,12 @@ class LinearExplanation(FeatureValueExplanation):
         if data_dict is None:
             return None
 
-        if self.explanation_type == 'global' and key is None:
+        if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
-                data_dict, sort_fn=lambda x: -abs(x), top_n=15,
-                reverse_results=True,
+                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
             figure = plot_horizontal_bar(
-                data_dict, title='Overall Importance:<br>Coefficients'
+                data_dict, title="Overall Importance:<br>Coefficients"
             )
             return figure
 
@@ -253,10 +256,9 @@ class LinearExplanation(FeatureValueExplanation):
 
 
 class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
-    def __init__(self,
-                 feature_names=None, feature_types=None,
-                 linear_class=SKLinear,
-                 **kwargs):
+    def __init__(
+        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+    ):
         super().__init__(feature_names, feature_types, linear_class, **kwargs)
 
     def _model(self):
@@ -268,10 +270,9 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
 
 
 class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
-    def __init__(self,
-                 feature_names=None, feature_types=None,
-                 linear_class=SKLinear,
-                 **kwargs):
+    def __init__(
+        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+    ):
         super().__init__(feature_names, feature_types, linear_class, **kwargs)
 
     def _model(self):
@@ -284,4 +285,3 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
     def predict_proba(self, X):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict_proba(X)
-
