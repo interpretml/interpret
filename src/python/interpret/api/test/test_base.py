@@ -22,7 +22,7 @@ def test_that_explainer_works_for_complete():
         explainer = CompleteExplainer()
         assert explainer.available_explanations == ["performance"]
         assert explainer.explainer_type == "blackbox"
-    except Exception as _:
+    except Exception:
         pytest.fail("Unexpected exception raised.")
 
 

@@ -65,7 +65,7 @@ class AppRunner:
             sock.bind(("::1", port))
             sock.listen(backlog)
             sock.close()
-        except socket.error as e:
+        except socket.error:
             if rais:
                 raise RuntimeError(
                     "The server is already running on port {0}".format(port)
@@ -98,7 +98,7 @@ class AppRunner:
         try:
 
             class devnull:
-                write = lambda _: None
+                write = lambda _: None  # noqa: E731
 
             server = WSGIServer((self.ip, self.port), self.app, log=devnull)
             self.app.config["server"] = server

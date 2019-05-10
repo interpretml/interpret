@@ -15,11 +15,11 @@ from sklearn.tree import _tree
 from copy import deepcopy
 import dash_cytoscape as cyto
 
-COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
-
 import logging
 
 log = logging.getLogger(__name__)
+
+COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
 
 
 class TreeExplanation(ExplanationMixin):

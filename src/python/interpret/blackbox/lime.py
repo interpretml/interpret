@@ -10,6 +10,7 @@ from ..utils import unify_data, unify_predict_fn
 from lime.lime_tabular import LimeTabularExplainer
 import warnings
 
+
 # TODO: Make kwargs explicit.
 class LimeTabular(ExplainerMixin):
     available_explanations = ["local"]

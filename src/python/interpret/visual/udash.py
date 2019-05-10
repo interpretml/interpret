@@ -165,8 +165,6 @@ def gen_overall_plot(exp, model_idx):
                 <div class='center'><h1>No Overall Graph</h1></div>
             """
 
-    output = []
-    counter = 0
     # NOTE: We also have support for data frames, but we don't advertise it.
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
@@ -276,7 +274,8 @@ def gen_plot(exp, picker, model_idx, counter):
 
 
 # Dash app code
-def generate_app_full(path="/"):
+# TODO: Consider reducing complexity of this function.
+def generate_app_full(path="/"):  # noqa: C901
     """ Generates the Dash application including callbacks.
 
     Returns:

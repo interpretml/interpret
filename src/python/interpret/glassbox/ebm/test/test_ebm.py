@@ -1,22 +1,21 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+from ....test.utils import synthetic_classification, adult_classification
+from ....test.utils import synthetic_regression
+from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
+
+import numpy as np
+from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
+
+import warnings
+
 
 def warn(*args, **kwargs):
     pass
 
 
-import warnings
-
 warnings.warn = warn
-
-from ....test.utils import synthetic_classification, adult_classification
-from ....test.utils import synthetic_regression
-
-import numpy as np
-from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
-
-from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
 
 
 def test_prefit_ebm():
@@ -39,7 +38,7 @@ def test_ebm_synthetic_regression():
 
     clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
     clf.fit(X, y)
-    scores = clf.predict(X)
+    clf.predict(X)
 
     valid_ebm(clf)
 
@@ -76,7 +75,7 @@ def test_ebm_adult():
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
     n_splits = 3
     ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    scores = cross_validate(
+    cross_validate(
         clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
     )
     clf.fit(X, y)

@@ -5,10 +5,10 @@
 import logging
 from logging import NullHandler
 
+# Export functions
+from .visual.interactive import show  # noqa: F401
+
 logging.getLogger(__name__).addHandler(NullHandler())
 
 # Set name of package
 name = "interpret"
-
-# Export functions
-from .visual.interactive import show

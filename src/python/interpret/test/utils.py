@@ -175,7 +175,7 @@ def assert_valid_explanation(explanation):
     try:
         _ = explanation.data(0)
         has_specific = True
-    except:
+    except Exception:
         has_specific = False
 
     if has_specific:

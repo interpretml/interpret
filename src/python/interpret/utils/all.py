@@ -141,7 +141,7 @@ def gen_feat_val_list(features, values):
         A sorted list of feature-value tuples.
     """
     sorted_feat_val_list = sorted(
-        zip(features, values), key=lambda x: abs(x[1]), reverse=True
+        zip(features, values), key=lambda x: abs(x[1]), reverse=True  # noqa: E731
     )
     return sorted_feat_val_list
 
@@ -181,7 +181,7 @@ def gen_feature_names_from_df(df):
 def unify_predict_fn(predict_fn, X):
     predictions = predict_fn(X[:1])
     if predictions.ndim == 2:
-        new_predict_fn = lambda x: predict_fn(x)[:, 1]
+        new_predict_fn = lambda x: predict_fn(x)[:, 1]  # noqa: E731
         return new_predict_fn
     else:
         return predict_fn

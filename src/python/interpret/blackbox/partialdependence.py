@@ -5,7 +5,7 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
 import warnings
 from ..utils import gen_name_from_class, gen_global_selector
-from ..utils import unify_data, unify_predict_fn, hist_per_column
+from ..utils import unify_data, unify_predict_fn
 from ..visual.plot import plot_line, plot_bar
 
 
@@ -80,7 +80,7 @@ class PartialDependence(ExplainerMixin):
             X_mut[:, col_idx] = grid_point
             ice_lines[:, idx] = predict_fn(X_mut)
         mean = np.mean(ice_lines, axis=0)
-        std = np.std(ice_lines, axis=0)
+        # std = np.std(ice_lines, axis=0)
 
         ice_lines = ice_lines[
             np.random.choice(ice_lines.shape[0], num_ice_samples, replace=False), :
