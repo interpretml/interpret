@@ -6,7 +6,7 @@ import logging
 from logging import NullHandler
 
 # Export functions
-from .visual.interactive import show  # noqa: F401
+from .visual.interactive import show, set_show_addr, get_show_addr  # noqa: F401
 
 logging.getLogger(__name__).addHandler(NullHandler())
 

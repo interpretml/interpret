@@ -10,15 +10,47 @@ log = logging.getLogger(__name__)
 
 this = sys.modules[__name__]
 this.app_runner = None
+this.app_addr = None
+
+
+def set_show_addr(addr):
+    """
+    Set a (ip, port) for inline visualizations and dashboard.
+    If show has been called before this, the show methods' server will shutdown.
+
+    Args:
+        addr: (ip, port) address to assign show method to.
+    Returns:
+        None.
+    """
+    if this.app_runner is not None:
+        this.app_runner.stop()
+        this.app_runner = None
+
+    this.app_addr = addr
+
+
+def get_show_addr():
+    """ Returns (ip, port) used for show method.
+
+    Returns:
+        Address tuple (ip, port)
+    """
+    return this.app_addr
+
+
+def _init_app_runner(addr=None):
+    log.debug("Create app runner.")
+    this.app_runner = AppRunner(addr)
+    this.app_runner.start()
+    this.app_addr = this.app_runner.ip, this.app_runner.port
 
 
 def show(explanation, share_tables=None):
     try:
         # Initialize server if needed
         if this.app_runner is None:
-            log.debug("Create app runner.")
-            this.app_runner = AppRunner()
-            this.app_runner.start()
+            _init_app_runner(this.app_addr)
 
         log.debug("Running existing app runner.")
 
