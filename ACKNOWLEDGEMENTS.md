@@ -13,6 +13,8 @@ Thank you to everyone here for your impactful contributions!
 - Rob DeLine
 - Fred Hohman
 - Jina Suh
+- Jenn Wortman Vaughan
+- Hanna Wallach
 - Walter Martin
 - Eduardo de Leon
 - Ilya Mattiach
