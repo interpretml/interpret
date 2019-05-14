@@ -13,5 +13,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
-[Unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v1.0.0...HEAD
-[v0.1.0]: https://github.com/microsoft/interpret/releases/tag/v0.0.1
+[Unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/microsoft/interpret/releases/tag/v0.1.0
