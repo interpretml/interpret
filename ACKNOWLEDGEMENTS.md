@@ -43,6 +43,8 @@ Thank you to everyone here for your impactful contributions!
 - Gregory Ellison
 - Allan Sepillo
 - Holly Stewart
+- Rob McCann
+- Christian Seifert
 - Nader Albussam
 - Keith Haunreiter
 - Dean Carignan
