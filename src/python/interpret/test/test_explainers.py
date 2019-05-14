@@ -46,8 +46,7 @@ def test_spec_synthetic():
     blackbox = LogisticRegression()
     blackbox.fit(data["train"]["X"], data["train"]["y"])
 
-    def predict_fn(x):
-        blackbox.predict_proba(x)
+    predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
 
     for explainer_class in all_explainers:
         if explainer_class.explainer_type == "blackbox":
