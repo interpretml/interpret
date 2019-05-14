@@ -4,7 +4,7 @@ Thank you to everyone here for your impactful contributions!
 - Sarah Tan
 - Xuezhou Zhang
 - Johannes Gehrke
-- Marco Ribeiro
+- Marco Tulio Ribeiro
 - Gabriel Alon
 - Giles Hooker
 - Marc Sturm
