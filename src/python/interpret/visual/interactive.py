@@ -16,18 +16,15 @@ this.app_addr = None
 def set_show_addr(addr):
     """
     Set a (ip, port) for inline visualizations and dashboard.
-    If show has been called before this, the show methods' server will shutdown.
+    Side effect: restarts the app runner for 'show' method.
 
     Args:
         addr: (ip, port) address to assign show method to.
     Returns:
         None.
     """
-    if this.app_runner is not None:
-        this.app_runner.stop()
-        this.app_runner = None
-
-    this.app_addr = addr
+    addr = (addr[0], int(addr[1]))
+    _init_app_runner(addr)
 
 
 def get_show_addr():
@@ -40,7 +37,12 @@ def get_show_addr():
 
 
 def _init_app_runner(addr=None):
-    log.debug("Create app runner.")
+    if this.app_runner is not None:
+        log.debug("Stopping previous app runner at {0}".format(this.app_addr))
+        this.app_runner.stop()
+        this.app_runner = None
+
+    log.debug("Create app runner at {0}".format(addr))
     this.app_runner = AppRunner(addr)
     this.app_runner.start()
     this.app_addr = this.app_runner.ip, this.app_runner.port
