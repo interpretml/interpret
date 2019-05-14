@@ -114,10 +114,26 @@
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll $(ProjectDir)..\..\..\staging\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb $(ProjectDir)..\..\..\staging\
+      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -141,10 +157,26 @@ xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSB
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll $(ProjectDir)..\..\..\staging\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb $(ProjectDir)..\..\..\staging\
+      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -173,10 +205,26 @@ xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSB
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll $(ProjectDir)..\..\..\staging\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb $(ProjectDir)..\..\..\staging\
+      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -205,10 +253,26 @@ xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSB
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb $(ProjectDir)..\..\..\src\python\interpret\lib\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll $(ProjectDir)..\..\..\staging\
-xcopy /Y $(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb $(ProjectDir)..\..\..\staging\
+      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
+xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb" "$(ProjectDir)..\..\..\staging\"
+IF %ERRORLEVEL% NEQ 0 (
+   ECHO xcopy returned error code %ERRORLEVEL%
+   EXIT /B %ERRORLEVEL%
+)
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
