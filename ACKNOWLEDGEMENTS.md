@@ -48,6 +48,7 @@ Thank you to everyone here for your impactful contributions!
 - Rob McCann
 - Christian Seifert
 - Nader Albussam
+- Jeffrey Schlimmer
 - Keith Haunreiter
 - Dean Carignan
 - Tom Mereckis
