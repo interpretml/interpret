@@ -38,6 +38,8 @@ Thank you to everyone here for your impactful contributions!
 - Joshua Allen
 - Levent Ozgur
 - Steve Lim
+- Scott Hoogerwerf
+- Jacquelyn Krones
 - Sam Sun
 - Ioana Marginas
 - Gregory Ellison
