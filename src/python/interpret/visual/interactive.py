@@ -36,6 +36,18 @@ def get_show_addr():
     return this.app_addr
 
 
+def shutdown_show_server():
+    """ This is a hard shutdown method for the show method's backing server.
+
+    Returns:
+        True if show server has stopped.
+    """
+    if this.app_runner is not None:
+        return this.app_runner.stop()
+
+    return True
+
+
 def _init_app_runner(addr=None):
     if this.app_runner is not None:
         log.debug("Stopping previous app runner at {0}".format(this.app_addr))
@@ -48,7 +60,19 @@ def _init_app_runner(addr=None):
     this.app_addr = this.app_runner.ip, this.app_runner.port
 
 
+# TODO: Provide example in docstrings of share_tables usage.
 def show(explanation, share_tables=None):
+    """ Provides an interactive visualization for a given explanation(s).
+
+    Args:
+        explanation: Either a scalar Explanation or a list of Explanations.
+        share_tables: Boolean or dictionary that dictates if Explanations
+                      should all use the same selector
+                      (table used for selecting in the Dashboard).
+
+    Returns:
+        None.
+    """
     try:
         # Initialize server if needed
         if this.app_runner is None:
@@ -67,6 +91,7 @@ def show(explanation, share_tables=None):
         raise e
 
 
+# TODO: Remove this, we don't use this anymore nor expose it.
 def old_show(explanation, selector=None, index_map=None):
     from plotly.offline import iplot, init_notebook_mode
 
