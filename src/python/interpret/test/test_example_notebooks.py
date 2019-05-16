@@ -19,10 +19,7 @@ def run_notebook(notebook_path):
 
     # Add shutdown for show method.
     shutdown_cell = new_code_cell(
-        """
-    from interpret import shutdown_show_server
-    shutdown_show_server()
-    """
+        "from interpret import shutdown_show_server\nshutdown_show_server()"
     )
     nb.cells.append(shutdown_cell)
 

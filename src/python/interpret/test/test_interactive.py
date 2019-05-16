@@ -1,11 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ..visual.interactive import (
-    set_show_addr,
-    get_show_addr,
-    shutdown_show_server,
-)
+from ..visual.interactive import set_show_addr, get_show_addr, shutdown_show_server
 
 
 def test_shutdown():
