@@ -94,5 +94,7 @@ class RegressionExplanation(ExplanationMixin):
 
         title = "{0} <br> RMSE = {1:.2f}" + " | R<sup>2</sup> = {2:.2f}"
         title = title.format(self.name, rmse, r2)
-        density_fig = plot_density(data_dict["density"], title=title)
+        density_fig = plot_density(
+            data_dict["density"], title=title, xtitle="Residuals", ytitle="Density"
+        )
         return density_fig

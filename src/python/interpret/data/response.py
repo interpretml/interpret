@@ -125,7 +125,9 @@ class MarginalExplanation(ExplanationMixin):
             return None
 
         if key is None:
-            figure = plot_density(data_dict["density"], title="Response")
+            figure = plot_density(
+                data_dict["density"], title="Response", ytitle="Density"
+            )
             return figure
 
         # Show feature graph
