@@ -5,6 +5,7 @@ import os
 
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
+from nbformat.v4 import new_code_cell
 
 
 def run_notebook(notebook_path):
@@ -15,6 +16,16 @@ def run_notebook(notebook_path):
     proc.allow_errors = True
     script_path = os.path.dirname(os.path.abspath(__file__))
     package_path = os.path.abspath(os.path.join(script_path, "..", ".."))
+
+    # Add shutdown for show method.
+    shutdown_cell = new_code_cell(
+        """
+    from interpret import shutdown_show_server
+    shutdown_show_server()
+    """
+    )
+    nb.cells.append(shutdown_cell)
+
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 
     errors = []
@@ -38,4 +49,5 @@ def test_example_notebooks():
         for entry in os.scandir(notebooks_path):
             if entry.is_file() and entry.path.endswith(".ipynb"):
                 nb, errors = run_notebook(entry.path)
+
                 assert errors == []
