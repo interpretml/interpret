@@ -1,2 +1,4 @@
 # Set default behavior to automatically normalize line endings
 * text=auto
+# NOTE: Ignore most of C++ code so that the primary language is Python.
+src/core/*.cpp linguist-vendored
