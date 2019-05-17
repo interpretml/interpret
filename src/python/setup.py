@@ -97,7 +97,8 @@ setup(
         "ipykernel>=5.1.0",
         "ipython>=7.4.0",
         "numpy>=1.15.1",
-        "scipy>=1.2.1",
+        # NOTE: scipy has to be pinned until SALib is compatible with 1.3.0+
+        "scipy==1.2.1",
         # Testing
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
