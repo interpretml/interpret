@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.2] - 2019-05-17
+### Fixed
+- Pinning scipy, until upstream dependencies are compatible.
+
 ## [v0.1.1] - 2019-05-16
 ### Added
 - Added server shutdown call for 'show' method.
@@ -20,5 +24,6 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.2]: https://github.com/microsoft/interpret/releases/tag/v0.1.2
 [v0.1.1]: https://github.com/microsoft/interpret/releases/tag/v0.1.1
 [v0.1.0]: https://github.com/microsoft/interpret/releases/tag/v0.1.0
