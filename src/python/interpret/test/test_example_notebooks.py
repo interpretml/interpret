@@ -6,6 +6,7 @@ import os
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat.v4 import new_code_cell
+import pytest
 
 
 def run_notebook(notebook_path):
@@ -35,6 +36,7 @@ def run_notebook(notebook_path):
     return nb, errors
 
 
+@pytest.mark.skip
 def test_example_notebooks():
     script_path = os.path.dirname(os.path.abspath(__file__))
     notebooks_path = os.path.abspath(

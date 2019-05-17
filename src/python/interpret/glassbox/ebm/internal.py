@@ -508,11 +508,11 @@ class NativeEBM:
         Returns:
             Validation loss for the training step.
         """
-        log.debug("Training step start")
+        # log.debug("Training step start")
 
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
-            TrainingStep(
+            return_code = TrainingStep(
                 self.model_pointer,
                 attribute_set_index,
                 learning_rate,
@@ -522,8 +522,10 @@ class NativeEBM:
                 validation_weights,
                 ct.byref(metric_output),
             )
+            if return_code != 0:
+                raise Exception("TrainingStep Exception")
 
-        log.debug("Training step end")
+        # log.debug("Training step end")
         return metric_output.value
 
     def _get_attribute_set_shape(self, attribute_set_index):
