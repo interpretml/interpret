@@ -7,10 +7,12 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ## [v0.1.2] - 2019-05-17
 ### Added
 - EBM can now disable early stopping with run length set to -1.
+- EBM tracking of final episodes per base estimator.
 ### Fixed
 - Pinning scipy, until upstream dependencies are compatible.
 ### Changed
 - Clean-up of EBM logging for training.
+- Temporary disable of notebook/show tests until CI environment is fixed.
 
 ## [v0.1.1] - 2019-05-16
 ### Added
