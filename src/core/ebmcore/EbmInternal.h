@@ -14,6 +14,12 @@
 #include <stdio.h> // printf
 #endif
 
+#include "ebmcore.h"
+
+extern IntegerDataType g_traceLevel;
+extern LOG_MESSAGE_FUNCTION g_pLogMessageFunc;
+#define LOG(traceLevel, pLogMessage) ((void)((traceLevel) <= g_traceLevel ? ((*g_pLogMessageFunc)((traceLevel), (pLogMessage)), 0) : 0))
+
 #if defined(__clang__) || defined(__GNUC__) // compiler
 #ifndef __has_builtin
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it

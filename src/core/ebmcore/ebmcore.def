@@ -1,6 +1,8 @@
 LIBRARY
 
 EXPORTS
+  SetLogMessageFunction
+  SetTraceLevel
   InitializeTrainingRegression
   InitializeTrainingClassification
   TrainingStep

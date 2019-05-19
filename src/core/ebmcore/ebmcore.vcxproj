@@ -301,6 +301,7 @@ IF %ERRORLEVEL% NEQ 0 (
     <ClCompile Include="DataSetByAttributeCombination.cpp" />
     <ClCompile Include="DllMainCore.cpp" />
     <ClCompile Include="InteractionDetection.cpp" />
+    <ClCompile Include="Logging.cpp" />
     <ClCompile Include="PrecompiledHeader.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

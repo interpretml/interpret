@@ -949,11 +949,17 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
 }
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   return reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, 0, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+   LOG(TraceLevelInfo, "Entered InitializeTrainingRegression");
+   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, 0, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+   LOG(TraceLevelInfo, "Exited InitializeTrainingRegression");
+   return pEbmTraining;
 }
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   return reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, countTargetStates, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+   LOG(TraceLevelInfo, "Entered InitializeTrainingClassification");
+   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, countTargetStates, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+   LOG(TraceLevelInfo, "Exited InitializeTrainingClassification");
+   return pEbmTraining;
 }
 
 template<bool bRegression>
