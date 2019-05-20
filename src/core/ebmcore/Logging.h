@@ -30,7 +30,7 @@ constexpr static char g_pLoggingParameterError[] = "Error in snprintf parameters
          } else { \
             char LOG__messageSpace[LOG_MESSAGE_BUFFER_SIZE_MAX]; \
             /* snprintf specifically says that the count parameter is in bytes of buffer space, but let's be safe and assume someone might change this to a unicode function someday and that new function might be in characters instead of bytes.  For us #bytes == #chars */ \
-            if(snprintf(LOG__messageSpace, sizeof(LOG__messageSpace) / sizeof(LOG__messageSpace[0]), LOG__originalMessage, __VA_ARGS__) < 0) { \
+            if(snprintf(LOG__messageSpace, sizeof(LOG__messageSpace) / sizeof(LOG__messageSpace[0]), LOG__originalMessage, ##__VA_ARGS__) < 0) { \
                (*g_pLogMessageFunc)(LOG__traceLevel, g_pLoggingParameterError); \
             } else { \
                /* if LOG__messageSpace overflows, we just clip the message */ \
