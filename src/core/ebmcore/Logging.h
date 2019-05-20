@@ -20,8 +20,8 @@ constexpr static char g_pLoggingParameterError[] = "Error in snprintf parameters
 #define LOG(traceLevel, pLogMessage, ...) \
    do { /* using a do loop here gives us a nice look to the macro where the caller needs to use a semi-colon to call it, and it can be used after a single if statement without curly braces */ \
       constexpr signed char LOG__traceLevel = (traceLevel); /* we only use traceLevel once, which avoids pre and post decrement issues with macros */ \
-      assert(TraceLevelOff < LOG__traceLevel, "traceLevel can't be TraceLevelOff or lower for call to LOG(traceLevel, pLogMessage, ...)"); \
-      assert(LOG__traceLevel <= TraceLevelDebug, "traceLevel can't be higher than TraceLevelDebug for call to LOG(traceLevel, pLogMessage, ...)"); \
+      assert(TraceLevelOff < LOG__traceLevel); /* , "traceLevel can't be TraceLevelOff or lower for call to LOG(traceLevel, pLogMessage, ...)" */ \
+      assert(LOG__traceLevel <= TraceLevelDebug); /* "traceLevel can't be higher than TraceLevelDebug for call to LOG(traceLevel, pLogMessage, ...)" */ \
       if(LOG__traceLevel <= g_traceLevel) { \
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
