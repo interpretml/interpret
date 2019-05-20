@@ -11,6 +11,7 @@
 
 #include "ebmcore.h"
 
+#include "Logging.h"
 #include "EbmInternal.h"
 // very independent includes
 #include "RandomStream.h"
