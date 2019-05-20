@@ -60,16 +60,18 @@ typedef struct {
    IntegerDataType countAttributesInCombination;
 } EbmAttributeCombination;
 
-const IntegerDataType TraceLevelOff = 0;
-const IntegerDataType TraceLevelError = 1;
-const IntegerDataType TraceLevelWarning = 2;
-const IntegerDataType TraceLevelInfo = 3;
-const IntegerDataType TraceLevelVerbose = 4;
+const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
+const signed char TraceLevelError = 1;
+const signed char TraceLevelWarning = 2;
+const signed char TraceLevelInfo = 3;
+const signed char TraceLevelVerbose = 4;
+const signed char TraceLevelDebug = 5; // our debug library should be called if our caller is set to this level
 
-typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(IntegerDataType traceLevel, const char * message);
+// all our logging messages are pure ascii (127 values), and therefore also UTF-8
+typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(IntegerDataType traceLevel);
+EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags);
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags);
