@@ -1525,7 +1525,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-bool CalculateInteractionScore(CachedInteractionThreadResources * const pCachedThreadResources, DataSetInternalCore * pDataSet, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
+bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, DataSetInternalCore * pDataSet, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : I'm reserving a single bucket for the first dimension, but I'll probably get rid of that and just use the space in the largest original binned bucket space, so do I really need to start from 1 here?
    size_t cTotalBuckets = 1;
    size_t cTotalBucketsMainSpace = 1;
@@ -1534,7 +1534,6 @@ bool CalculateInteractionScore(CachedInteractionThreadResources * const pCachedT
       cTotalBuckets += cTotalBucketsMainSpace;
    }
 
-   const size_t cTargetStates = pDataSet->m_pAttributeSet->m_cTargetStates;
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;

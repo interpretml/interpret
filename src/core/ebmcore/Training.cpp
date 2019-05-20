@@ -621,6 +621,7 @@ union CachedThreadResourcesUnion {
    }
 };
 
+// TODO: rename this TmlTrainingState
 class TmlState {
 public:
    const bool m_bRegression;
@@ -705,7 +706,7 @@ public:
          }
 
          assert(nullptr == m_pAttributeSet);
-         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore(cTargetStates);
+         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore();
          if (nullptr == m_pAttributeSet) {
             return true;
          }
@@ -1058,10 +1059,10 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    assert(nullptr == validationWeights); // TODO : implement this later
    assert(nullptr != validationMetricReturn);
 
-   size_t cTargetStates = pTmlState->m_pAttributeSet->m_cTargetStates;
    if(pTmlState->m_bRegression) {
       return TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    } else {
+      const size_t cTargetStates = pTmlState->m_cTargetStates;
       return CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    }
 }

@@ -16,12 +16,9 @@ class AttributeSetInternalCore final {
 public:
    // TODO: turn this data protected
 
-   // TODO: can m_cTargetStates be moved into TmlState?
-   const size_t m_cTargetStates;
    std::vector<AttributeInternalCore *> m_inputAttributes;
 
-   TML_INLINE AttributeSetInternalCore(size_t cTargetStates)
-      : m_cTargetStates(cTargetStates) {
+   TML_INLINE AttributeSetInternalCore() {
    }
 
    ~AttributeSetInternalCore();

@@ -28,8 +28,7 @@
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeInteractionErrorCore(DataSetInternalCore * const pDataSet, const FractionalDataType * pPredictionScores, int iZeroResidual) {
-   const size_t cTargetStates = pDataSet->m_pAttributeSet->m_cTargetStates;
+static void InitializeInteractionErrorCore(const size_t cTargetStates, DataSetInternalCore * const pDataSet, const FractionalDataType * pPredictionScores, int iZeroResidual) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountCases();
@@ -86,11 +85,14 @@ static void InitializeInteractionErrorCore(DataSetInternalCore * const pDataSet,
 class TmlInteractionState {
 public:
    const bool m_bRegression;
+   const size_t m_cTargetStates;
+
    DataSetInternalCore * m_pDataSet;
    AttributeSetInternalCore * m_pAttributeSet;
 
-   TmlInteractionState(const bool bRegression)
+   TmlInteractionState(const bool bRegression, const size_t cTargetStates)
       : m_bRegression(bRegression)
+      , m_cTargetStates(cTargetStates)
       , m_pDataSet(nullptr)
       , m_pAttributeSet(nullptr) {
    }
@@ -103,7 +105,7 @@ public:
    bool InitializeInteraction(const size_t cAttributes, const EbmAttribute * const aAttributes, const size_t cTargetStates, const size_t cCases, const void * const aTargets, const IntegerDataType * const aData, const FractionalDataType * const aPredictionScores) {
       try {
          assert(nullptr == m_pAttributeSet);
-         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore(cTargetStates);
+         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore();
          if(nullptr == m_pAttributeSet) {
             return true;
          }
@@ -201,12 +203,12 @@ public:
          m_pDataSet = pDataSet;
 
          if(m_bRegression) {
-            InitializeInteractionErrorCore<k_Regression>(pDataSet, aPredictionScores, k_iZeroResidual);
+            InitializeInteractionErrorCore<k_Regression>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
          } else {
             if(2 == cTargetStates) {
-               InitializeInteractionErrorCore<2>(pDataSet, aPredictionScores, k_iZeroResidual);
+               InitializeInteractionErrorCore<2>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
             } else {
-               InitializeInteractionErrorCore<k_DynamicClassification>(pDataSet, aPredictionScores, k_iZeroResidual);
+               InitializeInteractionErrorCore<k_DynamicClassification>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
             }
          }
 
@@ -249,7 +251,7 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
    size_t cCases = static_cast<size_t>(countCases);
 
-   TmlInteractionState * const PEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression);
+   TmlInteractionState * const PEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates);
    if(UNLIKELY(nullptr == PEbmInteractionState)) {
       return nullptr;
    }
@@ -273,7 +275,7 @@ static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * 
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, PEbmInteractionState->m_pDataSet, pAttributeCombination, interactionScoreReturn)) {
+   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(PEbmInteractionState->m_cTargetStates, pCachedThreadResources, PEbmInteractionState->m_pDataSet, pAttributeCombination, interactionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -331,7 +333,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    if(PEbmInteractionState->m_bRegression) {
       return GetInteractionScorePerTargetStates<k_Regression>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    } else {
-      size_t cTargetStates = PEbmInteractionState->m_pAttributeSet->m_cTargetStates;
+      const size_t cTargetStates = PEbmInteractionState->m_cTargetStates;
       return CompilerRecursiveGetInteractionScore<2>(cTargetStates, PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
 }
