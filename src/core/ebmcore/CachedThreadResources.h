@@ -50,13 +50,14 @@ public:
    // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
    std::priority_queue<TreeNode<bRegression> *, std::vector<TreeNode<bRegression> *>, CompareTreeNodeSplittingScore<bRegression>> m_bestTreeNodeToSplit;
 
+   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
    CachedTrainingThreadResources(const size_t cVectorLength) try
       : m_compareTreeNode()
       , m_aThreadByteBuffer1(nullptr)
       , m_cThreadByteBufferCapacity1(0)
       , m_aThreadByteBuffer2(nullptr)
       , m_cThreadByteBufferCapacity2(0)
-      , m_bError(false)
+      , m_bError(true)
       , m_aSumPredictionStatistics(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
       , m_aSumPredictionStatistics1(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
       , m_aSumPredictionStatisticsBest(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
@@ -64,8 +65,16 @@ public:
       // m_bestTreeNodeToSplit should be constructed last because we want everything above to be initialized before the constructor for m_bestTreeNodeToSplit is called since it could throw an exception and we don't want partial state in the rest of the member data.  
       // Construction initialization actually depends on order within the class, so this placement doesn't matter here.
       , m_bestTreeNodeToSplit(std::priority_queue<TreeNode<bRegression> *, std::vector<TreeNode<bRegression> *>, CompareTreeNodeSplittingScore<bRegression>>(m_compareTreeNode)) {
+      
+      // an unfortunate thing about function exception handling is that accessing non-static data give undefined behavior
+      // so, we can't set m_bError to true if an error occurs, so instead we set it to true in the static initialization
+      // C++ guarantees that initialization will occur in the order the variables are declared (not in the order of initialization)
+      // but since we put m_bError above m_bestTreeNodeToSplit and since m_bestTreeNodeToSplit is the only thing that can throw an exception
+      // if an exception occurs then our m_bError will be left as true
+      m_bError = false;
    } catch(...) {
-      m_bError = true;
+      // TODO: according to the spec, it's undefined to access a non-static variable from a Function-try-block, so we can't access m_bError here  https://en.cppreference.com/w/cpp/language/function-try-block
+      // so instead of setting it to true here, we set it to true by default and flip it to false if our caller gets to the constructor part
    }
 
    ~CachedTrainingThreadResources() {
