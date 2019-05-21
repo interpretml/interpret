@@ -12,16 +12,15 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // AttributeTypeCore
 #include "AttributeInternal.h"
-#include "AttributeSet.h" // our DataSetInternal.h file can get away with a forward reference to AttributeSetInternal, but we use fields from AttributeSetInternal below
 #include "DataSetByAttribute.h"
 
 DataSetInternalCore::~DataSetInternalCore() {
    free(m_aResidualErrors);
    free(m_aTargetData);
    if(nullptr != m_aaData) {
-      assert(0 < m_pAttributeSet->GetCountAttributes());
+      assert(0 < m_cAttributes);
       void ** paData = m_aaData;
-      const void * const * const paDataEnd = m_aaData + m_pAttributeSet->GetCountAttributes();
+      const void * const * const paDataEnd = m_aaData + m_cAttributes;
       do {
          free(*paData); // this can be nullptr if we experienced an error in the middle of allocating data
          ++paData;
@@ -69,9 +68,8 @@ bool DataSetInternalCore::Initialize(const size_t cTargetBits, const bool bAlloc
       }
    }
 
-   const size_t cAttributes = m_pAttributeSet->GetCountAttributes();
-   assert(0 < cAttributes);
-   const size_t cBytesMemory = sizeof(*m_aaData) * cAttributes;
+   assert(0 < m_cAttributes);
+   const size_t cBytesMemory = sizeof(*m_aaData) * m_cAttributes;
    m_aaData = static_cast<void **>(malloc(cBytesMemory));
    if(nullptr == m_aaData) {
       return true;
@@ -80,13 +78,13 @@ bool DataSetInternalCore::Initialize(const size_t cTargetBits, const bool bAlloc
 
    void * aData;
    size_t cBytesDataItem;
-   for(const AttributeInternalCore * const pInputAttribute : m_pAttributeSet->m_inputAttributes) {
+   for (size_t iAttribute = 0; iAttribute < m_cAttributes; ++iAttribute) {
       cBytesDataItem = sizeof(StorageDataTypeCore);
       aData = static_cast<void *>(malloc(cBytesDataItem * m_cCases));
       if(nullptr == aData) {
          return true;
       }
-      m_aaData[pInputAttribute->m_iAttributeData] = aData;
+      m_aaData[iAttribute] = aData;
    }
    return false;
 }

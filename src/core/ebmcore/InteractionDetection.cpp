@@ -15,7 +15,6 @@
 
 // attribute includes
 #include "AttributeInternal.h"
-#include "AttributeSet.h"
 // dataset depends on attributes
 #include "DataSetByAttribute.h"
 // depends on the above
@@ -87,32 +86,34 @@ public:
    const bool m_bRegression;
    const size_t m_cTargetStates;
 
+   const size_t m_cAttributes;
+   // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
+   AttributeInternalCore * const m_aAttributes;
    DataSetInternalCore * m_pDataSet;
-   AttributeSetInternalCore * m_pAttributeSet;
 
-   TmlInteractionState(const bool bRegression, const size_t cTargetStates)
+   TmlInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cAttributes)
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
-      , m_pDataSet(nullptr)
-      , m_pAttributeSet(nullptr) {
+      , m_cAttributes(cAttributes)
+      , m_aAttributes(static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      , m_pDataSet(nullptr) {
+      assert(0 < cAttributes); // we can't allocate zero byte arrays
    }
 
    ~TmlInteractionState() {
       delete m_pDataSet;
-      delete m_pAttributeSet;
+      free(m_aAttributes);
    }
 
-   bool InitializeInteraction(const size_t cAttributes, const EbmAttribute * const aAttributes, const size_t cTargetStates, const size_t cCases, const void * const aTargets, const IntegerDataType * const aData, const FractionalDataType * const aPredictionScores) {
+   bool InitializeInteraction(const EbmAttribute * const aAttributes, const size_t cTargetStates, const size_t cCases, const void * const aTargets, const IntegerDataType * const aData, const FractionalDataType * const aPredictionScores) {
       try {
-         assert(nullptr == m_pAttributeSet);
-         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore();
-         if(nullptr == m_pAttributeSet) {
+         if(nullptr == m_aAttributes) {
             return true;
          }
 
-         assert(!IsMultiplyError(cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+         assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
          const EbmAttribute * pAttributeInitialize = aAttributes;
-         const EbmAttribute * const pAttributeEnd = &aAttributes[cAttributes];
+         const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
          assert(pAttributeInitialize < pAttributeEnd);
          size_t iAttributeInitialize = 0;
          do {
@@ -131,10 +132,8 @@ public:
             assert(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
             bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
-            AttributeInternalCore * pAttribute = m_pAttributeSet->AddAttribute(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-            if(nullptr == pAttribute) {
-               return true;
-            }
+            AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
             assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
@@ -143,7 +142,7 @@ public:
             ++pAttributeInitialize;
          } while(pAttributeEnd != pAttributeInitialize);
 
-         DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_pAttributeSet, cCases);
+         DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_cAttributes, cCases);
          if(nullptr == pDataSet) {
             return true;
          }
@@ -158,11 +157,11 @@ public:
             return true;
          }
 
-         assert(!IsMultiplyError(cAttributes, cCases)); // if this overflows then our caller should not have been able to allocate the array
-         assert(!IsMultiplyError(cAttributes * cCases, sizeof(*aData))); // if this overflows then our caller should not have been able to allocate the array
-                                                                                         // TODO : eliminate the counts here and use pointers
-         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            AttributeInternalCore * pAttribute = m_pAttributeSet->m_inputAttributes[iAttribute];
+         assert(!IsMultiplyError(m_cAttributes, cCases)); // if this overflows then our caller should not have been able to allocate the array
+         assert(!IsMultiplyError(m_cAttributes * cCases, sizeof(*aData))); // if this overflows then our caller should not have been able to allocate the array
+         // TODO : eliminate the counts here and use pointers
+         for(size_t iAttribute = 0; iAttribute < m_cAttributes; ++iAttribute) {
+            AttributeInternalCore * pAttribute = &m_aAttributes[iAttribute];
             StorageDataTypeCore * pData = pDataSet->GetDataPointer(pAttribute);
             // TODO : eliminate the counts here and use pointers
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
@@ -251,11 +250,11 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
    size_t cCases = static_cast<size_t>(countCases);
 
-   TmlInteractionState * const PEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates);
+   TmlInteractionState * const PEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cAttributes);
    if(UNLIKELY(nullptr == PEbmInteractionState)) {
       return nullptr;
    }
-   if(UNLIKELY(PEbmInteractionState->InitializeInteraction(cAttributes, attributes, cTargetStates, cCases, targets, data, predictionScores))) {
+   if(UNLIKELY(PEbmInteractionState->InitializeInteraction(attributes, cTargetStates, cCases, targets, data, predictionScores))) {
       delete PEbmInteractionState;
       return nullptr;
    }
@@ -327,7 +326,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       }
       // we already checked indexAttributeInterop was good above
       size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-      pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = PEbmInteractionState->m_pAttributeSet->m_inputAttributes[iAttributeForCombination];
+      pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = &PEbmInteractionState->m_aAttributes[iAttributeForCombination];
    }
 
    if(PEbmInteractionState->m_bRegression) {

@@ -21,8 +21,7 @@
 #include "CachedThreadResources.h"
 // attribute includes
 #include "AttributeInternal.h"
-#include "AttributeSet.h"
-// AttributeCombination.h might in the future depend on AttributeSetInternalCore.h
+// AttributeCombination.h depends on AttributeInternal.h
 #include "AttributeCombinationInternal.h"
 // dataset depends on attributes
 #include "DataSetByAttributeCombination.h"
@@ -645,12 +644,13 @@ public:
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
-   // TODO : right now we need to keep these arround and separate but we can eliminate them in the future... and we already know the number of attributes at startup since that's done outside our core module, so we can just allocate the correct number of them.  And combine them for both training and validation since they both use the same parameters.  For now we need to keep these arround so that our Attributes aren't deleted
-   AttributeSetInternalCore * m_pAttributeSet;
+   const size_t m_cAttributes;
+   // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
+   AttributeInternalCore * const m_aAttributes;
 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
-   TmlState(const bool bRegression, const size_t cTargetStates, const size_t cAttributeCombinations, const size_t cSamplingSets)
+   TmlState(const bool bRegression, const size_t cTargetStates, const size_t cAttributes, const size_t cAttributeCombinations, const size_t cSamplingSets)
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributeCombinations(cAttributeCombinations)
@@ -664,8 +664,10 @@ public:
       , m_bestModelMetric(std::numeric_limits<FractionalDataType>::infinity())
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
-      , m_pAttributeSet(nullptr)
+      , m_cAttributes(cAttributes)
+      , m_aAttributes(static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
+      assert(0 < cAttributes); // we can't allocate zero byte arrays
       // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
       memset(m_apAttributeCombinations, 0, sizeof(*m_apAttributeCombinations) * cAttributeCombinations);
    }
@@ -686,7 +688,7 @@ public:
 
       AttributeCombinationCore::FreeAttributeCombinations(m_cAttributeCombinations, m_apAttributeCombinations);
 
-      delete m_pAttributeSet;
+      free(m_aAttributes);
 
       DeleteSegmentsCore(m_cAttributeCombinations, m_apCurrentModel);
       DeleteSegmentsCore(m_cAttributeCombinations, m_apBestModel);
@@ -694,7 +696,7 @@ public:
       SegmentedRegionCore<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
    }
 
-   bool Initialize(const IntegerDataType randomSeed, const size_t cAttributes, const EbmAttribute * const aAttributes, const EbmAttributeCombination * const aAttributeCombinations, const IntegerDataType * attributeCombinationIndexes, const size_t cTargetStates, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
+   bool Initialize(const IntegerDataType randomSeed, const EbmAttribute * const aAttributes, const EbmAttributeCombination * const aAttributeCombinations, const IntegerDataType * attributeCombinationIndexes, const size_t cTargetStates, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
       try {
          if (m_bRegression) {
             if (m_cachedThreadResourcesUnion.regression.IsError()) {
@@ -706,15 +708,13 @@ public:
             }
          }
 
-         assert(nullptr == m_pAttributeSet);
-         m_pAttributeSet = new (std::nothrow) AttributeSetInternalCore();
-         if (nullptr == m_pAttributeSet) {
+         if (nullptr == m_aAttributes) {
             return true;
          }
 
-         assert(!IsMultiplyError(cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+         assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
          const EbmAttribute * pAttributeInitialize = aAttributes;
-         const EbmAttribute * const pAttributeEnd = &aAttributes[cAttributes];
+         const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
          assert(pAttributeInitialize < pAttributeEnd);
          size_t iAttributeInitialize = 0;
          do {
@@ -733,10 +733,8 @@ public:
             assert(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
             bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
-            AttributeInternalCore * pAttribute = m_pAttributeSet->AddAttribute(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-            if (nullptr == pAttribute) {
-               return true;
-            }
+            AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
             assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
@@ -781,8 +779,8 @@ public:
                   return true;
                }
                const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-               assert(iAttributeForCombination < cAttributes);
-               AttributeInternalCore * const pInputAttribute = m_pAttributeSet->m_inputAttributes[iAttributeForCombination];
+               assert(iAttributeForCombination < m_cAttributes);
+               AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
                pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pInputAttribute;
                cTensorStates *= pInputAttribute->m_cStates;
             }
@@ -939,11 +937,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    CheckTargets(cTargetStates, cValidationCases, validationTargets);
 #endif
 
-   TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cAttributeCombinations, cInnerBags);
+   TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cAttributes, cAttributeCombinations, cInnerBags);
    if (UNLIKELY(nullptr == pTmlState)) {
       return nullptr;
    }
-   if (UNLIKELY(pTmlState->Initialize(randomSeed, cAttributes, attributes, attributeCombinations, attributeCombinationIndexes, cTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+   if (UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
       delete pTmlState;
       return nullptr;
    }

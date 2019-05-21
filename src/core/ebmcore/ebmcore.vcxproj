@@ -280,7 +280,6 @@ IF %ERRORLEVEL% NEQ 0 (
     <ClInclude Include="..\inc\ebmcore.h" />
     <ClInclude Include="AttributeInternal.h" />
     <ClInclude Include="AttributeCombinationInternal.h" />
-    <ClInclude Include="AttributeSet.h" />
     <ClInclude Include="BinnedBucket.h" />
     <ClInclude Include="CachedThreadResources.h" />
     <ClInclude Include="DataSetByAttribute.h" />
@@ -297,7 +296,6 @@ IF %ERRORLEVEL% NEQ 0 (
     <ClInclude Include="SingleDimensionalTraining.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AttributeSet.cpp" />
     <ClCompile Include="DataSetByAttribute.cpp" />
     <ClCompile Include="DataSetByAttributeCombination.cpp" />
     <ClCompile Include="DllMainCore.cpp" />

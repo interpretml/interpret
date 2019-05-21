@@ -12,7 +12,6 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "AttributeInternal.h"
-#include "AttributeSet.h"
 
 class DataSetInternalCore final {
    FractionalDataType * m_aResidualErrors;
@@ -21,16 +20,15 @@ class DataSetInternalCore final {
    size_t m_cCases;
 
 public:
-   // TODO : someday can we remove this pointer to m_pAttributeSet
-   const AttributeSetInternalCore * const m_pAttributeSet;
+   const size_t m_cAttributes;
 
-   TML_INLINE DataSetInternalCore(AttributeSetInternalCore * const pAttributeSet, const size_t cCases)
+   TML_INLINE DataSetInternalCore(const size_t cAttributes, const size_t cCases)
       : m_aResidualErrors(nullptr)
       , m_aTargetData(nullptr)
       , m_aaData(nullptr)
       , m_cCases(cCases)
-      , m_pAttributeSet(pAttributeSet) {
-      assert(nullptr != pAttributeSet);
+      , m_cAttributes(cAttributes) {
+      assert(0 < cAttributes);
       assert(0 < m_cCases);
    }
 
