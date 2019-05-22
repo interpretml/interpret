@@ -5,8 +5,7 @@
 from IPython import display
 import re
 import requests
-from concurrent.futures import ThreadPoolExecutor
-import concurrent.futures
+import threading
 from . import udash
 
 from gevent.pywsgi import WSGIServer
@@ -26,8 +25,7 @@ app.logger.disabled = True
 class AppRunner:
     def __init__(self, addr=None):
         self.app = DispatcherApp()
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        self.future = None
+
         if addr is None:
             # Allocate port
             self.ip = "127.0.0.1"
@@ -85,11 +83,9 @@ class AppRunner:
             log.debug("Dashboard stop failed: {0}".format(e))
             return False
 
-        try:
-            if self.future is not None:
-                self.future.result(timeout=5)
-        except concurrent.futures.TimeoutError as e:
-            log.error(e)
+        self._thread.join(timeout=5.0)
+        if self._thread.is_alive():
+            log.error("Thread still alive despite shutdown called.")
             return False
 
         return True
@@ -111,7 +107,9 @@ class AppRunner:
 
     def start(self):
         log.debug("Running app runner on: {0}:{1}".format(self.ip, self.port))
-        self.future = self.executor.submit(lambda: self._run())
+
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
 
     def register(self, ctx, **kwargs):
         # The path to this instance should be id based.
@@ -122,15 +120,13 @@ class AppRunner:
         url = "http://{0}:{1}{2}".format(self.ip, self.port, path)
         log.debug("Display URL: {0}".format(url))
 
-        html_str = ""
+        html_str = "<!-- {0} -->\n".format(url)
         if open_link:
             html_str += r'<a href="{url}" target="_new">Open in new window</a>'.format(
                 url=url
             )
 
-        html_str += """
-            <iframe src="{url}" width={width} height={height} frameBorder="0"></iframe>
-        """.format(
+        html_str += """<iframe src="{url}" width={width} height={height} frameBorder="0"></iframe>""".format(
             url=url, width=width, height=height
         )
 

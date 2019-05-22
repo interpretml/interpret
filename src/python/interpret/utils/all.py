@@ -247,7 +247,9 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
             new_feature_names = feature_names
 
         if feature_types is None:
-            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=new_data)
+            unique_counts = np.apply_along_axis(
+                lambda a: len(set(a)), axis=0, arr=new_data
+            )
             new_feature_types = [
                 _assign_feature_type(feature_type, unique_counts[index])
                 for index, feature_type in enumerate(
