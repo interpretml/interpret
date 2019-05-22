@@ -195,6 +195,8 @@ def unify_vector(data):
         new_data = data.values
     elif isinstance(data, np.ndarray):
         new_data = data
+    elif isinstance(data, list):
+        new_data = np.array(data)
     elif isinstance(data, NDFrame) and data.shape[1] == 1:
         new_data = data.iloc[:, 0].values
     else:
@@ -219,6 +221,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
     Returns:
 
     """
+    # TODO: Clean up code to have less duplication.
     if isinstance(data, NDFrame):
         new_data = data.to_numpy()
 
@@ -232,6 +235,24 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
             new_feature_types = [
                 _assign_feature_type(feature_type, unique_counts[index])
                 for index, feature_type in enumerate(data.dtypes)
+            ]
+        else:
+            new_feature_types = feature_types
+    elif isinstance(data, list):
+        new_data = np.array(data)
+
+        if feature_names is None:
+            new_feature_names = ["feature_" + str(i) for i in range(new_data.shape[1])]
+        else:
+            new_feature_names = feature_names
+
+        if feature_types is None:
+            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=new_data)
+            new_feature_types = [
+                _assign_feature_type(feature_type, unique_counts[index])
+                for index, feature_type in enumerate(
+                    [new_data.dtype] * len(new_feature_names)
+                )
             ]
         else:
             new_feature_types = feature_types
