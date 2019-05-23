@@ -13,6 +13,7 @@ from flask import Flask
 
 import socket
 import random
+from string import Template
 
 import logging
 
@@ -165,6 +166,13 @@ class DispatcherApp:
     def __call__(self, environ, start_response):
         old_path_info = environ.get("PATH_INFO", "")
 
+        if old_path_info == "/":
+            log.debug("Root path requested")
+
+            start_response("200 OK", [("content-type", "text/html")])
+            content = self._root_content()
+            return [content.encode("utf-8")]
+
         if old_path_info == "/shutdown":
             log.debug("Shutting down.")
             server = self.config["server"]
@@ -173,7 +181,7 @@ class DispatcherApp:
             return ["Shutdown".encode("utf-8")]
 
         match = re.search(self.app_pattern, old_path_info)
-        if match is None:
+        if match is None or self.pool.get(match.group(1), None) is None:
             msg = "URL not supported: {0}".format(old_path_info)
             log.error(msg)
             start_response("400 Bad Request Error", [("content-type", "text/html")])
@@ -182,3 +190,116 @@ class DispatcherApp:
         ctx_id = match.group(1)
         app = self.pool[ctx_id]
         return app(environ, start_response)
+
+    def _root_content(self):
+        body = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualization Backend</title>
+</head>
+<style>
+body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+.banner {
+    height: 65px;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(20, 100, 130);
+    box-shadow: rgba(0, 0, 0, 0.1) 1px 2px 3px 0px;
+}
+.banner h2{
+    color: white;
+    margin-top: 0px;
+    padding: 15px 0;
+    text-align: center;
+    font-family: Georgia, Times New Roman, Times, serif;
+}
+.app {
+    background-color: rgb(245, 245, 250);
+    min-height: 100vh;
+    overflow: hidden;
+}
+.card-header{
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+    padding-right: 20px;
+    position: relative;
+    line-height: 1;
+    border-bottom: 1px solid #eaeff2;
+    background-color: rgba(20, 100, 130, 0.78);
+}
+.card-body{
+    padding-top: 30px;
+    padding-bottom: 30px;
+    position: relative;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+.card-title{
+    display: inline-block;
+    margin: 0;
+    color: #ffffff;
+}
+.card {
+    border-radius: 3px;
+    background-color: white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    border: 1px solid #d1d6e6;
+    margin: 30px 20px;
+}
+.link-container {
+    text-align: center;
+}
+.link-container ul {
+    display: inline-block;
+    margin: 0px;
+    padding: 0px;
+}
+.link-container li {
+    display: block;
+    padding: 15px;
+}
+.center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    -webkit-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+}
+</style>
+<body>
+<div class="app">
+    <div class="banner"><h2>Backend Server</h2></div>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><div class="center">Active Links</div></div>
+        </div>
+        <div class="card-body">
+            <div class="link-container">
+                <ul>
+                    $list
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+"""
+        if not self.pool:
+            items = "<li>No active links.</li>"
+        else:
+            items = "\n".join(
+                [
+                    r'<li><a href="/{0}/">{0}</a></li>'.format(key)
+                    for key in self.pool.keys()
+                ]
+            )
+        content = Template(body).substitute(list=items)
+        return content
