@@ -27,7 +27,7 @@ https://github.com/microsoft/interpret
 """
 
 name = "interpret"
-version = "0.1.3"
+version = "0.1.4"
 setup(
     name=name,
     version=version,
