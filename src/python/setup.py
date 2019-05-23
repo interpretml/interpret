@@ -16,7 +16,7 @@ needs_dev = {
     "doc",
     "build_sphinx",
 }.intersection(sys.argv)
-dev_tools = ["sphinx>=1.8.4", "flake8>=3.7.6", "pytest-cov>=2.6.1"] if needs_dev else []
+dev_tools = ["sphinx>=1.8.4", "flake8>=3.7.7", "pytest-cov>=2.6.1"] if needs_dev else []
 
 long_description = """
 In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
@@ -71,8 +71,7 @@ setup(
             "source_dir": ("setup.py", "docs"),
         }
     },
-    # NOTE: Numpy here is a workaround to skope-rules' dependencies.
-    setup_requires=["numpy>=1.15.1", "scipy>=1.2.1"] + dev_tools,
+    setup_requires=[] + dev_tools,
     tests_require=[] + dev_tools,
     install_requires=[
         # Algorithms
@@ -97,8 +96,7 @@ setup(
         "ipykernel>=5.1.0",
         "ipython>=7.4.0",
         "numpy>=1.15.1",
-        # NOTE: scipy has to be pinned until SALib is compatible with 1.3.0+
-        "scipy==1.2.1",
+        "scipy>=1.2.1",
         # Testing
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
