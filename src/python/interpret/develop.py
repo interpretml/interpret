@@ -1,23 +1,41 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-import logging
-
-log = logging.getLogger(__name__)
-
 
 def register_log(filename, level="DEBUG"):
-    import logging.handlers
+    """ Registers file to have logs written to.
 
-    handler = logging.handlers.WatchedFileHandler(filename)
+    Args:
+        filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
+        level: Logging level. For example, "DEBUG".
+
+    Returns:
+        None.
+    """
+    import logging
+    import logging.handlers
+    import sys
+    import multiprocessing
+
+    if filename is sys.stderr or filename is sys.stdout:
+        handler = logging.StreamHandler(stream=filename)
+    else:
+        handler = logging.handlers.WatchedFileHandler(filename)
+
     formatter = logging.Formatter(
         "%(asctime)s | %(filename)-20s %(lineno)-4s %(funcName)25s() | %(message)s"
     )
     handler.setFormatter(formatter)
 
+    queue = multiprocessing.Queue(-1)  # no size limit
+    queue_handler = logging.handlers.QueueHandler(queue)
+    queue_handler.setFormatter(formatter)
+    queue_listener = logging.handlers.QueueListener(queue, handler)
+    queue_listener.start()
+
     root = logging.getLogger("interpret")
     root.setLevel(level)
-    root.addHandler(handler)
+    root.addHandler(queue_handler)
     return None
 
 

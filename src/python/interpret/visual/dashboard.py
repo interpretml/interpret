@@ -148,7 +148,7 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            log.debug("App Entry not found: {0}".format(ctx_id))
+            log.debug("Creating App Entry: {0}".format(ctx_id))
             app = udash.generate_app(
                 ctx, {"share_tables": share_tables}, "/" + ctx_id + "/"
             )

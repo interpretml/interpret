@@ -12,7 +12,7 @@ def run_notebook(notebook_path):
     with open(notebook_path) as f:
         nb = nbformat.read(f, as_version=4)
 
-    proc = ExecutePreprocessor(timeout=300, kernel_name="python3")
+    proc = ExecutePreprocessor(timeout=600, kernel_name="python3")
     proc.allow_errors = True
     script_path = os.path.dirname(os.path.abspath(__file__))
     package_path = os.path.abspath(os.path.join(script_path, "..", ".."))
