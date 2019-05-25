@@ -15,3 +15,4 @@
 # Python-specific
 *.egg-info/
 *.ipynb_checkpoints/
+venv/
