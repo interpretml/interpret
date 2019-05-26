@@ -19,19 +19,19 @@ def set_show_addr(addr):
     Side effect: restarts the app runner for 'show' method.
 
     Args:
-        addr: (ip, port) address to assign show method to.
+        addr: (ip, port) tuple as address to assign show method to.
     Returns:
         None.
     """
     addr = (addr[0], int(addr[1]))
-    _init_app_runner(addr)
+    init_show_server(addr)
 
 
 def get_show_addr():
     """ Returns (ip, port) used for show method.
 
     Returns:
-        Address tuple (ip, port)
+        Address tuple (ip, port).
     """
     return this.app_addr
 
@@ -48,14 +48,23 @@ def shutdown_show_server():
     return True
 
 
-def _init_app_runner(addr=None):
+def init_show_server(addr=None, base_url=None):
+    """ Initializes show method's backing server.
+
+    Args:
+        addr: (ip, port) tuple as address to assign show method to.
+        base_url: Base url as string.
+
+    Returns:
+        None.
+    """
     if this.app_runner is not None:
         log.debug("Stopping previous app runner at {0}".format(this.app_addr))
-        this.app_runner.stop()
+        shutdown_show_server()
         this.app_runner = None
 
     log.debug("Create app runner at {0}".format(addr))
-    this.app_runner = AppRunner(addr)
+    this.app_runner = AppRunner(addr, base_url=base_url)
     this.app_runner.start()
     this.app_addr = this.app_runner.ip, this.app_runner.port
 
@@ -76,7 +85,7 @@ def show(explanation, share_tables=None):
     try:
         # Initialize server if needed
         if this.app_runner is None:
-            _init_app_runner(this.app_addr)
+            init_show_server(this.app_addr)
 
         log.debug("Running existing app runner.")
 

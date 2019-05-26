@@ -6,6 +6,7 @@ from IPython import display
 import re
 import requests
 import threading
+import os
 from . import udash
 
 from gevent.pywsgi import WSGIServer
@@ -23,9 +24,18 @@ app = Flask(__name__)
 app.logger.disabled = True
 
 
+def _build_path(path, base_url=None):
+    if base_url:
+        return "{0}/{1}".format(base_url, path)
+    else:
+        return path
+
+
 class AppRunner:
-    def __init__(self, addr=None):
-        self.app = DispatcherApp()
+    def __init__(self, addr=None, base_url=None):
+        self.app = DispatcherApp(base_url=base_url)
+        self.base_url = base_url
+        self._thread = None
 
         if addr is None:
             # Allocate port
@@ -77,23 +87,24 @@ class AppRunner:
         # Shutdown
         log.debug("Triggering shutdown")
         try:
-            url = "http://{0}:{1}/shutdown".format(self.ip, self.port)
+            path = _build_path("shutdown")
+            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             r = requests.post(url)
             log.debug(r)
         except requests.exceptions.RequestException as e:
             log.debug("Dashboard stop failed: {0}".format(e))
             return False
 
-        self._thread.join(timeout=5.0)
-        if self._thread.is_alive():
-            log.error("Thread still alive despite shutdown called.")
-            return False
+        if self._thread is not None:
+            self._thread.join(timeout=5.0)
+            if self._thread.is_alive():
+                log.error("Thread still alive despite shutdown called.")
+                return False
 
         return True
 
     def _run(self):
         try:
-
             class devnull:
                 write = lambda _: None  # noqa: E731
 
@@ -117,8 +128,12 @@ class AppRunner:
         self.app.register(ctx, **kwargs)
 
     def display(self, ctx, width="100%", height=800, open_link=False):
-        path = "/" + self._obj_id(ctx) + "/"
-        url = "http://{0}:{1}{2}".format(self.ip, self.port, path)
+        obj_path = self._obj_id(ctx) + "/"
+        path = obj_path if self.base_url is None else "{0}/{1}".format(self.base_url, obj_path)
+        if self.base_url is None:
+            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
+        else:
+            url = "/{0}".format(path)
         log.debug("Display URL: {0}".format(url))
 
         html_str = "<!-- {0} -->\n".format(url)
@@ -136,11 +151,20 @@ class AppRunner:
 
 
 class DispatcherApp:
-    def __init__(self):
+    def __init__(self, base_url=None):
+        self.base_url = base_url
+        self.root_path = "/"
+        self.shutdown_path = "/shutdown"
+        self.favicon_path = "/favicon.ico"
+        self.favicon_res = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'favicon.ico')
+
         self.default_app = Flask(__name__)
         self.pool = {}
         self.config = {}
-        self.app_pattern = re.compile(r"/?(.+?)(/|$)")
+        if self.base_url is None:
+            self.app_pattern = re.compile(r"/?(.+?)(/|$)")
+        else:
+            self.app_pattern = re.compile(r"/?{0}/(.+?)(/|$)".format(self.base_url))
 
     def obj_id(self, obj):
         return str(id(obj))
@@ -149,8 +173,12 @@ class DispatcherApp:
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
             log.debug("Creating App Entry: {0}".format(ctx_id))
+            ctx_path = "/{0}/".format(ctx_id) if self.base_url is None else "/{0}/{1}/".format(self.base_url, ctx_id)
             app = udash.generate_app(
-                ctx, {"share_tables": share_tables}, "/" + ctx_id + "/"
+                ctx, {"share_tables": share_tables},
+                # url_base_pathname=ctx_path,
+                requests_pathname_prefix=ctx_path,
+                routes_pathname_prefix=ctx_path,
             )
             app.css.config.serve_locally = True
             app.scripts.config.serve_locally = True
@@ -159,44 +187,60 @@ class DispatcherApp:
         else:
             log.debug("App Entry found: {0}".format(ctx_id))
 
-    def _split(self, strng, sep, pos):
-        strng = strng.split(sep)
-        return sep.join(strng[:pos]), sep.join(strng[pos:])
-
     def __call__(self, environ, start_response):
-        old_path_info = environ.get("PATH_INFO", "")
+        path_info = environ.get("PATH_INFO", "")
+        script_name = environ.get("SCRIPT_NAME", "")
+        log.debug("PATH INFO  : {0}".format(path_info))
+        log.debug("SCRIPT NAME: {0}".format(script_name))
 
-        if old_path_info == "/":
-            log.debug("Root path requested")
+        try:
 
-            start_response("200 OK", [("content-type", "text/html")])
-            content = self._root_content()
-            return [content.encode("utf-8")]
+            if path_info == self.root_path:
+                log.debug("Root path requested.")
+                start_response("200 OK", [("content-type", "text/html")])
+                content = self._root_content()
+                return [content.encode("utf-8")]
 
-        if old_path_info == "/shutdown":
-            log.debug("Shutting down.")
-            server = self.config["server"]
-            server.stop()
-            start_response("200 OK", [("content-type", "text/html")])
-            return ["Shutdown".encode("utf-8")]
+            if path_info == self.shutdown_path:
+                log.debug("Shutting down.")
+                server = self.config["server"]
+                server.stop()
+                start_response("200 OK", [("content-type", "text/html")])
+                return ["Shutdown".encode("utf-8")]
 
-        match = re.search(self.app_pattern, old_path_info)
-        if match is None or self.pool.get(match.group(1), None) is None:
-            msg = "URL not supported: {0}".format(old_path_info)
-            log.error(msg)
-            start_response("400 Bad Request Error", [("content-type", "text/html")])
-            return [msg.encode("utf-8")]
+            if path_info == self.favicon_path:
+                log.debug("Favicon requested.")
 
-        ctx_id = match.group(1)
-        app = self.pool[ctx_id]
-        return app(environ, start_response)
+                start_response("200 OK", [('content-type', 'image/x-icon')])
+                with open(self.favicon_res, 'rb') as handler:
+                    return [handler.read()]
+
+            match = re.search(self.app_pattern, path_info)
+            if match is None or self.pool.get(match.group(1), None) is None:
+                msg = "URL not supported: {0}".format(path_info)
+                log.error(msg)
+                start_response("400 BAD REQUEST ERROR", [("content-type", "text/html")])
+                return [msg.encode("utf-8")]
+
+            ctx_id = match.group(1)
+            log.debug("Routing request: {0}".format(ctx_id))
+            app = self.pool[ctx_id]
+            return app(environ, start_response)
+
+        except Exception as e:
+            log.error(e, exc_info=True)
+            try:
+                start_response('500 INTERNAL SERVER ERROR', [('Content-Type', 'text/plain')])
+            except:
+                pass
+            return ["Internal Server Error caught by Dispatcher. See logs if available.".encode("utf-8")]
 
     def _root_content(self):
         body = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Visualization Backend</title>
+    <title>Backend Server</title>
 </head>
 <style>
 body {
@@ -297,7 +341,10 @@ body {
         else:
             items = "\n".join(
                 [
-                    r'<li><a href="/{0}/">{0}</a></li>'.format(key)
+                    r'<li><a href="{0}">{1}</a></li>'.format(
+                        "/{0}/" if self.base_url is None else "/{0}/{1}/".format(self.base_url, key),
+                        key
+                    )
                     for key in self.pool.keys()
                 ]
             )

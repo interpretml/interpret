@@ -22,11 +22,8 @@ MAX_NUM_PANES = 5
 
 
 # Dash app for a single explanation only
-def generate_app_mini(ctx_item, path="/"):
+def generate_app_mini(ctx_item, url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None):
     """ Generates the mini Dash application including callbacks..
-
-    Arguments:
-        ctx_item - (Explanation, Selector) pair.
 
     Returns:
         The dash app itself.
@@ -34,7 +31,12 @@ def generate_app_mini(ctx_item, path="/"):
     log.debug("Generating mini dash")
 
     # Initialize
-    app = dash.Dash(__name__, url_base_pathname=path)
+    app = dash.Dash(
+        __name__,
+        url_base_pathname=url_base_pathname,
+        requests_pathname_prefix=requests_pathname_prefix,
+        routes_pathname_prefix=routes_pathname_prefix
+    )
     app.scripts.config.serve_locally = True
     app.css.config.serve_locally = True
     app.config["suppress_callback_exceptions"] = True
@@ -121,9 +123,19 @@ def generate_app_mini(ctx_item, path="/"):
         else:
             return gen_plot(explanation, int(value), 0, 0)
 
+    @server.errorhandler(404)
+    def page_not_found(_):
+        from flask import request
+        path = request.path
+        msg = 'Could not find page: {0}'.format(path)
+
+        log.error(msg)
+        return msg, 404
+
     @server.errorhandler(Exception)
     def handle_error(e):
-        log_error(e)
+        log.error(e, exc_info=True)
+        return 'Internal Server Error caught by udash. See logs if available.', 500
 
     @app.server.route("/shutdown", methods=["POST"])
     def shutdown():
@@ -131,11 +143,6 @@ def generate_app_mini(ctx_item, path="/"):
 
     log.debug("Generated mini dash")
     return app
-
-
-def log_error(e):
-    log.error(e)
-    log.error(traceback.format_exc())
 
 
 def shutdown_server(app):
@@ -275,7 +282,7 @@ def gen_plot(exp, picker, model_idx, counter):
 
 # Dash app code
 # TODO: Consider reducing complexity of this function.
-def generate_app_full(path="/"):  # noqa: C901
+def generate_app_full(url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None):  # noqa: C901
     """ Generates the Dash application including callbacks.
 
     Returns:
@@ -285,12 +292,17 @@ def generate_app_full(path="/"):  # noqa: C901
     log.debug("Generating full dash")
 
     # Initialize
-    app = dash.Dash(__name__, url_base_pathname=path)
+    app = dash.Dash(
+        __name__,
+        url_base_pathname=url_base_pathname,
+        requests_pathname_prefix=requests_pathname_prefix,
+        routes_pathname_prefix=routes_pathname_prefix
+    )
     app.scripts.config.serve_locally = True
     app.css.config.serve_locally = True
     app.config["suppress_callback_exceptions"] = True
     app.logger.handlers = []
-    app.title = "Interpret ML"
+    app.title = "InterpretML"
     server = app.server
 
     # Define layout
@@ -782,7 +794,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     @server.errorhandler(Exception)
     def handle_error(e):
-        log_error(e)
+        log.error(e, exc_info=True)
+        return 'Internal Server Error caught by udash. See logs if available.', 500
 
     @app.callback(Output("data-tab", "children"), [Input("tabs", "value")])
     def update_data_tab_content(tab):
@@ -841,14 +854,26 @@ def _expand_ctx_item(item):
     return (explanation, df)
 
 
-def generate_app(ctx, options, path="/"):
+def generate_app(ctx, options,
+                 url_base_pathname=None,
+                 requests_pathname_prefix=None,
+                 routes_pathname_prefix=None,
+                 ):
     # If we are passed a single explanation as a scalar, generate mini app.
     if not isinstance(ctx, list):
         new_item = _expand_ctx_item(ctx)
-        app = generate_app_mini(new_item, path)
+        app = generate_app_mini(
+            new_item,
+            url_base_pathname=url_base_pathname,
+            requests_pathname_prefix=requests_pathname_prefix,
+            routes_pathname_prefix=routes_pathname_prefix
+        )
         return app
 
-    app = generate_app_full(path)
+    app = generate_app_full(
+        requests_pathname_prefix=requests_pathname_prefix,
+        routes_pathname_prefix=routes_pathname_prefix
+    )
     new_ctx = []
     # Provide indexes for selecting in dashboard. This is required.
 
