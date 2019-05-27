@@ -48,12 +48,13 @@ def shutdown_show_server():
     return True
 
 
-def init_show_server(addr=None, base_url=None):
+def init_show_server(addr=None, base_url=None, use_relative_links=False):
     """ Initializes show method's backing server.
 
     Args:
         addr: (ip, port) tuple as address to assign show method to.
-        base_url: Base url as string.
+        base_url: Base url path as string. Used mostly when server is running behind a proxy.
+        use_relative_links: Use relative links for what's returned to client. Otherwise have absolute links.
 
     Returns:
         None.
@@ -64,7 +65,9 @@ def init_show_server(addr=None, base_url=None):
         this.app_runner = None
 
     log.debug("Create app runner at {0}".format(addr))
-    this.app_runner = AppRunner(addr, base_url=base_url)
+    this.app_runner = AppRunner(
+        addr, base_url=base_url, use_relative_links=use_relative_links
+    )
     this.app_runner.start()
     this.app_addr = this.app_runner.ip, this.app_runner.port
 

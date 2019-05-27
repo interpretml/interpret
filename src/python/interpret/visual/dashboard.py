@@ -32,9 +32,12 @@ def _build_path(path, base_url=None):
 
 
 class AppRunner:
-    def __init__(self, addr=None, base_url=None):
-        self.app = DispatcherApp(base_url=base_url)
+    def __init__(self, addr=None, base_url=None, use_relative_links=False):
+        self.app = DispatcherApp(
+            base_url=base_url, use_relative_links=use_relative_links
+        )
         self.base_url = base_url
+        self.use_relative_link = use_relative_links
         self._thread = None
 
         if addr is None:
@@ -105,6 +108,7 @@ class AppRunner:
 
     def _run(self):
         try:
+
             class devnull:
                 write = lambda _: None  # noqa: E731
 
@@ -129,11 +133,18 @@ class AppRunner:
 
     def display(self, ctx, width="100%", height=800, open_link=False):
         obj_path = self._obj_id(ctx) + "/"
-        path = obj_path if self.base_url is None else "{0}/{1}".format(self.base_url, obj_path)
-        if self.base_url is None:
-            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
-        else:
-            url = "/{0}".format(path)
+        path = (
+            obj_path
+            if self.base_url is None
+            else "{0}/{1}".format(self.base_url, obj_path)
+        )
+        start_url = (
+            "/"
+            if self.use_relative_link
+            else "http://{0}:{1}/".format(self.ip, self.port)
+        )
+
+        url = "{0}{1}".format(start_url, path)
         log.debug("Display URL: {0}".format(url))
 
         html_str = "<!-- {0} -->\n".format(url)
@@ -151,12 +162,16 @@ class AppRunner:
 
 
 class DispatcherApp:
-    def __init__(self, base_url=None):
+    def __init__(self, base_url=None, use_relative_links=False):
         self.base_url = base_url
+        self.use_relative_links = use_relative_links
+
         self.root_path = "/"
         self.shutdown_path = "/shutdown"
         self.favicon_path = "/favicon.ico"
-        self.favicon_res = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'favicon.ico')
+        self.favicon_res = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "assets", "favicon.ico"
+        )
 
         self.default_app = Flask(__name__)
         self.pool = {}
@@ -173,9 +188,14 @@ class DispatcherApp:
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
             log.debug("Creating App Entry: {0}".format(ctx_id))
-            ctx_path = "/{0}/".format(ctx_id) if self.base_url is None else "/{0}/{1}/".format(self.base_url, ctx_id)
+            ctx_path = (
+                "/{0}/".format(ctx_id)
+                if self.base_url is None
+                else "/{0}/{1}/".format(self.base_url, ctx_id)
+            )
             app = udash.generate_app(
-                ctx, {"share_tables": share_tables},
+                ctx,
+                {"share_tables": share_tables},
                 # url_base_pathname=ctx_path,
                 requests_pathname_prefix=ctx_path,
                 routes_pathname_prefix=ctx_path,
@@ -211,8 +231,8 @@ class DispatcherApp:
             if path_info == self.favicon_path:
                 log.debug("Favicon requested.")
 
-                start_response("200 OK", [('content-type', 'image/x-icon')])
-                with open(self.favicon_res, 'rb') as handler:
+                start_response("200 OK", [("content-type", "image/x-icon")])
+                with open(self.favicon_res, "rb") as handler:
                     return [handler.read()]
 
             match = re.search(self.app_pattern, path_info)
@@ -225,15 +245,28 @@ class DispatcherApp:
             ctx_id = match.group(1)
             log.debug("Routing request: {0}".format(ctx_id))
             app = self.pool[ctx_id]
+            # if self.base_url and environ["PATH_INFO"].startswith(self.base_url):
+            #     environ["PATH_INFO"] = environ["PATH_INFO"][len(self.base_url):]
+            #     environ["SCRIPT_NAME"] = self.base_url
+            #     log.debug("Base URL active. Rewrite on PATH and SCRIPT")
+            #     log.debug("PATH INFO: {0}".format(path_info))
+            #     log.debug("SCRIPT NAME: {0}".format(script_name))
+
             return app(environ, start_response)
 
         except Exception as e:
             log.error(e, exc_info=True)
             try:
-                start_response('500 INTERNAL SERVER ERROR', [('Content-Type', 'text/plain')])
-            except:
+                start_response(
+                    "500 INTERNAL SERVER ERROR", [("Content-Type", "text/plain")]
+                )
+            except Exception:
                 pass
-            return ["Internal Server Error caught by Dispatcher. See logs if available.".encode("utf-8")]
+            return [
+                "Internal Server Error caught by Dispatcher. See logs if available.".encode(
+                    "utf-8"
+                )
+            ]
 
     def _root_content(self):
         body = r"""<!DOCTYPE html>
@@ -342,11 +375,14 @@ body {
             items = "\n".join(
                 [
                     r'<li><a href="{0}">{1}</a></li>'.format(
-                        "/{0}/" if self.base_url is None else "/{0}/{1}/".format(self.base_url, key),
-                        key
+                        "/{0}/".format(key)
+                        if self.base_url is None
+                        else "/{0}/{1}/".format(self.base_url, key),
+                        key,
                     )
                     for key in self.pool.keys()
                 ]
             )
+
         content = Template(body).substitute(list=items)
         return content
