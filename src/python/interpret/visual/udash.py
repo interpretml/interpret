@@ -287,7 +287,7 @@ def gen_plot(exp, picker, model_idx, counter):
 
 # Dash app code
 # TODO: Consider reducing complexity of this function.
-def generate_app_full(
+def generate_app_full(  # noqa: C901
     url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None
 ):
     """ Generates the Dash application including callbacks.
