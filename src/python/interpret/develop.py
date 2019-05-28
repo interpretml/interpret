@@ -2,6 +2,28 @@
 # Distributed under the MIT software license
 
 
+def system_information():
+    """ Provides system information (machine architecture etc.) as a dictionary.
+
+    Returns:
+        A dictionary containing system information.
+    """
+    import platform
+
+    system_info = {
+        'platform': platform.platform(),
+        'platform_architecture': platform.architecture(),
+        'platform_machine': platform.machine(),
+        'platform_processor': platform.processor(),
+        'platform_python_version': platform.version(),
+        'platform_release': platform.release(),
+        'platform_system': platform.system(),
+        'platform_version': platform.version(),
+    }
+
+    return system_info
+
+
 def register_log(filename, level="DEBUG"):
     """ Registers file to have logs written to.
 
