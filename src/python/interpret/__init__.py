@@ -6,6 +6,7 @@ import logging
 from logging import NullHandler
 
 # Export functions
+from .version import __version__  # noqa: F401
 from .visual.interactive import show, set_show_addr, get_show_addr  # noqa: F401
 from .visual.interactive import shutdown_show_server  # noqa: F401
 from .visual.interactive import init_show_server  # noqa: F401

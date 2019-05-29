@@ -2,23 +2,54 @@
 # Distributed under the MIT software license
 
 
-def system_information():
-    """ Provides system information (machine architecture etc.) as a dictionary.
+def debug_info():
+    """ This function varies version-by-version, designed to help the authors of this package when there's an issue.
 
     Returns:
-        A dictionary containing system information.
+        A dictionary to be printed in helping resolve issues.
+    """
+    from . import __version__
+
+    debug_dict = {}
+    debug_dict["interpret.__version__"] = __version__
+    debug_dict.update(static_system_info())
+
+    return debug_dict
+
+
+# TODO: Fill this out once specs are provided.
+def dynamic_system_info():
+    """ PLACEHOLDER: Provides dynamic system information (available memory etc.) as a dictionary.
+
+    Returns:
+        A dictionary containing dynamic system information.
+    """
+
+    # Currently we don't do anything yet.
+    return {}
+
+
+def static_system_info():
+    """ Provides static system information (machine architecture etc.) as a dictionary.
+
+    Returns:
+        A dictionary containing static system information.
     """
     import platform
+    import psutil
 
     system_info = {
-        'platform': platform.platform(),
-        'platform_architecture': platform.architecture(),
-        'platform_machine': platform.machine(),
-        'platform_processor': platform.processor(),
-        'platform_python_version': platform.version(),
-        'platform_release': platform.release(),
-        'platform_system': platform.system(),
-        'platform_version': platform.version(),
+        "platform": platform.platform(),
+        "platform.architecture": platform.architecture(),
+        "platform.machine": platform.machine(),
+        "platform.processor": platform.processor(),
+        "platform.python_version": platform.python_version(),
+        "platform.release": platform.release(),
+        "platform.system": platform.system(),
+        "platform.version": platform.version(),
+        "psutil.cpu_count": psutil.cpu_count(),
+        "psutil.virtual_memory.total": psutil.virtual_memory().total,
+        "psutil.swap_memory.total": psutil.swap_memory().total,
     }
 
     return system_info

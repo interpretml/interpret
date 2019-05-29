@@ -4,6 +4,8 @@
 import sys
 from setuptools import setup, find_packages
 import os
+import re
+import io
 
 script_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,7 +29,14 @@ https://github.com/microsoft/interpret
 """
 
 name = "interpret"
-version = "0.1.4"
+
+# Version logic derived from below:
+# https://stackoverflow.com/questions/17583443/what-is-the-correct-way-to-share-package-version-with-setup-py-and-the-package
+version = re.search(
+    r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
+    io.open(os.path.join(script_path, name, "version.py"), encoding="utf_8_sig").read(),
+).group(1)
+
 setup(
     name=name,
     version=version,
