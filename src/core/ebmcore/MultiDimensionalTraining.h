@@ -17,9 +17,6 @@
 #include "SamplingWithReplacement.h"
 #include "BinnedBucket.h"
 
-// TODO: in this file handle errors from SetCountDivisions, EnsureValueCapacity
-
-
 #ifndef NDEBUG
 
 static void PrintBinary(size_t term) {
@@ -1126,25 +1123,37 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       }
 
       if(bCutFirst2) {
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
+         if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+            exit(1);
+         }
          pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst2Best;
 
          if(cutFirst2LowBest < cutFirst2HighBest) {
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               exit(1);
+            }
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
          } else if(cutFirst2HighBest < cutFirst2LowBest) {
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
-
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               exit(1);
+            }
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2HighBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
          } else {
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+               exit(1);
+            }
 
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
          }
 
@@ -1191,25 +1200,38 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
          }
       } else {
-         pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
+         if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+            exit(1);
+         }
          pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
 
          if(cutFirst1LowBest < cutFirst1HighBest) {
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               exit(1);
+            }
 
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
          } else if(cutFirst1HighBest < cutFirst1LowBest) {
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               exit(1);
+            }
 
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
-            pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
-
-            pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+               exit(1);
+            }
+            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+               exit(1);
+            }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
          }
 
@@ -1298,9 +1320,15 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //
 //      FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 //
-//      pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1);
-//      pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1);
-//      pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4);
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+//         exit(1);
+//      }
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+//         exit(1);
+//      }
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+//         exit(1);
+//      }
 //
 //      for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
 //         for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {

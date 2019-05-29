@@ -20,7 +20,7 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
    assert(TraceLevelOff <= traceLevel);
-   assert(traceLevel <= TraceLevelDebug);
+   assert(traceLevel <= TraceLevelVerbose);
    assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */
    g_traceLevel = traceLevel;
 }

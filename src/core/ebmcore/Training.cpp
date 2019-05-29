@@ -4,6 +4,7 @@
 
 #include "PrecompiledHeader.h"
 
+#include <assert.h>
 #include <string.h> // memset
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -14,6 +15,7 @@
 #include "Logging.h"
 #include "EbmInternal.h"
 // very independent includes
+#include "InitializeResiduals.h"
 #include "RandomStream.h"
 #include "SegmentedRegion.h"
 #include "EbmStatistics.h"
@@ -31,7 +33,7 @@
 #include "SingleDimensionalTraining.h"
 #include "MultiDimensionalTraining.h"
 
-static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** apSegmentedRegions) {
+static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
    assert(0 < cAttributeCombinations);
    if(UNLIKELY(nullptr != apSegmentedRegions)) {
       SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
@@ -45,8 +47,11 @@ static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedReg
 }
 
 static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegmentsCore(const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombinations, const size_t cVectorLength) {
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** apSegmentedRegions;
-   apSegmentedRegions = new (std::nothrow) SegmentedRegionCore<ActiveDataType, FractionalDataType> *[cAttributeCombinations];
+   assert(0 < cAttributeCombinations);
+   assert(nullptr != apAttributeCombinations);
+   assert(1 <= cVectorLength);
+
+   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions = new (std::nothrow) SegmentedRegionCore<ActiveDataType, FractionalDataType> *[cAttributeCombinations];
    if(UNLIKELY(nullptr == apSegmentedRegions)) {
       return nullptr;
    }
@@ -55,7 +60,7 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
    SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
    for(size_t iAttributeCombination = 0; iAttributeCombination < cAttributeCombinations; ++iAttributeCombination) {
       const AttributeCombinationCore * const pAttributeCombination = apAttributeCombinations[iAttributeCombination];
-      SegmentedRegionCore<ActiveDataType, FractionalDataType> * pSegmentedRegions = SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(pAttributeCombination->m_cAttributes, cVectorLength);
+      SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegions = SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(pAttributeCombination->m_cAttributes, cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedRegions)) {
          DeleteSegmentsCore(cAttributeCombinations, apSegmentedRegions);
          return nullptr;
@@ -78,132 +83,6 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
       ++ppSegmentedRegions;
    }
    return apSegmentedRegions;
-}
-
-// a*PredictionScores = logOdds for binary classification
-// a*PredictionScores = logWeights for multiclass classification
-// a*PredictionScores = predictedValue for regression
-template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeErrorCore(const size_t cCases, const void * const aTargetData, const FractionalDataType * pPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates, const int iZeroResidual) {
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
-
-   if(nullptr == pPredictionScores) {
-      if(IsRegression(countCompilerClassificationTargetStates)) {
-         // calling ComputeRegressionResidualError(predictionScore, data) with predictionScore as zero gives just data, so we can memcopy these values
-         memcpy(pResidualError, aTargetData, cCases * sizeof(pResidualError[0]));
-#ifndef NDEBUG
-         const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
-         do {
-            FractionalDataType data = *pTargetData;
-            FractionalDataType predictionScore = 0;
-            FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
-            assert(*pResidualError == residualError);
-            ++pTargetData;
-            ++pResidualError;
-         } while(pResidualErrorEnd != pResidualError);
-#endif // NDEBUG
-      } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
-
-         const StorageDataTypeCore * pTargetData = static_cast<const StorageDataTypeCore *>(aTargetData);
-
-         const FractionalDataType matchValue = ComputeClassificationResidualErrorMulticlass(true, static_cast<FractionalDataType>(cVectorLength));
-         const FractionalDataType nonMatchValue = ComputeClassificationResidualErrorMulticlass(false, static_cast<FractionalDataType>(cVectorLength));
-
-         assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-         const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
-
-         do {
-            const StorageDataTypeCore data = *pTargetData;
-            if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(data);
-               *pResidualError = residualError;
-               ++pResidualError;
-            } else {
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(data, iVector, matchValue, nonMatchValue);
-                  assert(ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
-                  *pResidualError = residualError;
-                  ++pResidualError;
-               }
-               // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-               // 
-               // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-               // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-               // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
-               // insted of allowing them to be scaled.  
-               // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
-               // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= iZeroResidual) {
-                  pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
-               }
-            }
-            ++pTargetData;
-         } while(pResidualErrorEnd != pResidualError);
-      }
-   } else {
-      if(IsRegression(countCompilerClassificationTargetStates)) {
-         const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
-         do {
-            const FractionalDataType data = *pTargetData;
-            const FractionalDataType predictionScore = *pPredictionScores;
-            const FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
-            *pResidualError = residualError;
-            ++pTargetData;
-            ++pPredictionScores;
-            ++pResidualError;
-         } while(pResidualErrorEnd != pResidualError);
-      } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
-
-         const StorageDataTypeCore * pTargetData = static_cast<const StorageDataTypeCore *>(aTargetData);
-
-         assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-         const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
-
-         do {
-            StorageDataTypeCore data = *pTargetData;
-            if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-               const FractionalDataType predictionScore = *pPredictionScores;
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(predictionScore, data);
-               *pResidualError = residualError;
-               ++pPredictionScores;
-               ++pResidualError;
-            } else {
-               FractionalDataType sumExp = 0;
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictionScores;
-                  sumExp += std::exp(predictionScore);
-                  ++pPredictionScores;
-               }
-
-               // go back to the start so that we can iterate again
-               pPredictionScores -= cVectorLengthStorage;
-
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  FractionalDataType predictionScore = *pPredictionScores;
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
-                  *pResidualError = residualError;
-                  ++pPredictionScores;
-                  ++pResidualError;
-               }
-               // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-               // 
-               // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-               // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-               // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
-               // insted of allowing them to be scaled.  
-               // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
-               // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= iZeroResidual) {
-                  pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
-               }
-            }
-            ++pTargetData;
-         } while(pResidualErrorEnd != pResidualError);
-      }
-   }
 }
 
 // a*PredictionScores = logOdds for binary classification
@@ -599,9 +478,6 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    return false;
 }
 
-// TODO: can I put the SamplingWithoutReplacement bit into the data if I separate my data out by sample?
-
-// TODO: review everything from here on down in this file
 union CachedThreadResourcesUnion {
    CachedTrainingThreadResources<true> regression;
    CachedTrainingThreadResources<false> classification;
@@ -618,6 +494,10 @@ union CachedThreadResourcesUnion {
 
    ~CachedThreadResourcesUnion() {
       // we don't have enough information here to delete this object, so we do it from our caller
+      // we still need this destructor for a technicality that it might be called
+      // if there were an excpetion generated in the initializer list which it is constructed in
+      // but we have been careful to ensure that the class we are including it in doesn't thow exceptions in the
+      // initializer list
    }
 };
 
@@ -630,6 +510,7 @@ public:
    const size_t m_cAttributeCombinations;
    AttributeCombinationCore ** const m_apAttributeCombinations;
 
+   // TODO : can we internalize these so that they are not pointers and are therefore subsumed into our class
    DataSetAttributeCombination * m_pTrainingSet;
    DataSetAttributeCombination * m_pValidationSet;
 
@@ -654,7 +535,7 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributeCombinations(cAttributeCombinations)
-      , m_apAttributeCombinations(new (std::nothrow) AttributeCombinationCore *[cAttributeCombinations])
+      , m_apAttributeCombinations(AttributeCombinationCore::AllocateAttributeCombinations(cAttributeCombinations))
       , m_pTrainingSet(nullptr)
       , m_pValidationSet(nullptr)
       , m_cSamplingSets(cSamplingSets)
@@ -666,12 +547,12 @@ public:
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_cAttributes(cAttributes)
       , m_aAttributes(static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
-      assert(0 < cAttributes); // we can't allocate zero byte arrays
-      // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
-      memset(m_apAttributeCombinations, 0, sizeof(*m_apAttributeCombinations) * cAttributeCombinations);
-   }
 
+      assert(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
+   }
+   
    ~TmlState() {
       if(m_bRegression) {
          // member classes inside a union requre explicit call to destructor
@@ -696,7 +577,7 @@ public:
       SegmentedRegionCore<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
    }
 
-   bool Initialize(const IntegerDataType randomSeed, const EbmAttribute * const aAttributes, const EbmAttributeCombination * const aAttributeCombinations, const IntegerDataType * attributeCombinationIndexes, const size_t cTargetStates, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
+   bool Initialize(const IntegerDataType randomSeed, const EbmAttribute * const aAttributes, const EbmAttributeCombination * const aAttributeCombinations, const IntegerDataType * attributeCombinationIndexes, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
       try {
          if (m_bRegression) {
             if (m_cachedThreadResourcesUnion.regression.IsError()) {
@@ -709,6 +590,18 @@ public:
          }
 
          if (nullptr == m_aAttributes) {
+            return true;
+         }
+
+         if (UNLIKELY(nullptr == m_apAttributeCombinations)) {
+            return true;
+         }
+
+         if (UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
+            return true;
+         }
+
+         if (UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
             return true;
          }
 
@@ -734,6 +627,7 @@ public:
             bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
             AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+            assert(nullptr != pAttribute);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -743,15 +637,11 @@ public:
             ++pAttributeInitialize;
          } while (pAttributeEnd != pAttributeInitialize);
 
-         size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
-
-         if (UNLIKELY(nullptr == m_apAttributeCombinations)) {
-            return true;
-         }
+         size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
 
          const IntegerDataType * pAttributeCombinationIndex = attributeCombinationIndexes;
          for (size_t iAttributeCombination = 0; iAttributeCombination < m_cAttributeCombinations; ++iAttributeCombination) {
-            const EbmAttributeCombination * pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
+            const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
 
             IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
             assert(1 <= countAttributesInCombination);
@@ -759,6 +649,7 @@ public:
                return true;
             }
             size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
+            assert(cAttributesInCombination < m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
             if (k_cDimensionsMax < cAttributesInCombination) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
                return true;
@@ -768,11 +659,14 @@ public:
             if (nullptr == pAttributeCombination) {
                return true;
             }
+            // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
+            m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
 
             size_t cTensorStates = 1;
             for (size_t iAttributeInCombination = 0; iAttributeInCombination < cAttributesInCombination; ++iAttributeInCombination) {
                const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
                assert(0 <= indexAttributeInterop);
+
                ++pAttributeCombinationIndex;
 
                if (!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
@@ -782,20 +676,13 @@ public:
                assert(iAttributeForCombination < m_cAttributes);
                AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
                pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pInputAttribute;
+               if (IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)) {
+                  return true; // if this overflows, we definetly won't be able to allocate it
+               }
                cTensorStates *= pInputAttribute->m_cStates;
             }
             size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates);
             pAttributeCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
-
-            m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
-         }
-
-         if (UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
-            return true;
-         }
-
-         if (UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
-            return true;
          }
 
          m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
@@ -807,7 +694,6 @@ public:
          if (nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
             return true;
          }
-
 
          RandomStream randomStream(randomSeed);
 
@@ -829,13 +715,13 @@ public:
          }
 
          if (m_bRegression) {
-            InitializeErrorCore<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0, k_iZeroResidual);
-            InitializeErrorCore<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0, k_iZeroResidual);
+            InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0, k_iZeroResidual);
+            InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0, k_iZeroResidual);
          } else {
-            if (2 == cTargetStates) {
-               InitializeErrorCore<2>(cTrainingCases, m_pTrainingSet->GetTargetDataPointer(), aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), cTargetStates, k_iZeroResidual);
+            if (2 == m_cTargetStates) {
+               InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates, k_iZeroResidual);
             } else {
-               InitializeErrorCore<k_DynamicClassification>(cTrainingCases, m_pTrainingSet->GetTargetDataPointer(), aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), cTargetStates, k_iZeroResidual);
+               InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates, k_iZeroResidual);
             }
          }
          return false;
@@ -891,9 +777,9 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    assert(nullptr != trainingTargets);
    assert(nullptr != trainingData);
    // trainingPredictionScores can be null
-   assert(1 <= countValidationCases);
-   assert(nullptr != validationTargets);
-   assert(nullptr != validationData);
+   assert(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
+   assert(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
+   assert(nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
    assert(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
@@ -941,7 +827,7 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    if (UNLIKELY(nullptr == pTmlState)) {
       return nullptr;
    }
-   if (UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+   if (UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
       delete pTmlState;
       return nullptr;
    }
@@ -1028,7 +914,7 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTar
    return TrainingStepPerTargetStates<k_DynamicClassification>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);
 }
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType* trainingWeights, const FractionalDataType* validationWeights, FractionalDataType* validationMetricReturn) {
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * validationMetricReturn) {
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
    assert(0 <= indexAttributeCombination);
@@ -1047,7 +933,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   assert(2 <= countCasesRequiredForSplitParentMin);
+   assert(2 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split!
    size_t cCasesRequiredForSplitParentMin = static_cast<size_t>(countCasesRequiredForSplitParentMin);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countCasesRequiredForSplitParentMin)) {
       // we can never exceed a size_t number of cases, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
@@ -1102,4 +988,3 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining 
    assert(nullptr != pTmlState);
    delete pTmlState;
 }
-

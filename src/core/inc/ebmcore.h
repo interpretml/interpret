@@ -65,7 +65,6 @@ const signed char TraceLevelError = 1;
 const signed char TraceLevelWarning = 2;
 const signed char TraceLevelInfo = 3;
 const signed char TraceLevelVerbose = 4;
-const signed char TraceLevelDebug = 5; // our debug library should be called if our caller is set to this level
 
 // all our logging messages are pure ascii (127 values), and therefore also UTF-8
 typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);

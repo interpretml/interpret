@@ -39,6 +39,17 @@ public:
       free(pAttributeCombination);
    }
 
+   TML_INLINE static AttributeCombinationCore ** AllocateAttributeCombinations(const size_t cAttributeCombinations) {
+      assert(0 < cAttributeCombinations);
+      AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
+      if (LIKELY(nullptr != apAttributeCombinations)) {
+         // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
+         assert(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
+         memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);
+      }
+      return apAttributeCombinations;
+   }
+
    TML_INLINE static void FreeAttributeCombinations(const size_t cAttributeCombinations, AttributeCombinationCore ** apAttributeCombinations) {
       if(nullptr != apAttributeCombinations) {
          for(size_t i = 0; i < cAttributeCombinations; ++i) {
