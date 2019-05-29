@@ -20,67 +20,6 @@
 // depends on the above
 #include "MultiDimensionalTraining.h"
 
-// TODO: can this be merged with the InitializeInteractionErrorCore function in the TransparentMLCoreTraining.cpp file
-// TODO: handle null in pPredictionScores like we did for training
-//
-// a*PredictionScores = logOdds for binary classification
-// a*PredictionScores = logWeights for multiclass classification
-// a*PredictionScores = predictedValue for regression
-template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeInteractionErrorCore(const size_t cTargetStates, DataSetInternalCore * const pDataSet, const FractionalDataType * pPredictionScores, int iZeroResidual) {
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
-   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountCases();
-
-   if(IsRegression(countCompilerClassificationTargetStates)) {
-      FractionalDataType * pTargetData = static_cast<FractionalDataType *>(pDataSet->GetTargetDataPointer());
-      for(; pResidualErrorEnd != pResidualError; ++pTargetData) {
-         FractionalDataType residualError = static_cast<FractionalDataType>(*pTargetData) - *pPredictionScores;
-         *pResidualError = residualError;
-         ++pResidualError;
-         ++pPredictionScores;
-      }
-   } else {
-      StorageDataTypeCore * pTargetData = static_cast<StorageDataTypeCore *>(pDataSet->GetTargetDataPointer());
-      for(; pResidualErrorEnd != pResidualError; ++pTargetData) {
-         assert(IsClassification(countCompilerClassificationTargetStates));
-         if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-            FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(*pPredictionScores, *pTargetData);
-            *pResidualError = residualError;
-            ++pResidualError;
-            ++pPredictionScores;
-         } else {
-            FractionalDataType sumExp = 0;
-            const FractionalDataType * pPredictionScoresTemp = pPredictionScores;
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               sumExp += std::exp(*pPredictionScoresTemp);
-               ++pPredictionScoresTemp;
-            }
-
-            assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-            const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
-            for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-               const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, *pPredictionScores, *pTargetData, iVector);
-               *pResidualError = residualError;
-               ++pResidualError;
-               ++pPredictionScores;
-            }
-            // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-            // 
-            // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-            // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-            // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
-            // insted of allowing them to be scaled.  
-            // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
-            // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-            if(0 <= iZeroResidual) {
-               pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
-            }
-         }
-      }
-   }
-}
-
 class TmlInteractionState {
 public:
    const bool m_bRegression;
@@ -95,9 +34,9 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributes(cAttributes)
-      , m_aAttributes(static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      , m_aAttributes(IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
       , m_pDataSet(nullptr) {
-      assert(0 < cAttributes); // we can't allocate zero byte arrays
+      assert(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
 
    ~TmlInteractionState() {
@@ -105,117 +44,52 @@ public:
       free(m_aAttributes);
    }
 
-   bool InitializeInteraction(const EbmAttribute * const aAttributes, const size_t cTargetStates, const size_t cCases, const void * const aTargets, const IntegerDataType * const aData, const FractionalDataType * const aPredictionScores) {
-      try {
-         if(nullptr == m_aAttributes) {
-            return true;
-         }
-
-         assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
-         const EbmAttribute * pAttributeInitialize = aAttributes;
-         const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
-         assert(pAttributeInitialize < pAttributeEnd);
-         size_t iAttributeInitialize = 0;
-         do {
-            static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
-            static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
-            assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
-            AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
-
-            IntegerDataType countStates = pAttributeInitialize->countStates;
-            assert(2 <= countStates);
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
-               return true;
-            }
-            size_t cStates = static_cast<size_t>(countStates);
-
-            assert(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
-            bool bMissing = 0 != pAttributeInitialize->hasMissing;
-
-            AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
-
-            assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
-            assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
-
-            ++iAttributeInitialize;
-            ++pAttributeInitialize;
-         } while(pAttributeEnd != pAttributeInitialize);
-
-         DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_cAttributes, cCases);
-         if(nullptr == pDataSet) {
-            return true;
-         }
-
-         size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
-
-         //if(pDataSet->Initialize(m_bRegression ? 0 : k_cBitsForSizeTCore, true, cVectorLength)) {
-         //   return true;
-         //}
-         // TODO : can we eliminate the target values and just keep the residuals for interactions (we have a loop that stores the data below, but maybe we can just copy our input data to the residuals)
-         if(pDataSet->Initialize(m_bRegression ? sizeof(FractionalDataType) * 8 : k_cBitsForSizeTCore, true, cVectorLength)) {
-            return true;
-         }
-
-         assert(!IsMultiplyError(m_cAttributes, cCases)); // if this overflows then our caller should not have been able to allocate the array
-         assert(!IsMultiplyError(m_cAttributes * cCases, sizeof(*aData))); // if this overflows then our caller should not have been able to allocate the array
-         // TODO : eliminate the counts here and use pointers
-         for(size_t iAttribute = 0; iAttribute < m_cAttributes; ++iAttribute) {
-            AttributeInternalCore * pAttribute = &m_aAttributes[iAttribute];
-            StorageDataTypeCore * pData = pDataSet->GetDataPointer(pAttribute);
-            // TODO : eliminate the counts here and use pointers
-            for(size_t iCase = 0; iCase < cCases; ++iCase) {
-               const IntegerDataType data = aData[iAttribute * cCases + iCase];
-               assert(0 <= data);
-               assert((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-               assert(static_cast<size_t>(data) < pAttribute->m_cStates);
-               assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
-               pData[iCase] = static_cast<StorageDataTypeCore>(data);
-            }
-         }
-
-         if(m_bRegression) {
-            const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
-            FractionalDataType * pData = static_cast<FractionalDataType *>(pDataSet->GetTargetDataPointer());
-            // TODO : do loop here
-            for(size_t iCase = 0; iCase < cCases; ++iCase, ++pTarget) {
-               const FractionalDataType data = *pTarget;
-               assert(!std::isnan(data));
-               assert(!std::isinf(data));
-               pData[iCase] = data;
-            }
-         } else {
-            const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
-            StorageDataTypeCore * pData = static_cast<StorageDataTypeCore *>(pDataSet->GetTargetDataPointer());
-            // TODO : do loop here
-            for(size_t iCase = 0; iCase < cCases; ++iCase, ++pTarget) {
-               const IntegerDataType data = *pTarget;
-               assert(0 <= data);
-               assert((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-               assert(static_cast<size_t>(data) < cTargetStates);
-               assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
-               pData[iCase] = static_cast<StorageDataTypeCore>(data);
-            }
-         }
-
-         assert(nullptr == m_pDataSet);
-         m_pDataSet = pDataSet;
-
-         if(m_bRegression) {
-            InitializeInteractionErrorCore<k_Regression>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
-         } else {
-            if(2 == cTargetStates) {
-               InitializeInteractionErrorCore<2>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
-            } else {
-               InitializeInteractionErrorCore<k_DynamicClassification>(cTargetStates, pDataSet, aPredictionScores, k_iZeroResidual);
-            }
-         }
-
-         return false;
-      } catch(...) {
-         // this is here to catch exceptions from (TODO is this required?), but it could also catch errors if we put any other C++ types in here later
+   bool InitializeInteraction(const EbmAttribute * const aAttributes, const size_t cCases, const void * const aTargets, const IntegerDataType * const aInputData, const FractionalDataType * const aPredictionScores) {
+      if(nullptr == m_aAttributes) {
          return true;
       }
+
+      assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+      const EbmAttribute * pAttributeInitialize = aAttributes;
+      const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
+      assert(pAttributeInitialize < pAttributeEnd);
+      size_t iAttributeInitialize = 0;
+      do {
+         static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
+         static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
+         assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
+         AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
+
+         IntegerDataType countStates = pAttributeInitialize->countStates;
+         assert(2 <= countStates);
+         if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
+            return true;
+         }
+         size_t cStates = static_cast<size_t>(countStates);
+
+         assert(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
+         bool bMissing = 0 != pAttributeInitialize->hasMissing;
+
+         AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+         // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
+
+         assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
+         assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
+
+         ++iAttributeInitialize;
+         ++pAttributeInitialize;
+      } while(pAttributeEnd != pAttributeInitialize);
+
+
+      DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates, k_iZeroResidual);
+      if(nullptr == pDataSet || pDataSet->IsError()) {
+         return true;
+      }
+
+      assert(nullptr == m_pDataSet);
+      m_pDataSet = pDataSet;
+
+      return false;
    }
 };
 
@@ -254,18 +128,18 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    if(UNLIKELY(nullptr == PEbmInteractionState)) {
       return nullptr;
    }
-   if(UNLIKELY(PEbmInteractionState->InitializeInteraction(attributes, cTargetStates, cCases, targets, data, predictionScores))) {
+   if(UNLIKELY(PEbmInteractionState->InitializeInteraction(attributes, cCases, targets, data, predictionScores))) {
       delete PEbmInteractionState;
       return nullptr;
    }
    return PEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countAttributes, const EbmAttribute* attributes, IntegerDataType countCases, const FractionalDataType* targets, const IntegerDataType* data, const FractionalDataType* predictionScores) {
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countCases, const FractionalDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
    return reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(true, countAttributes, attributes, 0, countCases, targets, data, predictionScores));
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countAttributes, const EbmAttribute* attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const IntegerDataType* targets, const IntegerDataType* data, const FractionalDataType* predictionScores) {
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const IntegerDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
    return reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countAttributes, attributes, countTargetStates, countCases, targets, data, predictionScores));
 }
 
@@ -314,6 +188,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       return 1;
    }
 
+   // TODO : !! change our code so that we don't need to allocate an AttributeCombinationCore each time we do an interaction score calculation
    AttributeCombinationCore * pAttributeCombination = AttributeCombinationCore::Allocate(cAttributesInCombination, 0);
    if(nullptr == pAttributeCombination) {
       return 1;
@@ -322,6 +197,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       IntegerDataType indexAttributeInterop = attributeIndexes[iAttributeInCombination];
       assert(0 <= indexAttributeInterop);
       if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
+         AttributeCombinationCore::Free(pAttributeCombination);
          return 1;
       }
       // we already checked indexAttributeInterop was good above
@@ -329,12 +205,15 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = &PEbmInteractionState->m_aAttributes[iAttributeForCombination];
    }
 
+   IntegerDataType ret;
    if(PEbmInteractionState->m_bRegression) {
-      return GetInteractionScorePerTargetStates<k_Regression>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      ret = GetInteractionScorePerTargetStates<k_Regression>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    } else {
       const size_t cTargetStates = PEbmInteractionState->m_cTargetStates;
-      return CompilerRecursiveGetInteractionScore<2>(cTargetStates, PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
+   AttributeCombinationCore::Free(pAttributeCombination);
+   return ret;
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelInteraction(PEbmInteraction ebmInteraction) {

@@ -286,6 +286,7 @@ IF %ERRORLEVEL% NEQ 0 (
     <ClInclude Include="DataSetByAttributeCombination.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStatistics.h" />
+    <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="MultiDimensionalTraining.h" />
     <ClInclude Include="PrecompiledHeader.h" />

@@ -6,56 +6,46 @@
 #define DATA_SET_INTERNAL_H
 
 #include <assert.h>
-#include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "AttributeInternal.h"
 
+// TODO: rename this to DataSetByAttribute
 class DataSetInternalCore final {
-   FractionalDataType * m_aResidualErrors;
-   void * m_aTargetData;
-   void ** m_aaData; // TODO : rename this variable once we've made it based on an AttributeCombination
-   size_t m_cCases;
-
-public:
+   const FractionalDataType * const m_aResidualErrors;
+   const StorageDataTypeCore * const * const m_aaInputData;
+   const size_t m_cCases;
    const size_t m_cAttributes;
 
-   TML_INLINE DataSetInternalCore(const size_t cAttributes, const size_t cCases)
-      : m_aResidualErrors(nullptr)
-      , m_aTargetData(nullptr)
-      , m_aaData(nullptr)
-      , m_cCases(cCases)
-      , m_cAttributes(cAttributes) {
-      assert(0 < cAttributes);
-      assert(0 < m_cCases);
-   }
+public:
 
+   DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual);
    ~DataSetInternalCore();
 
-   TML_INLINE StorageDataTypeCore * GetDataPointer(const AttributeInternalCore * const pAttribute) {
-      return static_cast<StorageDataTypeCore *>(m_aaData[pAttribute->m_iAttributeData]);
+   TML_INLINE bool IsError() const {
+      return nullptr == m_aResidualErrors || nullptr == m_aaInputData;
    }
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const AttributeInternalCore * const pAttribute) const {
-      return static_cast<StorageDataTypeCore *>(m_aaData[pAttribute->m_iAttributeData]);
-   }
-   TML_INLINE FractionalDataType * GetResidualPointer() {
-      return m_aResidualErrors;
-   }
+
    TML_INLINE const FractionalDataType * GetResidualPointer() const {
+      assert(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-
-   TML_INLINE void * GetTargetDataPointer() {
-      return m_aTargetData;
+   // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
+   // TODO: rename this to GetInputDataPointer
+   TML_INLINE const StorageDataTypeCore * GetDataPointer(const AttributeInternalCore * const pAttribute) const {
+      assert(nullptr != pAttribute);
+      assert(pAttribute->m_iAttributeData < m_cAttributes);
+      assert(nullptr != m_aaInputData);
+      return m_aaInputData[pAttribute->m_iAttributeData];
    }
-
    TML_INLINE size_t GetCountCases() const {
       return m_cCases;
    }
-
-   bool Initialize(const size_t cTargetBits, const bool bAllocateResidualErrors, const size_t cVectorLength);
+   TML_INLINE size_t GetCountAttributes() const {
+      return m_cAttributes;
+   }
 };
 
 #endif // DATA_SET_INTERNAL_H

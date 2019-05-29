@@ -31,9 +31,15 @@ size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
 }
 
 SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet) {
+   assert(nullptr != pRandomStream);
+   assert(nullptr != pOriginDataSet);
+
    const size_t cCases = pOriginDataSet->GetCountCases();
    assert(0 < cCases); // if there were no cases, we wouldn't be called
 
+   if(IsMultiplyError(sizeof(size_t), cCases)) {
+      return nullptr;
+   }
    const size_t cBytesData = sizeof(size_t) * cCases;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
    if(nullptr == aCountOccurrences) {
@@ -61,6 +67,8 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
 }
 
 SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetAttributeCombination * const pOriginDataSet) {
+   // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
+   assert(nullptr != pOriginDataSet);
    const size_t cCases = pOriginDataSet->GetCountCases();
    assert(0 < cCases); // if there were no cases, we wouldn't be called
 

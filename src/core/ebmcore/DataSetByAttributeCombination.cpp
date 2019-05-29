@@ -18,8 +18,8 @@
 #define INVALID_POINTER (reinterpret_cast<void *>(~static_cast<size_t>(0)))
 
 TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
-   assert(0 < cCases);
-   assert(0 < cVectorLength);
+   assert(1 <= cCases);
+   assert(1 <= cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
       return nullptr;
@@ -68,19 +68,20 @@ TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
    assert(0 < cCases);
    assert(nullptr != aTargets);
 
-   const size_t cTargetDataBytes = sizeof(StorageDataTypeCore);
-   if(IsMultiplyError(cTargetDataBytes, cCases)) {
+   if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
       return nullptr;
    }
-   StorageDataTypeCore * const aTargetData = static_cast<StorageDataTypeCore *>(malloc(cTargetDataBytes * cCases));
+   const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cCases;
+   StorageDataTypeCore * const aTargetData = static_cast<StorageDataTypeCore *>(malloc(cTargetArrayBytes));
 
-   const IntegerDataType * pTargetFrom = static_cast<const IntegerDataType *>(aTargets);
-   const IntegerDataType * const pTargetFromEnd = pTargetFrom + cCases;
-   StorageDataTypeCore * pTargetTo = static_cast<StorageDataTypeCore *>(aTargetData);
+   const IntegerDataType * pTargetFrom = aTargets;
+   const IntegerDataType * const pTargetFromEnd = aTargets + cCases;
+   StorageDataTypeCore * pTargetTo = aTargetData;
    do {
       const IntegerDataType data = *pTargetFrom;
       assert(0 <= data);
       assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
+      // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point that checks it there.  See CheckTargets(..)
       *pTargetTo = static_cast<StorageDataTypeCore>(data);
       ++pTargetTo;
       ++pTargetFrom;
@@ -99,8 +100,11 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    assert(0 < cCases);
    assert(nullptr != aInputDataFrom);
 
-   const size_t cBytesMemory = sizeof(void *) * cAttributeCombinations;
-   StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore **>(malloc(cBytesMemory));
+   if(IsMultiplyError(sizeof(void *), cAttributeCombinations)) {
+      return nullptr;
+   }
+   const size_t cBytesMemoryArray = sizeof(void *) * cAttributeCombinations;
+   StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
       return nullptr;
    }
@@ -110,8 +114,12 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    const AttributeCombinationCore * const * const ppAttributeCombinationEnd = apAttributeCombination + cAttributeCombinations;
    do {
       const AttributeCombinationCore * const pAttributeCombination = *ppAttributeCombination;
+      assert(nullptr != pAttributeCombination);
       const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
+      assert(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
       const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+      assert(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // if we have 1 item, it can't be larger than the number of bits of storage
+
       assert(0 < cCases);
       const size_t cDataUnits = (cCases - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
 
@@ -126,12 +134,14 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      // stop on the last byte in our array AND then do one special last loop with less or equal iterations to the normal loop
+      // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
       const StorageDataTypeCore * const pInputDataToLast = reinterpret_cast<const StorageDataTypeCore *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
+      assert(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
 
       const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
       InputDataPointerAndCountStates dimensionInfo[k_cDimensionsMax];
       InputDataPointerAndCountStates * pDimensionInfo = &dimensionInfo[0];
+      assert(0 < pAttributeCombination->m_cAttributes);
       const InputDataPointerAndCountStates * const pDimensionInfoEnd = &dimensionInfo[pAttributeCombination->m_cAttributes];
       do {
          const AttributeInternalCore * const pAttribute = pAttributeCombinationEntry->m_pAttribute;
@@ -147,8 +157,10 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       // as it is, it isn't a constant, so the compiler would not be able to figure out that most
       // of the time it is a constant
       size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPackDataUnit;
-      while(pInputDataTo < pInputDataToLast) {
+      while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
       one_last_loop:;
+         assert(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataTypeCore>());
+
          size_t bits = 0;
          size_t shift = 0;
          do {
@@ -163,8 +175,9 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
                assert(0 <= inputData);
                assert((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
                assert(static_cast<size_t>(inputData) < pDimensionInfo->m_cStates);
+               assert(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cStates)); // we check for overflows during AttributeCombination construction, but let's check here again
 
-               tensorIndex += tensorMultiple * static_cast<size_t>(inputData);
+               tensorIndex += tensorMultiple * static_cast<size_t>(inputData); // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
                tensorMultiple *= pDimensionInfo->m_cStates;
 
                ++pDimensionInfo;
@@ -173,6 +186,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
             // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
             // we can just shift down.  This eliminates one extra shift that we'd otherwise need to make if the first
             // item was in the MSB
+            assert(shift < CountBitsRequiredPositiveMax<StorageDataTypeCore>());
             bits |= tensorIndex << shift;
             shift += cBitsPerItemMax;
          } while(shiftEnd != shift);

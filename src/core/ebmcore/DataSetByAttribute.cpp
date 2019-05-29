@@ -5,7 +5,6 @@
 #include "PrecompiledHeader.h"
 
 #include <assert.h>
-#include <string.h> // memset
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -13,79 +12,111 @@
 #include "EbmInternal.h" // AttributeTypeCore
 #include "AttributeInternal.h"
 #include "DataSetByAttribute.h"
+#include "InitializeResiduals.h"
+
+TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual) {
+   assert(1 <= cCases);
+   assert(nullptr != aTargetData);
+
+   const size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
+   assert(1 <= cVectorLength);
+
+   if (IsMultiplyError(cCases, cVectorLength)) {
+      return nullptr;
+   }
+
+   const size_t cElements = cCases * cVectorLength;
+
+   if (IsMultiplyError(sizeof(FractionalDataType), cElements)) {
+      return nullptr;
+   }
+
+   const size_t cBytes = sizeof(FractionalDataType) * cElements;
+   FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
+
+   InitializeResidualsFlat(bRegression, cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates, iZeroResidual);
+
+   return aResidualErrors;
+}
+
+TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+   assert(0 < cAttributes);
+   assert(nullptr != aAttributes);
+   assert(0 < cCases);
+   assert(nullptr != aInputDataFrom);
+
+   if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
+      // we're checking this early instead of checking it inside our loop
+      return nullptr;
+   }
+   const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cCases;
+
+   if (IsMultiplyError(sizeof(void *), cAttributes)) {
+      return nullptr;
+   }
+   const size_t cBytesMemoryArray = sizeof(void *) * cAttributes;
+   StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
+   if (nullptr == aaInputDataTo) {
+      return nullptr;
+   }
+
+   StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
+   const AttributeInternalCore * pAttribute = aAttributes;
+   const AttributeInternalCore * const pAttributeEnd = aAttributes + cAttributes;
+   do {
+      StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
+      if (nullptr == pInputDataTo) {
+         goto free_all;
+      }
+      *paInputDataTo = pInputDataTo;
+      ++paInputDataTo;
+
+      // TODO : eliminate the counts here and use pointers
+      for (size_t iCase = 0; iCase < cCases; ++iCase) {
+         // TODO: eliminate this extra internal index lookup (very bad!).  Since the attributes will be in-order, we can probably just use a single pointer to the input data and just keep incrementing it over all the attributes
+         const IntegerDataType data = aInputDataFrom[pAttribute->m_iAttributeData * cCases + iCase];
+         assert(0 <= data);
+         assert((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+         assert(static_cast<size_t>(data) < pAttribute->m_cStates);
+         assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
+         pInputDataTo[iCase] = static_cast<StorageDataTypeCore>(data);
+      }
+
+      ++pAttribute;
+   } while (pAttributeEnd != pAttribute);
+
+   return aaInputDataTo;
+
+free_all:
+   while (aaInputDataTo != paInputDataTo) {
+      --paInputDataTo;
+      free(*paInputDataTo);
+   }
+   free(aaInputDataTo);
+   return nullptr;
+}
+
+DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual)
+   : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates, iZeroResidual))
+   , m_aaInputData(ConstructInputData(cAttributes, aAttributes, cCases, aInputDataFrom))
+   , m_cCases(cCases)
+   , m_cAttributes(cAttributes) {
+
+   assert(0 < cCases);
+   assert(0 < cAttributes);
+}
 
 DataSetInternalCore::~DataSetInternalCore() {
-   free(m_aResidualErrors);
-   free(m_aTargetData);
-   if(nullptr != m_aaData) {
+   free(const_cast<FractionalDataType *>(m_aResidualErrors));
+   if (nullptr != m_aaInputData) {
       assert(0 < m_cAttributes);
-      void ** paData = m_aaData;
-      const void * const * const paDataEnd = m_aaData + m_cAttributes;
+      const StorageDataTypeCore * const * paInputData = m_aaInputData;
+      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cAttributes;
       do {
-         free(*paData); // this can be nullptr if we experienced an error in the middle of allocating data
-         ++paData;
-      } while(paDataEnd != paData);
-      free(m_aaData);
+         assert(nullptr != *paInputData);
+         free(const_cast<StorageDataTypeCore *>(*paInputData));
+         ++paInputData;
+      } while (paInputDataEnd != paInputData);
+      free(const_cast<StorageDataTypeCore * *>(m_aaInputData));
    }
 }
-
-bool DataSetInternalCore::Initialize(const size_t cTargetBits, const bool bAllocateResidualErrors, const size_t cVectorLength) {
-   if(bAllocateResidualErrors) {
-      if(IsMultiplyError(m_cCases, cVectorLength)) {
-         return true;
-      }
-
-      const size_t cElements = m_cCases * cVectorLength;
-
-      if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-         return true;
-      }
-
-      const size_t cBytesResidualErrors = cElements * sizeof(FractionalDataType);
-
-      m_aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytesResidualErrors));
-      if(nullptr == m_aResidualErrors) {
-         return true;
-      }
-   }
-
-   assert(cTargetBits <= k_cBitsForSizeTCore);
-   if(0 != cTargetBits) {
-      if(IsMultiplyError(m_cCases, cTargetBits)) {
-         // in theory we might overflow this value because we're using bits instead of bytes, but in practice, we couldn't have more than 6 input attributes of 1 byte size before we'd overflow memory allocation
-         return true;
-      }
-
-      const size_t cTargetDataBits = m_cCases * cTargetBits;
-      if(std::numeric_limits<size_t>::max() - 7 < cTargetDataBits) {
-         return true;
-      }
-      const size_t cTargetDataBytes = (cTargetDataBits + 7) / 8; // round up to the nearest byte
-
-      m_aTargetData = malloc(cTargetDataBytes);
-      if(nullptr == m_aTargetData) {
-         return true;
-      }
-   }
-
-   assert(0 < m_cAttributes);
-   const size_t cBytesMemory = sizeof(*m_aaData) * m_cAttributes;
-   m_aaData = static_cast<void **>(malloc(cBytesMemory));
-   if(nullptr == m_aaData) {
-      return true;
-   }
-   memset(m_aaData, 0, cBytesMemory); // if there is an error allocating one of our data arrays, we don't want to free random memory in our destructor, so zero it!
-
-   void * aData;
-   size_t cBytesDataItem;
-   for (size_t iAttribute = 0; iAttribute < m_cAttributes; ++iAttribute) {
-      cBytesDataItem = sizeof(StorageDataTypeCore);
-      aData = static_cast<void *>(malloc(cBytesDataItem * m_cCases));
-      if(nullptr == aData) {
-         return true;
-      }
-      m_aaData[iAttribute] = aData;
-   }
-   return false;
-}
-

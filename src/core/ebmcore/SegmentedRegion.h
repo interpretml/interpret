@@ -5,6 +5,8 @@
 #ifndef SEGMENTED_REGION_H
 #define SEGMENTED_REGION_H
 
+// TODO : check for multiplication overflows within this class (we could overflow in several parts)
+
 #include <type_traits> // std::is_pod
 #include <assert.h>
 #include <stdlib.h> // malloc, realloc, free
@@ -20,13 +22,13 @@
 template<typename TDivisions, typename TValues>
 class SegmentedRegionCore final {
    struct DimensionInfoStack {
-      TDivisions * pDivision1;
-      TDivisions * pDivision2;
+      const TDivisions * pDivision1;
+      const TDivisions * pDivision2;
       size_t cNewDivisions;
    };
 
    struct DimensionInfoStackExpand {
-      TDivisions * pDivision1;
+      const TDivisions * pDivision1;
       ptrdiff_t iDivision2;
       size_t cNewDivisions;
    };
@@ -73,7 +75,7 @@ public:
       const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
       const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
-      TValues * aValues = static_cast<TValues *>(malloc(cBytesValues));
+      TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
          return nullptr;
@@ -152,6 +154,8 @@ public:
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
          TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->aDivisions, cBytes));
          if(UNLIKELY(nullptr == aNewDivisions)) {
+            // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
+            // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
             return true;
          }
          pDimension->aDivisions = aNewDivisions;
@@ -170,6 +174,8 @@ public:
          size_t cBytes = sizeof(TValues) * cNewValueCapacity;
          TValues * const aNewValues = static_cast<TValues *>(realloc(m_aValues, cBytes));
          if(UNLIKELY(nullptr == aNewValues)) {
+            // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
+            // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
             return true;
          }
          m_aValues = aNewValues;
@@ -274,21 +280,24 @@ public:
       } while(pEnd != pCur);
    }
 
-   // TODO : review this function and add asserts
    bool Expand(const size_t * const acDivisionsPlusOne) {
+      assert(nullptr != acDivisionsPlusOne);
+      // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
+      // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
+      // TODO : see if we can change this back to size_t somehow.  I remember we got negative numbers some places either here or in the Add function and that why I used ptrdiff_t, but if it's just -1, then we can still use size_t.
+      assert(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
          return false;
       }
 
-      // this function will only work if the divisions are always whole numbers
+      assert(m_cDimensions <= k_cDimensionsMax);
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
 
       const DimensionInfo * pDimensionFirst1 = m_aDimensions;
 
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
-      DimensionInfoStackExpand * pDimensionInfoStackEnd = &aDimensionInfoStackExpand[m_cDimensions];
-
+      const DimensionInfoStackExpand * const pDimensionInfoStackEnd = &aDimensionInfoStackExpand[m_cDimensions];
       const size_t * pcDivisionsPlusOne = acDivisionsPlusOne;
 
       size_t cValues1 = 1;
@@ -297,15 +306,13 @@ public:
       assert(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
-         size_t cDivisions1 = pDimensionFirst1->cDivisions;
-         TDivisions * p1Cur = pDimensionFirst1->aDivisions;
+         const size_t cDivisions1 = pDimensionFirst1->cDivisions;
 
          cValues1 *= cDivisions1 + 1;
-
-         TDivisions * const p1End = &p1Cur[cDivisions1];
+         const TDivisions * const p1End = &pDimensionFirst1->aDivisions[cDivisions1];
 
          pDimensionInfoStackFirst->pDivision1 = p1End - 1;
-         size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
+         const size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
          cNewValues *= cDivisionsPlusOne;
          const size_t maxDivision = cDivisionsPlusOne - 2;
 
@@ -356,16 +363,16 @@ public:
          size_t multiplication1 = m_cVectorLength;
 
          while(true) {
-            TDivisions * pDivision1 = pDimensionInfoStackSecond->pDivision1;
+            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->pDivision1;
             ptrdiff_t iDivision2 = pDimensionInfoStackSecond->iDivision2;
 
-            TDivisions * aDivisions1 = pDimensionSecond1->aDivisions;
+            TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 <= pDivision1)) {
                assert(0 <= iDivision2);
                const TDivisions d1 = *pDivision1;
 
-               size_t change1 = UNPREDICTABLE(iDivision2 <= d1) ? 1 : 0;
+               const size_t change1 = UNPREDICTABLE(iDivision2 <= d1) ? 1 : 0;
                pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
                pValue1 -= change1 * multiplication1;
 
@@ -379,7 +386,7 @@ public:
                } else {
                   pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
-                  size_t cDivisions1 = pDimensionSecond1->cDivisions;
+                  const size_t cDivisions1 = pDimensionSecond1->cDivisions;
 
                   multiplication1 *= 1 + cDivisions1;
 
@@ -422,21 +429,22 @@ public:
    // TODO : change this to eliminate pStackMemory and replace it with true on stack memory (we know that there can't be more than 63 dimensions)
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
    bool Add(const SegmentedRegionCore & rhs, void * pStackMemory) {
+      assert(nullptr != pStackMemory);
       assert(m_cDimensions == rhs.m_cDimensions);
 
       if(m_bExpanded) {
-         // TODO: handle this differently (we can do it more efficiently)
+         // TODO: the existing code below works, but handle this differently (we can do it more efficiently)
       }
 
       if(rhs.m_bExpanded) {
-         // TODO: handle this differently (we can do it more efficiently)
+         // TODO: the existing code below works, but handle this differently (we can do it more efficiently)
       }
 
       const DimensionInfo * pDimensionFirst1 = m_aDimensions;
       const DimensionInfo * pDimensionFirst2 = rhs.m_aDimensions;
 
       DimensionInfoStack * pDimensionInfoStackFirst = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
-      DimensionInfoStack * pDimensionInfoStackEnd = &pDimensionInfoStackFirst[m_cDimensions];
+      const DimensionInfoStack * const pDimensionInfoStackEnd = &pDimensionInfoStackFirst[m_cDimensions];
 
       size_t cValues1 = 1;
       size_t cValues2 = 1;
@@ -445,9 +453,9 @@ public:
       assert(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
-         size_t cDivisions1 = pDimensionFirst1->cDivisions;
+         const size_t cDivisions1 = pDimensionFirst1->cDivisions;
          TDivisions * p1Cur = pDimensionFirst1->aDivisions;
-         size_t cDivisions2 = pDimensionFirst2->cDivisions;
+         const size_t cDivisions2 = pDimensionFirst2->cDivisions;
          TDivisions * p2Cur = pDimensionFirst2->aDivisions;
 
          cValues1 *= cDivisions1 + 1;
@@ -537,22 +545,22 @@ public:
          size_t multiplication2 = m_cVectorLength;
 
          while(true) {
-            TDivisions * pDivision1 = pDimensionInfoStackSecond->pDivision1;
-            TDivisions * pDivision2 = pDimensionInfoStackSecond->pDivision2;
+            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->pDivision1;
+            const TDivisions * const pDivision2 = pDimensionInfoStackSecond->pDivision2;
 
-            TDivisions * aDivisions1 = pDimensionSecond1->aDivisions;
-            TDivisions * aDivisions2 = pDimensionSecond2->aDivisions;
+            TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
+            TDivisions * const aDivisions2 = pDimensionSecond2->aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 <= pDivision1)) {
                if(UNPREDICTABLE(aDivisions2 <= pDivision2)) {
                   const TDivisions d1 = *pDivision1;
                   const TDivisions d2 = *pDivision2;
 
-                  size_t change1 = UNPREDICTABLE(d2 <= d1) ? 1 : 0;
+                  const size_t change1 = UNPREDICTABLE(d2 <= d1) ? 1 : 0;
                   pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
                   pValue1 -= change1 * multiplication1;
 
-                  size_t change2 = UNPREDICTABLE(d1 <= d2) ? 1 : 0;
+                  const size_t change2 = UNPREDICTABLE(d1 <= d2) ? 1 : 0;
                   pDimensionInfoStackSecond->pDivision2 = pDivision2 - change2;
                   pValue2 -= change2 * multiplication2;
                   break;
@@ -570,8 +578,8 @@ public:
                   pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
                   pValue2 -= multiplication2; // put us before the beginning.  We'll add the full row first
 
-                  size_t cDivisions1 = pDimensionSecond1->cDivisions;
-                  size_t cDivisions2 = pDimensionSecond2->cDivisions;
+                  const size_t cDivisions1 = pDimensionSecond1->cDivisions;
+                  const size_t cDivisions2 = pDimensionSecond2->cDivisions;
 
                   multiplication1 *= 1 + cDivisions1;
                   multiplication2 *= 1 + cDivisions2;
@@ -596,12 +604,12 @@ public:
 
       // now finally do the divisions
 
-      DimensionInfoStack * pDimensionInfoStackCur = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
+      const DimensionInfoStack * pDimensionInfoStackCur = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
       const DimensionInfo * pDimension1Cur = aDimension1;
       const DimensionInfo * pDimension2Cur = aDimension2;
       size_t iDimension = 0;
       do {
-         size_t cNewDivisions = pDimensionInfoStackCur->cNewDivisions;
+         const size_t cNewDivisions = pDimensionInfoStackCur->cNewDivisions;
          const size_t cOriginalDivisionsBeforeSetting = pDimension1Cur->cDivisions;
          
          // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
@@ -609,10 +617,10 @@ public:
             return true;
          }
          
-         TDivisions * p1Cur = &pDimension1Cur->aDivisions[static_cast<ptrdiff_t>(cOriginalDivisionsBeforeSetting) - 1];
-         TDivisions * p2Cur = &pDimension2Cur->aDivisions[static_cast<ptrdiff_t>(pDimension2Cur->cDivisions) - 1];
+         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[static_cast<ptrdiff_t>(cOriginalDivisionsBeforeSetting) - 1];
+         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[static_cast<ptrdiff_t>(pDimension2Cur->cDivisions) - 1];
          TDivisions * pTopCur = &pDimension1Cur->aDivisions[static_cast<ptrdiff_t>(cNewDivisions) - 1];
-         ptrdiff_t diffDivisions = reinterpret_cast<char *>(pDimension2Cur->aDivisions) - reinterpret_cast<char *>(pDimension1Cur->aDivisions); // these arrays are not guaranteed to be aligned with each other, so convert to byte pointers
+         const ptrdiff_t diffDivisions = reinterpret_cast<char *>(pDimension2Cur->aDivisions) - reinterpret_cast<char *>(pDimension1Cur->aDivisions); // these arrays are not guaranteed to be aligned with each other, so convert to byte pointers
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
@@ -620,14 +628,14 @@ public:
             assert(&pDimension1Cur->aDivisions[-1] <= p1Cur);
             assert(&pDimension2Cur->aDivisions[-1] <= p2Cur);
             assert(p1Cur <= pTopCur);
-            assert(reinterpret_cast<char *>(p2Cur) <= reinterpret_cast<char *>(pTopCur) + diffDivisions);
+            assert(reinterpret_cast<const char *>(p2Cur) <= reinterpret_cast<const char *>(pTopCur) + diffDivisions);
 
             if(UNLIKELY(pTopCur == p1Cur)) {
                // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
                break;
             }
             // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays.  Adding diffDivisions to a pointer that references an index in pDimension1Cur->aDivisions turns it into a pointer indexed from pDimension2Cur->aDivisions.  They both point to TValues items, so we can cross reference them this way
-            if(UNLIKELY(reinterpret_cast<char *>(pTopCur) + diffDivisions == reinterpret_cast<char *>(p2Cur))) {
+            if(UNLIKELY(reinterpret_cast<const char *>(pTopCur) + diffDivisions == reinterpret_cast<const char *>(p2Cur))) {
                assert(pDimension1Cur->aDivisions <= pTopCur);
                // direct copy the remaining divisions.  There should be at least one
                memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, (pTopCur - pDimension1Cur->aDivisions + 1) * sizeof(TDivisions));

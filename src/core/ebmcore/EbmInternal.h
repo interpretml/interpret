@@ -117,8 +117,11 @@ enum AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
 constexpr ptrdiff_t k_cCompilerOptimizedTargetStatesMax = 3;
 static_assert(2 <= k_cCompilerOptimizedTargetStatesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class state then we would output model files with two values instead of our special case 1");
 
+// TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
 
+// TODO : add a MinusOneSizet const (size_t)(-1) -> turn most ptrdiff_t into size_t and use this constant where we just need a single negative number
+// TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 // we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
 typedef ptrdiff_t ActiveDataType;
 
