@@ -48,6 +48,23 @@ def shutdown_show_server():
     return True
 
 
+def status_show_server():
+    """ Returns status and associated information of show method's backing server.
+
+    Returns:
+        Status and associated information as a dictionary.
+    """
+    status_dict = {}
+
+    if this.app_runner is not None:
+        status_dict["app_runner_exists"] = True
+        status_dict.update(this.app_runner.status())
+    else:
+        status_dict["app_runner_exists"] = False
+
+    return status_dict
+
+
 def init_show_server(addr=None, base_url=None, use_relative_links=False):
     """ Initializes show method's backing server.
 
@@ -70,6 +87,8 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     )
     this.app_runner.start()
     this.app_addr = this.app_runner.ip, this.app_runner.port
+
+    return None
 
 
 # TODO: Provide example in docstrings of share_tables usage.
@@ -101,6 +120,8 @@ def show(explanation, share_tables=None):
     except Exception as e:
         log.error(e, exc_info=True)
         raise e
+
+    return None
 
 
 # TODO: Remove this, we don't use this anymore nor expose it.

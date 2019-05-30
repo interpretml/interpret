@@ -2,31 +2,67 @@
 # Distributed under the MIT software license
 
 
+def print_debug_info(file=None):
+    """ This function varies version-by-version, prints debug info as a pretty string.
+
+    Args:
+        file: File to print to (default goes to sys.stdout).
+
+    Returns:
+        None
+    """
+    import json
+    import sys
+
+    debug_dict = debug_info()
+    if file is None:
+        file = sys.stdout
+
+    print(json.dumps(debug_dict, indent=2), file=file)
+    return None
+
+
 def debug_info():
     """ This function varies version-by-version, designed to help the authors of this package when there's an issue.
 
     Returns:
-        A dictionary to be printed in helping resolve issues.
+        A dictionary that contains debug info across the interpret package.
     """
-    from . import __version__
+    from . import __version__, status_show_server
 
     debug_dict = {}
     debug_dict["interpret.__version__"] = __version__
-    debug_dict.update(static_system_info())
+    debug_dict["interpret.status_show_server"] = status_show_server()
+    debug_dict["interpret.static_system_info"] = static_system_info()
+    debug_dict["interpret.dynamic_system_info"] = dynamic_system_info()
 
     return debug_dict
 
 
 # TODO: Fill this out once specs are provided.
 def dynamic_system_info():
-    """ PLACEHOLDER: Provides dynamic system information (available memory etc.) as a dictionary.
+    """ Provides dynamic system information (available memory etc.) as a dictionary.
 
     Returns:
         A dictionary containing dynamic system information.
     """
 
     # Currently we don't do anything yet.
-    return {}
+    import psutil
+    import numpy as np
+
+    cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
+    cpu_freq = psutil.cpu_freq()
+
+    system_info = {
+        "psutil.virtual_memory": psutil.virtual_memory()._asdict(),
+        "psutil.swap_memory": psutil.swap_memory()._asdict(),
+        "psutil.avg_cpu_percent": np.mean(cpu_percent),
+        "psutil.std_cpu_percent": np.std(cpu_percent),
+        "psutil.cpu_freq": cpu_freq._asdict(),
+    }
+
+    return system_info
 
 
 def static_system_info():
@@ -47,7 +83,8 @@ def static_system_info():
         "platform.release": platform.release(),
         "platform.system": platform.system(),
         "platform.version": platform.version(),
-        "psutil.cpu_count": psutil.cpu_count(),
+        "psutil.logical_cpu_count": psutil.cpu_count(logical=True),
+        "psutil.physical_cpu_count": psutil.cpu_count(logical=False),
         "psutil.virtual_memory.total": psutil.virtual_memory().total,
         "psutil.swap_memory.total": psutil.swap_memory().total,
     }

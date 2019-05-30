@@ -37,7 +37,7 @@ class AppRunner:
             base_url=base_url, use_relative_links=use_relative_links
         )
         self.base_url = base_url
-        self.use_relative_link = use_relative_links
+        self.use_relative_links = use_relative_links
         self._thread = None
 
         if addr is None:
@@ -127,6 +127,31 @@ class AppRunner:
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
+    def ping(self):
+        """ Returns true if web service reachable, otherwise False."""
+
+        try:
+            path = _build_path("")
+            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
+            requests.post(url)
+            log.debug("Dashboard ping succeeded")
+            return True
+        except requests.exceptions.RequestException as e:
+            log.debug("Dashboard ping failed: {0}".format(e))
+            return False
+
+    def status(self):
+        status_dict = {}
+        status_dict["addr"] = self.ip, self.port
+        status_dict["base_url"] = self.base_url
+        status_dict["use_relative_links"] = self.use_relative_links
+        status_dict["thread_alive"] = self._thread.is_alive()
+
+        http_reachable = self.ping()
+        status_dict["http_reachable"] = http_reachable
+
+        return status_dict
+
     def register(self, ctx, **kwargs):
         # The path to this instance should be id based.
         self.app.register(ctx, **kwargs)
@@ -140,7 +165,7 @@ class AppRunner:
         )
         start_url = (
             "/"
-            if self.use_relative_link
+            if self.use_relative_links
             else "http://{0}:{1}/".format(self.ip, self.port)
         )
 
