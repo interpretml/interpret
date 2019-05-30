@@ -204,7 +204,9 @@ class DispatcherApp:
         if self.base_url is None:
             self.app_pattern = re.compile(r"/?(.+?)(/|$)")
         else:
-            self.app_pattern = re.compile(r"/?{0}/(.+?)(/|$)".format(self.base_url))
+            self.app_pattern = re.compile(
+                r"/?(?:{0}/)?(.+?)(/|$)".format(self.base_url)
+            )
 
     def obj_id(self, obj):
         return str(id(obj))
@@ -261,6 +263,7 @@ class DispatcherApp:
                     return [handler.read()]
 
             match = re.search(self.app_pattern, path_info)
+            log.debug("App pattern match: {0}".format(match))
             if match is None or self.pool.get(match.group(1), None) is None:
                 msg = "URL not supported: {0}".format(path_info)
                 log.error(msg)
@@ -270,12 +273,13 @@ class DispatcherApp:
             ctx_id = match.group(1)
             log.debug("Routing request: {0}".format(ctx_id))
             app = self.pool[ctx_id]
-            # if self.base_url and environ["PATH_INFO"].startswith(self.base_url):
-            #     environ["PATH_INFO"] = environ["PATH_INFO"][len(self.base_url):]
-            #     environ["SCRIPT_NAME"] = self.base_url
-            #     log.debug("Base URL active. Rewrite on PATH and SCRIPT")
-            #     log.debug("PATH INFO: {0}".format(path_info))
-            #     log.debug("SCRIPT NAME: {0}".format(script_name))
+            if self.base_url and not environ["PATH_INFO"].startswith(
+                "/{0}".format(self.base_url)
+            ):
+                log.debug("No base url in path. Rewrite to include in path.")
+                environ["PATH_INFO"] = "/{0}{1}".format(
+                    self.base_url, environ["PATH_INFO"]
+                )
 
             return app(environ, start_response)
 

@@ -47,7 +47,6 @@ def dynamic_system_info():
         A dictionary containing dynamic system information.
     """
 
-    # Currently we don't do anything yet.
     import psutil
     import numpy as np
 
