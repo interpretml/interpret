@@ -110,5 +110,6 @@ setup(
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
         "nbconvert>=5.4.1",
+        "psutil>=5.6.2",
     ],
 )
