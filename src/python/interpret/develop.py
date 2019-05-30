@@ -56,9 +56,9 @@ def dynamic_system_info():
     system_info = {
         "psutil.virtual_memory": psutil.virtual_memory()._asdict(),
         "psutil.swap_memory": psutil.swap_memory()._asdict(),
-        "psutil.avg_cpu_percent": np.mean(cpu_percent),
-        "psutil.std_cpu_percent": np.std(cpu_percent),
-        "psutil.cpu_freq": cpu_freq._asdict(),
+        "psutil.avg_cpu_percent": None if cpu_percent is None else np.mean(cpu_percent),
+        "psutil.std_cpu_percent": None if cpu_percent is None else np.std(cpu_percent),
+        "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
     }
 
     return system_info
