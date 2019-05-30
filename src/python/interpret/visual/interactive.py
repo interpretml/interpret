@@ -3,6 +3,9 @@
 
 from .dashboard import AppRunner
 import sys
+from plotly import graph_objs as go
+from pandas.core.generic import NDFrame
+import dash.development.base_component as dash_base
 
 import logging
 
@@ -14,8 +17,7 @@ this.app_addr = None
 
 
 def set_show_addr(addr):
-    """
-    Set a (ip, port) for inline visualizations and dashboard.
+    """ Set a (ip, port) for inline visualizations and dashboard. Has side effects stated below.
     Side effect: restarts the app runner for 'show' method.
 
     Args:
@@ -95,6 +97,8 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
 def show(explanation, share_tables=None):
     """ Provides an interactive visualization for a given explanation(s).
 
+    The visualization provided is not preserved when the notebook exits.
+
     Args:
         explanation: Either a scalar Explanation or a list of Explanations.
         share_tables: Boolean or dictionary that dictates if Explanations
@@ -124,39 +128,57 @@ def show(explanation, share_tables=None):
     return None
 
 
-# TODO: Remove this, we don't use this anymore nor expose it.
-def old_show(explanation, selector=None, index_map=None):
-    from plotly.offline import iplot, init_notebook_mode
+def preserve(explanation, selector_key=None, file_name=None, **kwargs):
+    """ Preserves an explanation's visualization for Jupyter cell, or file.
 
+    If file_name is not None the following occurs:
+    - For Plotly figures, saves to HTML using `plot`.
+    - For dataframes, saves to CSV using `to_csv`.
+    - For strings (html), saves to HTML.
+    - For Dash components, fails with exception. This is currently not supported.
+
+    Args:
+        explanation: An explanation.
+        selector_key: Key into first column of the explanation's selector. If None, returns overall visual.
+        file_name: If assigned, will save the visualization to this filename.
+        **kwargs: Kwargs which are passed to the underlying render/export call.
+
+    Returns:
+        None.
+    """
+
+    from plotly.offline import iplot, plot, init_notebook_mode
+    from IPython.display import display, HTML
     init_notebook_mode(connected=True)
-    # if not show.imported:
-    #     show.imported = True
 
-    if isinstance(selector, str):
-        if index_map is None:
-            print(
-                "If selector is a string, a list or dictionary index_map must be passed."
-            )
-        if isinstance(index_map, list):
-            selector = index_map.index(selector)
-        elif isinstance(index_map, dict):
-            selector = index_map[selector]
+    if selector_key is None:
+        key = None
+    else:
+        series = explanation.selector[explanation.selector.columns[0]]
+        key = series[series == selector_key].index[0]
+
+    visual = explanation.visualize(key=key)
+    if isinstance(visual, go.Figure):
+        if file_name is None:
+            iplot(visual, **kwargs)
         else:
-            print("Not supported index_feature_map type. Use list or dictionary.")
-            return None
-    elif isinstance(selector, int):
-        selector = selector
-    elif selector is None:
-        selector = None
+            plot(visual, filename=file_name, **kwargs)
+    elif isinstance(visual, NDFrame):
+        if file_name is None:
+            display(visual, **kwargs)
+        else:
+            visual.to_csv(file_name, **kwargs)
+    elif isinstance(visual, str):
+        if file_name is None:
+            with(file_name, "w") as f:
+                f.write(visual)
+        else:
+            HTML(visual, **kwargs)
+    elif isinstance(visual, dash_base.Component):
+        msg = "Preserving dash components is currently not supported."
+        raise Exception(msg)
     else:
-        print("Argument 'selector' must be an int, string, or None.")
-        return None
+        msg = "Visualization cannot be preserved for type: {0}.".format(type(visual))
+        raise Exception(msg)
 
-    fig = explanation.visualize(selector)
-    if fig is not None:
-        iplot(fig)
-    else:
-        print("No overall graph for this explanation. Pass in a selector.")
-
-
-# show.imported = False
+    return None
