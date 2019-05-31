@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.5] - 2019-05-30
+### Added
+- Added preserve method. Can now save visuals into notebook/file - does not work with decision trees.
+- Added status_show_server method. Acts as a check for server reachability.
+- Exposed init_show_server method. Can adjust address, base_url, etc.
+- Added print_debug_info method in develop module. Important for troubleshooting/bug-reports.
+### Fixed
+- Various internal C++ fixes.
+- Minor clean up on example notebooks.
+### Changed
+- Additional dependency required: psutil.
+- Test refactoring.
+
 ## [v0.1.4] - 2019-05-23
 ### Added
 - Root path for show server now has a light monitor page.
@@ -53,6 +66,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.5]: https://github.com/microsoft/interpret/releases/tag/v0.1.5
 [v0.1.4]: https://github.com/microsoft/interpret/releases/tag/v0.1.4
 [v0.1.3]: https://github.com/microsoft/interpret/releases/tag/v0.1.3
 [v0.1.2]: https://github.com/microsoft/interpret/releases/tag/v0.1.2
