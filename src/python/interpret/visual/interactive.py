@@ -133,7 +133,7 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
 
     If file_name is not None the following occurs:
     - For Plotly figures, saves to HTML using `plot`.
-    - For dataframes, saves to CSV using `to_csv`.
+    - For dataframes, saves to HTML using `to_html`.
     - For strings (html), saves to HTML.
     - For Dash components, fails with exception. This is currently not supported.
 
@@ -147,17 +147,58 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         None.
     """
 
+    try:
+        # Get explanation key
+        if selector_key is None:
+            key = None
+        else:
+            series = explanation.selector[explanation.selector.columns[0]]
+            key = series[series == selector_key].index[0]
+
+        # Get visual object
+        visual = explanation.visualize(key=key)
+
+        # Output to front-end/file
+        _preserve_output(
+            explanation.name,
+            visual,
+            selector_key=selector_key,
+            file_name=file_name,
+            **kwargs
+        )
+        return None
+    except Exception as e:
+        log.error(e, exc_info=True)
+        raise e
+
+
+def _preserve_output(
+    explanation_name, visual, selector_key=None, file_name=None, **kwargs
+):
     from plotly.offline import iplot, plot, init_notebook_mode
-    from IPython.display import display, HTML
+    from IPython.display import display, display_html
+    from base64 import b64encode
+
     init_notebook_mode(connected=True)
 
-    if selector_key is None:
-        key = None
-    else:
-        series = explanation.selector[explanation.selector.columns[0]]
-        key = series[series == selector_key].index[0]
+    def render_html(html_string):
+        base64_html = b64encode(html_string.encode("utf-8")).decode("ascii")
+        final_html = """<iframe src="data:text/html;base64,{data}" width="100%" height=400 frameBorder="0"></iframe>""".format(
+            data=base64_html
+        )
+        display_html(final_html, raw=True)
 
-    visual = explanation.visualize(key=key)
+    if visual is None:
+        msg = "No visualization for explanation [{0}] with selector_key [{1}]".format(
+            explanation_name, selector_key
+        )
+        log.error(msg)
+        if file_name is None:
+            render_html(msg)
+        else:
+            pass
+        return False
+
     if isinstance(visual, go.Figure):
         if file_name is None:
             iplot(visual, **kwargs)
@@ -167,18 +208,24 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         if file_name is None:
             display(visual, **kwargs)
         else:
-            visual.to_csv(file_name, **kwargs)
+            visual.to_html(file_name, **kwargs)
     elif isinstance(visual, str):
         if file_name is None:
-            with(file_name, "w") as f:
-                f.write(visual)
+            render_html(visual)
         else:
-            HTML(visual, **kwargs)
+            with open(file_name, "w") as f:
+                f.write(visual)
     elif isinstance(visual, dash_base.Component):
         msg = "Preserving dash components is currently not supported."
-        raise Exception(msg)
+        if file_name is None:
+            render_html(msg)
+        log.error(msg)
+        return False
     else:
         msg = "Visualization cannot be preserved for type: {0}.".format(type(visual))
-        raise Exception(msg)
+        if file_name is None:
+            render_html(msg)
+        log.error(msg)
+        return False
 
-    return None
+    return True

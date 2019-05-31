@@ -15,4 +15,3 @@ def test_print_debug_info():
     # Very light check, just testing if the function runs.
     print_debug_info()
     assert 1 == 1
-

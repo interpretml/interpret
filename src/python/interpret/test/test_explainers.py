@@ -1,47 +1,15 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ..data import ClassHistogram
-from ..perf import ROC, RegressionPerf
 
-from ..blackbox import LimeTabular
-from ..blackbox import ShapKernel
-from ..blackbox import MorrisSensitivity
-from ..blackbox import PartialDependence
-
-from ..glassbox import LogisticRegression, LinearRegression
-from ..glassbox import ClassificationTree, RegressionTree
-from ..glassbox import DecisionListClassifier
-from ..glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
-
-from .utils import synthetic_classification
+from .utils import synthetic_classification, get_all_explainers
 from .utils import assert_valid_explanation, assert_valid_model_explainer
+
+from ..glassbox import LogisticRegression
 
 
 def test_spec_synthetic():
-    data_explainer_classes = [ClassHistogram]
-    perf_explainer_classes = [ROC, RegressionPerf]
-    model_explainer_classes = [
-        ClassificationTree,
-        DecisionListClassifier,
-        LogisticRegression,
-        ExplainableBoostingClassifier,
-        RegressionTree,
-        LinearRegression,
-        ExplainableBoostingRegressor,
-    ]
-    blackbox_explainer_classes = [
-        LimeTabular,
-        ShapKernel,
-        MorrisSensitivity,
-        PartialDependence,
-    ]
-    all_explainers = []
-    all_explainers.extend(model_explainer_classes)
-    all_explainers.extend(blackbox_explainer_classes)
-    all_explainers.extend(data_explainer_classes)
-    all_explainers.extend(perf_explainer_classes)
-
+    all_explainers = get_all_explainers()
     data = synthetic_classification()
     blackbox = LogisticRegression()
     blackbox.fit(data["train"]["X"], data["train"]["y"])

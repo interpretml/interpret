@@ -1,5 +1,6 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
+# TODO: Testing for show/snap functions.
 
 from ..visual.interactive import set_show_addr, get_show_addr, shutdown_show_server
 

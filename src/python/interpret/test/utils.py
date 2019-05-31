@@ -1,6 +1,19 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+from ..data import ClassHistogram
+from ..perf import ROC, RegressionPerf
+
+from ..blackbox import LimeTabular
+from ..blackbox import ShapKernel
+from ..blackbox import MorrisSensitivity
+from ..blackbox import PartialDependence
+
+from ..glassbox import LogisticRegression, LinearRegression
+from ..glassbox import ClassificationTree, RegressionTree
+from ..glassbox import DecisionListClassifier
+from ..glassbox import ExplainableBoostingClassifier, ExplainableBoostingRegressor
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -8,6 +21,33 @@ import dash.development.base_component as dash_base
 from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
+
+
+def get_all_explainers():
+    data_explainer_classes = [ClassHistogram]
+    perf_explainer_classes = [ROC, RegressionPerf]
+    model_explainer_classes = [
+        ClassificationTree,
+        DecisionListClassifier,
+        LogisticRegression,
+        ExplainableBoostingClassifier,
+        RegressionTree,
+        LinearRegression,
+        ExplainableBoostingRegressor,
+    ]
+    blackbox_explainer_classes = [
+        LimeTabular,
+        ShapKernel,
+        MorrisSensitivity,
+        PartialDependence,
+    ]
+    all_explainers = []
+    all_explainers.extend(model_explainer_classes)
+    all_explainers.extend(blackbox_explainer_classes)
+    all_explainers.extend(data_explainer_classes)
+    all_explainers.extend(perf_explainer_classes)
+
+    return all_explainers
 
 
 def synthetic_regression():
