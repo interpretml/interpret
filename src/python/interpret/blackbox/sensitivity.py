@@ -5,7 +5,6 @@ from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils import unify_predict_fn, unify_data
 from ..utils import gen_name_from_class, gen_global_selector
-from ..visual.plot import plot_horizontal_bar, sort_take
 
 from abc import ABC, abstractmethod
 from SALib.sample import morris as morris_sampler
@@ -137,6 +136,8 @@ class MorrisExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_horizontal_bar, sort_take
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

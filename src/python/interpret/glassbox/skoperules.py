@@ -5,7 +5,6 @@ from sklearn.base import ClassifierMixin
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
 from ..utils import unify_data
-from ..visual.plot import rules_to_html
 
 from skrules import SkopeRules as SR
 from copy import deepcopy
@@ -46,6 +45,8 @@ class RulesExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        from ..visual.plot import rules_to_html
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

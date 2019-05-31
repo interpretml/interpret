@@ -10,7 +10,6 @@ from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...utils import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
-from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
 
 import numpy as np
 
@@ -60,6 +59,8 @@ class EBMExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

@@ -5,7 +5,6 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import unify_data, gen_name_from_class, unify_predict_fn
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import precision_recall_curve, average_precision_score
-from ..visual.plot import plot_performance_curve
 
 import numpy as np
 
@@ -127,6 +126,8 @@ class ROCExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_performance_curve
+
         data_dict = self.data(key)
         if data_dict is None:
             return None
@@ -166,6 +167,8 @@ class PRExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_performance_curve
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

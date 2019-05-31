@@ -3,7 +3,6 @@
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import unify_data, gen_name_from_class, unify_predict_fn
-from ..visual.plot import plot_density
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
@@ -85,6 +84,8 @@ class RegressionExplanation(ExplanationMixin):
         return None
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_density
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

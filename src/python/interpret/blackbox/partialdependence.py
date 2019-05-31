@@ -6,7 +6,6 @@ import numpy as np
 import warnings
 from ..utils import gen_name_from_class, gen_global_selector
 from ..utils import unify_data, unify_predict_fn
-from ..visual.plot import plot_line, plot_bar
 
 
 class PartialDependence(ExplainerMixin):
@@ -160,6 +159,8 @@ class PDPExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_line, plot_bar
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

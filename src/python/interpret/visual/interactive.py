@@ -1,12 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from .dashboard import AppRunner
 import sys
-from plotly import graph_objs as go
-from pandas.core.generic import NDFrame
-import dash.development.base_component as dash_base
-
 import logging
 
 log = logging.getLogger(__name__)
@@ -78,6 +73,8 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     Returns:
         None.
     """
+    from .dashboard import AppRunner
+
     if this.app_runner is not None:
         log.debug("Stopping previous app runner at {0}".format(this.app_addr))
         shutdown_show_server()
@@ -108,6 +105,7 @@ def show(explanation, share_tables=None):
     Returns:
         None.
     """
+
     try:
         # Initialize server if needed
         if this.app_runner is None:
@@ -180,6 +178,10 @@ def _preserve_output(
     from plotly.offline import iplot, plot, init_notebook_mode
     from IPython.display import display, display_html
     from base64 import b64encode
+
+    from plotly import graph_objs as go
+    from pandas.core.generic import NDFrame
+    import dash.development.base_component as dash_base
 
     init_notebook_mode(connected=True)
 
