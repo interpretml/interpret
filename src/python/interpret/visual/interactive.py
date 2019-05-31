@@ -139,7 +139,7 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
 
     Args:
         explanation: An explanation.
-        selector_key: Key into first column of the explanation's selector. If None, returns overall visual.
+        selector_key: If integer, treat as index for explanation. Otherwise, looks up value in first column, gets index.
         file_name: If assigned, will save the visualization to this filename.
         **kwargs: Kwargs which are passed to the underlying render/export call.
 
@@ -151,6 +151,8 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         # Get explanation key
         if selector_key is None:
             key = None
+        elif isinstance(selector_key, int):
+            key = selector_key
         else:
             series = explanation.selector[explanation.selector.columns[0]]
             key = series[series == selector_key].index[0]
