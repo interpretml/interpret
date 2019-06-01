@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.6] - 2019-05-31
+### Added
+- Integer indexing for preserve method.
+- Public-facing CI build added. Important for pull requests.
+### Changed
+- Visual-related imports are now loaded when visualize is called for explanations.
+
 ## [v0.1.5] - 2019-05-30
 ### Added
 - Added preserve method. Can now save visuals into notebook/file - does not work with decision trees.
@@ -66,6 +73,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.6]: https://github.com/microsoft/interpret/releases/tag/v0.1.6
 [v0.1.5]: https://github.com/microsoft/interpret/releases/tag/v0.1.5
 [v0.1.4]: https://github.com/microsoft/interpret/releases/tag/v0.1.4
 [v0.1.3]: https://github.com/microsoft/interpret/releases/tag/v0.1.3
