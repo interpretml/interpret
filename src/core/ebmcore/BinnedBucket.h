@@ -38,6 +38,10 @@ template<bool bRegression>
 class BinnedBucket;
 
 template<bool bRegression>
+constexpr TML_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
+   return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
+}
+template<bool bRegression>
 constexpr TML_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
    return sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
@@ -122,7 +126,7 @@ static_assert(std::is_pod<BinnedBucket<true>>::value, "BinnedBucket will be more
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
-void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, SamplingMethod const * const pTrainingSet, const size_t cTargetStates
+void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -209,7 +213,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDime
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, SamplingMethod const * const pTrainingSet, const size_t cTargetStates
+   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -235,7 +239,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates>
 class RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, SamplingMethod const * const pTrainingSet, const size_t cTargetStates
+   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -249,9 +253,10 @@ public:
    }
 };
 
+// PK VERIFIED
 // TODO: make the number of dimensions (pAttributeCombination->m_cAttributes) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
-void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, DataSetInternalCore const * const pDataSet, const size_t cTargetStates
+void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -276,7 +281,7 @@ void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetState
       size_t iBucket = 0;
       for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
          const AttributeInternalCore * const pInputAttribute = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute;
-         size_t cStates = pInputAttribute->m_cStates;
+         const size_t cStates = pInputAttribute->m_cStates;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputAttribute);
          pInputData += iCase;
          StorageDataTypeCore data = *pInputData;

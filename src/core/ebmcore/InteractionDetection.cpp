@@ -124,15 +124,15 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
    size_t cCases = static_cast<size_t>(countCases);
 
-   TmlInteractionState * const PEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cAttributes);
-   if(UNLIKELY(nullptr == PEbmInteractionState)) {
+   TmlInteractionState * const pEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cAttributes);
+   if(UNLIKELY(nullptr == pEbmInteractionState)) {
       return nullptr;
    }
-   if(UNLIKELY(PEbmInteractionState->InitializeInteraction(attributes, cCases, targets, data, predictionScores))) {
-      delete PEbmInteractionState;
+   if(UNLIKELY(pEbmInteractionState->InitializeInteraction(attributes, cCases, targets, data, predictionScores))) {
+      delete pEbmInteractionState;
       return nullptr;
    }
-   return PEbmInteractionState;
+   return pEbmInteractionState;
 }
 
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countCases, const FractionalDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
@@ -144,11 +144,11 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * const PEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const interactionScoreReturn) {
+static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
-   CachedInteractionThreadResources * const pCachedThreadResources = new CachedInteractionThreadResources();
+   CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(PEbmInteractionState->m_cTargetStates, pCachedThreadResources, PEbmInteractionState->m_pDataSet, pAttributeCombination, interactionScoreReturn)) {
+   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetStates, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pAttributeCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -157,25 +157,25 @@ static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * 
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, TmlInteractionState * const PEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const interactionScoreReturn) {
+TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    assert(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(cRuntimeTargetStates == iPossibleCompilerOptimizedTargetStates) {
       assert(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
-      return GetInteractionScorePerTargetStates<iPossibleCompilerOptimizedTargetStates>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      return GetInteractionScorePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
    } else {
-      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
    }
 }
 template<>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const PEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const interactionScoreReturn) {
+TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    assert(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
-   return GetInteractionScorePerTargetStates<k_DynamicClassification>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+   return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
 }
 
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countAttributesInCombination, const IntegerDataType * attributeIndexes, FractionalDataType * interactionScoreReturn) {
-   TmlInteractionState * PEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
-   assert(nullptr != PEbmInteractionState);
+   assert(nullptr != ebmInteraction);
+   TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
    assert(1 <= countAttributesInCombination);
    assert(nullptr != attributeIndexes);
 
@@ -193,6 +193,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    if(nullptr == pAttributeCombination) {
       return 1;
    }
+   AttributeInternalCore * const aAttributes = pEbmInteractionState->m_aAttributes;
    for(size_t iAttributeInCombination = 0; iAttributeInCombination < cAttributesInCombination; ++iAttributeInCombination) {
       IntegerDataType indexAttributeInterop = attributeIndexes[iAttributeInCombination];
       assert(0 <= indexAttributeInterop);
@@ -202,27 +203,29 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       }
       // we already checked indexAttributeInterop was good above
       size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-      pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = &PEbmInteractionState->m_aAttributes[iAttributeForCombination];
+      assert(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
+      AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
+      pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pAttribute;
    }
 
    IntegerDataType ret;
-   if(PEbmInteractionState->m_bRegression) {
-      ret = GetInteractionScorePerTargetStates<k_Regression>(PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+   if(pEbmInteractionState->m_bRegression) {
+      ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    } else {
-      const size_t cTargetStates = PEbmInteractionState->m_cTargetStates;
-      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, PEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
+      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
    AttributeCombinationCore::Free(pAttributeCombination);
    return ret;
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelInteraction(PEbmInteraction ebmInteraction) {
-   TmlInteractionState * PEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
-   assert(nullptr != PEbmInteractionState);
+   TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
+   assert(nullptr != pEbmInteractionState);
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(PEbmInteraction ebmInteraction) {
-   TmlInteractionState * PEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
-   assert(nullptr != PEbmInteractionState);
-   delete PEbmInteractionState;
+   TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
+   assert(nullptr != pEbmInteractionState);
+   delete pEbmInteractionState;
 }

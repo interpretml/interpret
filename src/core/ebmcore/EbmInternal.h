@@ -226,6 +226,11 @@ constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
    return 0 != num1 && ((std::numeric_limits<size_t>::max() - num1 + 1) / num1 < num2);
 }
 
+constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
+   // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
+   return num1 + num2 < num1;
+}
+
 // TODO : keep this constant, but make it global and compile out the costs... we want to document that it's possible and how, but we have tested it and found it's worse
 static constexpr int k_iZeroResidual = -1;
 

@@ -19,6 +19,7 @@ struct PredictionStatistics<false> final {
    // classification version of the PredictionStatistics class
 
    FractionalDataType sumResidualError;
+   // TODO: for single features, we probably want to just do a single pass of the data and collect our sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
    FractionalDataType sumDenominator;
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
