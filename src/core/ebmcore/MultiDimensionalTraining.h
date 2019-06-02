@@ -45,18 +45,19 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
    size_t iBin = 0;
    size_t valueMultipleInitialize = 1;
    for(size_t iDimensionInitialize = 0; iDimensionInitialize < cDimensions; ++iDimensionInitialize) {
-      size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionInitialize].m_pAttribute->m_cStates;
-      iBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
-      valueMultipleInitialize *= cStates;
-
+      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionInitialize].m_pAttribute->m_cStates;
       assert(aiStart[iDimensionInitialize] < cStates);
       assert(aiLast[iDimensionInitialize] < cStates);
       assert(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
-
+      assert(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize)); // aiStart[iDimensionInitialize] is less than cStates, so this should multiply
+      iBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
+      assert(!IsMultiplyError(cStates, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+      valueMultipleInitialize *= cStates;
       aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
    }
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we've allocated this, so it should fit
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    pRet->template Zero<countCompilerClassificationTargetStates>(cTargetStates);
 
@@ -69,9 +70,11 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
       size_t valueMultipleLoop = 1;
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          assert(aiStart[iDimension] <= aiLast[iDimension]);
+         assert(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          iBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
-         size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+         const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+         assert(!IsMultiplyError(cStates, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cStates;
 
          aiDimensions[iDimension] = aiStart[iDimension];
@@ -89,13 +92,14 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompiler
 void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
    for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
-      size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
+      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
       if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
          aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
          aiLast[iDimensionDebug] = cStates - 1;
@@ -129,15 +133,21 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
+//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
-//      cTotalBucketsDebug *= pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
+//      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
+//      assert(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
+//      cTotalBucketsDebug *= cStates;
 //   }
+//   assert(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
+//   TODO : technically, adding cBytesPerBinnedBucket could overflow so we should handle that instead of asserting
+//   assert(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug + cBytesPerBinnedBucket));
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pDebugBucket = nullptr;
 //   if(nullptr != aBinnedBucketsDebugCopy) {
@@ -252,16 +262,21 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
+//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
-//      cTotalBucketsDebug *= pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
+//      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
+//      assert(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
+//      cTotalBucketsDebug *= cStates;
 //   }
+//   assert(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
-
+//   TODO : technically, adding cBytesPerBinnedBucket could overflow so we should handle that instead of asserting
+//   assert(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug + cBytesPerBinnedBucket));
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pDebugBucket = nullptr;
 //   if(nullptr != aBinnedBucketsDebugCopy) {
@@ -390,6 +405,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
 ) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    FastTotalState<IsRegression(countCompilerClassificationTargetStates)> fastTotalState[k_cDimensionsMax];
@@ -524,6 +540,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
 
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
@@ -689,6 +706,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
 ) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
@@ -706,7 +724,12 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       assert(0 < cDimensions);
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
-         startingOffset += multipleTotalInitialize * (*piPointInitialize);
+         assert(*piPointInitialize < cStates);
+         assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+         size_t addValue = multipleTotalInitialize * (*piPointInitialize);
+         assert(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
+         startingOffset += addValue;
+         assert(!IsMultiplyError(cStates, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          multipleTotalInitialize *= cStates;
          ++pAttributeCombinationEntry;
          ++piPointInitialize;
@@ -737,13 +760,18 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
+            assert(!IsMultiplyError(cStates - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cStates - 1);
+            assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             pTotalsDimensionEnd->cIncrement = multipleTotalInitialize * (*piPointInitialize);
             pTotalsDimensionEnd->cLast = cLast;
             multipleTotalInitialize += cLast;
             ++pTotalsDimensionEnd;
          } else {
-            startingOffset += multipleTotalInitialize * (*piPointInitialize);
+            assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            size_t addValue = multipleTotalInitialize * (*piPointInitialize);
+            assert(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
+            startingOffset += addValue;
             multipleTotalInitialize *= cStates;
          }
          ++pAttributeCombinationEntry;
@@ -803,14 +831,16 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    assert(0 == (directionVectorLow & (static_cast<size_t>(1) << iDimensionSweep)));
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   assert(!IsMultiplyError(2, cBytesPerBinnedBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoBinnedBuckets = cBytesPerBinnedBucket << 1;
 
    size_t * const piPoint = &aiPoint[iDimensionSweep];
    *piPoint = 0;
    size_t directionVectorHigh = directionVectorLow | static_cast<size_t>(1) << iDimensionSweep;
 
-   size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
+   const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
 
    size_t iBestCut = 0;
 
@@ -868,9 +898,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      if(IsMultiplyError(cTotalBucketsMainSpace, cStates)) {
-         return true;
-      }
+      assert(!IsMultiplyError(cTotalBucketsMainSpace, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBucketsMainSpace *= cStates;
       if(IsAddError(cTotalBuckets, cTotalBucketsMainSpace)) {
          return true;
@@ -1042,8 +1070,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
       FractionalDataType splittingScore;
 
-      size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
-      size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
+      const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
+      const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
 
       FractionalDataType bestSplittingScoreFirst = -std::numeric_limits<FractionalDataType>::infinity();
 
@@ -1384,6 +1412,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
 //   const size_t cTargetStates = pTargetAttribute->m_cStates;
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 //
 //   size_t aiStart[k_cDimensionsMax];
@@ -1393,8 +1422,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //      // TODO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
 //      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * aDynamicBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesPerBinnedBucket * ));
 //
-//      size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
-//      size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
+//      const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
+//      const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
 //
 //      FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 //
@@ -1732,8 +1761,8 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 2);
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 3);
 
-      size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
-      size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
+      const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
+      const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
 
       FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 

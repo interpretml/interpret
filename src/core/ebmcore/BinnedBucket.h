@@ -94,6 +94,7 @@ public:
    TML_INLINE void Copy(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
       memcpy(this, &other, cBytesPerBinnedBucket);
    }
@@ -102,6 +103,7 @@ public:
    TML_INLINE void Zero(const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
       memset(this, 0, cBytesPerBinnedBucket);
    }
@@ -138,15 +140,17 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
    assert(0 < cCases);
 
-   const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<SamplingWithReplacement const *>(pTrainingSet);
+   const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
    const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pAttributeCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
+   // this shouldn't overflow since we're accessing existing memory
    const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
 
    size_t cItemsRemaining;
@@ -209,6 +213,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
    }
    assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 }
+
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
@@ -253,7 +258,6 @@ public:
    }
 };
 
-// PK VERIFIED
 // TODO: make the number of dimensions (pAttributeCombination->m_cAttributes) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
 void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
@@ -262,6 +266,7 @@ void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetState
 #endif // NDEBUG
 ) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
@@ -308,7 +313,7 @@ void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetState
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
 template<ptrdiff_t countCompilerClassificationTargetStates>
-size_t CompressBinnedBuckets(SamplingMethod const * const pTrainingSet, const size_t cBinnedBuckets, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, size_t * const pcCasesTotal, PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTargetStates
+size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const size_t cBinnedBuckets, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, size_t * const pcCasesTotal, PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -318,6 +323,7 @@ size_t CompressBinnedBuckets(SamplingMethod const * const pTrainingSet, const si
 #endif // NDEBUG
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pCopyFrom = aBinnedBuckets;
