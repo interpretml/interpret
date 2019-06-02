@@ -11,5 +11,6 @@ docs/_build/
 lib/
 log.txt
 test-log.txt
+multi-log.txt
 *.csv
 *.ipynb
