@@ -735,8 +735,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
          ++piPointInitialize;
       } while(LIKELY(pAttributeCombinationEntryEnd != pAttributeCombinationEntry));
       const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucket = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, startingOffset);
-      // TODO : re-enable this check once we use the same memory region
-      //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
+      ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucket, aBinnedBucketsEndDebug);
       pRet->template Copy<countCompilerClassificationTargetStates>(*pBinnedBucket, cTargetStates);
       return;
@@ -799,13 +798,11 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
       const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucket = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, offsetPointer);
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-         // TODO : re-enable this check once we use the same memory region
-         //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
+         ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucket, aBinnedBucketsEndDebug);
          pRet->template Subtract<countCompilerClassificationTargetStates>(*pBinnedBucket, cTargetStates);
       } else {
-         // TODO : re-enable this check once we use the same memory region
-         //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
+         ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRet, aBinnedBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucket, aBinnedBucketsEndDebug);
          pRet->template Add<countCompilerClassificationTargetStates>(*pBinnedBucket, cTargetStates);
       }
@@ -845,12 +842,10 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    size_t iBestCut = 0;
 
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pTotalsLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pBinnedBucketBestAndTemp, 2);
-   // TODO : re-enable this check once we use the same memory region
-   //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsLow, aBinnedBucketsEndDebug);
+   ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsLow, aBinnedBucketsEndDebug);
 
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pTotalsHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pBinnedBucketBestAndTemp, 3);
-   // TODO : re-enable this check once we use the same memory region
-   //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsHigh, aBinnedBucketsEndDebug);
+   ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsHigh, aBinnedBucketsEndDebug);
 
    FractionalDataType bestSplit = -std::numeric_limits<FractionalDataType>::infinity();
    for(size_t iState = 0; iState < cStates - 1; ++iState) {
@@ -880,9 +875,8 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
          bestSplit = splittingScore;
          iBestCut = iState;
 
-         // TODO : re-enable these checks once we use the same memory region
-         //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pBinnedBucketBestAndTemp, 1), aBinnedBucketsEndDebug);
-         //ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pTotalsLow, 1), aBinnedBucketsEndDebug);
+         ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pBinnedBucketBestAndTemp, 1), aBinnedBucketsEndDebug);
+         ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pTotalsLow, 1), aBinnedBucketsEndDebug);
          memcpy(pBinnedBucketBestAndTemp, pTotalsLow, cBytesPerTwoBinnedBuckets);
       }
    }
@@ -894,17 +888,24 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
-   size_t cTotalBuckets = 1;
+   size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+      assert(2 <= cStates);
+      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      assert(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // as long as cStates is 2 or more, cTotalBucketsMainSpace will grow exponentially and it should always be bigger than cAuxillaryBucketAreaForBuildFastTotals, so there is no need to check for addition overflow at runtime, but an assert is waranted instead
+      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       assert(!IsMultiplyError(cTotalBucketsMainSpace, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBucketsMainSpace *= cStates;
-      if(IsAddError(cTotalBuckets, cTotalBucketsMainSpace)) {
-         return true;
-      }
-      cTotalBuckets += cTotalBucketsMainSpace;
+      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
+   const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
+   const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
+   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
+      return true;
+   }
+   const size_t cTotalBuckets =  cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
@@ -921,8 +922,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
       return true;
    }
-   // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
    memset(aBinnedBuckets, 0, cBytesBuffer);
+   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pAuxiliaryBucketZone = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, cTotalBucketsMainSpace);
 
 #ifndef NDEBUG
    const unsigned char * const aBinnedBucketsEndDebug = reinterpret_cast<unsigned char *>(aBinnedBuckets) + cBytesBuffer;
@@ -951,8 +952,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    }
 #endif // NDEBUG
 
-   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, cTotalBucketsMainSpace);
-   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, cTargetStates, pAttributeCombination, pBucketAuxiliaryBuildZone
+   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, cTargetStates, pAttributeCombination, pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -1065,9 +1065,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    size_t aiStart[k_cDimensionsMax];
 
    if(2 == cDimensions) {
-      // TODO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * aDynamicBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesPerBinnedBucket * 24)); // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
-
       FractionalDataType splittingScore;
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
@@ -1079,10 +1076,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       size_t cutFirst1LowBest;
       size_t cutFirst1HighBest;
 
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 0);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 1);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 2);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 3);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 0);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 1);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 2);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 3);
 
       for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
          aiStart[0] = iState1;
@@ -1090,8 +1087,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          splittingScore = 0;
 
          size_t cutSecond1LowBest;
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 4);
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 5);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 4);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 5);
          splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, 0x0, 1, cTargetStates, pTotals2LowLowBest, &cutSecond1LowBest
 #ifndef NDEBUG
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
@@ -1099,8 +1096,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             );
 
          size_t cutSecond1HighBest;
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 8);
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 9);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 8);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 9);
          splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, 0x1, 1, cTargetStates, pTotals2HighLowBest, &cutSecond1HighBest
 #ifndef NDEBUG
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
@@ -1126,10 +1123,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       size_t cutFirst2LowBest;
       size_t cutFirst2HighBest;
 
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 12);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 13);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 14);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 15);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 12);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 13);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 14);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 15);
 
       for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
          aiStart[1] = iState2;
@@ -1137,8 +1134,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          splittingScore = 0;
 
          size_t cutSecond2LowBest;
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowLowBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 16);
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowHighBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 17);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowLowBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 16);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowHighBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 17);
          splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, 0x0, 0, cTargetStates, pTotals1LowLowBestInner, &cutSecond2LowBest
 #ifndef NDEBUG
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
@@ -1146,8 +1143,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             );
 
          size_t cutSecond2HighBest;
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 20);
-         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 21);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 20);
+         BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 21);
          splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, 0x2, 0, cTargetStates, pTotals1HighLowBestInner, &cutSecond2HighBest
 #ifndef NDEBUG
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
@@ -1171,7 +1168,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
       if(bCutFirst2) {
          if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-            free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1181,14 +1177,12 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(cutFirst2LowBest < cutFirst2HighBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1198,14 +1192,12 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
          } else if(cutFirst2HighBest < cutFirst2LowBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1215,7 +1207,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
          } else {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1223,7 +1214,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1276,7 +1266,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          }
       } else {
          if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-            free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1286,7 +1275,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(cutFirst1LowBest < cutFirst1HighBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1294,7 +1282,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1304,7 +1291,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
          } else if(cutFirst1HighBest < cutFirst1LowBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1312,7 +1298,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1322,14 +1307,12 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-               free(aDynamicBinnedBuckets);
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1381,8 +1364,6 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
          }
       }
-
-      free(aDynamicBinnedBuckets);
    } else {
       // TODO: handle this better
 #ifndef NDEBUG
@@ -1680,19 +1661,29 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetInternalCore * const pDataSet, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
-   size_t cTotalBuckets = 1;
+   size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
       if(IsMultiplyError(cTotalBucketsMainSpace, cStates)) {
+         // unlike in the training code where we check at allocation time if the tensor created overflows on multiplication
+         // we don't know what combination of features our caller will give us for calculating the interaction scores,
+         // so we need to check if our caller gave us a tensor that overflows multiplication
          return true;
       }
+      assert(2 <= cStates);
+      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      assert(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // as long as cStates is 2 or more, cTotalBucketsMainSpace will grow exponentially and it should always be bigger than cAuxillaryBucketAreaForBuildFastTotals, so there is no need to check for addition overflow at runtime, but an assert is waranted instead
+      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       cTotalBucketsMainSpace *= cStates;
-      if(IsAddError(cTotalBuckets, cTotalBucketsMainSpace)) {
-         return true;
-      }
-      cTotalBuckets += cTotalBucketsMainSpace;
+      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
+   const size_t cAuxillaryBucketsForSplitting = 4;
+   const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
+   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
+      return true;
+   }
+   const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
@@ -1709,8 +1700,9 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
       return true;
    }
-   // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
    memset(aBinnedBuckets, 0, cBytesBuffer);
+
+   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pAuxiliaryBucketZone = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, cTotalBucketsMainSpace);
 
 #ifndef NDEBUG
    const unsigned char * const aBinnedBucketsEndDebug = reinterpret_cast<unsigned char *>(aBinnedBuckets) + cBytesBuffer;
@@ -1742,8 +1734,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    }
 #endif // NDEBUG
 
-   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, cTotalBucketsMainSpace);
-   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, cTargetStates, pAttributeCombination, pBucketAuxiliaryBuildZone
+   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, cTargetStates, pAttributeCombination, pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -1754,12 +1745,10 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    size_t aiStart[k_cDimensionsMax];
 
    if(2 == cDimensions) {
-      // TODO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * aDynamicBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesPerBinnedBucket * 4));
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsLowLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 0);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsLowHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 1);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 2);
-      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aDynamicBinnedBuckets, 3);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsLowLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 0);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsLowHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 1);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighLow = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 2);
+      BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotalsHighHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 3);
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
@@ -1810,9 +1799,6 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
             }
          }
       }
-
-      free(aDynamicBinnedBuckets);
-
       *pInteractionScoreReturn = bestSplittingScore;
    } else {
       // TODO: handle this better
