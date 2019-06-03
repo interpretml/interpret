@@ -24,6 +24,7 @@ class LimeTabular(ExplainerMixin):
         feature_names=None,
         feature_types=None,
         explain_kwargs={},
+        n_jobs=1,
         **kwargs
     ):
 
@@ -31,6 +32,7 @@ class LimeTabular(ExplainerMixin):
             data, None, feature_names, feature_types
         )
         self.predict_fn = unify_predict_fn(predict_fn, self.data)
+        self.n_jobs = n_jobs
 
         if sampler is not None:  # pragma: no cover
             warnings.warn("Sampler interface not currently supported.")
