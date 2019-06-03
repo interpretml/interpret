@@ -21,6 +21,10 @@ template<bool bRegression>
 class TreeNode;
 
 template<bool bRegression>
+constexpr TML_INLINE const size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
+   return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
+}
+template<bool bRegression>
 constexpr TML_INLINE const size_t GetTreeNodeSize(size_t cVectorLength) {
    return sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
@@ -146,7 +150,9 @@ public:
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+      assert(!GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
+      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
 
       const BinnedBucket<bRegression> * pBinnedBucketEntryCur = this->m_UNION.beforeSplit.pBinnedBucketEntryFirst;
@@ -160,13 +166,13 @@ public:
       size_t cCases1 = pBinnedBucketEntryCur->cCasesInBucket;
       size_t cCases2 = this->GetCases() - cCases1;
 
-      PredictionStatistics<bRegression> * aSumPredictionStatistics1 = pCachedThreadResources->m_aSumPredictionStatistics1;
-      FractionalDataType * aSumResidualErrors2 = pCachedThreadResources->m_aSumResidualErrors2;
-      PredictionStatistics<bRegression> * aSumPredictionStatisticsBest = pCachedThreadResources->m_aSumPredictionStatisticsBest;
+      PredictionStatistics<bRegression> * const aSumPredictionStatistics1 = pCachedThreadResources->m_aSumPredictionStatistics1;
+      FractionalDataType * const aSumResidualErrors2 = pCachedThreadResources->m_aSumResidualErrors2;
+      PredictionStatistics<bRegression> * const aSumPredictionStatisticsBest = pCachedThreadResources->m_aSumPredictionStatisticsBest;
       FractionalDataType BEST_nodeSplittingScoreChildren = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         FractionalDataType sumResidualError1 = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
-         FractionalDataType sumResidualError2 = this->aPredictionStatistics[iVector].sumResidualError - sumResidualError1;
+         const FractionalDataType sumResidualError1 = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
+         const FractionalDataType sumResidualError2 = this->aPredictionStatistics[iVector].sumResidualError - sumResidualError1;
 
          BEST_nodeSplittingScoreChildren += ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
 
@@ -197,14 +203,14 @@ public:
             }
 
             const FractionalDataType CHANGE_sumResidualError = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
-            FractionalDataType sumResidualError1 = aSumPredictionStatistics1[iVector].sumResidualError + CHANGE_sumResidualError;
-            FractionalDataType sumResidualError2 = aSumResidualErrors2[iVector] - CHANGE_sumResidualError;
+            const FractionalDataType sumResidualError1 = aSumPredictionStatistics1[iVector].sumResidualError + CHANGE_sumResidualError;
+            const FractionalDataType sumResidualError2 = aSumResidualErrors2[iVector] - CHANGE_sumResidualError;
 
             aSumPredictionStatistics1[iVector].sumResidualError = sumResidualError1;
             aSumResidualErrors2[iVector] = sumResidualError2;
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
-            FractionalDataType nodeSplittingScoreChildrenOneVector = ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
+            const FractionalDataType nodeSplittingScoreChildrenOneVector = ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
             assert(0 <= nodeSplittingScoreChildren);
             nodeSplittingScoreChildren += nodeSplittingScoreChildrenOneVector;
          }
@@ -225,7 +231,7 @@ public:
       pLeftChild->m_UNION.beforeSplit.pBinnedBucketEntryLast = BEST_pBinnedBucketEntry;
       pLeftChild->SetCases(BEST_cCases1);
 
-      const BinnedBucket<bRegression> * BEST_pBinnedBucketEntryNext = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, BEST_pBinnedBucketEntry, 1);
+      const BinnedBucket<bRegression> * const BEST_pBinnedBucketEntryNext = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, BEST_pBinnedBucketEntry, 1);
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, BEST_pBinnedBucketEntryNext, aBinnedBucketsEndDebug);
 
       pRightChild->m_UNION.beforeSplit.pBinnedBucketEntryFirst = BEST_pBinnedBucketEntryNext;
@@ -246,7 +252,7 @@ public:
 
       FractionalDataType nodeSplittingScoreParent = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         FractionalDataType sumResidualErrorParent = this->aPredictionStatistics[iVector].sumResidualError;
+         const FractionalDataType sumResidualErrorParent = this->aPredictionStatistics[iVector].sumResidualError;
          nodeSplittingScoreParent += ComputeNodeSplittingScore(sumResidualErrorParent, cCasesParent);
       }
 
@@ -260,21 +266,22 @@ public:
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
    // TODO: specialize this function for cases where we have hard coded vector lengths so that we don't have to pass in the cVectorLength parameter
-   void Flatten(ActiveDataType ** ppDivisions, FractionalDataType ** ppValues, const size_t cVectorLength) {
+   void Flatten(ActiveDataType ** const ppDivisions, FractionalDataType ** const ppValues, const size_t cVectorLength) const {
       if(UNPREDICTABLE(IsTrunkAfterDone())) {
+         assert(!GetTreeNodeSizeOverflow<bRegression>(cVectorLength)); // we're accessing allocated memory
          const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
-         TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
          pLeftChild->Flatten(ppDivisions, ppValues, cVectorLength);
          **ppDivisions = this->m_UNION.afterSplit.divisionValue;
          ++(*ppDivisions);
-         TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
          pRightChild->Flatten(ppDivisions, ppValues, cVectorLength);
       } else {
-         FractionalDataType * pValuesCur = (*ppValues);
-         FractionalDataType * pValuesNext = pValuesCur + cVectorLength;
-         (*ppValues) = pValuesNext;
+         FractionalDataType * pValuesCur = *ppValues;
+         FractionalDataType * const pValuesNext = pValuesCur + cVectorLength;
+         *ppValues = pValuesNext;
 
-         PredictionStatistics<bRegression> * pPredictionStatistics = &this->aPredictionStatistics[0];
+         const PredictionStatistics<bRegression> * pPredictionStatistics = &this->aPredictionStatistics[0];
          do {
             FractionalDataType smallChangeToModel;
             if(bRegression) {
@@ -296,7 +303,7 @@ static_assert(std::is_pod<TreeNode<false>>::value, "We want to keep our TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cBinnedBuckets, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucket, const size_t cCasesTotal, const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, size_t cTreeSplitsMax, size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet
+bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cBinnedBuckets, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucket, const size_t cCasesTotal, const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -323,18 +330,21 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
             aValues[iVector] = smallChangeToModel;
          }
       }
-
       return false;
    }
 
+   if(GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+      return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
+   }
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
 retry_with_bigger_tree_node_children_array:
    size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
    const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode; // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
    if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
-      // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of two TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode)
+      // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode)
       if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
          return true;
       }
@@ -348,7 +358,7 @@ retry_with_bigger_tree_node_children_array:
    ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRootTreeNode->m_UNION.beforeSplit.pBinnedBucketEntryLast, aBinnedBucketsEndDebug);
    pRootTreeNode->SetCases(cCasesTotal);
 
-   memcpy(&pRootTreeNode->aPredictionStatistics[0], aSumPredictionStatistics, cVectorLength * sizeof(*aSumPredictionStatistics));
+   memcpy(&pRootTreeNode->aPredictionStatistics[0], aSumPredictionStatistics, cVectorLength * sizeof(*aSumPredictionStatistics)); // copying existing mem
 
    pRootTreeNode->template SplitTreeNode<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetStates
 #ifndef NDEBUG
@@ -367,16 +377,15 @@ retry_with_bigger_tree_node_children_array:
       // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
       // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
-      TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
-      TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
 
+      FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       if(IsRegression(countCompilerClassificationTargetStates)) {
-         FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         pValues[0] = ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aPredictionStatistics[0].sumResidualError, pLeftChild->GetCases());
-         pValues[1] = ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aPredictionStatistics[0].sumResidualError, pRightChild->GetCases());
+         aValues[0] = ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aPredictionStatistics[0].sumResidualError, pLeftChild->GetCases());
+         aValues[1] = ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aPredictionStatistics[0].sumResidualError, pRightChild->GetCases());
       } else {
          assert(IsClassification(countCompilerClassificationTargetStates));
-         FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             aValues[iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pLeftChild->aPredictionStatistics[iVector].sumResidualError, pLeftChild->aPredictionStatistics[iVector].GetSumDenominator());
             aValues[cVectorLength + iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pRightChild->aPredictionStatistics[iVector].sumResidualError, pRightChild->aPredictionStatistics[iVector].GetSumDenominator());
@@ -390,13 +399,11 @@ retry_with_bigger_tree_node_children_array:
    //       1) When the data is the smallest(1-5 items), just iterate over all items in our TreeNode buffer looking for the best Node.  Zero the value on any nodes that have been removed from the queue.  For 1 or 2 instructions in the loop WITHOUT a branch we can probably save the pointer to the first TreeNode with data so that we can start from there next time we loop
    //       2) When the data is a tiny bit bigger and there are holes in our array of TreeNodes, we can maintain a pointer and value in a separate list and zip through the values and then go to the pointer to the best node.  Since the list is unordered, when we find a TreeNode to remove, we just move the last one into the hole
    //       3) The full fleged priority queue below
-
-   std::priority_queue<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *, std::vector<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>, CompareTreeNodeSplittingScore<IsRegression(countCompilerClassificationTargetStates)>> * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit;
-
-   // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, and we want to ensure that the chunk of memory stays in L1 cache, so we pop all the previous garbage off instead of allocating a new one!
    size_t cSplits;
-   TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceCur;
    try {
+      std::priority_queue<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *, std::vector<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>, CompareTreeNodeSplittingScore<IsRegression(countCompilerClassificationTargetStates)>> * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit;
+
+      // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, and we want to ensure that the chunk of memory stays in L1 cache, so we pop all the previous garbage off instead of allocating a new one!
       while(!pBestTreeNodeToSplit->empty()) {
          pBestTreeNodeToSplit->pop();
       }
@@ -405,7 +412,7 @@ retry_with_bigger_tree_node_children_array:
       TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pParentTreeNode = pRootTreeNode;
 
       // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
-      pTreeNodeChildrenAvailableStorageSpaceCur = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesInitialNeededAllocation);
+      TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceCur = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesInitialNeededAllocation);
 
       goto skip_first_push_pop;
 
@@ -466,12 +473,16 @@ retry_with_bigger_tree_node_children_array:
          ++cSplits;
       } while(cSplits < cTreeSplitsMax && UNLIKELY(!pBestTreeNodeToSplit->empty()));
       // we DON'T need to call SetLeafAfterDone() on any items that remain in the pBestTreeNodeToSplit queue because everything in that queue has set a non-NaN nodeSplittingScore value
+
+      assert(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
       return true;
    }
-   assert(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
 
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits))) {
+      return true;
+   }
+   if(IsMultiplyError(cVectorLength, cSplits + 1)) {
       return true;
    }
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)))) {
@@ -490,17 +501,24 @@ retry_with_bigger_tree_node_children_array:
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the attribute first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, SamplingMethod const * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, size_t cTreeSplitsMax, size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
-      cTotalBuckets *= pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+      assert(!IsMultiplyError(cTotalBuckets, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+      cTotalBuckets *= cStates;
    }
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+      // TODO : move this to initialization where we execute it only once (it needs to be in the attribute combination loop though)
+      return true;
+   }
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-
-   // TODO : after we finish building BuildFastTotals and all the functions that depend on it AND we've finished building pair and tripple specific code, check back to see if we still need this extra memory for all of those conditions.  I think the pair specific code won't need it.
-   // !!! VERY IMPORTANT: add one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
+   if(IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)) {
+      // TODO : move this to initialization where we execute it only once (it needs to be in the attribute combination loop though)
+      return true;
+   }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
@@ -520,7 +538,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    );
 
    PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics = pCachedThreadResources->m_aSumPredictionStatistics;
-   memset(aSumPredictionStatistics, 0, sizeof(*aSumPredictionStatistics) * cVectorLength);
+   memset(aSumPredictionStatistics, 0, sizeof(*aSumPredictionStatistics) * cVectorLength); // can't overflow, accessing existing memory
 
    size_t cBinnedBuckets = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
    size_t cCasesTotal;

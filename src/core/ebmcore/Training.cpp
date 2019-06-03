@@ -89,7 +89,7 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, int iZeroResidual) {
+static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, const int iZeroResidual) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
@@ -140,7 +140,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
    } else {
       FractionalDataType * pTrainingPredictionScores = pTrainingSet->GetPredictionScores();
       assert(IsClassification(countCompilerClassificationTargetStates));
-      const StorageDataTypeCore * pTargetData = static_cast<const StorageDataTypeCore *>(pTrainingSet->GetTargetDataPointer());
+      const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
 
@@ -224,7 +224,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, int iZeroResidual) {
+static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, const int iZeroResidual) {
    if(cTargetStates <= 1 << 1) {
       TrainingSetTargetAttributeLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
    } else if(cTargetStates <= 1 << 2) {
@@ -253,7 +253,7 @@ static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
-static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pValidationSet, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
+static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pValidationSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
@@ -310,7 +310,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
    } else {
       FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
       assert(IsClassification(countCompilerClassificationTargetStates));
-      const StorageDataTypeCore * pTargetData = static_cast<const StorageDataTypeCore *>(pValidationSet->GetTargetDataPointer());
+      const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
 
@@ -383,7 +383,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetStates>
-static FractionalDataType ValidationSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pValidationSet, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
+static FractionalDataType ValidationSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pValidationSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
    if(cTargetStates <= 1 << 1) {
       return ValidationSetTargetAttributeLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 2) {
@@ -455,6 +455,7 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
 #endif
 
+   // pSmallChangeToModelAccumulated was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
    size_t acDivisionIntegersEnd[k_cDimensionsMax];
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
@@ -887,8 +888,6 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
          ++iModel;
       } while(iModel != iModelEnd);
    }
-
-   //pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand();
 
    // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
    TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates, k_iZeroResidual);

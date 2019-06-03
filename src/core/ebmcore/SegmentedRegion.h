@@ -58,8 +58,19 @@ public:
 
    TML_INLINE static SegmentedRegionCore * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       assert(0 < cDimensionsMax);
+      assert(cDimensionsMax <= k_cDimensionsMax);
       assert(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
+      if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
+         return nullptr;
+      }
+      const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
+      if(IsMultiplyError(sizeof(TValues), cValueCapacity)) {
+         return nullptr;
+      }
+      const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
+
+      // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
       const size_t cBytesSegmentedRegion = sizeof(SegmentedRegionCore) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
       SegmentedRegionCore * const pSegmentedRegion = static_cast<SegmentedRegionCore *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
@@ -72,9 +83,7 @@ public:
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
 
-      const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
-      const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
       TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
@@ -88,7 +97,7 @@ public:
       for(size_t iDimension = 0; iDimension < cDimensionsMax; ++iDimension) {
          assert(0 == pDimension->cDivisions);
          pDimension->cDivisionCapacity = k_initialDivisionCapacity;
-         TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity));
+         TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
          if(UNLIKELY(nullptr == aDivisions)) {
             Free(pSegmentedRegion); // free everything!
             return nullptr;
@@ -116,7 +125,8 @@ public:
    }
 
    TML_INLINE size_t GetStackMemorySizeBytes() {
-      return sizeof(DimensionInfo) * m_cDimensions;
+      assert(m_cDimensions <= k_cDimensionsMax);
+      return sizeof(DimensionInfoStack) * m_cDimensions; // this can't overflow since m_cDimensions is limited in size
    }
 
    TML_INLINE size_t GetCountDivisions(const size_t iDimension) const {
@@ -138,6 +148,7 @@ public:
          m_aDimensions[iDimension].cDivisions = 0;
       }
       // we only need to set the base case to zero
+      // this can't overflow since we previously allocated this memory
       memset(m_aValues, 0, sizeof(TValues) * m_cVectorLength);
       m_bExpanded = false;
    }
@@ -149,8 +160,14 @@ public:
       if(UNLIKELY(pDimension->cDivisionCapacity < cDivisions)) {
          assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
+         if(IsAddError(cDivisions, cDivisions >> 1)) {
+            return true;
+         }
          size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1); // just increase it by 50% since we don't expect to grow our divisions often after an initial period, and realloc takes some of the cost of growing away
 
+         if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
+            return true;
+         }
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
          TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->aDivisions, cBytes));
          if(UNLIKELY(nullptr == aNewDivisions)) {
@@ -169,8 +186,13 @@ public:
       if(UNLIKELY(m_cValueCapacity < cValues)) {
          assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
+         if(IsAddError(cValues, cValues >> 1)) {
+            return true;
+         }
          size_t cNewValueCapacity = cValues + (cValues >> 1); // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
-
+         if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
+            return true;
+         }
          size_t cBytes = sizeof(TValues) * cNewValueCapacity;
          TValues * const aNewValues = static_cast<TValues *>(realloc(m_aValues, cBytes));
          if(UNLIKELY(nullptr == aNewValues)) {
@@ -191,15 +213,18 @@ public:
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const DimensionInfo * const pDimension = &rhs.m_aDimensions[iDimension];
          size_t cDivisions = pDimension->cDivisions;
+         assert(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
             return true;
          }
+         assert(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
          memcpy(m_aDimensions[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
          return true;
       }
+      assert(!IsMultiplyError(sizeof(TValues), cValues)); // we're copying this memory, so multiplication can't overflow
       memcpy(m_aValues, rhs.m_aValues, sizeof(TValues) * cValues);
       m_bExpanded = rhs.m_bExpanded;
       return false;
@@ -217,13 +242,17 @@ public:
       if(m_bExpanded) {
          while(true) {
             const TDivisions d = *pDivisionValue;
-            iValue += d * valueMultiple;
+            assert(!IsMultiplyError(d, valueMultiple)); // we're accessing existing memory, so it can't overflow
+            size_t addValue = d * valueMultiple;
+            assert(!IsAddError(addValue, iValue)); // we're accessing existing memory, so it can't overflow
+            iValue += addValue;
             ++pDivisionValue;
             if(pDivisionValueEnd == pDivisionValue) {
                break;
             }
             const size_t cDivisions = pDimension->cDivisions;
             assert(1 <= cDivisions); // since we're expanded we should have at least one division and two values
+            assert(!IsMultiplyError(cDivisions + 1, valueMultiple)); // we're accessing existing memory, so it can't overflow
             valueMultiple *= cDivisions + 1;
             ++pDimension;
          }
@@ -250,7 +279,11 @@ public:
                } while(LIKELY(low <= high));
                middle = UNPREDICTABLE(midVal < d) ? middle + 1 : middle;
             no_check:
-               iValue += middle * valueMultiple;
+               assert(!IsMultiplyError(middle, valueMultiple)); // we're accessing existing memory, so it can't overflow
+               ptrdiff_t addValue = middle * valueMultiple;
+               assert(!IsAddError(iValue, addValue)); // we're accessing existing memory, so it can't overflow
+               iValue += addValue;
+               assert(!IsMultiplyError(valueMultiple, cDivisions + 1)); // we're accessing existing memory, so it can't overflow
                valueMultiple *= cDivisions + 1;
             }
             ++pDimension;
@@ -262,12 +295,15 @@ public:
 #endif // NDEBUG
 
    TML_INLINE TValues * GetValueDirect(const size_t index) const {
+      assert(m_bExpanded); // this function doesn't make sense unless the underlying data has been expanded
+      assert(!IsMultiplyError(index, m_cVectorLength)); // we're accessing existing memory, so it can't overflow
       return &m_aValues[index * m_cVectorLength];
    }
 
    TML_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
+         assert(!IsMultiplyError(cValues, m_aDimensions[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
          cValues *= m_aDimensions[iDimension].cDivisions + 1;
       }
 
@@ -308,11 +344,13 @@ public:
       do {
          const size_t cDivisions1 = pDimensionFirst1->cDivisions;
 
+         assert(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cValues1 *= cDivisions1 + 1;
          const TDivisions * const p1End = &pDimensionFirst1->aDivisions[cDivisions1];
 
          pDimensionInfoStackFirst->pDivision1 = p1End - 1;
          const size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
+         assert(!IsMultiplyError(cNewValues, cDivisionsPlusOne)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cNewValues *= cDivisionsPlusOne;
          const size_t maxDivision = cDivisionsPlusOne - 2;
 
@@ -324,6 +362,9 @@ public:
          ++pDimensionInfoStackFirst;
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
+      if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         return true;
+      }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
          return true;
@@ -332,6 +373,8 @@ public:
       TValues * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = m_aDimensions;
 
+      assert(cValues1 <= cNewValues);
+      assert(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1];
       TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1];
 
@@ -374,6 +417,8 @@ public:
 
                const size_t change1 = UNPREDICTABLE(iDivision2 <= d1) ? 1 : 0;
                pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
+               // this doesn't need to be checked since change1 is either 0 or 1
+               // TODO: let's use a conditional here since it's either zero or 1
                pValue1 -= change1 * multiplication1;
 
                pDimensionInfoStackSecond->iDivision2 = iDivision2 - 1;
@@ -388,6 +433,7 @@ public:
 
                   const size_t cDivisions1 = pDimensionSecond1->cDivisions;
 
+                  assert(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
                   multiplication1 *= 1 + cDivisions1;
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
@@ -491,6 +537,7 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->cNewDivisions = cNewSingleDimensionDivisions;
+         assert(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;
@@ -499,19 +546,22 @@ public:
          ++pDimensionInfoStackFirst;
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
+      if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         return true;
+      }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
          return true;
       }
 
-      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2 - 1];
+      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2 - 1];  // we're accessing allocated memory, so it can't overflow
       const DimensionInfo * const aDimension2 = rhs.m_aDimensions;
 
       TValues * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = m_aDimensions;
 
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1];
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1];
+      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1]; // we're accessing allocated memory, so it can't overflow
+      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1]; // we're accessing allocated memory, so it can't overflow
 
       const TValues * const aValuesEnd = aValues - 1;
 
@@ -581,7 +631,9 @@ public:
                   const size_t cDivisions1 = pDimensionSecond1->cDivisions;
                   const size_t cDivisions2 = pDimensionSecond2->cDivisions;
 
+                  assert(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're accessing allocated memory, so it can't overflow
                   multiplication1 *= 1 + cDivisions1;
+                  assert(!IsMultiplyError(multiplication2, 1 + cDivisions2)); // we're accessing allocated memory, so it can't overflow
                   multiplication2 *= 1 + cDivisions2;
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
@@ -679,7 +731,8 @@ public:
          }
 
          if(0 != cDivisions) {
-            cValues *= (cDivisions + 1);
+            assert(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
+            cValues *= cDivisions + 1;
 
             const TDivisions * pD1Cur = pDimension1->aDivisions;
             const TDivisions * pD2Cur = pDimension2->aDivisions;
@@ -715,7 +768,8 @@ public:
          const DimensionInfo * const pDimension = &m_aDimensions[iDimension];
          size_t cDivisions = pDimension->cDivisions;
          if(0 != cDivisions) {
-            cValues *= (cDivisions + 1);
+            assert(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
+            cValues *= cDivisions + 1;
 
             const TDivisions * pDCur = pDimension->aDivisions;
             const TDivisions * const pDEnd = pDCur + cDivisions;
