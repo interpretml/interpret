@@ -650,7 +650,7 @@ public:
                return true;
             }
             size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
-            assert(cAttributesInCombination < m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
+            assert(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
             if (k_cDimensionsMax < cAttributesInCombination) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
                return true;
