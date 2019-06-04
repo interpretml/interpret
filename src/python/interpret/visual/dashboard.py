@@ -88,6 +88,9 @@ class AppRunner:
 
     def stop(self):
         # Shutdown
+        if self._thread is None:
+            return True
+
         log.debug("Triggering shutdown")
         try:
             path = _build_path("shutdown")
@@ -103,6 +106,8 @@ class AppRunner:
             if self._thread.is_alive():
                 log.error("Thread still alive despite shutdown called.")
                 return False
+
+            self._thread = None
 
         return True
 
@@ -133,7 +138,7 @@ class AppRunner:
         try:
             path = _build_path("")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
-            requests.post(url)
+            requests.get(url)
             log.debug("Dashboard ping succeeded")
             return True
         except requests.exceptions.RequestException as e:
@@ -145,7 +150,7 @@ class AppRunner:
         status_dict["addr"] = self.ip, self.port
         status_dict["base_url"] = self.base_url
         status_dict["use_relative_links"] = self.use_relative_links
-        status_dict["thread_alive"] = self._thread.is_alive()
+        status_dict["thread_alive"] = self._thread.is_alive() if self._thread else False
 
         http_reachable = self.ping()
         status_dict["http_reachable"] = http_reachable
@@ -156,7 +161,7 @@ class AppRunner:
         # The path to this instance should be id based.
         self.app.register(ctx, **kwargs)
 
-    def display(self, ctx, width="100%", height=800, open_link=False):
+    def display_link(self, ctx):
         obj_path = self._obj_id(ctx) + "/"
         path = (
             obj_path
@@ -171,6 +176,11 @@ class AppRunner:
 
         url = "{0}{1}".format(start_url, path)
         log.debug("Display URL: {0}".format(url))
+
+        return url
+
+    def display(self, ctx, width="100%", height=800, open_link=False):
+        url = self.display_link(ctx)
 
         html_str = "<!-- {0} -->\n".format(url)
         if open_link:

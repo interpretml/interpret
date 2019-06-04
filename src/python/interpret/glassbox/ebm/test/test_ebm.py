@@ -7,6 +7,7 @@ from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
 
 import numpy as np
 from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
+import pytest
 
 import warnings
 
@@ -31,6 +32,7 @@ def test_prefit_ebm():
         assert not has_non_zero
 
 
+@pytest.mark.slow
 def test_ebm_synthetic_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
@@ -52,6 +54,7 @@ def valid_ebm(ebm):
         assert all_finite
 
 
+@pytest.mark.slow
 def test_ebm_synthetic_classfication():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -67,6 +70,7 @@ def test_ebm_synthetic_classfication():
     valid_ebm(clf)
 
 
+@pytest.mark.slow
 def test_ebm_adult():
     data = adult_classification()
     X = data["full"]["X"]

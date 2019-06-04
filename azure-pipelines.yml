@@ -150,7 +150,7 @@ jobs:
     workingDirectory: src/python
     displayName: 'Install requirements'
   - script: |
-      python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: src/python
     displayName: 'Run pytest'
   - task: PublishTestResults@2
@@ -159,6 +159,13 @@ jobs:
       testResultsFiles: '**/test-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
     displayName: 'Publish test results'
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+    displayName: 'Publish test coverage results'
+
 
 - job: 'Publish_Package'
   dependsOn: 'Test'
