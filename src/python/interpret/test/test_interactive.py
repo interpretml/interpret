@@ -38,22 +38,8 @@ def text_explanation():
     return global_exp
 
 
-@pytest.fixture(scope="module")
-def show_server(request):
-    """ Fixture that runs show server. Returns show server status."""
-    target_addr = ("127.0.0.1", 1336)
-    set_show_addr(target_addr)
-
-    def fin():
-        shutdown_show_server()
-
-    request.addfinalizer(fin)
-
-    return status_show_server()
-
-
 def test_shutdown():
-    target_addr = ("127.0.0.1", 1337)
+    target_addr = ("127.0.0.1", 7000)
     set_show_addr(target_addr)
 
     actual_response = shutdown_show_server()
@@ -67,17 +53,18 @@ def test_shutdown():
 
 
 def test_addr_assignment():
-    target_addr = ("127.0.0.1", 1338)
+    target_addr = ("127.0.0.1", 7001)
     set_show_addr(target_addr)
 
     actual_addr = get_show_addr()
 
     assert target_addr == actual_addr
+
     shutdown_show_server()
 
 
 def test_status_show_server():
-    target_addr = ("127.0.0.1", 1339)
+    target_addr = ("127.0.0.1", 7002)
     set_show_addr(target_addr)
     shutdown_show_server()
 
@@ -85,7 +72,7 @@ def test_status_show_server():
 
     assert pre_status["app_runner_exists"]
 
-    target_addr = ("127.0.0.1", 1340)
+    target_addr = ("127.0.0.1", 7003)
     set_show_addr(target_addr)
 
     post_status = status_show_server()
@@ -96,7 +83,7 @@ def test_status_show_server():
 
 
 def test_init_show_server(explanation):
-    port = 1341
+    port = 7004
     target_addr = ("127.0.0.1", port)
     base_url = "proxy/{0}".format(port)
 
@@ -114,18 +101,26 @@ def test_init_show_server(explanation):
     shutdown_show_server()
 
 
-def test_show_link(explanation, show_server):
+def test_show_link(explanation):
+    target_addr = ("127.0.0.1", 7005)
+    set_show_addr(target_addr)
+
     actual_url = show_link(explanation)
     expected_id = str(id(explanation))
-    status = show_server
+    status = status_show_server()
     expected_url = "http://127.0.0.1:{0}/{1}/".format(status["addr"][1], expected_id)
 
     assert actual_url == expected_url
 
+    shutdown_show_server()
+
 
 @pytest.mark.visual
-def test_show(explanation, show_server):
+def test_show(explanation):
     explanation_li = [explanation, explanation]
+    target_addr = ("127.0.0.1", 7006)
+    set_show_addr(target_addr)
+
     show(explanation_li, share_tables=True)
     url = show_link(explanation_li)
 
@@ -136,6 +131,8 @@ def test_show(explanation, show_server):
         success = False
 
     assert success
+
+    shutdown_show_server()
 
 
 @pytest.mark.visual

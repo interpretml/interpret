@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.7] - 2019-06-03
+### Added
+- Added show_link method. Exposes the URL of show(explanation) as a returned string.
+### Fixed
+- Fixed shutdown_show_server, can now be called multiple times without failure.
+### Changed
+- Hardened status_show_server method.
+- Testing added for interactive module.
+- Removal of extra memory allocation in C++ code for EBM.
+- Various internal C++ fixes.
+
 ## [v0.1.6] - 2019-05-31
 ### Added
 - Integer indexing for preserve method.
@@ -73,6 +84,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.7]: https://github.com/microsoft/interpret/releases/tag/v0.1.7
 [v0.1.6]: https://github.com/microsoft/interpret/releases/tag/v0.1.6
 [v0.1.5]: https://github.com/microsoft/interpret/releases/tag/v0.1.5
 [v0.1.4]: https://github.com/microsoft/interpret/releases/tag/v0.1.4
