@@ -37,6 +37,7 @@ def run_notebook(notebook_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skip
 def test_example_notebooks():
     script_path = os.path.dirname(os.path.abspath(__file__))
     notebooks_path = os.path.abspath(

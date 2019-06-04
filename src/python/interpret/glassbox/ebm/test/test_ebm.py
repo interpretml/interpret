@@ -103,4 +103,8 @@ def test_ebm_adult():
     show(global_exp)
     show(local_exp)
 
+    # Check all features for global (including interactions).
+    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+        preserve(global_exp, selector_key)
+
     shutdown_show_server()

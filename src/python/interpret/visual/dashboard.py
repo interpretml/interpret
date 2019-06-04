@@ -293,7 +293,7 @@ class DispatcherApp:
 
             return app(environ, start_response)
 
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(e, exc_info=True)
             try:
                 start_response(

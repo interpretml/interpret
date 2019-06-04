@@ -99,7 +99,7 @@ def register_log(filename, level="DEBUG"):
         level: Logging level. For example, "DEBUG".
 
     Returns:
-        None.
+        Logging handler.
     """
     import logging
     import logging.handlers
@@ -125,10 +125,10 @@ def register_log(filename, level="DEBUG"):
     root = logging.getLogger("interpret")
     root.setLevel(level)
     root.addHandler(queue_handler)
-    return None
+    return queue_handler
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import pytest
     import os
 
