@@ -88,10 +88,12 @@ def test_init_show_server(explanation):
     base_url = "proxy/{0}".format(port)
 
     init_show_server(addr=target_addr, base_url=base_url, use_relative_links=False)
+    show(explanation)
     url = show_link(explanation)
 
     try:
-        requests.get(url)
+        response = requests.get(url)
+        assert response.status_code == 200
         success = True
     except requests.exceptions.RequestException:
         success = False
@@ -125,7 +127,8 @@ def test_show(explanation):
     url = show_link(explanation_li)
 
     try:
-        requests.get(url)
+        response = requests.get(url)
+        assert response.status_code == 200
         success = True
     except requests.exceptions.RequestException:
         success = False
