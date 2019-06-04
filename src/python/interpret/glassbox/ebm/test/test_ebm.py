@@ -70,8 +70,11 @@ def test_ebm_synthetic_classfication():
     valid_ebm(clf)
 
 
+@pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_adult():
+    from .... import preserve, show, shutdown_show_server, set_show_addr
+
     data = adult_classification()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -89,3 +92,15 @@ def test_ebm_adult():
     assert within_bounds
 
     valid_ebm(clf)
+
+    set_show_addr(("127.0.0.1", 6000))
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X[:5, :], y[:5])
+
+    # Smoke test: should run without crashing.
+    preserve(global_exp)
+    preserve(local_exp)
+    show(global_exp)
+    show(local_exp)
+
+    shutdown_show_server()

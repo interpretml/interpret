@@ -2,8 +2,6 @@
 # Distributed under the MIT software license
 
 from .base import ExplanationMixin
-from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar
-from ..visual.plot import sort_take, plot_pairwise_heatmap
 
 
 class FeatureValueExplanation(ExplanationMixin):
@@ -32,13 +30,16 @@ class FeatureValueExplanation(ExplanationMixin):
         if key is None:
             return self._internal_obj["overall"]
 
-        if self._internal_obj["specific"] is None:
+        if self._internal_obj["specific"] is None:  # pragma: no cover
             return None
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar
+        from ..visual.plot import sort_take, plot_pairwise_heatmap
+
         data_dict = self.data(key)
-        if data_dict is None:
+        if data_dict is None:  # pragma: no cover
             return None
 
         # Handle overall graphs
@@ -70,7 +71,7 @@ class FeatureValueExplanation(ExplanationMixin):
             )
 
         # Handle everything else as invalid
-        raise Exception(
+        raise Exception(  # pragma: no cover
             "Not supported configuration: {0}, {1}".format(
                 self.explanation_type, feature_type
             )

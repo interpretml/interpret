@@ -10,7 +10,6 @@ from ..glassbox import LogisticRegression
 import pytest
 
 
-# TODO: Add regression problem to spec.
 @pytest.mark.slow
 def test_spec_synthetic():
     all_explainers = get_all_explainers()

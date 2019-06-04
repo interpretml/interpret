@@ -97,10 +97,8 @@ def show(explanation, share_tables=None):
     The visualization provided is not preserved when the notebook exits.
 
     Args:
-        explanation: Either a scalar Explanation or a list of Explanations.
-        share_tables: Boolean or dictionary that dictates if Explanations
-                      should all use the same selector
-                      (table used for selecting in the Dashboard).
+        explanation: As provided in 'show'.
+        share_tables: As provided in 'show'.
 
     Returns:
         None.
@@ -124,12 +122,15 @@ def show(explanation, share_tables=None):
     return None
 
 
-def show_link(explanation):
-    """ Provides the backing link behind the associated 'show' call for explanation.
+def show_link(explanation, share_tables=None):
+    """ Provides the backing URL link behind the associated 'show' call for explanation.
 
     Args:
         explanation: Either a scalar Explanation or list of Explanations
-        that would be provided to 'show'.
+                     that would be provided to 'show'.
+        share_tables: Boolean or dictionary that dictates if Explanations
+                      should all use the same selector as provided to 'show'.
+                      (table used for selecting in the Dashboard).
 
     Returns:
         URL as a string.
@@ -137,6 +138,9 @@ def show_link(explanation):
     # Initialize server if needed
     if this.app_runner is None:  # pragma: no cover
         init_show_server(this.app_addr)
+
+    # Register
+    this.app_runner.register(explanation, share_tables=share_tables)
 
     try:
         url = this.app_runner.display_link(explanation)
