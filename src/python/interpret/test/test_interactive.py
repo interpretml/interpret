@@ -38,6 +38,7 @@ def text_explanation():
     return global_exp
 
 
+@pytest.mark.skip
 def test_shutdown():
     target_addr = ("127.0.0.1", 7000)
     set_show_addr(target_addr)
