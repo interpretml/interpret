@@ -6,6 +6,7 @@ from time import sleep
 
 import pytest
 
+
 @pytest.mark.slow
 def test_random_port():
     app_runner = AppRunner()
