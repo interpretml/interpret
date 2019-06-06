@@ -38,10 +38,27 @@ def text_explanation():
     return global_exp
 
 
-@pytest.mark.skip
+def wait_for_reachable(timeout=5):
+    from time import sleep
+
+    max_tries = 3
+    success = False
+    for _ in range(max_tries):
+        status = status_show_server()
+        if status["http_reachable"]:
+            success = True
+            break
+        sleep(timeout)
+
+    return success
+
+
 def test_shutdown():
     target_addr = ("127.0.0.1", 7000)
     set_show_addr(target_addr)
+
+    success = wait_for_reachable()
+    assert success
 
     actual_response = shutdown_show_server()
     expected_response = True
