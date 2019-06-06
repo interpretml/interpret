@@ -6,13 +6,12 @@ from time import sleep
 
 import pytest
 
-# TODO: Figures out what's happening on random failures later.
-@pytest.mark.skip
+@pytest.mark.slow
 def test_random_port():
     app_runner = AppRunner()
 
     app_runner.start()
-    sleep(1)
+    sleep(10)
     is_alive = app_runner.ping()
     assert is_alive
     app_runner.stop()
