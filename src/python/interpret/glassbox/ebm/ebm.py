@@ -602,7 +602,8 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
 
     def predict_proba(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self)
+        return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
@@ -1165,7 +1166,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
-        return EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self)
+        return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")

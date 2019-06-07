@@ -1,4 +1,5 @@
 # Copyright (c) 2019 Microsoft Corporation
+
 # Distributed under the MIT software license
 # TODO: Test EBMUtils
 
@@ -89,9 +90,8 @@ class EBMUtils:
         )
 
         # NOTE: Generalize predict when multiclass is supported.
-        log_odds_trans = np.c_[-log_odds_vector, log_odds_vector]
-        scores = expit(log_odds_trans)
-
+        prob = expit(log_odds_vector)
+        scores = np.vstack([1 - prob, prob]).T
         return scores
 
     @staticmethod
