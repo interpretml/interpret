@@ -55,7 +55,9 @@ class AppRunner:
                     log.debug("Port already in use: {0}".format(port))
 
             else:
-                msg = "Could not find open port"
+                msg = """Could not find open port.
+                Consider calling `interpret.set_show_addr(("127.0.0.1", 7001))` first.
+                """
                 log.error(msg)
                 raise RuntimeError(msg)
         else:
