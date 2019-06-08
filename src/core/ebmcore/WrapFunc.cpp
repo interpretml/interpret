@@ -23,7 +23,8 @@
 // 
 // More info:
 // https://stackoverflow.com/questions/8823267/linking-against-older-symbol-version-in-a-so-file
-// 
+// https://stackoverflow.com/questions/36461555/is-it-possible-to-statically-link-libstdc-and-wrap-memcpy
+//
 
 #include <string.h>
 
