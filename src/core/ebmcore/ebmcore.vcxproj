@@ -320,6 +320,9 @@ IF %ERRORLEVEL% NEQ 0 (
   <ItemGroup>
     <None Include="ebmcore.def" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="EbmCoreExports.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
