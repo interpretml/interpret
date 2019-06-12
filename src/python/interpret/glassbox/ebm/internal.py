@@ -91,6 +91,32 @@ class AttributeSet(ct.Structure):
     ]
 
 
+# TODO: Get this reviewed.
+LOGFUNC = ct.CFUNCTYPE(ct.c_void_p, ct.c_char, ct.c_char_p)
+
+SetLogMessageFunction = Lib.SetLogMessageFunction
+SetLogMessageFunction.argtypes = [
+    # void (* fn)(signed char traceLevel, const char * message)
+    LOGFUNC,
+]
+
+SetTraceLevel = Lib.SetTraceLevel
+SetTraceLevel.argtypes = [
+    # signed char traceLevel
+    ct.c_char,
+]
+
+# const signed char TraceLevelOff = 0;
+TraceLevelOff = 0
+# const signed char TraceLevelError = 1;
+TraceLevelError = 1
+# const signed char TraceLevelWarning = 2;
+TraceLevelWarning = 2
+# const signed char TraceLevelInfo = 3;
+TraceLevelInfo = 3
+# const signed char TraceLevelVerbose = 4;
+TraceLevelVerbose = 4
+
 InitializeTrainingRegression = Lib.InitializeTrainingRegression
 InitializeTrainingRegression.argtypes = [
     # int64_t randomSeed
@@ -283,6 +309,28 @@ CancelInteraction.argtypes = [
     # void * tmlInteraction
     ct.c_void_p
 ]
+
+
+def native_log(trace_level, message):
+    trace_level = int(trace_level[0])
+    message = message.decode("utf-8")
+
+    if trace_level == TraceLevelOff:
+        pass
+    elif trace_level == TraceLevelError:
+        log.error(message)
+    elif trace_level == TraceLevelWarning:
+        log.warning(message)
+    elif trace_level == TraceLevelInfo:
+        log.info(message)
+    elif trace_level == TraceLevelVerbose:
+        log.debug(message)
+
+
+# NOTE: Native is always set to max logging - consider changing this later.
+typed_log_func = LOGFUNC(native_log)
+SetLogMessageFunction(typed_log_func)
+SetTraceLevel(ct.c_char(TraceLevelVerbose))
 
 
 class NativeEBM:
