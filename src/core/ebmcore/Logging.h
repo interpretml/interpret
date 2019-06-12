@@ -7,15 +7,12 @@
 
 #include <assert.h>
 #include <tuple>
-#include <stdio.h>
 
-#include "ebmcore.h"
-
-#define LOG_MESSAGE_BUFFER_SIZE_MAX 1024
+#include "ebmcore.h" // LOG_MESSAGE_FUNCTION
 
 extern signed char g_traceLevel;
 extern LOG_MESSAGE_FUNCTION g_pLogMessageFunc;
-constexpr static char g_pLoggingParameterError[] = "Error in snprintf parameters for logging.";
+extern void InteralLogWithArguments(signed char traceLevel, const char * const pOriginalMessage, ...);
 
 #define LOG(traceLevel, pLogMessage, ...) \
    do { /* using a do loop here gives us a nice look to the macro where the caller needs to use a semi-colon to call it, and it can be used after a single if statement without curly braces */ \
@@ -23,19 +20,13 @@ constexpr static char g_pLoggingParameterError[] = "Error in snprintf parameters
       assert(TraceLevelOff < LOG__traceLevel); /* , "traceLevel can't be TraceLevelOff or lower for call to LOG(traceLevel, pLogMessage, ...)" */ \
       assert(LOG__traceLevel <= TraceLevelVerbose); /* "traceLevel can't be higher than TraceLevelDebug for call to LOG(traceLevel, pLogMessage, ...)" */ \
       if(LOG__traceLevel <= g_traceLevel) { \
+         assert(nullptr != g_pLogMessageFunc); \
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
-         if(0 == LOG__cArguments) { \
+         if(0 == LOG__cArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
             (*g_pLogMessageFunc)(LOG__traceLevel, LOG__originalMessage); \
          } else { \
-            char LOG__messageSpace[LOG_MESSAGE_BUFFER_SIZE_MAX]; \
-            /* snprintf specifically says that the count parameter is in bytes of buffer space, but let's be safe and assume someone might change this to a unicode function someday and that new function might be in characters instead of bytes.  For us #bytes == #chars */ \
-            if(snprintf(LOG__messageSpace, sizeof(LOG__messageSpace) / sizeof(LOG__messageSpace[0]), LOG__originalMessage, ##__VA_ARGS__) < 0) { \
-               (*g_pLogMessageFunc)(LOG__traceLevel, g_pLoggingParameterError); \
-            } else { \
-               /* if LOG__messageSpace overflows, we just clip the message */ \
-               (*g_pLogMessageFunc)(LOG__traceLevel, LOG__messageSpace); \
-            } \
+            InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, ##__VA_ARGS__); \
          } \
       } \
       /* the "(void)0, 0" part supresses the conditional expression is constant compiler warning */ \
