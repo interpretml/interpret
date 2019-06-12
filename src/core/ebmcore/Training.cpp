@@ -836,16 +836,18 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
 }
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   LOG(TraceLevelInfo, "Entered InitializeTrainingRegression");
+   LOG(TraceLevelInfo, "Entered InitializeTrainingRegression\n");
+   LOG(TraceLevelVerbose, "InitializeTrainingRegression parameters: randomSeed=%" IntegerDataTypePrintf ", countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countAttributeCombinations=%" IntegerDataTypePrintf ", attributeCombinations=%p, attributeCombinationIndexes=%p, countTrainingCases=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationCases=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf "\n", randomSeed, countAttributes, static_cast<const void *>(attributes), countAttributeCombinations, static_cast<const void *>(attributeCombinations), static_cast<const void *>(attributeCombinationIndexes), countTrainingCases, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationCases, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
    PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, 0, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
-   LOG(TraceLevelInfo, "Exited InitializeTrainingRegression 0x%p", pEbmTraining);
+   LOG(TraceLevelInfo, "Exited InitializeTrainingRegression %p\n", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   LOG(TraceLevelInfo, "Entered InitializeTrainingClassification");
+   LOG(TraceLevelInfo, "Entered InitializeTrainingClassification\n");
+   LOG(TraceLevelVerbose, "InitializeTrainingClassification parameters: randomSeed=%" IntegerDataTypePrintf ", countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countAttributeCombinations=%" IntegerDataTypePrintf ", attributeCombinations=%p, attributeCombinationIndexes=%p, countTargetStates=%" IntegerDataTypePrintf ", countTrainingCases=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationCases=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf "\n", randomSeed, countAttributes, static_cast<const void *>(attributes), countAttributeCombinations, static_cast<const void *>(attributeCombinations), static_cast<const void *>(attributeCombinationIndexes), countTargetStates, countTrainingCases, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationCases, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
    PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countAttributes, attributes, countAttributeCombinations, attributeCombinations, attributeCombinationIndexes, countTargetStates, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
-   LOG(TraceLevelInfo, "Exited InitializeTrainingRegression 0x%p", pEbmTraining);
+   LOG(TraceLevelInfo, "Exited InitializeTrainingClassification %p\n", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }
 
@@ -914,6 +916,9 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTar
 }
 
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * validationMetricReturn) {
+   LOG(TraceLevelInfo, "Entered TrainingStep\n");
+   LOG(TraceLevelVerbose, "TrainingStep parameters: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf ", learningRate=%" FractionalDataTypePrintf ", countTreeSplitsMax=%" IntegerDataTypePrintf ", countCasesRequiredForSplitParentMin=%" IntegerDataTypePrintf ", trainingWeights=%p, validationWeights=%p, validationMetricReturn=%p\n", static_cast<void *>(ebmTraining), indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, static_cast<const void *>(trainingWeights), static_cast<const void *>(validationWeights), static_cast<void *>(validationMetricReturn));
+
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
    assert(0 <= indexAttributeCombination);
@@ -943,15 +948,21 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    assert(nullptr == validationWeights); // TODO : implement this later
    assert(nullptr != validationMetricReturn);
 
+   IntegerDataType ret;
    if(pTmlState->m_bRegression) {
-      return TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
+      ret = TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    } else {
       const size_t cTargetStates = pTmlState->m_cTargetStates;
-      return CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
+      ret = CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    }
+   LOG(TraceLevelInfo, "Exited TrainingStep %" IntegerDataTypePrintf ", metric=%" FractionalDataTypePrintf "\n", ret, *validationMetricReturn);
+   return ret;
 }
 
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModel(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination) {
+   LOG(TraceLevelInfo, "Entered GetCurrentModel\n");
+   LOG(TraceLevelVerbose, "GetCurrentModel parameters: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf "\n", static_cast<void *>(ebmTraining), indexAttributeCombination);
+
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
    assert(0 <= indexAttributeCombination);
@@ -961,10 +972,16 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iAttributeCombination];
    assert(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
-   return pCurrentModel->GetValuePointer();
+   FractionalDataType * pRet = pCurrentModel->GetValuePointer();
+
+   LOG(TraceLevelInfo, "Exited GetCurrentModel %p\n", static_cast<void *>(pRet));
+   return pRet;
 }
 
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModel(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination) {
+   LOG(TraceLevelInfo, "Entered GetBestModel\n");
+   LOG(TraceLevelVerbose, "GetBestModel parameters: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf "\n", static_cast<void *>(ebmTraining), indexAttributeCombination);
+
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
    assert(0 <= indexAttributeCombination);
@@ -974,16 +991,25 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iAttributeCombination];
    assert(pBestModel->m_bExpanded); // the model should have been expanded at startup
-   return pBestModel->GetValuePointer();
+   FractionalDataType * pRet = pBestModel->GetValuePointer();
+
+   LOG(TraceLevelInfo, "Exited GetBestModel %p\n", static_cast<void *>(pRet));
+   return pRet;
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelTraining(PEbmTraining ebmTraining) {
+   LOG(TraceLevelInfo, "Entered CancelTraining\n");
+   LOG(TraceLevelVerbose, "CancelTraining parameters: ebmTraining=%p\n", static_cast<void *>(ebmTraining));
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
+   LOG(TraceLevelInfo, "Exited CancelTraining\n");
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining ebmTraining) {
+   LOG(TraceLevelInfo, "Entered FreeTraining\n");
+   LOG(TraceLevelVerbose, "FreeTraining parameters: ebmTraining=%p\n", static_cast<void *>(ebmTraining));
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
    assert(nullptr != pTmlState);
    delete pTmlState;
+   LOG(TraceLevelInfo, "Exited FreeTraining\n");
 }

@@ -45,7 +45,9 @@ typedef struct {
 } *PEbmInteraction;
 
 typedef double FractionalDataType;
+#define FractionalDataTypePrintf "f"
 typedef int64_t IntegerDataType;
+#define IntegerDataTypePrintf PRId64
 
 const IntegerDataType AttributeTypeOrdinal = 0;
 const IntegerDataType AttributeTypeNominal = 1;

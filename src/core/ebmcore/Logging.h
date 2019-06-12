@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "ebmcore.h" // LOG_MESSAGE_FUNCTION
+#include "EbmInternal.h" // UNLIKELY
 
 extern signed char g_traceLevel;
 extern LOG_MESSAGE_FUNCTION g_pLogMessageFunc;
@@ -19,7 +20,7 @@ extern void InteralLogWithArguments(signed char traceLevel, const char * const p
       constexpr signed char LOG__traceLevel = (traceLevel); /* we only use traceLevel once, which avoids pre and post decrement issues with macros */ \
       assert(TraceLevelOff < LOG__traceLevel); /* , "traceLevel can't be TraceLevelOff or lower for call to LOG(traceLevel, pLogMessage, ...)" */ \
       assert(LOG__traceLevel <= TraceLevelVerbose); /* "traceLevel can't be higher than TraceLevelDebug for call to LOG(traceLevel, pLogMessage, ...)" */ \
-      if(LOG__traceLevel <= g_traceLevel) { \
+      if(UNLIKELY(LOG__traceLevel <= g_traceLevel)) { \
          assert(nullptr != g_pLogMessageFunc); \
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
