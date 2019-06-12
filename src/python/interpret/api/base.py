@@ -12,7 +12,7 @@ class ExplainerMixin(ABC):
         available_explanations: A list of strings subsetting the following
             - "perf", "data", "local", "global".
         explainer_type: A string that is one of the following
-            - "blackbox", "rodel", "specific".
+            - "blackbox", "model", "specific".
     """
 
     @property
@@ -27,7 +27,7 @@ class ExplainerMixin(ABC):
 
 
 class ExplanationMixin(ABC):
-    """ A computed explanation itself, responsible for visualization.
+    """ The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 
     Attributes:
