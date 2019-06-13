@@ -17,7 +17,7 @@
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
 static void InitializeResiduals(const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates, const int iZeroResidual) {
-   LOG(TraceLevelInfo, "Entered InitializeResiduals\n");
+   LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictionScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
    // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 attribute and see how it behaves
@@ -166,7 +166,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
          } while(pResidualErrorEnd != pResidualError);
       }
    }
-   LOG(TraceLevelInfo, "Exited InitializeResiduals\n");
+   LOG(TraceLevelInfo, "Exited InitializeResiduals");
 }
 
 TML_INLINE static void InitializeResidualsFlat(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates, const int iZeroResidual) {
