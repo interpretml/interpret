@@ -91,19 +91,18 @@ class AttributeSet(ct.Structure):
     ]
 
 
-# TODO: Get this reviewed.
-LOGFUNC = ct.CFUNCTYPE(ct.c_void_p, ct.c_char, ct.c_char_p)
+LOGFUNC = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
 
 SetLogMessageFunction = Lib.SetLogMessageFunction
 SetLogMessageFunction.argtypes = [
     # void (* fn)(signed char traceLevel, const char * message)
-    LOGFUNC,
+    LOGFUNC
 ]
 
 SetTraceLevel = Lib.SetTraceLevel
 SetTraceLevel.argtypes = [
     # signed char traceLevel
-    ct.c_char,
+    ct.c_char
 ]
 
 # const signed char TraceLevelOff = 0;

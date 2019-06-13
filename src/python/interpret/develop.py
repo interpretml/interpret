@@ -39,7 +39,6 @@ def debug_info():
     return debug_dict
 
 
-# TODO: Fill this out once specs are provided.
 def dynamic_system_info():
     """ Provides dynamic system information (available memory etc.) as a dictionary.
 
@@ -52,10 +51,18 @@ def dynamic_system_info():
 
     cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
     cpu_freq = psutil.cpu_freq()
+    virtual_memory = psutil.virtual_memory()._asdict()
+    virtual_memory = {
+        k: sizeof_fmt(v) if k != "percent" else v for k, v in virtual_memory.items()
+    }
+    swap_memory = psutil.swap_memory()._asdict()
+    swap_memory = {
+        k: sizeof_fmt(v) if k != "percent" else v for k, v in swap_memory.items()
+    }
 
     system_info = {
-        "psutil.virtual_memory": psutil.virtual_memory()._asdict(),
-        "psutil.swap_memory": psutil.swap_memory()._asdict(),
+        "psutil.virtual_memory": virtual_memory,
+        "psutil.swap_memory": swap_memory,
         "psutil.avg_cpu_percent": None if cpu_percent is None else np.mean(cpu_percent),
         "psutil.std_cpu_percent": None if cpu_percent is None else np.std(cpu_percent),
         "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
@@ -84,15 +91,33 @@ def static_system_info():
         "platform.version": platform.version(),
         "psutil.logical_cpu_count": psutil.cpu_count(logical=True),
         "psutil.physical_cpu_count": psutil.cpu_count(logical=False),
-        "psutil.virtual_memory.total": psutil.virtual_memory().total,
-        "psutil.swap_memory.total": psutil.swap_memory().total,
+        "psutil.virtual_memory.total": sizeof_fmt(psutil.virtual_memory().total),
+        "psutil.swap_memory.total": sizeof_fmt(psutil.swap_memory().total),
     }
 
     return system_info
 
 
+def sizeof_fmt(num, suffix="B"):
+    """ Returns bytes in human readable form. Taken from below link:
+    https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+
+    Args:
+        num: Number (bytes) to represent in human readable form.
+        suffix: Suffix required for Python format string.
+
+    Returns:
+        Human readable form of bytes provided.
+    """
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, "Yi", suffix)
+
+
 def register_log(filename, level="DEBUG"):
-    """ Registers file to have logs written to.
+    """ Registers file to have logs written to. Initializes with system info.
 
     Args:
         filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
@@ -105,6 +130,7 @@ def register_log(filename, level="DEBUG"):
     import logging.handlers
     import sys
     import multiprocessing
+    import json
 
     if filename is sys.stderr or filename is sys.stdout:
         handler = logging.StreamHandler(stream=filename)
@@ -125,6 +151,12 @@ def register_log(filename, level="DEBUG"):
     root = logging.getLogger("interpret")
     root.setLevel(level)
     root.addHandler(queue_handler)
+
+    # Writes basic system diagnostic immediately.
+    debug_dict = debug_info()
+    debug_str = json.dumps(debug_dict, indent=2)
+    root.info(debug_str)
+
     return queue_handler
 
 
