@@ -34,6 +34,8 @@
 #include "MultiDimensionalTraining.h"
 
 static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
+   LOG(TraceLevelInfo, "Entered DeleteSegmentsCore\n");
+
    assert(0 < cAttributeCombinations);
    if(UNLIKELY(nullptr != apSegmentedRegions)) {
       SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
@@ -44,6 +46,7 @@ static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedReg
       } while(ppSegmentedRegionsEnd != ppSegmentedRegions);
       delete[] apSegmentedRegions;
    }
+   LOG(TraceLevelInfo, "Exited DeleteSegmentsCore\n");
 }
 
 static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegmentsCore(const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombinations, const size_t cVectorLength) {
@@ -569,9 +572,11 @@ public:
 
       if(m_bRegression) {
          // member classes inside a union requre explicit call to destructor
+         LOG(TraceLevelInfo, "~EbmTrainingState identified as regression type\n");
          m_cachedThreadResourcesUnion.regression.~CachedTrainingThreadResources();
       } else {
          // member classes inside a union requre explicit call to destructor
+         LOG(TraceLevelInfo, "~EbmTrainingState identified as classification type\n");
          m_cachedThreadResourcesUnion.classification.~CachedTrainingThreadResources();
       }
 
