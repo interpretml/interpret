@@ -11,6 +11,7 @@
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // AttributeTypeCore
+#include "Logging.h"
 #include "AttributeInternal.h"
 #include "AttributeCombinationInternal.h"
 #include "DataSetByAttributeCombination.h"
@@ -18,41 +19,52 @@
 #define INVALID_POINTER (reinterpret_cast<void *>(~static_cast<size_t>(0)))
 
 TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
+   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructResidualErrors\n");
+
    assert(1 <= cCases);
    assert(1 <= cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)\n");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)\n");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
+
+   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructResidualErrors\n");
    return aResidualErrors;
 }
 
 TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cCases, const size_t cVectorLength, const FractionalDataType * const aPredictionScoresFrom) {
+   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructPredictionScores\n");
+
    assert(0 < cCases);
    assert(0 < cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(cCases, cVectorLength)\n");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)\n");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * const aPredictionScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
    if(nullptr == aPredictionScoresTo) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores nullptr == aPredictionScoresTo\n");
       return nullptr;
    }
 
@@ -61,14 +73,19 @@ TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cC
    } else {
       memcpy(aPredictionScoresTo, aPredictionScoresFrom, cBytes);
    }
+
+   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructPredictionScores\n");
    return aPredictionScoresTo;
 }
 
 TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cCases, const IntegerDataType * const aTargets) {
+   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructTargetData\n");
+
    assert(0 < cCases);
    assert(nullptr != aTargets);
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructTargetData\n");
       return nullptr;
    }
    const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cCases;
@@ -86,6 +103,8 @@ TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
       ++pTargetTo;
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
+
+   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructTargetData\n");
    return aTargetData;
 }
 
@@ -95,17 +114,21 @@ struct InputDataPointerAndCountStates {
 };
 
 TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructInputData\n");
+
    assert(0 < cAttributeCombinations);
    assert(nullptr != apAttributeCombination);
    assert(0 < cCases);
    assert(nullptr != aInputDataFrom);
 
    if(IsMultiplyError(sizeof(void *), cAttributeCombinations)) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(void *), cAttributeCombinations)\n");
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cAttributeCombinations;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
+      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData nullptr == aaInputDataTo\n");
       return nullptr;
    }
 
@@ -124,11 +147,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       const size_t cDataUnits = (cCases - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
 
       if(IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)) {
+         LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)\n");
          goto free_all;
       }
       const size_t cBytesData = sizeof(StorageDataTypeCore) * cDataUnits;
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cBytesData));
       if(nullptr == pInputDataTo) {
+         LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData nullptr == pInputDataTo\n");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;
@@ -204,6 +229,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       ++ppAttributeCombination;
    } while(ppAttributeCombinationEnd != ppAttributeCombination);
 
+   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructInputData\n");
    return aaInputDataTo;
 
 free_all:
@@ -228,6 +254,8 @@ DataSetAttributeCombination::DataSetAttributeCombination(const bool bAllocateRes
 }
 
 DataSetAttributeCombination::~DataSetAttributeCombination() {
+   LOG(TraceLevelInfo, "Entered ~DataSetAttributeCombination\n");
+
    if(INVALID_POINTER != m_aResidualErrors) {
       free(m_aResidualErrors);
    }
@@ -248,4 +276,6 @@ DataSetAttributeCombination::~DataSetAttributeCombination() {
       } while(paInputDataEnd != paInputData);
       free(const_cast<StorageDataTypeCore **>(m_aaInputData));
    }
+
+   LOG(TraceLevelInfo, "Exited ~DataSetAttributeCombination\n");
 }
