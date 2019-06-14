@@ -133,6 +133,8 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   LOG(TraceLevelVerbose, "Entered BinDataSetTraining");
+
    assert(cCompilerDimensions == pAttributeCombination->m_cAttributes);
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
 
@@ -204,6 +206,8 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
    }
    const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
    if(pResidualError < pResidualErrorEnd) {
+      LOG(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
+
       // first time through?
       assert(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
       cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
@@ -212,6 +216,8 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
       goto one_last_loop;
    }
    assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
+
+   LOG(TraceLevelVerbose, "Exited BinDataSetTraining");
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
@@ -318,6 +324,8 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   LOG(TraceLevelVerbose, "Entered CompressBinnedBuckets");
+
 #ifndef NDEBUG
    size_t cCasesTotalDebug = 0;
 #endif // NDEBUG
@@ -381,6 +389,8 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
    assert(cCasesTotal == cCasesTotalDebug);
 
    *pcCasesTotal = cCasesTotal;
+
+   LOG(TraceLevelVerbose, "Exited CompressBinnedBuckets");
    return cFinalItems;
 }
 
