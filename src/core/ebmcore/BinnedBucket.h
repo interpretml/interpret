@@ -266,7 +266,7 @@ public:
 
 // TODO: make the number of dimensions (pAttributeCombination->m_cAttributes) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
-void BinDataSet(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
+void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG

@@ -403,6 +403,8 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   LOG(TraceLevelVerbose, "Entered BuildFastTotals");
+
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -500,6 +502,8 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
 #ifndef NDEBUG
             free(pDebugBucket);
 #endif // NDEBUG
+
+            LOG(TraceLevelVerbose, "Exited BuildFastTotals");
             return;
          }
       }
@@ -888,6 +892,8 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+   LOG(TraceLevelVerbose, "Entered TrainMultiDimensional");
+
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
@@ -903,16 +909,19 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
    const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
+      LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
    }
    const size_t cTotalBuckets =  cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+      LOG(TraceLevelWarning, "WARNING TrainMultiDimensional GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
       return true;
    }
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)) {
+      LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;
@@ -920,6 +929,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
+      LOG(TraceLevelWarning, "WARNING TrainMultiDimensional nullptr == aBinnedBuckets");
       return true;
    }
    memset(aBinnedBuckets, 0, cBytesBuffer);
@@ -1081,6 +1091,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 2);
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 3);
 
+      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST state sweep loop");
       for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
          aiStart[0] = iState1;
 
@@ -1128,6 +1139,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 14);
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 15);
 
+      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND state sweep loop");
       for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
          aiStart[1] = iState2;
 
@@ -1165,9 +1177,11 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             bCutFirst2 = true;
          }
       }
+      LOG(TraceLevelVerbose, "TrainMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
          if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+            LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1177,12 +1191,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(cutFirst2LowBest < cutFirst2HighBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1192,12 +1208,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
          } else if(cutFirst2HighBest < cutFirst2LowBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1207,6 +1225,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
          } else {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1214,6 +1233,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1266,6 +1286,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          }
       } else {
          if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+            LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1275,6 +1296,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(cutFirst1LowBest < cutFirst1HighBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1282,6 +1304,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1291,6 +1314,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
          } else if(cutFirst1HighBest < cutFirst1LowBest) {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1298,6 +1322,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
 
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1307,12 +1332,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
             if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+               LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
@@ -1365,6 +1392,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          }
       }
    } else {
+      LOG(TraceLevelWarning, "WARNING TrainMultiDimensional 2 != dimensions");
+  
       // TODO: handle this better
 #ifndef NDEBUG
       assert(false);
@@ -1377,6 +1406,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
 
+   LOG(TraceLevelVerbose, "Exited TrainMultiDimensional");
    return false;
 }
 
@@ -1711,7 +1741,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    // TODO : we don't seem to use the denmoninator in PredictionStatistics, so we could remove that variable for classification
    
    // TODO : use the fancy recursive binner that we use in the training version of this function
-   BinDataSet<countCompilerClassificationTargetStates>(aBinnedBuckets, pAttributeCombination, pDataSet, cTargetStates
+   BinDataSetInteraction<countCompilerClassificationTargetStates>(aBinnedBuckets, pAttributeCombination, pDataSet, cTargetStates
 #ifndef NDEBUG
       , aBinnedBucketsEndDebug
 #endif // NDEBUG
