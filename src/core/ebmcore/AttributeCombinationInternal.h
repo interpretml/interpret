@@ -40,7 +40,7 @@ public:
    }
 
    TML_INLINE static AttributeCombinationCore ** AllocateAttributeCombinations(const size_t cAttributeCombinations) {
-      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::AllocateAttributeCombinations\n");
+      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::AllocateAttributeCombinations");
 
       assert(0 < cAttributeCombinations);
       AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
@@ -49,19 +49,19 @@ public:
          assert(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
          memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);
       }
-      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::AllocateAttributeCombinations\n");
+      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::AllocateAttributeCombinations");
       return apAttributeCombinations;
    }
 
    TML_INLINE static void FreeAttributeCombinations(const size_t cAttributeCombinations, AttributeCombinationCore ** apAttributeCombinations) {
-      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::FreeAttributeCombinations\n");
+      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::FreeAttributeCombinations");
       if(nullptr != apAttributeCombinations) {
          for(size_t i = 0; i < cAttributeCombinations; ++i) {
             AttributeCombinationCore::Free(apAttributeCombinations[i]);
          }
          delete[] apAttributeCombinations;
       }
-      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::FreeAttributeCombinations\n");
+      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::FreeAttributeCombinations");
    }
 };
 static_assert(std::is_pod<AttributeCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
