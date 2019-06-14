@@ -319,7 +319,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
    assert(0 != cBinnedBuckets);
    if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cBinnedBuckets || 0 == cTreeSplitsMax)) {
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-         LOG(TraceLevelWarning, "ERROR GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
+         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
          return true;
       }
 
@@ -343,7 +343,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
    }
 
    if(GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
-      LOG(TraceLevelWarning, "ERROR GrowDecisionTree GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
       return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
    }
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
@@ -356,7 +356,7 @@ retry_with_bigger_tree_node_children_array:
    if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
       // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode)
       if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
-         LOG(TraceLevelWarning, "ERROR GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
+         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
          return true;
       }
       cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
@@ -379,7 +379,7 @@ retry_with_bigger_tree_node_children_array:
 
    if(PREDICTABLE(1 == cTreeSplitsMax)) {
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
-         LOG(TraceLevelWarning, "ERROR GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
          return true;
       }
 
@@ -443,7 +443,7 @@ retry_with_bigger_tree_node_children_array:
             TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                  LOG(TraceLevelWarning, "ERROR GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                   return true;
                }
                goto retry_with_bigger_tree_node_children_array;
@@ -467,7 +467,7 @@ retry_with_bigger_tree_node_children_array:
             TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                  LOG(TraceLevelWarning, "ERROR GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                   return true;
                }
                goto retry_with_bigger_tree_node_children_array;
@@ -491,20 +491,20 @@ retry_with_bigger_tree_node_children_array:
 
       assert(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
-      LOG(TraceLevelWarning, "ERROR GrowDecisionTree exception");
+      LOG(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
    }
 
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits))) {
-      LOG(TraceLevelWarning, "ERROR GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits)");
+      LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits)");
       return true;
    }
    if(IsMultiplyError(cVectorLength, cSplits + 1)) {
-      LOG(TraceLevelWarning, "ERROR GrowDecisionTree IsMultiplyError(cVectorLength, cSplits + 1)");
+      LOG(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cSplits + 1)");
       return true;
    }
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)))) {
-      LOG(TraceLevelWarning, "ERROR GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)");
+      LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)");
       return true;
    }
    ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
@@ -534,17 +534,19 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the attribute combination loop though)
+      LOG(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the attribute combination loop though)
+      LOG(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
-      LOG(TraceLevelWarning, "ERROR TrainSingleDimensional nullptr == aBinnedBuckets");
+      LOG(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aBinnedBuckets");
       return true;
    }
    // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!

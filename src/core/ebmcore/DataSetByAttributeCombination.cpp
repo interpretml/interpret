@@ -25,14 +25,14 @@ TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCas
    assert(1 <= cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
@@ -50,21 +50,21 @@ TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cC
    assert(0 < cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(cCases, cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * const aPredictionScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
    if(nullptr == aPredictionScoresTo) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructPredictionScores nullptr == aPredictionScoresTo");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores nullptr == aPredictionScoresTo");
       return nullptr;
    }
 
@@ -85,7 +85,7 @@ TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
    assert(nullptr != aTargets);
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructTargetData");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructTargetData");
       return nullptr;
    }
    const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cCases;
@@ -122,13 +122,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    assert(nullptr != aInputDataFrom);
 
    if(IsMultiplyError(sizeof(void *), cAttributeCombinations)) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(void *), cAttributeCombinations)");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(void *), cAttributeCombinations)");
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cAttributeCombinations;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
-      LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData nullptr == aaInputDataTo");
+      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -147,13 +147,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       const size_t cDataUnits = (cCases - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
 
       if(IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)) {
-         LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)");
+         LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)");
          goto free_all;
       }
       const size_t cBytesData = sizeof(StorageDataTypeCore) * cDataUnits;
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cBytesData));
       if(nullptr == pInputDataTo) {
-         LOG(TraceLevelWarning, "ERROR DataSetAttributeCombination::ConstructInputData nullptr == pInputDataTo");
+         LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;

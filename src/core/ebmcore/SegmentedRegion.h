@@ -367,12 +367,12 @@ public:
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
       if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-         LOG(TraceLevelWarning, "ERROR Expand IsMultiplyError(cNewValues, m_cVectorLength)");
+         LOG(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
-         LOG(TraceLevelWarning, "ERROR Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
+         LOG(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
          return true;
       }
 
@@ -466,7 +466,7 @@ public:
          }
 
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
-            LOG(TraceLevelWarning, "ERROR Expand SetCountDivisions(iDimension, cDivisions)");
+            LOG(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
 
