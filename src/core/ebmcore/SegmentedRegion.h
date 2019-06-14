@@ -63,10 +63,12 @@ public:
       assert(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
       if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
+         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
          return nullptr;
       }
       const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
       if(IsMultiplyError(sizeof(TValues), cValueCapacity)) {
+         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(TValues), cValueCapacity)");
          return nullptr;
       }
       const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
@@ -75,6 +77,7 @@ public:
       const size_t cBytesSegmentedRegion = sizeof(SegmentedRegionCore) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
       SegmentedRegionCore * const pSegmentedRegion = static_cast<SegmentedRegionCore *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
+         LOG(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
       }
       memset(pSegmentedRegion, 0, cBytesSegmentedRegion); // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to only free pointers that had non-initialized garbage inside of them
@@ -87,6 +90,7 @@ public:
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
       TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
+         LOG(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
          return nullptr;
       }
@@ -100,6 +104,7 @@ public:
          pDimension->cDivisionCapacity = k_initialDivisionCapacity;
          TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
          if(UNLIKELY(nullptr == aDivisions)) {
+            LOG(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
             Free(pSegmentedRegion); // free everything!
             return nullptr;
          }
@@ -162,11 +167,14 @@ public:
          assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
          if(IsAddError(cDivisions, cDivisions >> 1)) {
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
             return true;
          }
          size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1); // just increase it by 50% since we don't expect to grow our divisions often after an initial period, and realloc takes some of the cost of growing away
+         LOG(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
 
          if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)");
             return true;
          }
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
@@ -174,6 +182,7 @@ public:
          if(UNLIKELY(nullptr == aNewDivisions)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
             return true;
          }
          pDimension->aDivisions = aNewDivisions;
@@ -188,10 +197,14 @@ public:
          assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
          if(IsAddError(cValues, cValues >> 1)) {
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
             return true;
          }
          size_t cNewValueCapacity = cValues + (cValues >> 1); // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
+         LOG(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
+
          if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(TValues), cNewValueCapacity)");
             return true;
          }
          size_t cBytes = sizeof(TValues) * cNewValueCapacity;
@@ -199,6 +212,7 @@ public:
          if(UNLIKELY(nullptr == aNewValues)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
             return true;
          }
          m_aValues = aNewValues;
@@ -217,12 +231,14 @@ public:
          assert(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+            LOG(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
          assert(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
          memcpy(m_aDimensions[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
+         LOG(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
          return true;
       }
       assert(!IsMultiplyError(sizeof(TValues), cValues)); // we're copying this memory, so multiplication can't overflow
@@ -555,10 +571,12 @@ public:
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
       if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         LOG(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
+         LOG(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
          return true;
       }
 
@@ -674,6 +692,7 @@ public:
          
          // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
          if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
+            LOG(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
             return true;
          }
          

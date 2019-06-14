@@ -540,6 +540,8 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   LOG(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
+
    // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
@@ -693,6 +695,8 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
          }
       }
    }
+
+   LOG(TraceLevelVerbose, "Exited BuildFastTotalsZeroMemoryIncrease");
 }
 
 
@@ -828,6 +832,8 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   // don't LOG this!  It would create way too much chatter!
+
    // TODO : optimize this function
 
    assert(iDimensionSweep < pAttributeCombination->m_cAttributes);

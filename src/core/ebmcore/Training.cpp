@@ -518,6 +518,8 @@ union CachedThreadResourcesUnion {
    }
 
    ~CachedThreadResourcesUnion() {
+      LOG(TraceLevelError, "ERROR ~CachedThreadResourcesUnion called.  It's union destructors should be called explicitly");
+
       // we don't have enough information here to delete this object, so we do it from our caller
       // we still need this destructor for a technicality that it might be called
       // if there were an excpetion generated in the initializer list which it is constructed in

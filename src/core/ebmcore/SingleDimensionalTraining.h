@@ -271,6 +271,7 @@ public:
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
    // TODO: specialize this function for cases where we have hard coded vector lengths so that we don't have to pass in the cVectorLength parameter
    void Flatten(ActiveDataType ** const ppDivisions, FractionalDataType ** const ppValues, const size_t cVectorLength) const {
+      // don't log this since we call it recursively.  Log where the root is called
       if(UNPREDICTABLE(IsTrunkAfterDone())) {
          assert(!GetTreeNodeSizeOverflow<bRegression>(cVectorLength)); // we're accessing allocated memory
          const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
@@ -509,7 +510,11 @@ retry_with_bigger_tree_node_children_array:
    }
    ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
    FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+
+   LOG(TraceLevelVerbose, "Entered Flatten");
    pRootTreeNode->Flatten(&pDivisions, &pValues, cVectorLength);
+   LOG(TraceLevelVerbose, "Exited Flatten");
+
    assert(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
    assert(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cSplits);
    assert(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
