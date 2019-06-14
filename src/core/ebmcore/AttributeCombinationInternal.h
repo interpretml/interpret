@@ -20,6 +20,7 @@ public:
    size_t m_cItemsPerBitPackDataUnit;
    size_t m_cAttributes;
    size_t m_iInputData;
+   unsigned int m_cLogMessages;
    AttributeCombinationEntry m_AttributeCombinationEntry[1];
 
    TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
@@ -32,6 +33,7 @@ public:
       }
       pAttributeCombination->m_cAttributes = cAttributes;
       pAttributeCombination->m_iInputData = iAttributeCombination;
+      pAttributeCombination->m_cLogMessages = 2;
       return pAttributeCombination;
    }
 

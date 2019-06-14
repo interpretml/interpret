@@ -31,12 +31,15 @@ public:
    AttributeInternalCore * const m_aAttributes;
    DataSetInternalCore * m_pDataSet;
 
+   unsigned int m_cLogMessages;
+
    TmlInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cAttributes)
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributes(cAttributes)
       , m_aAttributes(IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
-      , m_pDataSet(nullptr) {
+      , m_pDataSet(nullptr)
+      , m_cLogMessages (1000) {
       assert(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
 
@@ -203,11 +206,13 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
 }
 
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countAttributesInCombination, const IntegerDataType * attributeIndexes, FractionalDataType * interactionScoreReturn) {
-   LOG(TraceLevelVerbose, "Entered GetInteractionScore");
    LOG(TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countAttributesInCombination=%" IntegerDataTypePrintf ", attributeIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countAttributesInCombination, static_cast<const void *>(attributeIndexes), static_cast<void *>(interactionScoreReturn));
 
    assert(nullptr != ebmInteraction);
    TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
+
+   LOG_COUNTED(&pEbmInteractionState->m_cLogMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
+
    assert(1 <= countAttributesInCombination);
    assert(nullptr != attributeIndexes);
 
