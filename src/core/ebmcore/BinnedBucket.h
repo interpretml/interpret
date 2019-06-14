@@ -271,6 +271,8 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   LOG(TraceLevelVerbose, "Entered BinDataSetInteraction");
+
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
@@ -315,6 +317,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
          ++pResidualError;
       }
    }
+   LOG(TraceLevelVerbose, "Exited BinDataSetInteraction");
 }
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!

@@ -708,6 +708,8 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
+   // don't LOG this!  It would create way too much chatter!
+
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -1691,6 +1693,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetInternalCore * const pDataSet, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
+   LOG(TraceLevelVerbose, "Entered CalculateInteractionScore");
+
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
@@ -1699,6 +1703,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
          // unlike in the training code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what combination of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
+         LOG(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBucketsMainSpace, cStates)");
          return true;
       }
       assert(2 <= cStates);
@@ -1711,16 +1716,19 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    const size_t cAuxillaryBucketsForSplitting = 4;
    const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
+      LOG(TraceLevelWarning, "WARNING CalculateInteractionScore IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+      LOG(TraceLevelWarning, "WARNING CalculateInteractionScore GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
       return true;
    }
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)) {
+      LOG(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;
@@ -1728,6 +1736,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aBinnedBuckets)) {
+      LOG(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aBinnedBuckets");
       return true;
    }
    memset(aBinnedBuckets, 0, cBytesBuffer);
@@ -1785,6 +1794,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
       FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 
+      LOG(TraceLevelVerbose, "CalculateInteractionScore Starting state sweep loop");
       for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
          aiStart[0] = iState1;
          for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
@@ -1829,8 +1839,12 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
             }
          }
       }
+      LOG(TraceLevelVerbose, "CalculateInteractionScore Done state sweep loop");
+
       *pInteractionScoreReturn = bestSplittingScore;
    } else {
+      LOG(TraceLevelWarning, "WARNING CalculateInteractionScore 2 != cDimensions");
+
       // TODO: handle this better
 #ifndef NDEBUG
       assert(false); // we only support pairs currently
@@ -1843,6 +1857,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
 
+   LOG(TraceLevelVerbose, "Exited CalculateInteractionScore");
    return false;
 }
 
