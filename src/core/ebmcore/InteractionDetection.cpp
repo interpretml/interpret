@@ -191,17 +191,20 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    assert(nullptr != attributeIndexes);
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
+      LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
       return 1;
    }
    size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
    if(k_cDimensionsMax < cAttributesInCombination) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
+      LOG(TraceLevelWarning, "WARNING GetInteractionScore k_cDimensionsMax < cAttributesInCombination");
       return 1;
    }
 
    // TODO : !! change our code so that we don't need to allocate an AttributeCombinationCore each time we do an interaction score calculation
    AttributeCombinationCore * pAttributeCombination = AttributeCombinationCore::Allocate(cAttributesInCombination, 0);
    if(nullptr == pAttributeCombination) {
+      LOG(TraceLevelWarning, "WARNING GetInteractionScore nullptr == pAttributeCombination");
       return 1;
    }
    AttributeInternalCore * const aAttributes = pEbmInteractionState->m_aAttributes;
@@ -209,6 +212,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       IntegerDataType indexAttributeInterop = attributeIndexes[iAttributeInCombination];
       assert(0 <= indexAttributeInterop);
       if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
+         LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
          AttributeCombinationCore::Free(pAttributeCombination);
          return 1;
       }

@@ -845,21 +845,27 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    assert(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
    if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countAttributes)");
       return nullptr;
    }
    if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributeCombinations)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countAttributeCombinations)");
       return nullptr;
    }
    if (!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)");
       return nullptr;
    }
    if (!IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)");
       return nullptr;
    }
    if (!IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)");
       return nullptr;
    }
    if (!IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)");
       return nullptr;
    }
 
@@ -873,9 +879,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
 
    if (IsMultiplyError(cVectorLength, cTrainingCases)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cTrainingCases)");
       return nullptr;
    }
    if (IsMultiplyError(cVectorLength, cValidationCases)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cValidationCases)");
       return nullptr;
    }
 
@@ -888,9 +896,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cAttributes, cAttributeCombinations, cInnerBags);
    LOG(TraceLevelInfo, "Exited EbmTrainingState %p", static_cast<void *>(pTmlState));
    if (UNLIKELY(nullptr == pTmlState)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore nullptr == pTmlState");
       return nullptr;
    }
    if (UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore pTmlState->Initialize");
       delete pTmlState;
       return nullptr;
    }
