@@ -32,7 +32,7 @@ def generate_app_mini(
     Returns:
         The dash app itself.
     """
-    log.debug("Generating mini dash")
+    log.info("Generating mini dash")
 
     # Initialize
     app = dash.Dash(
@@ -146,7 +146,7 @@ def generate_app_mini(
     def shutdown():
         return shutdown_server(app)
 
-    log.debug("Generated mini dash")
+    log.info("Generated mini dash")
     return app
 
 
@@ -162,7 +162,7 @@ def shutdown_server(app):
 def gen_overall_plot(exp, model_idx):
     figure = exp.visualize(key=None)
     if figure is None:
-        log.debug("No overall plot to display: {0}|{1}".format(model_idx, exp.name))
+        log.info("No overall plot to display: {0}|{1}".format(model_idx, exp.name))
         # Provide default 'no overall' graph
         figure = r"""
                 <style>
@@ -296,7 +296,7 @@ def generate_app_full(  # noqa: C901
         The dash app itself.
     """
 
-    log.debug("Generating full dash")
+    log.info("Generating full dash")
 
     # Initialize
     app = dash.Dash(
@@ -838,7 +838,7 @@ The explanations available are split into tabs, each covering an aspect of the p
     def shutdown():
         return shutdown_server(app)
 
-    log.debug("Generated full dash")
+    log.info("Generated full dash")
     return app
 
 

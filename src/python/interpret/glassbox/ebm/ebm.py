@@ -398,7 +398,7 @@ class BaseCoreEBM(BaseEstimator):
 
     def _build_interactions(self, native_ebm):
         if isinstance(self.interactions, int) and self.interactions != 0:
-            log.debug("Estimating with FAST")
+            log.info("Estimating with FAST")
             interaction_scores = []
             interaction_indices = [
                 x for x in combinations(range(len(self.col_types)), 2)
@@ -423,7 +423,7 @@ class BaseCoreEBM(BaseEstimator):
         return inter_indices_
 
     def _fit_main(self, native_ebm, main_attr_sets):
-        log.debug("Train main effects")
+        log.info("Train main effects")
         self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
             native_ebm, main_attr_sets, "Main"
         )
@@ -441,10 +441,10 @@ class BaseCoreEBM(BaseEstimator):
 
         self.inter_episode_idx_ = 0
         if len(inter_indices) == 0:
-            log.debug("No interactions to train")
+            log.info("No interactions to train")
             return self
 
-        log.debug("Training interactions")
+        log.info("Training interactions")
 
         # Split data into train/val
         X_train, X_val, y_train, y_val = train_test_split(
@@ -490,7 +490,7 @@ class BaseCoreEBM(BaseEstimator):
                 random_state=self.random_state,
             )
         ) as native_ebm:
-            log.debug("Train interactions")
+            log.info("Train interactions")
             self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
                 native_ebm, inter_attr_sets, "Pair"
             )
@@ -515,7 +515,7 @@ class BaseCoreEBM(BaseEstimator):
         curr_metric = np.inf
         min_metric = np.inf
         bp_metric = np.inf
-        log.debug("Start boosting {0}".format(name))
+        log.info("Start boosting {0}".format(name))
         curr_episode_index = 0
         for data_episode_index in range(self.data_n_episodes):
             curr_episode_index = data_episode_index
@@ -552,9 +552,9 @@ class BaseCoreEBM(BaseEstimator):
                 self.early_stopping_run_length >= 0
                 and no_change_run_length >= self.early_stopping_run_length
             ):
-                log.debug("Early break {0}: {1}".format(name, data_episode_index))
+                log.info("Early break {0}: {1}".format(name, data_episode_index))
                 break
-        log.debug("End boosting {0}".format(name))
+        log.info("End boosting {0}".format(name))
 
         return curr_metric, curr_episode_index
 

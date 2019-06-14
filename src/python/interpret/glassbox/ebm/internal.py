@@ -3,333 +3,319 @@
 
 # TODO: Add unit tests for internal EBM interfacing
 import sys
+from sys import platform
 import ctypes as ct
 from numpy.ctypeslib import ndpointer
 import numpy as np
 import os
-from sys import platform
 import struct
 import logging
 
 log = logging.getLogger(__name__)
 
-
-# Native library path finding
-def get_ebm_lib_path(debug=False):
-    """ Returns filepath of core EBM library.
-
-    Returns:
-        A string representing filepath.
-    """
-    bitsize = struct.calcsize("P") * 8
-    is_64_bit = bitsize == 64
-
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    package_path = os.path.join(script_path, "..", "..")
-
-    debug_str = "_debug" if debug else ""
-    log.info("Loading native on {0} | debug = {1}".format(platform, debug))
-    if platform == "linux" or platform == "linux2" and is_64_bit:
-        return os.path.join(
-            package_path, "lib", "ebmcore_linux_x64{0}.so".format(debug_str)
-        )
-    elif platform == "win32" and is_64_bit:
-        return os.path.join(
-            package_path, "lib", "ebmcore_win_x64{0}.dll".format(debug_str)
-        )
-    elif platform == "darwin" and is_64_bit:
-        return os.path.join(
-            package_path, "lib", "ebmcore_mac_x64{0}.dylib".format(debug_str)
-        )
-    else:
-        msg = "Platform {0} at {1} bit not supported for EBM".format(platform, bitsize)
-        log.error(msg)
-        raise Exception(msg)
+this = sys.modules[__name__]
+this.native = None
 
 
-# Load correct library
-def load_library(debug=None):
-    gettrace = getattr(sys, "gettrace", None)
+class Native:
+    """Layer/Class responsible for native function calls."""
 
-    if debug is None:
-        is_debug = False
-        if gettrace():
-            is_debug = True
-    else:
-        is_debug = debug
+    # enum AttributeType : int64_t
+    # Ordinal = 0
+    AttributeTypeOrdinal = 0
+    # Nominal = 1
+    AttributeTypeNominal = 1
 
-    lib = ct.cdll.LoadLibrary(get_ebm_lib_path(debug=is_debug))
-    return lib
+    class Attribute(ct.Structure):
+        _fields_ = [
+            # AttributeType attributeType;
+            ("attributeType", ct.c_longlong),
+            # int64_t hasMissing;
+            ("hasMissing", ct.c_longlong),
+            # int64_t countStates;
+            ("countStates", ct.c_longlong),
+        ]
 
+    class AttributeSet(ct.Structure):
+        _fields_ = [
+            # int64_t countAttributes;
+            ("countAttributes", ct.c_longlong)
+        ]
 
-Lib = load_library(debug=False)
+    LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
 
-# C-level interface
+    # const signed char TraceLevelOff = 0;
+    TraceLevelOff = 0
+    # const signed char TraceLevelError = 1;
+    TraceLevelError = 1
+    # const signed char TraceLevelWarning = 2;
+    TraceLevelWarning = 2
+    # const signed char TraceLevelInfo = 3;
+    TraceLevelInfo = 3
+    # const signed char TraceLevelVerbose = 4;
+    TraceLevelVerbose = 4
 
-# enum AttributeType : int64_t
-# Ordinal = 0
-AttributeTypeOrdinal = 0
-# Nominal = 1
-AttributeTypeNominal = 1
+    def __init__(self, is_debug=False, log_level=None):
+        self.is_debug = is_debug
+        self.log_level = log_level
 
+        self.lib = ct.cdll.LoadLibrary(self.get_ebm_lib_path(debug=is_debug))
+        self.harden_function_signatures()
+        self.set_logging(level=log_level)
 
-class Attribute(ct.Structure):
-    _fields_ = [
-        # AttributeType attributeType;
-        ("attributeType", ct.c_longlong),
-        # int64_t hasMissing;
-        ("hasMissing", ct.c_longlong),
-        # int64_t countStates;
-        ("countStates", ct.c_longlong),
-    ]
+    def harden_function_signatures(self):
+        """ Adds types to function signatures. """
+        self.lib.SetLogMessageFunction.argtypes = [
+            # void (* fn)(signed char traceLevel, const char * message)
+            self.LogFuncType
+        ]
+        self.lib.SetTraceLevel.argtypes = [
+            # signed char traceLevel
+            ct.c_char
+        ]
+        self.lib.InitializeTrainingRegression.argtypes = [
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t countAttributes
+            ct.c_longlong,
+            # Attribute * attributes
+            ct.POINTER(self.Attribute),
+            # int64_t countAttributeSets
+            ct.c_longlong,
+            # AttributeSet * attributeSets
+            ct.POINTER(self.AttributeSet),
+            # int64_t * attributeSetIndexes
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countTrainingCases
+            ct.c_longlong,
+            # double * trainingTargets
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * trainingData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * trainingPredictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countValidationCases
+            ct.c_longlong,
+            # double * validationTargets
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * validationData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * validationPredictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countInnerBags
+            ct.c_longlong,
+        ]
+        self.lib.InitializeTrainingRegression.restype = ct.c_void_p
 
+        self.lib.InitializeTrainingClassification.argtypes = [
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t countAttributes
+            ct.c_longlong,
+            # Attribute * attributes
+            ct.POINTER(self.Attribute),
+            # int64_t countAttributeSets
+            ct.c_longlong,
+            # AttributeSet2 * attributeSets
+            ct.POINTER(self.AttributeSet),
+            # int64_t * attributeSetIndexes
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countTargetStates
+            ct.c_longlong,
+            # int64_t countTrainingCases
+            ct.c_longlong,
+            # int64_t * trainingTargets
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * trainingData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * trainingPredictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countValidationCases
+            ct.c_longlong,
+            # int64_t * validationTargets
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * validationData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * validationPredictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t countInnerBags
+            ct.c_longlong,
+        ]
+        self.lib.InitializeTrainingClassification.restype = ct.c_void_p
 
-class AttributeSet(ct.Structure):
-    _fields_ = [
-        # int64_t countAttributes;
-        ("countAttributes", ct.c_longlong)
-    ]
+        self.lib.TrainingStep.argtypes = [
+            # void * tml
+            ct.c_void_p,
+            # int64_t indexAttributeSet
+            ct.c_longlong,
+            # double learningRate
+            ct.c_double,
+            # int64_t countTreeSplitsMax
+            ct.c_longlong,
+            # int64_t countCasesRequiredForSplitParentMin
+            ct.c_longlong,
+            # double * trainingWeights
+            # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ct.c_void_p,
+            # double * validationWeights
+            # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ct.c_void_p,
+            # double * validationMetricReturn
+            ct.POINTER(ct.c_double),
+        ]
+        self.lib.TrainingStep.restype = ct.c_longlong
 
+        self.lib.GetCurrentModel.argtypes = [
+            # void * tml
+            ct.c_void_p,
+            # int64_t indexAttributeSet
+            ct.c_longlong,
+        ]
+        self.lib.GetCurrentModel.restype = ct.POINTER(ct.c_double)
 
-LOGFUNC = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
+        self.lib.GetBestModel.argtypes = [
+            # void * tml
+            ct.c_void_p,
+            # int64_t indexAttributeSet
+            ct.c_longlong,
+        ]
+        self.lib.GetBestModel.restype = ct.POINTER(ct.c_double)
 
-SetLogMessageFunction = Lib.SetLogMessageFunction
-SetLogMessageFunction.argtypes = [
-    # void (* fn)(signed char traceLevel, const char * message)
-    LOGFUNC
-]
+        self.lib.FreeTraining.argtypes = [
+            # void * tml
+            ct.c_void_p
+        ]
 
-SetTraceLevel = Lib.SetTraceLevel
-SetTraceLevel.argtypes = [
-    # signed char traceLevel
-    ct.c_char
-]
+        self.lib.CancelTraining.argtypes = [
+            # void * tml
+            ct.c_void_p
+        ]
 
-# const signed char TraceLevelOff = 0;
-TraceLevelOff = 0
-# const signed char TraceLevelError = 1;
-TraceLevelError = 1
-# const signed char TraceLevelWarning = 2;
-TraceLevelWarning = 2
-# const signed char TraceLevelInfo = 3;
-TraceLevelInfo = 3
-# const signed char TraceLevelVerbose = 4;
-TraceLevelVerbose = 4
+        self.lib.InitializeInteractionClassification.argtypes = [
+            # int64_t countAttributes
+            ct.c_longlong,
+            # Attribute * attributes
+            ct.POINTER(self.Attribute),
+            # int64_t countTargetStates
+            ct.c_longlong,
+            # int64_t countCases
+            ct.c_longlong,
+            # int64_t * targets
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * data
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * predictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+        ]
+        self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
-InitializeTrainingRegression = Lib.InitializeTrainingRegression
-InitializeTrainingRegression.argtypes = [
-    # int64_t randomSeed
-    ct.c_longlong,
-    # int64_t countAttributes
-    ct.c_longlong,
-    # Attribute * attributes
-    ct.POINTER(Attribute),
-    # int64_t countAttributeSets
-    ct.c_longlong,
-    # AttributeSet * attributeSets
-    ct.POINTER(AttributeSet),
-    # int64_t * attributeSetIndexes
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countTrainingCases
-    ct.c_longlong,
-    # double * trainingTargets
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * trainingData
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * trainingPredictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countValidationCases
-    ct.c_longlong,
-    # double * validationTargets
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * validationData
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * validationPredictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countInnerBags
-    ct.c_longlong,
-]
-InitializeTrainingRegression.restype = ct.c_void_p
+        self.lib.InitializeInteractionRegression.argtypes = [
+            # int64_t countAttributes
+            ct.c_longlong,
+            # Attribute * attributes
+            ct.POINTER(self.Attribute),
+            # int64_t countCases
+            ct.c_longlong,
+            # double * targets
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # int64_t * data
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * predictionScores
+            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+        ]
+        self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
+        self.lib.GetInteractionScore.argtypes = [
+            # void * tmlInteraction
+            ct.c_void_p,
+            # int64_t countAttributesInCombination
+            ct.c_longlong,
+            # int64_t * attributeIndexes
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            # double * interactionScoreReturn
+            ct.POINTER(ct.c_double),
+        ]
+        self.lib.GetInteractionScore.restype = ct.c_longlong
 
-InitializeTrainingClassification = Lib.InitializeTrainingClassification
-InitializeTrainingClassification.argtypes = [
-    # int64_t randomSeed
-    ct.c_longlong,
-    # int64_t countAttributes
-    ct.c_longlong,
-    # Attribute * attributes
-    ct.POINTER(Attribute),
-    # int64_t countAttributeSets
-    ct.c_longlong,
-    # AttributeSet2 * attributeSets
-    ct.POINTER(AttributeSet),
-    # int64_t * attributeSetIndexes
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countTargetStates
-    ct.c_longlong,
-    # int64_t countTrainingCases
-    ct.c_longlong,
-    # int64_t * trainingTargets
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * trainingData
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * trainingPredictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countValidationCases
-    ct.c_longlong,
-    # int64_t * validationTargets
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * validationData
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * validationPredictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t countInnerBags
-    ct.c_longlong,
-]
-InitializeTrainingClassification.restype = ct.c_void_p
+        self.lib.FreeInteraction.argtypes = [
+            # void * tmlInteraction
+            ct.c_void_p
+        ]
 
-TrainingStep = Lib.TrainingStep
-TrainingStep.argtypes = [
-    # void * tml
-    ct.c_void_p,
-    # int64_t indexAttributeSet
-    ct.c_longlong,
-    # double learningRate
-    ct.c_double,
-    # int64_t countTreeSplitsMax
-    ct.c_longlong,
-    # int64_t countCasesRequiredForSplitParentMin
-    ct.c_longlong,
-    # double * trainingWeights
-    # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    ct.c_void_p,
-    # double * validationWeights
-    # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    ct.c_void_p,
-    # double * validationMetricReturn
-    ct.POINTER(ct.c_double),
-]
-TrainingStep.restype = ct.c_longlong
+        self.lib.CancelInteraction.argtypes = [
+            # void * tmlInteraction
+            ct.c_void_p
+        ]
 
+    def set_logging(self, level=None):
+        def native_log(trace_level, message):
+            trace_level = int(trace_level[0])
+            message = message.decode("utf-8")
 
-GetCurrentModel = Lib.GetCurrentModel
-GetCurrentModel.argtypes = [
-    # void * tml
-    ct.c_void_p,
-    # int64_t indexAttributeSet
-    ct.c_longlong,
-]
-GetCurrentModel.restype = ct.POINTER(ct.c_double)
+            if trace_level == self.TraceLevelOff:
+                pass
+            elif trace_level == self.TraceLevelError:
+                log.error(message)
+            elif trace_level == self.TraceLevelWarning:
+                log.warning(message)
+            elif trace_level == self.TraceLevelInfo:
+                log.info(message)
+            elif trace_level == self.TraceLevelVerbose:
+                log.debug(message)
 
+        if level is None:
+            root = logging.getLogger("interpret")
+            level = root.getEffectiveLevel()
 
-GetBestModel = Lib.GetBestModel
-GetBestModel.argtypes = [
-    # void * tml
-    ct.c_void_p,
-    # int64_t indexAttributeSet
-    ct.c_longlong,
-]
-GetBestModel.restype = ct.POINTER(ct.c_double)
+        level_dict = {
+            logging.DEBUG: self.TraceLevelVerbose,
+            logging.INFO: self.TraceLevelInfo,
+            logging.WARNING: self.TraceLevelWarning,
+            logging.ERROR: self.TraceLevelError,
+            logging.NOTSET: self.TraceLevelOff,
+            "DEBUG": self.TraceLevelVerbose,
+            "INFO": self.TraceLevelInfo,
+            "WARNING": self.TraceLevelWarning,
+            "ERROR": self.TraceLevelError,
+            "NOTSET": self.TraceLevelOff,
+        }
 
+        self.typed_log_func = self.LogFuncType(native_log)
+        self.lib.SetLogMessageFunction(self.typed_log_func)
+        self.lib.SetTraceLevel(ct.c_char(level_dict[level]))
 
-FreeTraining = Lib.FreeTraining
-FreeTraining.argtypes = [
-    # void * tml
-    ct.c_void_p
-]
+    def get_ebm_lib_path(self, debug=False):
+        """ Returns filepath of core EBM library.
 
+        Returns:
+            A string representing filepath.
+        """
+        bitsize = struct.calcsize("P") * 8
+        is_64_bit = bitsize == 64
 
-CancelTraining = Lib.CancelTraining
-CancelTraining.argtypes = [
-    # void * tml
-    ct.c_void_p
-]
+        script_path = os.path.dirname(os.path.abspath(__file__))
+        package_path = os.path.join(script_path, "..", "..")
 
-InitializeInteractionClassification = Lib.InitializeInteractionClassification
-InitializeInteractionClassification.argtypes = [
-    # int64_t countAttributes
-    ct.c_longlong,
-    # Attribute * attributes
-    ct.POINTER(Attribute),
-    # int64_t countTargetStates
-    ct.c_longlong,
-    # int64_t countCases
-    ct.c_longlong,
-    # int64_t * targets
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * data
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * predictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-]
-InitializeInteractionClassification.restype = ct.c_void_p
-
-
-InitializeInteractionRegression = Lib.InitializeInteractionRegression
-InitializeInteractionRegression.argtypes = [
-    # int64_t countAttributes
-    ct.c_longlong,
-    # Attribute * attributes
-    ct.POINTER(Attribute),
-    # int64_t countCases
-    ct.c_longlong,
-    # double * targets
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-    # int64_t * data
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-    # double * predictionScores
-    ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-]
-InitializeInteractionRegression.restype = ct.c_void_p
-
-GetInteractionScore = Lib.GetInteractionScore
-GetInteractionScore.argtypes = [
-    # void * tmlInteraction
-    ct.c_void_p,
-    # int64_t countAttributesInCombination
-    ct.c_longlong,
-    # int64_t * attributeIndexes
-    ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-    # double * interactionScoreReturn
-    ct.POINTER(ct.c_double),
-]
-GetInteractionScore.restype = ct.c_longlong
-
-FreeInteraction = Lib.FreeInteraction
-FreeInteraction.argtypes = [
-    # void * tmlInteraction
-    ct.c_void_p
-]
-
-
-CancelInteraction = Lib.CancelInteraction
-CancelInteraction.argtypes = [
-    # void * tmlInteraction
-    ct.c_void_p
-]
-
-
-def native_log(trace_level, message):
-    trace_level = int(trace_level[0])
-    message = message.decode("utf-8")
-
-    if trace_level == TraceLevelOff:
-        pass
-    elif trace_level == TraceLevelError:
-        log.error(message)
-    elif trace_level == TraceLevelWarning:
-        log.warning(message)
-    elif trace_level == TraceLevelInfo:
-        log.info(message)
-    elif trace_level == TraceLevelVerbose:
-        log.debug(message)
-
-
-# NOTE: Native is always set to max logging - consider changing this later.
-typed_log_func = LOGFUNC(native_log)
-SetLogMessageFunction(typed_log_func)
-SetTraceLevel(ct.c_char(TraceLevelVerbose))
+        debug_str = "_debug" if debug else ""
+        log.info("Loading native on {0} | debug = {1}".format(platform, debug))
+        if platform == "linux" or platform == "linux2" and is_64_bit:
+            return os.path.join(
+                package_path, "lib", "ebmcore_linux_x64{0}.so".format(debug_str)
+            )
+        elif platform == "win32" and is_64_bit:
+            return os.path.join(
+                package_path, "lib", "ebmcore_win_x64{0}.dll".format(debug_str)
+            )
+        elif platform == "darwin" and is_64_bit:
+            return os.path.join(
+                package_path, "lib", "ebmcore_mac_x64{0}.dylib".format(debug_str)
+            )
+        else:
+            msg = "Platform {0} at {1} bit not supported for EBM".format(
+                platform, bitsize
+            )
+            log.error(msg)
+            raise Exception(msg)
 
 
 class NativeEBM:
@@ -372,7 +358,14 @@ class NativeEBM:
             validation_scores: Undocumented.
             random_state: Random seed as integer.
         """
-        log.debug("Allocation start")
+        log.debug("Check if EBM lib is loaded")
+        if this.native is None:
+            log.info("EBM lib loading.")
+            this.native = Native()
+        else:
+            log.debug("EBM lib already loaded")
+
+        log.info("Allocation start")
 
         # Store args
         self.attributes = attributes
@@ -423,21 +416,21 @@ class NativeEBM:
             self._initialize_training_classification()
             self._initialize_interaction_classification()
 
-        log.debug("Allocation end")
+        log.info("Allocation end")
 
     def _convert_attribute_info_to_c(self, attributes, attribute_sets):
         # Create C form of attributes
-        attribute_ar = (Attribute * len(attributes))()
+        attribute_ar = (this.native.Attribute * len(attributes))()
         for idx, attribute in enumerate(attributes):
             if attribute["type"] == "categorical":
-                attribute_ar[idx].attributeType = AttributeTypeNominal
+                attribute_ar[idx].attributeType = this.native.AttributeTypeNominal
             else:
-                attribute_ar[idx].attributeType = AttributeTypeOrdinal
+                attribute_ar[idx].attributeType = this.native.AttributeTypeOrdinal
             attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
             attribute_ar[idx].countStates = attribute["n_bins"]
 
         attribute_set_indexes = []
-        attribute_sets_ar = (AttributeSet * len(attribute_sets))()
+        attribute_sets_ar = (this.native.AttributeSet * len(attribute_sets))()
         for idx, attribute_set in enumerate(attribute_sets):
             attribute_sets_ar[idx].countAttributes = attribute_set["n_attributes"]
 
@@ -449,7 +442,7 @@ class NativeEBM:
         return attribute_ar, attribute_sets_ar, attribute_set_indexes
 
     def _initialize_interaction_regression(self):
-        self.interaction_pointer = InitializeInteractionRegression(
+        self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
             len(self.attribute_array),
             self.attribute_array,
             self.X_train.shape[0],
@@ -459,7 +452,7 @@ class NativeEBM:
         )
 
     def _initialize_interaction_classification(self):
-        self.interaction_pointer = InitializeInteractionClassification(
+        self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
             len(self.attribute_array),
             self.attribute_array,
             self.num_classification_states,
@@ -470,7 +463,7 @@ class NativeEBM:
         )
 
     def _initialize_training_regression(self):
-        self.model_pointer = InitializeTrainingRegression(
+        self.model_pointer = this.native.lib.InitializeTrainingRegression(
             self.random_state,
             len(self.attribute_array),
             self.attribute_array,
@@ -489,7 +482,7 @@ class NativeEBM:
         )
 
     def _initialize_training_classification(self):
-        self.model_pointer = InitializeTrainingClassification(
+        self.model_pointer = this.native.lib.InitializeTrainingClassification(
             self.random_state,
             len(self.attribute_array),
             self.attribute_array,
@@ -510,22 +503,22 @@ class NativeEBM:
 
     def close(self):
         """ Deallocates C objects used to train EBM. """
-        log.debug("Deallocation start")
-        FreeTraining(self.model_pointer)
-        FreeInteraction(self.interaction_pointer)
-        log.debug("Deallocation end")
+        log.info("Deallocation start")
+        this.native.lib.FreeTraining(self.model_pointer)
+        this.native.lib.FreeInteraction(self.interaction_pointer)
+        log.info("Deallocation end")
 
     def fast_interaction_score(self, attribute_index_tuple):
         """ Provides score for an attribute interaction. Higher is better."""
-        log.debug("Fast interaction score start")
+        log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        GetInteractionScore(
+        this.native.lib.GetInteractionScore(
             self.interaction_pointer,
             len(attribute_index_tuple),
             np.array(attribute_index_tuple, dtype=np.int64),
             ct.byref(score),
         )
-        log.debug("Fast interaction score end")
+        log.info("Fast interaction score end")
         return score.value
 
     def training_step(
@@ -559,7 +552,7 @@ class NativeEBM:
 
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
-            return_code = TrainingStep(
+            return_code = this.native.lib.TrainingStep(
                 self.model_pointer,
                 attribute_set_index,
                 learning_rate,
@@ -597,7 +590,7 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
-        array_p = GetBestModel(self.model_pointer, attribute_set_index)
+        array_p = this.native.lib.GetBestModel(self.model_pointer, attribute_set_index)
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
@@ -615,7 +608,9 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
-        array_p = GetCurrentModel(self.model_pointer, attribute_set_index)
+        array_p = this.native.lib.GetCurrentModel(
+            self.model_pointer, attribute_set_index
+        )
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(

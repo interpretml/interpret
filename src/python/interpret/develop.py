@@ -1,6 +1,11 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+import sys
+
+this = sys.modules[__name__]
+this.is_debug_mode = False
+
 
 def print_debug_info(file=None):
     """ This function varies version-by-version, prints debug info as a pretty string.
@@ -116,8 +121,42 @@ def sizeof_fmt(num, suffix="B"):
     return "%.1f%s%s" % (num, "Yi", suffix)
 
 
+def debug_mode(log_filename="log.txt", log_level="DEBUG", native_debug=True):
+    """ Sets package into debug mode.
+
+    Args:
+        log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
+        log_level: Logging level. For example, "DEBUG".
+        native_debug: Load debug versions of native libraries if True.
+
+    Returns:
+        None.
+    """
+    import json
+    import logging
+    from .glassbox.ebm import internal
+
+    # Exit fast on second call.
+    if this.is_debug_mode:
+        raise Exception("Cannot call debug_mode more than once in the same session.")
+    else:
+        this.is_debug_mode = True
+
+    # Register log
+    register_log(log_filename, log_level)
+
+    # Write basic system diagnostic
+    debug_dict = debug_info()
+    debug_str = json.dumps(debug_dict, indent=2)
+    root = logging.getLogger("interpret")
+    root.info(debug_str)
+
+    # Load native libraries in debug mode if needed
+    internal.native = internal.Native(is_debug=native_debug)
+
+
 def register_log(filename, level="DEBUG"):
-    """ Registers file to have logs written to. Initializes with system info.
+    """ Registers file to have logs written to.
 
     Args:
         filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
@@ -130,7 +169,6 @@ def register_log(filename, level="DEBUG"):
     import logging.handlers
     import sys
     import multiprocessing
-    import json
 
     if filename is sys.stderr or filename is sys.stdout:
         handler = logging.StreamHandler(stream=filename)
@@ -151,11 +189,6 @@ def register_log(filename, level="DEBUG"):
     root = logging.getLogger("interpret")
     root.setLevel(level)
     root.addHandler(queue_handler)
-
-    # Writes basic system diagnostic immediately.
-    debug_dict = debug_info()
-    debug_str = json.dumps(debug_dict, indent=2)
-    root.info(debug_str)
 
     return queue_handler
 

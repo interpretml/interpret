@@ -49,10 +49,10 @@ class AppRunner:
                 port = random.randint(7000, 7999)
                 if self._local_port_available(port, rais=False):
                     self.port = port
-                    log.debug("Found open port: {0}".format(port))
+                    log.info("Found open port: {0}".format(port))
                     break
                 else:
-                    log.debug("Port already in use: {0}".format(port))
+                    log.info("Port already in use: {0}".format(port))
 
             else:
                 msg = """Could not find open port.
@@ -93,14 +93,14 @@ class AppRunner:
         if self._thread is None:
             return True
 
-        log.debug("Triggering shutdown")
+        log.info("Triggering shutdown")
         try:
             path = _build_path("shutdown")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             r = requests.post(url)
             log.debug(r)
         except requests.exceptions.RequestException as e:
-            log.debug("Dashboard stop failed: {0}".format(e))
+            log.info("Dashboard stop failed: {0}".format(e))
             return False
 
         if self._thread is not None:
@@ -129,7 +129,7 @@ class AppRunner:
         return str(id(obj))
 
     def start(self):
-        log.debug("Running app runner on: {0}:{1}".format(self.ip, self.port))
+        log.info("Running app runner on: {0}:{1}".format(self.ip, self.port))
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -141,10 +141,10 @@ class AppRunner:
             path = _build_path("")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             requests.get(url)
-            log.debug("Dashboard ping succeeded")
+            log.info("Dashboard ping succeeded")
             return True
         except requests.exceptions.RequestException as e:
-            log.debug("Dashboard ping failed: {0}".format(e))
+            log.info("Dashboard ping failed: {0}".format(e))
             return False
 
     def status(self):
@@ -177,7 +177,7 @@ class AppRunner:
         )
 
         url = "{0}{1}".format(start_url, path)
-        log.debug("Display URL: {0}".format(url))
+        log.info("Display URL: {0}".format(url))
 
         return url
 
@@ -226,7 +226,7 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            log.debug("Creating App Entry: {0}".format(ctx_id))
+            log.info("Creating App Entry: {0}".format(ctx_id))
             ctx_path = (
                 "/{0}/".format(ctx_id)
                 if self.base_url is None
@@ -255,20 +255,20 @@ class DispatcherApp:
         try:
 
             if path_info == self.root_path:
-                log.debug("Root path requested.")
+                log.info("Root path requested.")
                 start_response("200 OK", [("content-type", "text/html")])
                 content = self._root_content()
                 return [content.encode("utf-8")]
 
             if path_info == self.shutdown_path:
-                log.debug("Shutting down.")
+                log.info("Shutting down.")
                 server = self.config["server"]
                 server.stop()
                 start_response("200 OK", [("content-type", "text/html")])
                 return ["Shutdown".encode("utf-8")]
 
             if path_info == self.favicon_path:
-                log.debug("Favicon requested.")
+                log.info("Favicon requested.")
 
                 start_response("200 OK", [("content-type", "image/x-icon")])
                 with open(self.favicon_res, "rb") as handler:
@@ -283,12 +283,12 @@ class DispatcherApp:
                 return [msg.encode("utf-8")]
 
             ctx_id = match.group(1)
-            log.debug("Routing request: {0}".format(ctx_id))
+            log.info("Routing request: {0}".format(ctx_id))
             app = self.pool[ctx_id]
             if self.base_url and not environ["PATH_INFO"].startswith(
                 "/{0}".format(self.base_url)
             ):
-                log.debug("No base url in path. Rewrite to include in path.")
+                log.info("No base url in path. Rewrite to include in path.")
                 environ["PATH_INFO"] = "/{0}{1}".format(
                     self.base_url, environ["PATH_INFO"]
                 )

@@ -76,11 +76,11 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     from .dashboard import AppRunner
 
     if this.app_runner is not None:
-        log.debug("Stopping previous app runner at {0}".format(this.app_addr))
+        log.info("Stopping previous app runner at {0}".format(this.app_addr))
         shutdown_show_server()
         this.app_runner = None
 
-    log.debug("Create app runner at {0}".format(addr))
+    log.info("Create app runner at {0}".format(addr))
     this.app_runner = AppRunner(
         addr, base_url=base_url, use_relative_links=use_relative_links
     )
