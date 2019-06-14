@@ -13,6 +13,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h"
 
 // TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
 // we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedRegions right now for different types
@@ -317,6 +318,8 @@ public:
    }
 
    bool Expand(const size_t * const acDivisionsPlusOne) {
+      LOG(TraceLevelVerbose, "Entered Expand");
+
       assert(nullptr != acDivisionsPlusOne);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
@@ -324,6 +327,7 @@ public:
       assert(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
+         LOG(TraceLevelVerbose, "Exited Expand");
          return false;
       }
 
@@ -363,10 +367,12 @@ public:
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
       if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         LOG(TraceLevelWarning, "ERROR Expand IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
+         LOG(TraceLevelWarning, "ERROR Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
          return true;
       }
 
@@ -460,6 +466,7 @@ public:
          }
 
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+            LOG(TraceLevelWarning, "ERROR Expand SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
 
@@ -469,6 +476,7 @@ public:
       }
 
       m_bExpanded = true;
+      LOG(TraceLevelVerbose, "Exited Expand");
       return false;
    }
 

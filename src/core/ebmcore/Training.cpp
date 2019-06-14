@@ -100,6 +100,8 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
 static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, const int iZeroResidual) {
+   LOG(TraceLevelVerbose, "Entered TrainingSetTargetAttributeLoop");
+
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
@@ -228,6 +230,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
       }
       assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    }
+   LOG(TraceLevelVerbose, "Exited TrainingSetTargetAttributeLoop");
 }
 
 // a*PredictionScores = logOdds for binary classification
@@ -264,6 +267,8 @@ static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
 static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pValidationSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
+   LOG(TraceLevelVerbose, "Entering ValidationSetTargetAttributeLoop");
+
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
@@ -316,6 +321,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
       assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
       rootMeanSquareError /= pValidationSet->GetCountCases();
+      LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop");
       return sqrt(rootMeanSquareError);
    } else {
       FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
@@ -385,6 +391,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
       }
       assert(pValidationPredictionScores == pValidationPredictionScoresEnd); // after our second iteration we should have finished everything!
 
+      LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop");
       return sumLogLoss;
    }
 }
@@ -423,6 +430,8 @@ static FractionalDataType ValidationSetInputAttributeLoop(const AttributeCombina
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
 static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelAccumulated, CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const * const apSamplingSets, const AttributeCombinationCore * const pAttributeCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apCurrentModel, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwrite, const size_t cAttributeCombinations, const size_t cSamplingSetsAfterZero, size_t iCurrentModel, const FractionalDataType learningRate, DataSetAttributeCombination * const pValidationSet, const size_t cTargetStates, FractionalDataType * pModelMetric) {
+   LOG(TraceLevelVerbose, "Entered GenerateModelLoop");
+
    size_t cDimensions = pAttributeCombination->m_cAttributes;
 
    pSmallChangeToModelAccumulated->SetCountDimensions(cDimensions);
@@ -450,6 +459,7 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
          return true;
       }
    }
+   LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
 
    // we need to divide by the number of sampling sets that we constructed this from.
    // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
@@ -486,6 +496,7 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
    *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
 
+   LOG(TraceLevelVerbose, "Exited GenerateModelLoop");
    return false;
 }
 
@@ -915,6 +926,8 @@ TML_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
 static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
+   LOG(TraceLevelVerbose, "Entered TrainingStepPerTargetStates");
+
    const size_t cSamplingSetsAfterZero = 0 == pTmlState->m_cSamplingSets ? 1 : pTmlState->m_cSamplingSets;
 
    const AttributeCombinationCore * const pAttributeCombination = pTmlState->m_apAttributeCombinations[iAttributeCombination];
@@ -946,6 +959,8 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
    TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates, k_iZeroResidual);
 
    *pValidationMetricReturn = modelMetric;
+
+   LOG(TraceLevelVerbose, "Exited TrainingStepPerTargetStates");
    return 0;
 }
 
@@ -967,7 +982,7 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTar
 }
 
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * validationMetricReturn) {
-   LOG(TraceLevelInfo, "Entered TrainingStep");
+   LOG(TraceLevelVerbose, "Entered TrainingStep");
    LOG(TraceLevelVerbose, "TrainingStep parameters: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf ", learningRate=%" FractionalDataTypePrintf ", countTreeSplitsMax=%" IntegerDataTypePrintf ", countCasesRequiredForSplitParentMin=%" IntegerDataTypePrintf ", trainingWeights=%p, validationWeights=%p, validationMetricReturn=%p", static_cast<void *>(ebmTraining), indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, static_cast<const void *>(trainingWeights), static_cast<const void *>(validationWeights), static_cast<void *>(validationMetricReturn));
 
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
@@ -1006,7 +1021,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
       const size_t cTargetStates = pTmlState->m_cTargetStates;
       ret = CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    }
-   LOG(TraceLevelInfo, "Exited TrainingStep %" IntegerDataTypePrintf ", metric=%" FractionalDataTypePrintf, ret, *validationMetricReturn);
+   LOG(TraceLevelVerbose, "Exited TrainingStep %" IntegerDataTypePrintf ", metric=%" FractionalDataTypePrintf, ret, *validationMetricReturn);
    return ret;
 }
 
