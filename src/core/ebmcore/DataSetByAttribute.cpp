@@ -15,6 +15,8 @@
 #include "InitializeResiduals.h"
 
 TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual) {
+   LOG(TraceLevelInfo, "Entered DataSetInternalCore::ConstructResidualErrors");
+
    assert(1 <= cCases);
    assert(nullptr != aTargetData);
 
@@ -22,12 +24,14 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    assert(1 <= cVectorLength);
 
    if (IsMultiplyError(cCases, cVectorLength)) {
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if (IsMultiplyError(sizeof(FractionalDataType), cElements)) {
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
@@ -36,10 +40,13 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
 
    InitializeResidualsFlat(bRegression, cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates, iZeroResidual);
 
+   LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructResidualErrors");
    return aResidualErrors;
 }
 
 TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+   LOG(TraceLevelInfo, "Entered DataSetInternalCore::ConstructInputData");
+
    assert(0 < cAttributes);
    assert(nullptr != aAttributes);
    assert(0 < cCases);
@@ -47,16 +54,19 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
       // we're checking this early instead of checking it inside our loop
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cCases)");
       return nullptr;
    }
    const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cCases;
 
    if (IsMultiplyError(sizeof(void *), cAttributes)) {
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData IsMultiplyError(sizeof(void *), cAttributes)");
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cAttributes;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if (nullptr == aaInputDataTo) {
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -66,6 +76,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    do {
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
       if (nullptr == pInputDataTo) {
+         LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;
@@ -85,6 +96,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       ++pAttribute;
    } while (pAttributeEnd != pAttribute);
 
+   LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -107,6 +119,8 @@ DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cA
 }
 
 DataSetInternalCore::~DataSetInternalCore() {
+   LOG(TraceLevelInfo, "Entered ~DataSetInternalCore");
+
    free(const_cast<FractionalDataType *>(m_aResidualErrors));
    if (nullptr != m_aaInputData) {
       assert(0 < m_cAttributes);
@@ -119,4 +133,6 @@ DataSetInternalCore::~DataSetInternalCore() {
       } while (paInputDataEnd != paInputData);
       free(const_cast<StorageDataTypeCore * *>(m_aaInputData));
    }
+
+   LOG(TraceLevelInfo, "Exited ~DataSetInternalCore");
 }

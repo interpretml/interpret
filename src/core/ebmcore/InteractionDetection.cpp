@@ -20,6 +20,7 @@
 // depends on the above
 #include "MultiDimensionalTraining.h"
 
+// TODO : rename this to EbmInteractionState
 class TmlInteractionState {
 public:
    const bool m_bRegression;
@@ -40,15 +41,23 @@ public:
    }
 
    ~TmlInteractionState() {
+      LOG(TraceLevelInfo, "Entered ~EbmInteractionState");
+
       delete m_pDataSet;
       free(m_aAttributes);
+
+      LOG(TraceLevelInfo, "Exited ~EbmInteractionState");
    }
 
    bool InitializeInteraction(const EbmAttribute * const aAttributes, const size_t cCases, const void * const aTargets, const IntegerDataType * const aInputData, const FractionalDataType * const aPredictionScores) {
+      LOG(TraceLevelInfo, "Entered InitializeInteraction");
+
       if(nullptr == m_aAttributes) {
+         LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == m_aAttributes");
          return true;
       }
 
+      LOG(TraceLevelInfo, "InitializeInteraction starting attribute processing");
       assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
       const EbmAttribute * pAttributeInitialize = aAttributes;
       const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
@@ -63,6 +72,7 @@ public:
          IntegerDataType countStates = pAttributeInitialize->countStates;
          assert(2 <= countStates);
          if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
+            LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
             return true;
          }
          size_t cStates = static_cast<size_t>(countStates);
@@ -79,16 +89,20 @@ public:
          ++iAttributeInitialize;
          ++pAttributeInitialize;
       } while(pAttributeEnd != pAttributeInitialize);
+      LOG(TraceLevelInfo, "InitializeInteraction done attribute processing");
 
-
+      LOG(TraceLevelInfo, "Entered DataSetInternalCore");
       DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates, k_iZeroResidual);
       if(nullptr == pDataSet || pDataSet->IsError()) {
+         LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
          return true;
       }
+      LOG(TraceLevelInfo, "Exited DataSetInternalCore");
 
       assert(nullptr == m_pDataSet);
       m_pDataSet = pDataSet;
 
+      LOG(TraceLevelInfo, "Exited InitializeInteraction");
       return false;
    }
 };
@@ -111,12 +125,15 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    // predictionScores can be null
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countAttributes)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntegerDataType>(countCases)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countCases)");
       return nullptr;
    }
 
@@ -124,11 +141,15 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
    size_t cCases = static_cast<size_t>(countCases);
 
+   LOG(TraceLevelInfo, "Entered EbmInteractionState");
    TmlInteractionState * const pEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cAttributes);
+   LOG(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction nullptr == pEbmInteractionState");
       return nullptr;
    }
    if(UNLIKELY(pEbmInteractionState->InitializeInteraction(attributes, cCases, targets, data, predictionScores))) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction pEbmInteractionState->InitializeInteraction");
       delete pEbmInteractionState;
       return nullptr;
    }
