@@ -121,7 +121,7 @@ def sizeof_fmt(num, suffix="B"):
     return "%.1f%s%s" % (num, "Yi", suffix)
 
 
-def debug_mode(log_filename="log.txt", log_level="DEBUG", native_debug=True):
+def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     """ Sets package into debug mode.
 
     Args:
