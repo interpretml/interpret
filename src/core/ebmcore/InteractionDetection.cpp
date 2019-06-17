@@ -73,7 +73,10 @@ public:
          AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
          IntegerDataType countStates = pAttributeInitialize->countStates;
-         assert(2 <= countStates);
+         assert(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         if(1 == countStates) {
+            LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
+         }
          if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
             LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
             return true;

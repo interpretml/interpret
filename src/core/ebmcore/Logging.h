@@ -51,8 +51,9 @@ extern void InteralLogWithArguments(signed char traceLevel, const char * const p
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
          unsigned int * const LOG__pLogCountDecrement = (pLogCountDecrement); /* we only use pLogCountDecrement once, which avoids pre and post decrement issues with macros */ \
-         if(0 < *LOG__pLogCountDecrement) { \
-            --(*LOG__pLogCountDecrement); \
+         const unsigned int LOG__logCount = *LOG__pLogCountDecrement; \
+         if(0 < LOG__logCount) { \
+            *LOG__pLogCountDecrement = LOG__logCount - 1; \
             assert(nullptr != g_pLogMessageFunc); \
             if(0 == LOG__cArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
                (*g_pLogMessageFunc)(LOG__traceLevelBefore, LOG__originalMessage); \
@@ -72,5 +73,14 @@ extern void InteralLogWithArguments(signed char traceLevel, const char * const p
       } \
       /* the "(void)0, 0" part supresses the conditional expression is constant compiler warning */ \
    } while((void)0, 0)
+
+
+// TODO : add this assert that also logs the assert before terminating
+//#define EBM_ASSERT(assert_condition) \
+//   if(!(assert_condition)) { \
+//      LOG(#assert_condition __FILENAME__ _LINENUMBER__) \
+//      assert(!#assert_condition); \
+//   } \
+
 
 #endif // LOGGING_H

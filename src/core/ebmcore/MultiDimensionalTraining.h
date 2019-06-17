@@ -421,7 +421,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBucketAuxiliaryBuildZone, aBinnedBucketsEndDebug);
 
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
-         assert(2 <= cStates);
+         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
          pFastTotalStateInitialize->iCur = 0;
          pFastTotalStateInitialize->cStates = cStates;
@@ -558,7 +558,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
       assert(0 < cDimensions);
       do {
          pCurrentIndexAndCountStatesInitialize->multipliedIndexCur = 0;
-         assert(2 <= pAttributeCombinationEntry->m_pAttribute->m_cStates);
+         assert(1 <= pAttributeCombinationEntry->m_pAttribute->m_cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
          multipleTotalInitialize *= static_cast<ptrdiff_t>(pAttributeCombinationEntry->m_pAttribute->m_cStates);
          pCurrentIndexAndCountStatesInitialize->multipleTotal = multipleTotalInitialize;
          ++pAttributeCombinationEntry;
@@ -734,6 +734,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       assert(0 < cDimensions);
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
+         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
          assert(*piPointInitialize < cStates);
          assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          size_t addValue = multipleTotalInitialize * (*piPointInitialize);
@@ -768,6 +769,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       assert(0 < cDimensions);
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
+         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             assert(!IsMultiplyError(cStates - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cStates - 1);
@@ -850,6 +852,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    size_t directionVectorHigh = directionVectorLow | static_cast<size_t>(1) << iDimensionSweep;
 
    const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
+   assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
    size_t iBestCut = 0;
 
@@ -860,6 +863,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsHigh, aBinnedBucketsEndDebug);
 
    FractionalDataType bestSplit = -std::numeric_limits<FractionalDataType>::infinity();
+   // NOTE: we can't use a DO loop here if cStates is allowed to be 1
    for(size_t iState = 0; iState < cStates - 1; ++iState) {
       *piPoint = iState;
 
@@ -906,13 +910,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      assert(2 <= cStates);
-      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      assert(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // as long as cStates is 2 or more, cTotalBucketsMainSpace will grow exponentially and it should always be bigger than cAuxillaryBucketAreaForBuildFastTotals, so there is no need to check for addition overflow at runtime, but an assert is waranted instead
+      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      if(IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)) {
+         LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)");
+         return true;
+      }
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       assert(!IsMultiplyError(cTotalBucketsMainSpace, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBucketsMainSpace *= cStates;
-      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
    const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
    const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
@@ -1087,6 +1092,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
+      assert(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      assert(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScoreFirst = -std::numeric_limits<FractionalDataType>::infinity();
 
@@ -1100,6 +1107,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 3);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST state sweep loop");
+      // note : if cStatesDimension1 can be 1 then we can't use a do loop
       for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
          aiStart[0] = iState1;
 
@@ -1148,6 +1156,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 15);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND state sweep loop");
+      // note : if cStatesDimension2 can be 1 then we can't use a do loop
       for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
          aiStart[1] = iState2;
 
@@ -1705,6 +1714,12 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      if(IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)) {
+         LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)");
+         return true;
+      }
+      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       if(IsMultiplyError(cTotalBucketsMainSpace, cStates)) {
          // unlike in the training code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what combination of features our caller will give us for calculating the interaction scores,
@@ -1712,12 +1727,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
          LOG(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBucketsMainSpace, cStates)");
          return true;
       }
-      assert(2 <= cStates);
-      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      assert(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // as long as cStates is 2 or more, cTotalBucketsMainSpace will grow exponentially and it should always be bigger than cAuxillaryBucketAreaForBuildFastTotals, so there is no need to check for addition overflow at runtime, but an assert is waranted instead
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       cTotalBucketsMainSpace *= cStates;
-      assert(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
    const size_t cAuxillaryBucketsForSplitting = 4;
    const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
@@ -1797,12 +1807,16 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
+      assert(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      assert(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 
       LOG(TraceLevelVerbose, "CalculateInteractionScore Starting state sweep loop");
+      // note : if cStatesDimension1 can be 1 then we can't use a do loop
       for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
          aiStart[0] = iState1;
+         // note : if cStatesDimension2 can be 1 then we can't use a do loop
          for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
             aiStart[1] = iState2;
 

@@ -41,6 +41,7 @@ TML_INLINE FractionalDataType ComputeSmallChangeInClassificationLogOddPrediction
 #endif // compiler
 
 TML_INLINE FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cCases) {
+   // TODO: check again if we can ever have a zero here
    // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
    assert(0 != cCases);
    return sumResidualError / cCases;

@@ -317,6 +317,8 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
 
+   assert(1 <= cCasesTotal); // filter these out at the start where we can handle this case easily
+   assert(1 <= cBinnedBuckets); // cBinnedBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
    assert(0 != cBinnedBuckets);
    if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cBinnedBuckets || 0 == cTreeSplitsMax)) {
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
@@ -532,6 +534,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
       assert(!IsMultiplyError(cTotalBuckets, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBuckets *= cStates;
    }
@@ -571,12 +574,16 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    memset(aSumPredictionStatistics, 0, sizeof(*aSumPredictionStatistics) * cVectorLength); // can't overflow, accessing existing memory
 
    size_t cBinnedBuckets = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
+   assert(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
    size_t cCasesTotal;
    cBinnedBuckets = CompressBinnedBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cBinnedBuckets, aBinnedBuckets, &cCasesTotal, aSumPredictionStatistics, cTargetStates
 #ifndef NDEBUG
       , aBinnedBucketsEndDebug
 #endif // NDEBUG
    );
+
+   assert(1 <= cCasesTotal);
+   assert(1 <= cBinnedBuckets);
 
    bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cBinnedBuckets, aBinnedBuckets, cCasesTotal, aSumPredictionStatistics, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet
 #ifndef NDEBUG

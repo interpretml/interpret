@@ -300,6 +300,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
          StorageDataTypeCore data = *pInputData;
          assert((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
          size_t iState = static_cast<size_t>(data);
+         assert(iState < cStates);
          iBucket += cBuckets * iState;
          cBuckets *= cStates;
       }
@@ -328,6 +329,8 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
 #endif // NDEBUG
 ) {
    LOG(TraceLevelVerbose, "Entered CompressBinnedBuckets");
+
+   assert(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cCasesTotalDebug = 0;
@@ -370,6 +373,7 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
             ++iBucket;
             pCopyFrom = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pCopyFrom, 1);
          } while(pCopyFromEnd != pCopyFrom);
+         // TODO: eliminate this extra variable copy by making our outer loop use pCopyTo which is equal to pCopyFrom in the outer loop
          pCopyFrom = pCopyTo;
          break;
       }

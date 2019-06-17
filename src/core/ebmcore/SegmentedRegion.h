@@ -6,6 +6,7 @@
 #define SEGMENTED_REGION_H
 
 // TODO : check for multiplication overflows within this class (we could overflow in several parts)
+// TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
 
 #include <type_traits> // std::is_pod
 #include <assert.h>
@@ -375,7 +376,7 @@ public:
          const size_t maxDivision = cDivisionsPlusOne - 2;
 
          pDimensionInfoStackFirst->iDivision2 = maxDivision;
-         pDimensionInfoStackFirst->cNewDivisions = maxDivision;
+         pDimensionInfoStackFirst->cNewDivisions = maxDivision; // maxDivision can be a negative number, but I think it isn't used below if it's negative, so converting it to size_t is ok here
 
          ++pDimensionFirst1;
          ++pcDivisionsPlusOne;
