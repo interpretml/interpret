@@ -70,6 +70,19 @@ jobs:
     condition: succeeded()
     workingDirectory: src/python
     displayName: 'Build wheel'
+  - script: python setup.py sdist -d ../../staging-debug --formats=zip
+    condition: succeeded()
+    workingDirectory: src/python
+    displayName: 'Build sdist (debug)'
+  - task: ExtractFiles@1
+    inputs:
+      archiveFilePatterns: 'staging-debug/*.zip'
+      destinationFolder: 'staging-debug'
+    displayName: 'Extract sdist (debug)'
+  - task: DeleteFiles@1
+    inputs:
+      contents: 'staging-debug/*.zip'
+    displayName: 'Cleanup on sdist (debug)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -82,6 +95,11 @@ jobs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)'
       artifactName: 'wheel'
     displayName: 'Publish wheel as Build Artifact'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: 'staging-debug'
+      artifactName: 'interpret-debug'
+    displayName: 'Publish zip as Build Artifact (debug)'
 
 - job: 'Test'
   dependsOn: 'Build_Package'
