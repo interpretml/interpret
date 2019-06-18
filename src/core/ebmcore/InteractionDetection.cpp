@@ -31,7 +31,8 @@ public:
    AttributeInternalCore * const m_aAttributes;
    DataSetInternalCore * m_pDataSet;
 
-   unsigned int m_cLogMessages;
+   unsigned int m_cLogEnterMessages;
+   unsigned int m_cLogExitMessages;
 
    TmlInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cAttributes)
       : m_bRegression(bRegression)
@@ -39,7 +40,8 @@ public:
       , m_cAttributes(cAttributes)
       , m_aAttributes(IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
       , m_pDataSet(nullptr)
-      , m_cLogMessages (1000) {
+      , m_cLogEnterMessages (1000)
+      , m_cLogExitMessages(1000) {
       assert(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
 
@@ -163,16 +165,14 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
 }
 
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countCases, const FractionalDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   LOG(TraceLevelInfo, "Entered InitializeInteractionRegression");
-   LOG(TraceLevelVerbose, "InitializeInteractionRegression parameters: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
+   LOG(TraceLevelInfo, "Entered InitializeInteractionRegression: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(true, countAttributes, attributes, 0, countCases, targets, data, predictionScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const IntegerDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification");
-   LOG(TraceLevelVerbose, "InitializeInteractionClassification parameters: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countTargetStates=%" IntegerDataTypePrintf ", countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countTargetStates, countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
+   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countTargetStates=%" IntegerDataTypePrintf ", countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countTargetStates, countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countAttributes, attributes, countTargetStates, countCases, targets, data, predictionScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
@@ -208,13 +208,17 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
    return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
 }
 
+// we made this a global because if we had put this variable inside the TmlInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad TmlInteractionState object is sent into us
+// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
+static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
+
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countAttributesInCombination, const IntegerDataType * attributeIndexes, FractionalDataType * interactionScoreReturn) {
-   LOG(TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countAttributesInCombination=%" IntegerDataTypePrintf ", attributeIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countAttributesInCombination, static_cast<const void *>(attributeIndexes), static_cast<void *>(interactionScoreReturn));
+   LOG_COUNTED(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countAttributesInCombination=%" IntegerDataTypePrintf ", attributeIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countAttributesInCombination, static_cast<const void *>(attributeIndexes), static_cast<void *>(interactionScoreReturn));
 
    assert(nullptr != ebmInteraction);
    TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
 
-   LOG_COUNTED(&pEbmInteractionState->m_cLogMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
+   LOG_COUNTED(&pEbmInteractionState->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
 
    assert(1 <= countAttributesInCombination);
    assert(nullptr != attributeIndexes);
@@ -261,21 +265,22 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    }
    AttributeCombinationCore::Free(pAttributeCombination);
 
-   LOG(TraceLevelVerbose, "Exited GetInteractionScore %" IntegerDataTypePrintf ", metric=%" FractionalDataTypePrintf, ret, *interactionScoreReturn);
+   if(0 != ret) {
+      LOG(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
+   }
+   LOG_COUNTED(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FractionalDataTypePrintf, *interactionScoreReturn);
    return ret;
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelInteraction(PEbmInteraction ebmInteraction) {
-   LOG(TraceLevelInfo, "Entered CancelInteraction");
-   LOG(TraceLevelVerbose, "CancelInteraction parameters: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
+   LOG(TraceLevelInfo, "Entered CancelInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
    assert(nullptr != pEbmInteractionState);
    LOG(TraceLevelInfo, "Exited CancelInteraction");
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(PEbmInteraction ebmInteraction) {
-   LOG(TraceLevelInfo, "Entered FreeInteraction");
-   LOG(TraceLevelVerbose, "FreeInteraction parameters: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
+   LOG(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
    assert(nullptr != pEbmInteractionState);
    delete pEbmInteractionState;

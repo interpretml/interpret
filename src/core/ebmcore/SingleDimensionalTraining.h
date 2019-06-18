@@ -147,7 +147,7 @@ public:
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
    ) {
-      LOG(TraceLevelVerbose, "Entered SplitTreeNode this=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(this), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
+      LOG(TraceLevelVerbose, "Entered SplitTreeNode: this=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(this), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
 
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 
@@ -265,7 +265,7 @@ public:
 
       assert(this->m_UNION.afterSplit.nodeSplittingScore <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
-      LOG(TraceLevelVerbose, "Exited SplitTreeNode divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(this->m_UNION.afterSplit.divisionValue), this->m_UNION.afterSplit.nodeSplittingScore);
+      LOG(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(this->m_UNION.afterSplit.divisionValue), this->m_UNION.afterSplit.nodeSplittingScore);
    }
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
