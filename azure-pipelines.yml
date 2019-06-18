@@ -78,6 +78,7 @@ jobs:
     inputs:
       archiveFilePatterns: 'staging-debug/*.zip'
       destinationFolder: 'staging-debug'
+      cleanDestinationFolder: false
     displayName: 'Extract sdist (debug)'
   - task: DeleteFiles@1
     inputs:
