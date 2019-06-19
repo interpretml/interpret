@@ -15,6 +15,7 @@
 #include "Logging.h"
 #include "EbmInternal.h"
 // very independent includes
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "InitializeResiduals.h"
 #include "RandomStream.h"
 #include "SegmentedRegion.h"
@@ -36,7 +37,7 @@
 static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
    LOG(TraceLevelInfo, "Entered DeleteSegmentsCore");
 
-   assert(0 < cAttributeCombinations);
+   EBM_ASSERT(0 < cAttributeCombinations);
    if(UNLIKELY(nullptr != apSegmentedRegions)) {
       SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
       const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const * const ppSegmentedRegionsEnd = &apSegmentedRegions[cAttributeCombinations];
@@ -52,9 +53,9 @@ static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedReg
 static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegmentsCore(const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombinations, const size_t cVectorLength) {
    LOG(TraceLevelInfo, "Entered InitializeSegmentsCore");
 
-   assert(0 < cAttributeCombinations);
-   assert(nullptr != apAttributeCombinations);
-   assert(1 <= cVectorLength);
+   EBM_ASSERT(0 < cAttributeCombinations);
+   EBM_ASSERT(nullptr != apAttributeCombinations);
+   EBM_ASSERT(1 <= cVectorLength);
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions = new (std::nothrow) SegmentedRegionCore<ActiveDataType, FractionalDataType> *[cAttributeCombinations];
    if(UNLIKELY(nullptr == apSegmentedRegions)) {
@@ -108,7 +109,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
    const size_t cCases = pTrainingSet->GetCountCases();
-   assert(0 < cCases);
+   EBM_ASSERT(0 < cCases);
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pAttributeCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
@@ -142,16 +143,16 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
       const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
       if(pResidualError < pResidualErrorEnd) {
          // first time through?
-         assert(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
+         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
-         assert(0 < cItemsRemaining);
-         assert(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
          goto one_last_loop_regression;
       }
-      assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
+      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    } else {
       FractionalDataType * pTrainingPredictionScores = pTrainingSet->GetPredictionScores();
-      assert(IsClassification(countCompilerClassificationTargetStates));
+      EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
       const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
@@ -190,7 +191,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                   ++iVector1;
                } while(iVector1 < cVectorLength);
 
-               assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
+               EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
                const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
                StorageDataTypeCore iVector2 = 0;
                do {
@@ -222,13 +223,13 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
       const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
       if(pResidualError < pResidualErrorEnd) {
          // first time through?
-         assert(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
+         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
-         assert(0 < cItemsRemaining);
-         assert(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
          goto one_last_loop_classification;
       }
-      assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
+      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    }
    LOG(TraceLevelVerbose, "Exited TrainingSetTargetAttributeLoop");
 }
@@ -275,7 +276,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
    const size_t cCases = pValidationSet->GetCountCases();
-   assert(0 < cCases);
+   EBM_ASSERT(0 < cCases);
 
    const StorageDataTypeCore * pInputData = pValidationSet->GetDataPointer(pAttributeCombination);
 
@@ -312,20 +313,20 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
       const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
       if(pResidualError < pResidualErrorEnd) {
          // first time through?
-         assert(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
+         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
-         assert(0 < cItemsRemaining);
-         assert(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
          goto one_last_loop_regression;
       }
-      assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
+      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
       rootMeanSquareError /= pValidationSet->GetCountCases();
       LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop");
       return sqrt(rootMeanSquareError);
    } else {
       FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
-      assert(IsClassification(countCompilerClassificationTargetStates));
+      EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
       const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
@@ -383,13 +384,13 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
       const FractionalDataType * const pValidationPredictionScoresEnd = pValidationPredictionScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
       if(pValidationPredictionScores < pValidationPredictionScoresEnd) {
          // first time through?
-         assert(0 == (pValidationPredictionScoresEnd - pValidationPredictionScores) % cVectorLength);
+         EBM_ASSERT(0 == (pValidationPredictionScoresEnd - pValidationPredictionScores) % cVectorLength);
          cItemsRemaining = (pValidationPredictionScoresEnd - pValidationPredictionScores) / cVectorLength;
-         assert(0 < cItemsRemaining);
-         assert(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
          goto one_last_loop_classification;
       }
-      assert(pValidationPredictionScores == pValidationPredictionScoresEnd); // after our second iteration we should have finished everything!
+      EBM_ASSERT(pValidationPredictionScores == pValidationPredictionScoresEnd); // after our second iteration we should have finished everything!
 
       LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop");
       return sumLogLoss;
@@ -577,7 +578,7 @@ public:
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
 
-      assert(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
+      EBM_ASSERT(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
    
    ~TmlState() {
@@ -646,19 +647,19 @@ public:
          }
 
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize starting attribute processing");
-         assert(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+         EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
          const EbmAttribute * pAttributeInitialize = aAttributes;
          const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
-         assert(pAttributeInitialize < pAttributeEnd);
+         EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
          size_t iAttributeInitialize = 0;
          do {
             static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
             static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
-            assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
+            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
             AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
             IntegerDataType countStates = pAttributeInitialize->countStates;
-            assert(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+            EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
             if(1 == countStates) {
                LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information for training");
             }
@@ -668,15 +669,15 @@ public:
             }
             size_t cStates = static_cast<size_t>(countStates);
 
-            assert(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
+            EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
             bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
             AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-            assert(nullptr != pAttribute);
+            EBM_ASSERT(nullptr != pAttribute);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
-            assert(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
-            assert(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
+            EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
+            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
 
             ++iAttributeInitialize;
             ++pAttributeInitialize;
@@ -691,13 +692,13 @@ public:
             const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
 
             IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
-            assert(1 <= countAttributesInCombination);
+            EBM_ASSERT(1 <= countAttributesInCombination);
             if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
                return true;
             }
             size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
-            assert(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
+            EBM_ASSERT(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
             if (k_cDimensionsMax < cAttributesInCombination) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize k_cDimensionsMax < cAttributesInCombination");
@@ -715,7 +716,7 @@ public:
             size_t cTensorStates = 1;
             for (size_t iAttributeInCombination = 0; iAttributeInCombination < cAttributesInCombination; ++iAttributeInCombination) {
                const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
-               assert(0 <= indexAttributeInterop);
+               EBM_ASSERT(0 <= indexAttributeInterop);
 
                ++pAttributeCombinationIndex;
 
@@ -724,7 +725,7 @@ public:
                   return true;
                }
                const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-               assert(iAttributeForCombination < m_cAttributes);
+               EBM_ASSERT(iAttributeForCombination < m_cAttributes);
                AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
                pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pInputAttribute;
                if (IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)) {
@@ -757,20 +758,20 @@ public:
 
          RandomStream randomStream(randomSeed);
 
-         assert(nullptr == m_apSamplingSets);
+         EBM_ASSERT(nullptr == m_apSamplingSets);
          m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
          if (UNLIKELY(nullptr == m_apSamplingSets)) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
             return true;
          }
 
-         assert(nullptr == m_apCurrentModel);
+         EBM_ASSERT(nullptr == m_apCurrentModel);
          m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
          if (nullptr == m_apCurrentModel) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
             return true;
          }
-         assert(nullptr == m_apBestModel);
+         EBM_ASSERT(nullptr == m_apBestModel);
          m_apBestModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
          if (nullptr == m_apBestModel) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apBestModel");
@@ -807,8 +808,8 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
       const FractionalDataType * const pTargetEnd = pTarget + cCases;
       do {
          const FractionalDataType data = *pTarget;
-         assert(!std::isnan(data));
-         assert(!std::isinf(data));
+         EBM_ASSERT(!std::isnan(data));
+         EBM_ASSERT(!std::isinf(data));
          ++pTarget;
       } while(pTargetEnd != pTarget);
    } else {
@@ -818,9 +819,9 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
       const IntegerDataType * const pTargetEnd = pTarget + cCases;
       do {
          const IntegerDataType data = *pTarget;
-         assert(0 <= data);
-         assert((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-         assert(static_cast<size_t>(data) < cTargetStates);
+         EBM_ASSERT(0 <= data);
+         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+         EBM_ASSERT(static_cast<size_t>(data) < cTargetStates);
          ++pTarget;
       } while(pTargetEnd != pTarget);
    }
@@ -833,21 +834,21 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
 TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
    // bRegression is set in our program, so our caller can't pass in invalid data
    // randomSeed can be any value
-   assert(1 <= countAttributes);
-   assert(nullptr != attributes);
-   assert(1 <= countAttributeCombinations);
-   assert(nullptr != attributeCombinations);
-   assert(nullptr != attributeCombinationIndexes);
-   assert(bRegression || 2 <= countTargetStates);
-   assert(1 <= countTrainingCases);
-   assert(nullptr != trainingTargets);
-   assert(nullptr != trainingData);
+   EBM_ASSERT(1 <= countAttributes);
+   EBM_ASSERT(nullptr != attributes);
+   EBM_ASSERT(1 <= countAttributeCombinations);
+   EBM_ASSERT(nullptr != attributeCombinations);
+   EBM_ASSERT(nullptr != attributeCombinationIndexes);
+   EBM_ASSERT(bRegression || 2 <= countTargetStates);
+   EBM_ASSERT(1 <= countTrainingCases);
+   EBM_ASSERT(nullptr != trainingTargets);
+   EBM_ASSERT(nullptr != trainingData);
    // trainingPredictionScores can be null
-   assert(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
-   assert(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   assert(nullptr != validationData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
+   EBM_ASSERT(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
-   assert(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
+   EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
    if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countAttributes)");
@@ -979,9 +980,9 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
 TML_INLINE IntegerDataType CompilerRecursiveTrainingStep(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
-   assert(IsClassification(iPossibleCompilerOptimizedTargetStates));
+   EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(iPossibleCompilerOptimizedTargetStates == cRuntimeTargetStates) {
-      assert(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
+      EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
       return TrainingStepPerTargetStates<iPossibleCompilerOptimizedTargetStates>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);
    } else {
       return CompilerRecursiveTrainingStep<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);
@@ -990,7 +991,7 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep(const size_t cRuntimeTa
 template<>
 TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
-   assert(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
+   EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
    return TrainingStepPerTargetStates<k_DynamicClassification>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);
 }
 
@@ -1002,36 +1003,36 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    LOG_COUNTED(&g_cLogTrainingStepParametersMessages, TraceLevelInfo, TraceLevelVerbose, "TrainingStep parameters: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf ", learningRate=%" FractionalDataTypePrintf ", countTreeSplitsMax=%" IntegerDataTypePrintf ", countCasesRequiredForSplitParentMin=%" IntegerDataTypePrintf ", trainingWeights=%p, validationWeights=%p, validationMetricReturn=%p", static_cast<void *>(ebmTraining), indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, static_cast<const void *>(trainingWeights), static_cast<const void *>(validationWeights), static_cast<void *>(validationMetricReturn));
 
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   assert(nullptr != pTmlState);
-   assert(0 <= indexAttributeCombination);
-   assert((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
+   EBM_ASSERT(nullptr != pTmlState);
+   EBM_ASSERT(0 <= indexAttributeCombination);
+   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
-   assert(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+   EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
-   assert(nullptr != pTmlState->m_apAttributeCombinations);
+   EBM_ASSERT(nullptr != pTmlState->m_apAttributeCombinations);
    LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered TrainingStep");
 
-   assert(!std::isnan(learningRate));
-   assert(!std::isinf(learningRate));
-   assert(0 < learningRate);
+   EBM_ASSERT(!std::isnan(learningRate));
+   EBM_ASSERT(!std::isinf(learningRate));
+   EBM_ASSERT(0 < learningRate);
 
-   assert(1 <= countTreeSplitsMax);
+   EBM_ASSERT(1 <= countTreeSplitsMax);
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countTreeSplitsMax)) {
       // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   assert(2 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split!
+   EBM_ASSERT(2 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split!
    size_t cCasesRequiredForSplitParentMin = static_cast<size_t>(countCasesRequiredForSplitParentMin);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countCasesRequiredForSplitParentMin)) {
       // we can never exceed a size_t number of cases, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
       cCasesRequiredForSplitParentMin = std::numeric_limits<size_t>::max();
    }
 
-   assert(nullptr == trainingWeights); // TODO : implement this later
-   assert(nullptr == validationWeights); // TODO : implement this later
-   assert(nullptr != validationMetricReturn);
+   EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
+   EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
+   EBM_ASSERT(nullptr != validationMetricReturn);
 
    IntegerDataType ret;
    if(pTmlState->m_bRegression) {
@@ -1052,14 +1053,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    LOG(TraceLevelInfo, "Entered GetCurrentModel: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexAttributeCombination);
 
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   assert(nullptr != pTmlState);
-   assert(0 <= indexAttributeCombination);
-   assert((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
+   EBM_ASSERT(nullptr != pTmlState);
+   EBM_ASSERT(0 <= indexAttributeCombination);
+   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
-   assert(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+   EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iAttributeCombination];
-   assert(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
 
    LOG(TraceLevelInfo, "Exited GetCurrentModel %p", static_cast<void *>(pRet));
@@ -1070,14 +1071,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    LOG(TraceLevelInfo, "Entered GetBestModel: ebmTraining=%p, indexAttributeCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexAttributeCombination);
 
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   assert(nullptr != pTmlState);
-   assert(0 <= indexAttributeCombination);
-   assert((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
+   EBM_ASSERT(nullptr != pTmlState);
+   EBM_ASSERT(0 <= indexAttributeCombination);
+   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
-   assert(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+   EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iAttributeCombination];
-   assert(pBestModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pBestModel->GetValuePointer();
 
    LOG(TraceLevelInfo, "Exited GetBestModel %p", static_cast<void *>(pRet));
@@ -1087,14 +1088,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelTraining(PEbmTraining ebmTraining) {
    LOG(TraceLevelInfo, "Entered CancelTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   assert(nullptr != pTmlState);
+   EBM_ASSERT(nullptr != pTmlState);
    LOG(TraceLevelInfo, "Exited CancelTraining");
 }
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining ebmTraining) {
    LOG(TraceLevelInfo, "Entered FreeTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));
    TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   assert(nullptr != pTmlState);
+   EBM_ASSERT(nullptr != pTmlState);
    delete pTmlState;
    LOG(TraceLevelInfo, "Exited FreeTraining");
 }

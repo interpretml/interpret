@@ -10,6 +10,7 @@
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "AttributeInternal.h"
 
 // TODO: rename this to DataSetByAttribute
@@ -29,15 +30,15 @@ public:
    }
 
    TML_INLINE const FractionalDataType * GetResidualPointer() const {
-      assert(nullptr != m_aResidualErrors);
+      EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
    TML_INLINE const StorageDataTypeCore * GetDataPointer(const AttributeInternalCore * const pAttribute) const {
-      assert(nullptr != pAttribute);
-      assert(pAttribute->m_iAttributeData < m_cAttributes);
-      assert(nullptr != m_aaInputData);
+      EBM_ASSERT(nullptr != pAttribute);
+      EBM_ASSERT(pAttribute->m_iAttributeData < m_cAttributes);
+      EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pAttribute->m_iAttributeData];
    }
    TML_INLINE size_t GetCountCases() const {

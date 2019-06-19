@@ -8,6 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "AttributeInternal.h"
 
 class AttributeCombinationCore final {
@@ -25,7 +26,7 @@ public:
    AttributeCombinationEntry m_AttributeCombinationEntry[1];
 
    TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
-      assert(0 < cAttributes);
+      EBM_ASSERT(0 < cAttributes);
 
       const size_t cBytes = sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationEntry) + sizeof(AttributeCombinationEntry) * cAttributes;
       AttributeCombinationCore * const pAttributeCombination = static_cast<AttributeCombinationCore *>(malloc(cBytes));
@@ -46,11 +47,11 @@ public:
    TML_INLINE static AttributeCombinationCore ** AllocateAttributeCombinations(const size_t cAttributeCombinations) {
       LOG(TraceLevelInfo, "Entered AttributeCombinationCore::AllocateAttributeCombinations");
 
-      assert(0 < cAttributeCombinations);
+      EBM_ASSERT(0 < cAttributeCombinations);
       AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
       if (LIKELY(nullptr != apAttributeCombinations)) {
          // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
-         assert(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
+         EBM_ASSERT(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
          memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);
       }
       LOG(TraceLevelInfo, "Exited AttributeCombinationCore::AllocateAttributeCombinations");

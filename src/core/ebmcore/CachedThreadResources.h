@@ -10,7 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
-#include "Logging.h"
+#include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
 class TreeNode;
@@ -114,7 +114,7 @@ public:
       // by adding cByteBoundaries and shifting our existing size, we do 2 things:
       //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
       //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
-      assert(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
+      EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
       m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
       LOG(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
       // TODO : can we use malloc here?  We only need realloc if we need to keep the existing data

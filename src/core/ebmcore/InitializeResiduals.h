@@ -10,7 +10,7 @@
 
 #include "ebmcore.h"
 #include "EbmStatistics.h"
-#include "Logging.h"
+#include "Logging.h" // EBM_ASSERT & LOG
 
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
@@ -21,15 +21,15 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictionScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
    // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 attribute and see how it behaves
-   assert(0 < cCases);
-   assert(nullptr != aTargetData);
-   assert(nullptr != pResidualError);
+   EBM_ASSERT(0 < cCases);
+   EBM_ASSERT(nullptr != aTargetData);
+   EBM_ASSERT(nullptr != pResidualError);
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(0 < cVectorLength);
-   assert(!IsMultiplyError(cVectorLength, cCases)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
+   EBM_ASSERT(0 < cVectorLength);
+   EBM_ASSERT(!IsMultiplyError(cVectorLength, cCases)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const size_t cVectoredItems = cVectorLength * cCases;
-   assert(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0]))); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
+   EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0]))); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
    if(nullptr == aPredictionScores) {
@@ -41,33 +41,33 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
          const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
          do {
             const FractionalDataType data = *pTargetData;
-            assert(!std::isnan(data));
-            assert(!std::isinf(data));
+            EBM_ASSERT(!std::isnan(data));
+            EBM_ASSERT(!std::isinf(data));
             const FractionalDataType predictionScore = 0;
             const FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
-            assert(*pResidualError == residualError);
+            EBM_ASSERT(*pResidualError == residualError);
             ++pTargetData;
             ++pResidualError;
          } while(pResidualErrorEnd != pResidualError);
 #endif // NDEBUG
       } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
 
          const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
 
          const FractionalDataType matchValue = ComputeClassificationResidualErrorMulticlass(true, static_cast<FractionalDataType>(cVectorLength));
          const FractionalDataType nonMatchValue = ComputeClassificationResidualErrorMulticlass(false, static_cast<FractionalDataType>(cVectorLength));
 
-         assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
+         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
             const IntegerDataType dataOriginal = *pTargetData;
-            assert(0 <= dataOriginal);
-            assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            EBM_ASSERT(0 <= dataOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
             const StorageDataTypeCore data = static_cast<StorageDataTypeCore>(dataOriginal);
-            assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
-            assert(data < static_cast<StorageDataTypeCore>(cTargetStates));
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
+            EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
                const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(data);
@@ -76,7 +76,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
             } else {
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(data, iVector, matchValue, nonMatchValue);
-                  assert(ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
+                  EBM_ASSERT(ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
                   *pResidualError = residualError;
                   ++pResidualError;
                }
@@ -101,8 +101,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
          const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
          do {
             const FractionalDataType data = *pTargetData;
-            assert(!std::isnan(data));
-            assert(!std::isinf(data));
+            EBM_ASSERT(!std::isnan(data));
+            EBM_ASSERT(!std::isinf(data));
             const FractionalDataType predictionScore = *pPredictionScores;
             const FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
             *pResidualError = residualError;
@@ -111,20 +111,20 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
             ++pResidualError;
          } while(pResidualErrorEnd != pResidualError);
       } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
 
          const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
 
-         assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
+         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
             const IntegerDataType dataOriginal = *pTargetData;
-            assert(0 <= dataOriginal);
-            assert((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            EBM_ASSERT(0 <= dataOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
             const StorageDataTypeCore data = static_cast<StorageDataTypeCore>(dataOriginal);
-            assert((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
-            assert(data < static_cast<StorageDataTypeCore>(cTargetStates));
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
+            EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
                const FractionalDataType predictionScore = *pPredictionScores;

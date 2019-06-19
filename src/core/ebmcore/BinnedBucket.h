@@ -13,6 +13,7 @@
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "PredictionStatistics.h"
 #include "CachedThreadResources.h"
 #include "AttributeInternal.h"
@@ -55,7 +56,7 @@ constexpr TML_INLINE const BinnedBucket<bRegression> * GetBinnedBucketByIndex(co
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
-#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerBinnedBucket, MACRO_aBinnedBuckets, MACRO_aBinnedBucketsEnd) (assert(reinterpret_cast<const char *>(MACRO_aBinnedBuckets) + static_cast<size_t>(MACRO_cBytesPerBinnedBucket) <= reinterpret_cast<const char *>(MACRO_aBinnedBucketsEnd)))
+#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerBinnedBucket, MACRO_aBinnedBuckets, MACRO_aBinnedBucketsEnd) (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_aBinnedBuckets) + static_cast<size_t>(MACRO_cBytesPerBinnedBucket) <= reinterpret_cast<const char *>(MACRO_aBinnedBucketsEnd)))
 
 template<bool bRegression>
 class BinnedBucket final {
@@ -94,7 +95,7 @@ public:
    TML_INLINE void Copy(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
       memcpy(this, &other, cBytesPerBinnedBucket);
    }
@@ -103,7 +104,7 @@ public:
    TML_INLINE void Zero(const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
       memset(this, 0, cBytesPerBinnedBucket);
    }
@@ -113,7 +114,7 @@ public:
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 #ifndef NDEBUG
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-      assert(0 == cCasesInBucket);
+      EBM_ASSERT(0 == cCasesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aPredictionStatistics[iVector].AssertZero();
       }
@@ -135,18 +136,18 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
 ) {
    LOG(TraceLevelVerbose, "Entered BinDataSetTraining");
 
-   assert(cCompilerDimensions == pAttributeCombination->m_cAttributes);
+   EBM_ASSERT(cCompilerDimensions == pAttributeCombination->m_cAttributes);
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
-   assert(0 < cCases);
+   EBM_ASSERT(0 < cCases);
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
@@ -209,13 +210,13 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
       LOG(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
 
       // first time through?
-      assert(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
+      EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
       cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
-      assert(0 < cItemsRemaining);
-      assert(cItemsRemaining <= cItemsPerBitPackDataUnit);
+      EBM_ASSERT(0 < cItemsRemaining);
+      EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
       goto one_last_loop;
    }
-   assert(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
+   EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
    LOG(TraceLevelVerbose, "Exited BinDataSetTraining");
 }
@@ -229,7 +230,7 @@ public:
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
    ) {
-      assert(cRuntimeDimensions < k_cDimensionsMax);
+      EBM_ASSERT(cRuntimeDimensions < k_cDimensionsMax);
       static_assert(cCompilerDimensions < k_cDimensionsMax, "cCompilerDimensions must be less than or equal to k_cDimensionsMax.  This line only handles the less than part, but we handle the equals in a partial specialization template.");
       if(cCompilerDimensions == cRuntimeDimensions) {
          BinDataSetTraining<countCompilerClassificationTargetStates, cCompilerDimensions>(aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
@@ -255,7 +256,7 @@ public:
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
    ) {
-      assert(k_cDimensionsMax == cRuntimeDimensions);
+      EBM_ASSERT(k_cDimensionsMax == cRuntimeDimensions);
       BinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax>(aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG
          , aBinnedBucketsEndDebug
@@ -274,7 +275,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
    LOG(TraceLevelVerbose, "Entered BinDataSetInteraction");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
@@ -298,9 +299,9 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputAttribute);
          pInputData += iCase;
          StorageDataTypeCore data = *pInputData;
-         assert((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
+         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
          size_t iState = static_cast<size_t>(data);
-         assert(iState < cStates);
+         EBM_ASSERT(iState < cStates);
          iBucket += cBuckets * iState;
          cBuckets *= cStates;
       }
@@ -330,14 +331,14 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
 ) {
    LOG(TraceLevelVerbose, "Entered CompressBinnedBuckets");
 
-   assert(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cCasesTotalDebug = 0;
 #endif // NDEBUG
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pCopyFrom = aBinnedBuckets;
@@ -389,11 +390,11 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
       ++iBucket;
       pCopyFrom = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
-   assert(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aBinnedBuckets)) % cBytesPerBinnedBucket);
+   EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aBinnedBuckets)) % cBytesPerBinnedBucket);
    size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aBinnedBuckets)) / cBytesPerBinnedBucket;
 
    const size_t cCasesTotal = pTrainingSet->GetTotalCountCaseOccurrences();
-   assert(cCasesTotal == cCasesTotalDebug);
+   EBM_ASSERT(cCasesTotal == cCasesTotalDebug);
 
    *pcCasesTotal = cCasesTotal;
 

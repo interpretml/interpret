@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE & UNLIKLEY
-#include "Logging.h"
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
 #include "DataSetByAttributeCombination.h" // we use an iterator which requires a full definition.  TODO : in the future we'll be eliminating the iterator, so check back here to see if we can eliminate this include file
 #include "SamplingWithReplacement.h"
@@ -28,7 +28,7 @@ size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
    for(size_t i = 0; i < m_pOriginDataSet->GetCountCases(); ++i) {
       cTotalCountCaseOccurrencesDebug += m_aCountOccurrences[i];
    }
-   assert(cTotalCountCaseOccurrencesDebug == cTotalCountCaseOccurrences);
+   EBM_ASSERT(cTotalCountCaseOccurrencesDebug == cTotalCountCaseOccurrences);
 #endif
    return cTotalCountCaseOccurrences;
 }
@@ -36,11 +36,11 @@ size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
 SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet) {
    LOG(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
 
-   assert(nullptr != pRandomStream);
-   assert(nullptr != pOriginDataSet);
+   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cCases = pOriginDataSet->GetCountCases();
-   assert(0 < cCases); // if there were no cases, we wouldn't be called
+   EBM_ASSERT(0 < cCases); // if there were no cases, we wouldn't be called
 
    if(IsMultiplyError(sizeof(size_t), cCases)) {
       LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cCases)");
@@ -82,9 +82,9 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
-   assert(nullptr != pOriginDataSet);
+   EBM_ASSERT(nullptr != pOriginDataSet);
    const size_t cCases = pOriginDataSet->GetCountCases();
-   assert(0 < cCases); // if there were no cases, we wouldn't be called
+   EBM_ASSERT(0 < cCases); // if there were no cases, we wouldn't be called
 
    const size_t cBytesData = sizeof(size_t) * cCases;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
@@ -122,8 +122,8 @@ void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, Sampl
 SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet, const size_t cSamplingSets) {
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
 
-   assert(nullptr != pRandomStream);
-   assert(nullptr != pOriginDataSet);
+   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 

@@ -10,6 +10,7 @@
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
 class PredictionStatistics;
@@ -41,8 +42,8 @@ struct PredictionStatistics<false> final {
       sumDenominator = other.sumDenominator;
    }
    TML_INLINE void AssertZero() {
-      assert(0 == sumResidualError);
-      assert(0 == sumDenominator);
+      EBM_ASSERT(0 == sumResidualError);
+      EBM_ASSERT(0 == sumDenominator);
    }
 };
 
@@ -53,11 +54,11 @@ struct PredictionStatistics<true> final {
    FractionalDataType sumResidualError;
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
-      assert(false); // this should never be called, but the compiler seems to want it to exist
+      EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return static_cast<FractionalDataType>(0);
    }
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
-      assert(false); // this should never be called, but the compiler seems to want it to exist
+      EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
    TML_INLINE void Add(const PredictionStatistics<true> & other) {
       sumResidualError += other.sumResidualError;
@@ -69,7 +70,7 @@ struct PredictionStatistics<true> final {
       sumResidualError = other.sumResidualError;
    }
    TML_INLINE void AssertZero() {
-      assert(0 == sumResidualError);
+      EBM_ASSERT(0 == sumResidualError);
    }
 };
 

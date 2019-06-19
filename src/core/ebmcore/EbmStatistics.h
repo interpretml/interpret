@@ -10,10 +10,11 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 
 TML_INLINE FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cCases) {
    // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-   assert(0 < cCases); // we purge bins that have case counts of zero, so cCases should never be zero
+   EBM_ASSERT(0 < cCases); // we purge bins that have case counts of zero, so cCases should never be zero
    return sumResidualError / cCases * sumResidualError;
 }
 
@@ -43,7 +44,7 @@ TML_INLINE FractionalDataType ComputeSmallChangeInClassificationLogOddPrediction
 TML_INLINE FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cCases) {
    // TODO: check again if we can ever have a zero here
    // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-   assert(0 != cCases);
+   EBM_ASSERT(0 != cCases);
    return sumResidualError / cCases;
 }
 
@@ -58,7 +59,7 @@ TML_INLINE FractionalDataType ComputeRegressionResidualError(const FractionalDat
 }
 
 TML_INLINE FractionalDataType ComputeClassificationResidualErrorBinaryclass(const FractionalDataType trainingLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
-   assert(0 == binnedActualValue || 1 == binnedActualValue);
+   EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
    // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, trainingLogOddsPrediction would need to be either infinity or -infinity
    // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having trainingLogOddsPrediction be -infinity
@@ -75,9 +76,9 @@ TML_INLINE FractionalDataType ComputeClassificationResidualErrorBinaryclass(cons
 
 // if trainingLogOddsPrediction is zero (so, 50%/50% odds), then we can call this function
 TML_INLINE FractionalDataType ComputeClassificationResidualErrorBinaryclass(const StorageDataTypeCore binnedActualValue) {
-   assert(0 == binnedActualValue || 1 == binnedActualValue);
+   EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
    const FractionalDataType result = UNPREDICTABLE(0 == binnedActualValue) ? -0.5 : 0.5;
-   assert(ComputeClassificationResidualErrorBinaryclass(0, binnedActualValue) == result);
+   EBM_ASSERT(ComputeClassificationResidualErrorBinaryclass(0, binnedActualValue) == result);
    return result;
 }
 
@@ -93,8 +94,8 @@ TML_INLINE FractionalDataType ComputeClassificationResidualErrorMulticlass(const
    const FractionalDataType yi = UNPREDICTABLE(isMatch) ? static_cast<FractionalDataType>(1) : static_cast<FractionalDataType>(0);
    const FractionalDataType ret = yi - static_cast<FractionalDataType>(1) / sumExp;
 
-   assert(!isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 1) == ret);
-   assert(isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 2) == ret);
+   EBM_ASSERT(!isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 1) == ret);
+   EBM_ASSERT(isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 2) == ret);
 
    return ret;
 }
@@ -107,7 +108,7 @@ TML_INLINE FractionalDataType ComputeClassificationResidualErrorMulticlass(const
 }
 
 TML_INLINE FractionalDataType ComputeClassificationSingleCaseLogLossBinaryclass(const FractionalDataType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
-   assert(0 == binnedActualValue || 1 == binnedActualValue);
+   EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
    // TODO: also try log1p and I guess (exp1p?) for accuracy and performance
    // TODO: the calls to log and exp have loops and conditional statements.  Suposedly the assembly FYL2X is slower than the C++ log/exp functions.  Look into this more.  We might end up sorting our input data by the target to avoid this if we can't find a non-branching solution because branch prediction will be important here

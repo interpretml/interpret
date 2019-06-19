@@ -10,6 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedRegion.h"
 #include "EbmStatistics.h"
 #include "CachedThreadResources.h"
@@ -152,9 +153,9 @@ public:
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-      assert(!GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
-      assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+      EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
 
       const BinnedBucket<bRegression> * pBinnedBucketEntryCur = this->m_UNION.beforeSplit.pBinnedBucketEntryFirst;
@@ -188,7 +189,7 @@ public:
          }
       }
 
-      assert(0 <= BEST_nodeSplittingScoreChildren);
+      EBM_ASSERT(0 <= BEST_nodeSplittingScoreChildren);
       const BinnedBucket<bRegression> * BEST_pBinnedBucketEntry = pBinnedBucketEntryCur;
       size_t BEST_cCases1 = cCases1;
       for(pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1); pBinnedBucketEntryLast != pBinnedBucketEntryCur; pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1)) {
@@ -213,10 +214,10 @@ public:
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
             const FractionalDataType nodeSplittingScoreChildrenOneVector = ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
-            assert(0 <= nodeSplittingScoreChildren);
+            EBM_ASSERT(0 <= nodeSplittingScoreChildren);
             nodeSplittingScoreChildren += nodeSplittingScoreChildrenOneVector;
          }
-         assert(0 <= nodeSplittingScoreChildren);
+         EBM_ASSERT(0 <= nodeSplittingScoreChildren);
 
          if(UNLIKELY(BEST_nodeSplittingScoreChildren < nodeSplittingScoreChildren)) {
             // TODO : randomly choose a node if BEST_entropyTotalChildren == entropyTotalChildren, but if there are 3 choice make sure that each has a 1/3 probability of being selected (same as interview question to select a random line from a file)
@@ -263,7 +264,7 @@ public:
       this->m_UNION.afterSplit.nodeSplittingScore = nodeSplittingScoreParent - BEST_nodeSplittingScoreChildren;
       this->m_UNION.afterSplit.divisionValue = (BEST_pBinnedBucketEntry->bucketValue + BEST_pBinnedBucketEntryNext->bucketValue) / 2;
 
-      assert(this->m_UNION.afterSplit.nodeSplittingScore <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
+      EBM_ASSERT(this->m_UNION.afterSplit.nodeSplittingScore <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
       LOG(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(this->m_UNION.afterSplit.divisionValue), this->m_UNION.afterSplit.nodeSplittingScore);
    }
@@ -273,7 +274,7 @@ public:
    void Flatten(ActiveDataType ** const ppDivisions, FractionalDataType ** const ppValues, const size_t cVectorLength) const {
       // don't log this since we call it recursively.  Log where the root is called
       if(UNPREDICTABLE(IsTrunkAfterDone())) {
-         assert(!GetTreeNodeSizeOverflow<bRegression>(cVectorLength)); // we're accessing allocated memory
+         EBM_ASSERT(!GetTreeNodeSizeOverflow<bRegression>(cVectorLength)); // we're accessing allocated memory
          const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
          const TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
          pLeftChild->Flatten(ppDivisions, ppValues, cVectorLength);
@@ -317,9 +318,9 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
 
-   assert(1 <= cCasesTotal); // filter these out at the start where we can handle this case easily
-   assert(1 <= cBinnedBuckets); // cBinnedBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
-   assert(0 != cBinnedBuckets);
+   EBM_ASSERT(1 <= cCasesTotal); // filter these out at the start where we can handle this case easily
+   EBM_ASSERT(1 <= cBinnedBuckets); // cBinnedBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
+   EBM_ASSERT(0 != cBinnedBuckets);
    if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cBinnedBuckets || 0 == cTreeSplitsMax)) {
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
          LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
@@ -333,7 +334,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
          FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          pValues[0] = smallChangeToModel;
       } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
          FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             FractionalDataType smallChangeToModel = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
@@ -350,7 +351,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
       return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
    }
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
 retry_with_bigger_tree_node_children_array:
@@ -363,7 +364,7 @@ retry_with_bigger_tree_node_children_array:
          return true;
       }
       cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
-      assert(cBytesInitialNeededAllocation <= cBytesBuffer2);
+      EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
    }
    TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pRootTreeNode = static_cast<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer2());
 
@@ -400,7 +401,7 @@ retry_with_bigger_tree_node_children_array:
          aValues[0] = ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aPredictionStatistics[0].sumResidualError, pLeftChild->GetCases());
          aValues[1] = ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aPredictionStatistics[0].sumResidualError, pRightChild->GetCases());
       } else {
-         assert(IsClassification(countCompilerClassificationTargetStates));
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             aValues[iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pLeftChild->aPredictionStatistics[iVector].sumResidualError, pLeftChild->aPredictionStatistics[iVector].GetSumDenominator());
             aValues[cVectorLength + iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pRightChild->aPredictionStatistics[iVector].sumResidualError, pRightChild->aPredictionStatistics[iVector].GetSumDenominator());
@@ -492,7 +493,7 @@ retry_with_bigger_tree_node_children_array:
       } while(cSplits < cTreeSplitsMax && UNLIKELY(!pBestTreeNodeToSplit->empty()));
       // we DON'T need to call SetLeafAfterDone() on any items that remain in the pBestTreeNodeToSplit queue because everything in that queue has set a non-NaN nodeSplittingScore value
 
-      assert(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
+      EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
       LOG(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
@@ -517,10 +518,10 @@ retry_with_bigger_tree_node_children_array:
    pRootTreeNode->Flatten(&pDivisions, &pValues, cVectorLength);
    LOG(TraceLevelVerbose, "Exited Flatten");
 
-   assert(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
-   assert(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cSplits);
-   assert(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
-   assert(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * (cSplits + 1));
+   EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
+   EBM_ASSERT(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cSplits);
+   EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
+   EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * (cSplits + 1));
 
    LOG(TraceLevelVerbose, "Exited GrowDecisionTree via normal exit");
    return false;
@@ -534,8 +535,8 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    size_t cTotalBuckets = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      assert(!IsMultiplyError(cTotalBuckets, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+      EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBuckets *= cStates;
    }
 
@@ -574,7 +575,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    memset(aSumPredictionStatistics, 0, sizeof(*aSumPredictionStatistics) * cVectorLength); // can't overflow, accessing existing memory
 
    size_t cBinnedBuckets = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
-   assert(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
    size_t cCasesTotal;
    cBinnedBuckets = CompressBinnedBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cBinnedBuckets, aBinnedBuckets, &cCasesTotal, aSumPredictionStatistics, cTargetStates
 #ifndef NDEBUG
@@ -582,8 +583,8 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
 #endif // NDEBUG
    );
 
-   assert(1 <= cCasesTotal);
-   assert(1 <= cBinnedBuckets);
+   EBM_ASSERT(1 <= cCasesTotal);
+   EBM_ASSERT(1 <= cBinnedBuckets);
 
    bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cBinnedBuckets, aBinnedBuckets, cCasesTotal, aSumPredictionStatistics, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet
 #ifndef NDEBUG

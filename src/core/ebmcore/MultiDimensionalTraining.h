@@ -10,6 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedRegion.h"
 #include "EbmStatistics.h"
 #include "CachedThreadResources.h"
@@ -46,18 +47,18 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
    size_t valueMultipleInitialize = 1;
    for(size_t iDimensionInitialize = 0; iDimensionInitialize < cDimensions; ++iDimensionInitialize) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionInitialize].m_pAttribute->m_cStates;
-      assert(aiStart[iDimensionInitialize] < cStates);
-      assert(aiLast[iDimensionInitialize] < cStates);
-      assert(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
-      assert(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize)); // aiStart[iDimensionInitialize] is less than cStates, so this should multiply
+      EBM_ASSERT(aiStart[iDimensionInitialize] < cStates);
+      EBM_ASSERT(aiLast[iDimensionInitialize] < cStates);
+      EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
+      EBM_ASSERT(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize)); // aiStart[iDimensionInitialize] is less than cStates, so this should multiply
       iBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
-      assert(!IsMultiplyError(cStates, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+      EBM_ASSERT(!IsMultiplyError(cStates, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
       valueMultipleInitialize *= cStates;
       aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
    }
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we've allocated this, so it should fit
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we've allocated this, so it should fit
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    pRet->template Zero<countCompilerClassificationTargetStates>(cTargetStates);
 
@@ -69,12 +70,12 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
-         assert(aiStart[iDimension] <= aiLast[iDimension]);
-         assert(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
+         EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          iBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
          const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-         assert(!IsMultiplyError(cStates, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(cStates, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cStates;
 
          aiDimensions[iDimension] = aiStart[iDimension];
@@ -92,7 +93,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompiler
 void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    size_t aiStart[k_cDimensionsMax];
@@ -114,7 +115,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
    if(nullptr != pComparison) {
       // if we can't obtain the memory, then don't do the comparison and exit
       GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, aiLast, cTargetStates, pComparison);
-      assert(pRet->cCasesInBucket == pComparison->cCasesInBucket);
+      EBM_ASSERT(pRet->cCasesInBucket == pComparison->cCasesInBucket);
       free(pComparison);
    }
 }
@@ -133,7 +134,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
-//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+//   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
 //
 //#ifndef NDEBUG
@@ -141,13 +142,13 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
 //      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
-//      assert(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
+//      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cStates;
 //   }
-//   assert(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
+//   EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
 //   TODO : technically, adding cBytesPerBinnedBucket could overflow so we should handle that instead of asserting
-//   assert(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
+//   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug + cBytesPerBinnedBucket));
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pDebugBucket = nullptr;
 //   if(nullptr != aBinnedBucketsDebugCopy) {
@@ -157,19 +158,19 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   }
 //#endif // NDEBUG
 //
-//   assert(0 < cDimensions);
+//   EBM_ASSERT(0 < cDimensions);
 //
 //   CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
 //   const CurrentIndexAndCountStates * const pCurrentIndexAndCountStatesEnd = &currentIndexAndCountStates[cDimensions];
 //   const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
 //   for(CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates; pCurrentIndexAndCountStatesEnd != pCurrentIndexAndCountStatesInitialize; ++pCurrentIndexAndCountStatesInitialize, ++pAttributeCombinationEntry) {
 //      pCurrentIndexAndCountStatesInitialize->iCur = 0;
-//      assert(2 <= pAttributeCombinationEntry->m_pAttribute->m_cStates);
+//      EBM_ASSERT(2 <= pAttributeCombinationEntry->m_pAttribute->m_cStates);
 //      pCurrentIndexAndCountStatesInitialize->cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
 //   }
 //
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-//   assert(cDimensions < k_cBitsForSizeT);
+//   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 //   const size_t permuteVectorEnd = static_cast<size_t>(1) << cDimensions;
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
 //
@@ -217,7 +218,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //#ifndef NDEBUG
 //      if(nullptr != aBinnedBucketsDebugCopy) {
-//         assert(nullptr != pDebugBucket);
+//         EBM_ASSERT(nullptr != pDebugBucket);
 //         size_t aiStart[k_cDimensionsMax];
 //         size_t aiLast[k_cDimensionsMax];
 //         for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
@@ -225,7 +226,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //            aiLast[iDebugDimension] = currentIndexAndCountStates[iDebugDimension].iCur;
 //         }
 //         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBucketsDebugCopy, pAttributeCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
-//         assert(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
+//         EBM_ASSERT(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
 //
 //         free(aBinnedBucketsDebugCopy);
 //      }
@@ -234,7 +235,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //      pCurrentIndexAndCountStates = &currentIndexAndCountStates[0];
 //      while(true) {
 //         iBucket = pCurrentIndexAndCountStates->iCur + 1;
-//         assert(iBucket <= pCurrentIndexAndCountStates->cStates);
+//         EBM_ASSERT(iBucket <= pCurrentIndexAndCountStates->cStates);
 //         if(iBucket != pCurrentIndexAndCountStates->cStates) {
 //            break;
 //         }
@@ -262,7 +263,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
-//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+//   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
 //
 //#ifndef NDEBUG
@@ -270,13 +271,13 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
 //      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
-//      assert(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
+//      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cStates)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cStates;
 //   }
-//   assert(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
+//   EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
 //   TODO : technically, adding cBytesPerBinnedBucket could overflow so we should handle that instead of asserting
-//   assert(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
+//   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerBinnedBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug + cBytesPerBinnedBucket));
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pDebugBucket = nullptr;
 //   if(nullptr != aBinnedBucketsDebugCopy) {
@@ -286,7 +287,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   }
 //#endif // NDEBUG
 //
-//   assert(0 < cDimensions);
+//   EBM_ASSERT(0 < cDimensions);
 //
 //   CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
 //   const CurrentIndexAndCountStates * const pCurrentIndexAndCountStatesEnd = &currentIndexAndCountStates[cDimensions];
@@ -294,13 +295,13 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   for(CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates; pCurrentIndexAndCountStatesEnd != pCurrentIndexAndCountStatesInitialize; ++pCurrentIndexAndCountStatesInitialize, ++pAttributeCombinationEntry) {
 //      pCurrentIndexAndCountStatesInitialize->multipliedIndexCur = 0;
-//      assert(2 <= pAttributeCombinationEntry->m_pAttribute->m_cStates);
+//      EBM_ASSERT(2 <= pAttributeCombinationEntry->m_pAttribute->m_cStates);
 //      multipleTotalInitialize *= static_cast<ptrdiff_t>(pAttributeCombinationEntry->m_pAttribute->m_cStates);
 //      pCurrentIndexAndCountStatesInitialize->multipleTotal = multipleTotalInitialize;
 //   }
 //
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-//   assert(cDimensions < k_cBitsForSizeT);
+//   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 //   const size_t permuteVectorEnd = static_cast<size_t>(1) << cDimensions;
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
 //
@@ -348,7 +349,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //#ifndef NDEBUG
 //      if(nullptr != aBinnedBucketsDebugCopy) {
-//         assert(nullptr != pDebugBucket);
+//         EBM_ASSERT(nullptr != pDebugBucket);
 //         size_t aiStart[k_cDimensionsMax];
 //         size_t aiLast[k_cDimensionsMax];
 //         ptrdiff_t multipleTotalDebug = -1;
@@ -358,7 +359,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //            multipleTotalDebug = currentIndexAndCountStates[iDebugDimension].multipleTotal;
 //         }
 //         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBucketsDebugCopy, pAttributeCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
-//         assert(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
+//         EBM_ASSERT(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
 //         free(aBinnedBucketsDebugCopy);
 //      }
 //#endif
@@ -407,7 +408,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
 
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    FastTotalState<IsRegression(countCompilerClassificationTargetStates)> fastTotalState[k_cDimensionsMax];
@@ -416,12 +417,12 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
       FastTotalState<IsRegression(countCompilerClassificationTargetStates)> * pFastTotalStateInitialize = fastTotalState;
       const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
       size_t multiply = 1;
-      assert(0 < cDimensions);
+      EBM_ASSERT(0 < cDimensions);
       do {
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBucketAuxiliaryBuildZone, aBinnedBucketsEndDebug);
 
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
-         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
          pFastTotalStateInitialize->iCur = 0;
          pFastTotalStateInitialize->cStates = cStates;
@@ -478,7 +479,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
             aiLast[iDebugDimension] = fastTotalState[iDebugDimension].iCur;
          }
          GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBucketsDebugCopy, pAttributeCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
-         assert(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
+         EBM_ASSERT(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
       }
 #endif // NDEBUG
 
@@ -493,7 +494,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
          }
          pFastTotalState->iCur = 0;
 
-         assert(pFastTotalState->pDimensionalFirst == pFastTotalState->pDimensionalCur);
+         EBM_ASSERT(pFastTotalState->pDimensionalFirst == pFastTotalState->pDimensionalCur);
          memset(pFastTotalState->pDimensionalFirst, 0, reinterpret_cast<char *>(pFastTotalState->pDimensionalWrap) - reinterpret_cast<char *>(pFastTotalState->pDimensionalFirst));
 
          ++pFastTotalState;
@@ -546,7 +547,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
 
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
@@ -555,10 +556,10 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
    {
       CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates;
       const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
-      assert(0 < cDimensions);
+      EBM_ASSERT(0 < cDimensions);
       do {
          pCurrentIndexAndCountStatesInitialize->multipliedIndexCur = 0;
-         assert(1 <= pAttributeCombinationEntry->m_pAttribute->m_cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= pAttributeCombinationEntry->m_pAttribute->m_cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
          multipleTotalInitialize *= static_cast<ptrdiff_t>(pAttributeCombinationEntry->m_pAttribute->m_cStates);
          pCurrentIndexAndCountStatesInitialize->multipleTotal = multipleTotalInitialize;
          ++pAttributeCombinationEntry;
@@ -578,8 +579,8 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
 #endif //NDEBUG
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
-   assert(cDimensions < k_cBitsForSizeTCore);
-   assert(2 <= cDimensions);
+   EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
+   EBM_ASSERT(2 <= cDimensions);
    const size_t permuteVectorEnd = static_cast<size_t>(1) << (cDimensions - 1);
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
    
@@ -625,7 +626,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
          size_t permuteVectorDestroy = permuteVector;
          // skip the first one since we preserve the total from the previous run instead of adding all the -1 values
          const CurrentIndexAndCountStates * pCurrentIndexAndCountStatesLoop = &currentIndexAndCountStates[1];
-         assert(0 != permuteVectorDestroy);
+         EBM_ASSERT(0 != permuteVectorDestroy);
          do {
             // even though our index is multiplied by the total states until this point, we only care about the zero state, and zero multiplied by anything is zero
             if(UNLIKELY(0 != ((0 == pCurrentIndexAndCountStatesLoop->multipliedIndexCur ? 1 : 0) & permuteVectorDestroy))) {
@@ -661,7 +662,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
          multipleTotalDebug = currentIndexAndCountStates[iDebugDimension].multipleTotal;
       }
       GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBucketsDebugCopy, pAttributeCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
-      assert(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
+      EBM_ASSERT(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
 #endif // NDEBUG
 
       // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
@@ -716,12 +717,12 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
 
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
-   assert(cDimensions < k_cBitsForSizeTCore);
-   assert(2 <= cDimensions);
+   EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
+   EBM_ASSERT(2 <= cDimensions);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
@@ -731,16 +732,16 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
 
    if(0 == directionVector) {
       // we would require a check in our inner loop below to handle the case of zero AttributeCombinationEntry items, so let's handle it separetly here instead
-      assert(0 < cDimensions);
+      EBM_ASSERT(0 < cDimensions);
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
-         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-         assert(*piPointInitialize < cStates);
-         assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+         EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(*piPointInitialize < cStates);
+         EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          size_t addValue = multipleTotalInitialize * (*piPointInitialize);
-         assert(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
+         EBM_ASSERT(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
          startingOffset += addValue;
-         assert(!IsMultiplyError(cStates, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+         EBM_ASSERT(!IsMultiplyError(cStates, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          multipleTotalInitialize *= cStates;
          ++pAttributeCombinationEntry;
          ++piPointInitialize;
@@ -766,22 +767,22 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
    TotalsDimension * pTotalsDimensionEnd = totalsDimension;
    {
       size_t directionVectorDestroy = directionVector;
-      assert(0 < cDimensions);
+      EBM_ASSERT(0 < cDimensions);
       do {
          size_t cStates = pAttributeCombinationEntry->m_pAttribute->m_cStates;
-         assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
-            assert(!IsMultiplyError(cStates - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            EBM_ASSERT(!IsMultiplyError(cStates - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cStates - 1);
-            assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             pTotalsDimensionEnd->cIncrement = multipleTotalInitialize * (*piPointInitialize);
             pTotalsDimensionEnd->cLast = cLast;
             multipleTotalInitialize += cLast;
             ++pTotalsDimensionEnd;
          } else {
-            assert(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
+            EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t addValue = multipleTotalInitialize * (*piPointInitialize);
-            assert(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
+            EBM_ASSERT(!IsAddError(startingOffset, addValue)); // we're accessing allocated memory, so this needs to add
             startingOffset += addValue;
             multipleTotalInitialize *= cStates;
          }
@@ -791,7 +792,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
       } while(LIKELY(pAttributeCombinationEntryEnd != pAttributeCombinationEntry));
    }
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
-   assert(cAllBits < k_cBitsForSizeTCore);
+   EBM_ASSERT(cAllBits < k_cBitsForSizeTCore);
 
    pRet->template Zero<countCompilerClassificationTargetStates>(cTargetStates);
 
@@ -838,13 +839,13 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 
    // TODO : optimize this function
 
-   assert(iDimensionSweep < pAttributeCombination->m_cAttributes);
-   assert(0 == (directionVectorLow & (static_cast<size_t>(1) << iDimensionSweep)));
+   EBM_ASSERT(iDimensionSweep < pAttributeCombination->m_cAttributes);
+   EBM_ASSERT(0 == (directionVectorLow & (static_cast<size_t>(1) << iDimensionSweep)));
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   assert(!IsMultiplyError(2, cBytesPerBinnedBucket)); // we're accessing allocated memory
+   EBM_ASSERT(!IsMultiplyError(2, cBytesPerBinnedBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoBinnedBuckets = cBytesPerBinnedBucket << 1;
 
    size_t * const piPoint = &aiPoint[iDimensionSweep];
@@ -852,7 +853,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    size_t directionVectorHigh = directionVectorLow | static_cast<size_t>(1) << iDimensionSweep;
 
    const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
-   assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
    size_t iBestCut = 0;
 
@@ -883,9 +884,9 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
          splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
-         assert(0 <= splittingScore);
+         EBM_ASSERT(0 <= splittingScore);
       }
-      assert(0 <= splittingScore);
+      EBM_ASSERT(0 <= splittingScore);
 
       if(bestSplit < splittingScore) {
          bestSplit = splittingScore;
@@ -910,13 +911,13 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
       if(IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)) {
          LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)");
          return true;
       }
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      assert(!IsMultiplyError(cTotalBucketsMainSpace, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
       cTotalBucketsMainSpace *= cStates;
    }
    const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
@@ -963,10 +964,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
-      assert(!IsMultiplyError(cTotalBucketsDebug, cStates)); // we checked this above
+      EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cStates)); // we checked this above
       cTotalBucketsDebug *= cStates;
    }
-   assert(!IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug));
    if(nullptr != aBinnedBucketsDebugCopy) {
@@ -1064,7 +1065,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    //   while(true) {
 
 
-   //      assert(0 == iDimension);
+   //      EBM_ASSERT(0 == iDimension);
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != pAttributeCombinations->m_AttributeCombinationEntry[aiDimensionPermutation[iDimension]].m_pAttribute->m_cStates) {
@@ -1092,8 +1093,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
-      assert(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      assert(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScoreFirst = -std::numeric_limits<FractionalDataType>::infinity();
 
@@ -1273,7 +1274,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
                predictionHighHigh = 0 == pTotals2HighHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->cCasesInBucket);
             } else {
                // classification
-               assert(IsClassification(countCompilerClassificationTargetStates));
+               EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
                predictionLowLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
                predictionLowHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
                predictionHighLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1378,7 +1379,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
                predictionHighLow = 0 == pTotals1HighLowBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->cCasesInBucket);
                predictionHighHigh = 0 == pTotals1HighHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->cCasesInBucket);
             } else {
-               assert(IsClassification(countCompilerClassificationTargetStates));
+               EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
                // classification
                predictionLowLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
                predictionLowHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1413,7 +1414,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
   
       // TODO: handle this better
 #ifndef NDEBUG
-      assert(false);
+      EBM_ASSERT(false);
       free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
       return true;
@@ -1440,7 +1441,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
 //   const size_t cTargetStates = pTargetAttribute->m_cStates;
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-//   assert(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+//   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 //
 //   size_t aiStart[k_cDimensionsMax];
@@ -1539,7 +1540,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
 //                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
-//                     assert(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
+//                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
 //                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
 //                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1582,7 +1583,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
 //                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
-//                     assert(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
+//                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
 //                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
 //                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1625,7 +1626,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
 //                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
-//                     assert(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
+//                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
 //                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
 //                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1667,7 +1668,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
 //                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
-//                     assert(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
+//                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
 //                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
 //                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
@@ -1693,7 +1694,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 //   } else {
 //      // TODO: handle this better
 //#ifndef NDEBUG
-//      assert(false); // we only support pairs currently
+//      EBM_ASSERT(false); // we only support pairs currently
 //      free(aBinnedBucketsDebugCopy);
 //#endif // NDEBUG
 //      return true;
@@ -1714,7 +1715,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      assert(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
       if(IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)) {
          LOG(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)");
          return true;
@@ -1777,10 +1778,10 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < pAttributeCombination->m_cAttributes; ++iDimensionDebug) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionDebug].m_pAttribute->m_cStates;
-      assert(!IsMultiplyError(cTotalBucketsDebug, cStates)); // we checked this above
+      EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cStates)); // we checked this above
       cTotalBucketsDebug *= cStates;
    }
-   assert(!IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerBinnedBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerBinnedBucket;
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesBufferDebug));
    if(nullptr != aBinnedBucketsDebugCopy) {
@@ -1807,8 +1808,8 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
-      assert(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      assert(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
 
@@ -1850,9 +1851,9 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
                splittingScore += 0 == pTotalsLowHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLowHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsLowHigh->cCasesInBucket);
                splittingScore += 0 == pTotalsHighLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHighLow->aPredictionStatistics[iVector].sumResidualError, pTotalsHighLow->cCasesInBucket);
                splittingScore += 0 == pTotalsHighHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHighHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHighHigh->cCasesInBucket);
-               assert(0 <= splittingScore);
+               EBM_ASSERT(0 <= splittingScore);
             }
-            assert(0 <= splittingScore);
+            EBM_ASSERT(0 <= splittingScore);
 
             if(bestSplittingScore < splittingScore) {
                bestSplittingScore = splittingScore;
@@ -1867,7 +1868,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
       // TODO: handle this better
 #ifndef NDEBUG
-      assert(false); // we only support pairs currently
+      EBM_ASSERT(false); // we only support pairs currently
       free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
       return true;
