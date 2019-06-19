@@ -12,6 +12,9 @@
 #include "EbmInternal.h" // AttributeTypeCore
 #include "Logging.h"
 
+extern const char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
+constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
+
 signed char g_traceLevel = TraceLevelOff;
 LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
 
@@ -27,8 +30,6 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
    assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */
    g_traceLevel = traceLevel;
 }
-
-constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 
 extern void InteralLogWithArguments(signed char traceLevel, const char * const pOriginalMessage, ...) {
    // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an inline function then the 

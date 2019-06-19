@@ -14,6 +14,7 @@
 extern signed char g_traceLevel;
 extern LOG_MESSAGE_FUNCTION g_pLogMessageFunc;
 extern void InteralLogWithArguments(signed char traceLevel, const char * const pOriginalMessage, ...);
+extern const char g_assertLogMessage[];
 
 // use a MACRO for LOG(..) and LOG_COUNTED(..) instead of an inline because:
 //   1) we can use static_assert on the log level
@@ -74,13 +75,23 @@ extern void InteralLogWithArguments(signed char traceLevel, const char * const p
       /* the "(void)0, 0" part supresses the conditional expression is constant compiler warning */ \
    } while((void)0, 0)
 
+#ifndef NDEBUG
 
-// TODO : add this assert that also logs the assert before terminating
-//#define EBM_ASSERT(assert_condition) \
-//   if(!(assert_condition)) { \
-//      LOG(#assert_condition __FILENAME__ _LINENUMBER__) \
-//      assert(!#assert_condition); \
-//   } \
+// the "(void)0, 0" part supresses the conditional expression is constant compiler warning
+// using a do loop here gives us a nice look to the macro where the caller needs to use a semi-colon to call it, and it can be used after a single if statement without curly braces
+#define EBM_ASSERT(bCondition) \
+   do { \
+      if(UNLIKELY(!(bCondition))) { \
+         if(UNLIKELY(TraceLevelError <= g_traceLevel)) { \
+            assert(nullptr != g_pLogMessageFunc); \
+            InteralLogWithArguments(TraceLevelError, g_assertLogMessage, static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition); \
+         } \
+         assert(!#bCondition); \
+      } \
+   } while((void)0, 0)
 
+#else // NDEBUG
+#define EBM_ASSERT(bCondition) ((void)0)
+#endif // NDEBUG
 
 #endif // LOGGING_H
