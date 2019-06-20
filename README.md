@@ -112,7 +112,7 @@ Currently we're working on:
 
 ## Contributing
 
-If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Acknowledgements
 
