@@ -137,7 +137,7 @@ We also build on top of many great packages. Please check them out!
 
 ## Contact us
 
-Multiple ways to get in touch:
+There are multiple ways to get in touch:
 - Email us at interpret@microsoft.com
 - Or, feel free to raise a GitHub issue
 
