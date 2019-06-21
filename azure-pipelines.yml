@@ -150,7 +150,7 @@ jobs:
     workingDirectory: src/python
     displayName: 'Install requirements'
   - script: |
-      python -m pytest --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest -v --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: src/python
     displayName: 'Run pytest'
   - task: PublishTestResults@2
