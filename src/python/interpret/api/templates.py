@@ -64,6 +64,7 @@ class FeatureValueExplanation(ExplanationMixin):
         elif feature_type == "categorical":
             return plot_bar(data_dict, title=title)
         elif feature_type == "pairwise":
+            # TODO: Generalize this out.
             xtitle = title.split(" x ")[0]
             ytitle = title.split(" x ")[1]
             return plot_pairwise_heatmap(
