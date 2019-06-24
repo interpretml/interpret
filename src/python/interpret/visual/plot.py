@@ -1,6 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+# NOTE: This module is going to through some major refactoring shortly. Do not use directly.
+
 import plotly.graph_objs as go
 import numpy as np
 from plotly import tools
