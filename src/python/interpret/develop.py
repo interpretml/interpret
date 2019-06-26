@@ -182,7 +182,6 @@ def register_log(filename, level="DEBUG"):
 
     queue = multiprocessing.Queue(-1)  # no size limit
     queue_handler = logging.handlers.QueueHandler(queue)
-    queue_handler.setFormatter(formatter)
     queue_listener = logging.handlers.QueueListener(queue, handler)
     queue_listener.start()
 
