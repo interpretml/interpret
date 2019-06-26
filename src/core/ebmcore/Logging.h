@@ -76,7 +76,10 @@ extern const char g_assertLogMessage[];
    } while((void)0, 0)
 
 #ifndef NDEBUG
-#define EBM_ASSERT(bCondition) ((void)(UNLIKELY(bCondition) ? 0 : (assert(nullptr != g_pLogMessageFunc), UNLIKELY(TraceLevelError <= g_traceLevel) ? (InteralLogWithArguments(TraceLevelError, g_assertLogMessage, static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), 0) : 0, assert(!#bCondition), 0)))
+// the "assert(!#bCondition)" condition needs some explanation.  At that point we definetly want to assert false, and we also want to include the text of the assert that triggered the failure.
+// Any string will have a non-zero pointer, so negating it will always fail, and we'll get to see the text of the original failure in the message
+// this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion failures without using the undocumented function that assert calls internally on each platform
+#define EBM_ASSERT(bCondition) ((void)(UNLIKELY(bCondition) ? 0 : (assert(UNLIKELY(nullptr != g_pLogMessageFunc)), UNLIKELY(TraceLevelError <= g_traceLevel) ? (InteralLogWithArguments(TraceLevelError, g_assertLogMessage, static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), 0) : 0, assert(!#bCondition), 0)))
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG
