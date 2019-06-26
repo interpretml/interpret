@@ -99,7 +99,7 @@ public:
       LOG(TraceLevelInfo, "InitializeInteraction done attribute processing");
 
       LOG(TraceLevelInfo, "Entered DataSetInternalCore");
-      DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates, k_iZeroResidual);
+      DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates);
       if(nullptr == pDataSet || pDataSet->IsError()) {
          LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
          return true;

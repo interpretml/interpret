@@ -15,7 +15,7 @@
 #include "DataSetByAttribute.h"
 #include "InitializeResiduals.h"
 
-TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual) {
+TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered DataSetInternalCore::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cCases);
@@ -39,7 +39,7 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
-   InitializeResidualsFlat(bRegression, cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates, iZeroResidual);
+   InitializeResidualsFlat(bRegression, cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
 
    LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructResidualErrors");
    return aResidualErrors;
@@ -109,8 +109,8 @@ free_all:
    return nullptr;
 }
 
-DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates, const int iZeroResidual)
-   : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates, iZeroResidual))
+DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
+   : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates))
    , m_aaInputData(ConstructInputData(cAttributes, aAttributes, cCases, aInputDataFrom))
    , m_cCases(cCases)
    , m_cAttributes(cAttributes) {

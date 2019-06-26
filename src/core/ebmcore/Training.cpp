@@ -100,7 +100,7 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, const int iZeroResidual) {
+static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainingSetTargetAttributeLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -208,8 +208,8 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= iZeroResidual) {
-                  pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+               if(0 <= k_iZeroResidual) {
+                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
             pTrainingPredictionScores += cVectorLength;
@@ -238,28 +238,28 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates, const int iZeroResidual) {
+static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const pAttributeCombination, DataSetAttributeCombination * const pTrainingSet, const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModel, const size_t cTargetStates) {
    if(cTargetStates <= 1 << 1) {
-      TrainingSetTargetAttributeLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 2) {
-      TrainingSetTargetAttributeLoop<cInputBits, 2, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 2, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 4) {
-      TrainingSetTargetAttributeLoop<cInputBits, 4, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 4, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 8) {
-      TrainingSetTargetAttributeLoop<cInputBits, 8, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 8, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 16) {
-      TrainingSetTargetAttributeLoop<cInputBits, 16, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 16, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= static_cast<uint64_t>(1) << 32) {
       // if this is a 32 bit system, then m_cStates can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cStates will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
       // TODO : perhaps we should change m_cStates into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
-      TrainingSetTargetAttributeLoop<cInputBits, 32, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 32, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else {
       // our interface doesn't allow more than 64 bits, so even if size_t was bigger then we don't need to examine higher
       static_assert(63 == CountBitsRequiredPositiveMax<IntegerDataType>(), "");
-      TrainingSetTargetAttributeLoop<cInputBits, 64, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates, iZeroResidual);
+      TrainingSetTargetAttributeLoop<cInputBits, 64, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    }
 }
 
@@ -464,17 +464,30 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
 
    // we need to divide by the number of sampling sets that we constructed this from.
    // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
-
+   if(IsClassification(countCompilerClassificationTargetStates)) {
 #ifdef TREAT_BINARY_AS_MULTICLASS
-   if(2 == GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates)) {
-      // in the specific case of us simulating multiclass classification on a binary attribute, we want to divide the learning rate by 2 since doubling the classes effectively doubles the learning rate
-      pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+      constexpr bool bTreatBinaryAsMulticlass = true;
+#else // TREAT_BINARY_AS_MULTICLASS
+      constexpr bool bTreatBinaryAsMulticlass = false;
+#endif // TREAT_BINARY_AS_MULTICLASS
+
+      //if(0 <= k_iZeroResidual || 2 == cTargetStates && bTreatBinaryAsMulticlass) {
+      //   EBM_ASSERT(2 <= cTargetStates);
+      //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
+      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
+      //} else {
+      //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
+      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+      //}
+
+      if(bTreatBinaryAsMulticlass && 2 == countCompilerClassificationTargetStates) {
+         pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+      } else {
+         pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+      }
    } else {
       pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
    }
-#else
-   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-#endif
 
    // pSmallChangeToModelAccumulated was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
    size_t acDivisionIntegersEnd[k_cDimensionsMax];
@@ -779,13 +792,13 @@ public:
          }
 
          if (m_bRegression) {
-            InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0, k_iZeroResidual);
-            InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0, k_iZeroResidual);
+            InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
+            InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
          } else {
             if (2 == m_cTargetStates) {
-               InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates, k_iZeroResidual);
+               InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
             } else {
-               InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates, k_iZeroResidual);
+               InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
             }
          }
          
@@ -970,7 +983,7 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
    }
 
    // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-   TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates, k_iZeroResidual);
+   TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
 
    *pValidationMetricReturn = modelMetric;
 

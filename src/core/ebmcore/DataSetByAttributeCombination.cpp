@@ -72,6 +72,19 @@ TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cC
       memset(aPredictionScoresTo, 0, cBytes);
    } else {
       memcpy(aPredictionScoresTo, aPredictionScoresFrom, cBytes);
+      if(0 <= k_iZeroClassificationLogitAtInitialize) {
+         // TODO : integrate this subtraction into the copy instead of doing it afterwards
+         FractionalDataType * pScore = aPredictionScoresTo;
+         const FractionalDataType * const pScoreExteriorEnd = pScore + cVectorLength * cCases;
+         do {
+            FractionalDataType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
+            const FractionalDataType * const pScoreInteriorEnd = pScore + cVectorLength;
+            do {
+               *pScore -= scoreShift;
+               ++pScore;
+            } while(pScoreInteriorEnd != pScore);
+         } while(pScoreExteriorEnd != pScore);
+      }
    }
 
    LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructPredictionScores");

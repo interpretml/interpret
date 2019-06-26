@@ -233,5 +233,6 @@ constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
 
 // TODO : keep this constant, but make it global and compile out the costs... we want to document that it's possible and how, but we have tested it and found it's worse
 static constexpr int k_iZeroResidual = -1;
+static constexpr int k_iZeroClassificationLogitAtInitialize = -1;
 
 #endif // TRANSPARENT_ML_CORE_INTERNAL_H

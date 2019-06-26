@@ -185,8 +185,22 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
          const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
          PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * pPredictionStatistics = &pBinnedBucketEntry->aPredictionStatistics[0];
          size_t iVector = 0;
+
+#ifdef TREAT_BINARY_AS_MULTICLASS
+         constexpr bool bTreatBinaryAsMulticlass = true;
+#else // TREAT_BINARY_AS_MULTICLASS
+         constexpr bool bTreatBinaryAsMulticlass = false;
+#endif // TREAT_BINARY_AS_MULTICLASS
+
+#ifndef NDEBUG
+         FractionalDataType residualTotalDebug = 0;
+#endif // NDEBUG
          do {
             const FractionalDataType residualError = *pResidualError;
+            EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || iVector != k_iZeroResidual || 0 == residualError);
+#ifndef NDEBUG
+            residualTotalDebug += residualError;
+#endif // NDEBUG
             pPredictionStatistics[iVector].sumResidualError += cFloatOccurences * residualError;
             if(IsClassification(countCompilerClassificationTargetStates)) {
                // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
@@ -199,6 +213,8 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
             // if we make this (iVector != cVectorLength) then the loop is not collapsed
             // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
          } while(iVector < cVectorLength);
+
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
 
          iBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away

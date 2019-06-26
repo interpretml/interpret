@@ -16,7 +16,7 @@
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeResiduals(const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates, const int iZeroResidual) {
+static void InitializeResiduals(const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictionScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
@@ -88,8 +88,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= iZeroResidual) {
-                  pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+               if(0 <= k_iZeroResidual) {
+                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
             ++pTargetData;
@@ -134,8 +134,11 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                ++pResidualError;
             } else {
                FractionalDataType sumExp = 0;
+               // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
+               const FractionalDataType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictionScores[k_iZeroClassificationLogitAtInitialize] : 0;
+
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictionScores;
+                  const FractionalDataType predictionScore = *pPredictionScores - subtract;
                   sumExp += std::exp(predictionScore);
                   ++pPredictionScores;
                }
@@ -144,7 +147,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                pPredictionScores -= cVectorLengthStorage;
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictionScores;
+                  const FractionalDataType predictionScore = *pPredictionScores - subtract;
                   const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
                   *pResidualError = residualError;
                   ++pPredictionScores;
@@ -158,8 +161,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= iZeroResidual) {
-                  pResidualError[static_cast<ptrdiff_t>(iZeroResidual) - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
+               if(0 <= k_iZeroResidual) {
+                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
                }
             }
             ++pTargetData;
@@ -169,14 +172,14 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
    LOG(TraceLevelInfo, "Exited InitializeResiduals");
 }
 
-TML_INLINE static void InitializeResidualsFlat(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates, const int iZeroResidual) {
+TML_INLINE static void InitializeResidualsFlat(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
    if(bRegression) {
-      InitializeResiduals<k_Regression>(cCases, aTargetData, aPredictionScores, pResidualError, 0, iZeroResidual);
+      InitializeResiduals<k_Regression>(cCases, aTargetData, aPredictionScores, pResidualError, 0);
    } else {
       if(2 == cTargetStates) {
-         InitializeResiduals<2>(cCases, aTargetData, aPredictionScores, pResidualError, 2, iZeroResidual);
+         InitializeResiduals<2>(cCases, aTargetData, aPredictionScores, pResidualError, 2);
       } else {
-         InitializeResiduals<k_DynamicClassification>(cCases, aTargetData, aPredictionScores, pResidualError, cTargetStates, iZeroResidual);
+         InitializeResiduals<k_DynamicClassification>(cCases, aTargetData, aPredictionScores, pResidualError, cTargetStates);
       }
    }
 }
