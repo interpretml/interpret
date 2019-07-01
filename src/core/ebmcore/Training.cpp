@@ -195,6 +195,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
                StorageDataTypeCore iVector2 = 0;
                do {
+                  // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
                   *pResidualError = residualError;
                   ++pResidualError;
@@ -371,6 +372,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
                   // TODO : consider replacing iVector with pValidationPredictionScoresInnerEnd
                   ++iVector;
                } while(iVector < cVectorLength);
+               // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
                sumLogLoss += ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
             }
             ++pTargetData;

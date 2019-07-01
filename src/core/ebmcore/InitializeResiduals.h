@@ -148,6 +148,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FractionalDataType predictionScore = *pPredictionScores - subtract;
+                  // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
                   *pResidualError = residualError;
                   ++pPredictionScores;
