@@ -102,13 +102,13 @@ jobs:
         image.name: 'ubuntu-16.04'
       WindowsPython35:
         python.version: '3.5'
-        image.name: 'win1803'
+        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
-        image.name: 'win1803'
+        image.name: 'windows-2019'
       WindowsPython37:
         python.version: '3.7'
-        image.name: 'win1803'
+        image.name: 'windows-2019'
       MacPython35:
         python.version: '3.5'
         image.name: 'macOS-10.13'
