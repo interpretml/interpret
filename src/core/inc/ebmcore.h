@@ -28,8 +28,14 @@ extern "C" {
 #define EBMCORE_IMPORT_EXPORT __declspec(dllimport)
 #endif // EBMCORE_EXPORTS
 
-// in Windows, __fastcall is used for x64 always, so let's use __fastcall for x86 as well to keep things consistent
-#define EBMCORE_CALLING_CONVENTION __fastcall
+#ifdef _WIN64
+// _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64
+// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for future compatibility (not specifying it means it can be the new default if somehting new comes along later)
+#define EBMCORE_CALLING_CONVENTION
+#else // _WIN64
+// in Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined by Windows and all languages essentially support it within the Windows ecosystem since they all need to call win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
+#define EBMCORE_CALLING_CONVENTION __stdcall
+#endif // _WIN64
 
 #else // compiler
 #error compiler not recognized
