@@ -3,23 +3,15 @@ jobs:
   strategy:
     matrix:
       Linux:
-        python.version: '3.6'
         image.name: 'ubuntu-16.04'
       Windows:
-        python.version: '3.6'
         image.name: 'windows-2019'
       Mac:
-        python.version: '3.6'
         image.name: 'macOS-10.13'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
-
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '$(python.version)'
-      architecture: 'x64'
   - script: |
       chmod +x build.sh
       ./build.sh
@@ -34,7 +26,7 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: staging
-      contents: 'ebmcore_*'
+      contents: '*'
       targetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Move binary to staging'
   - task: PublishBuildArtifacts@1
