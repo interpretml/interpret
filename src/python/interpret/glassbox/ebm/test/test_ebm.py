@@ -1,7 +1,11 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ....test.utils import synthetic_classification, adult_classification
+from ....test.utils import (
+    synthetic_multiclass,
+    synthetic_classification,
+    adult_classification,
+)
 from ....test.utils import synthetic_regression
 from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
 
@@ -17,6 +21,16 @@ def warn(*args, **kwargs):
 
 
 warnings.warn = warn
+
+
+def test_no_multiclass_ebm():
+    data = synthetic_multiclass()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=1)
+    with pytest.raises(RuntimeError, match="Multiclass currently not supported"):
+        clf.fit(X, y)
 
 
 def test_prefit_ebm():

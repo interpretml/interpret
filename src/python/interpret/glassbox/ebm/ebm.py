@@ -734,6 +734,9 @@ class BaseEBM(BaseEstimator):
 
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
+            if len(self.classes_) > 2:
+                raise RuntimeError("Multiclass currently not supported.")
+
             proto_estimator = CoreEBMClassifier(
                 # Data
                 col_types=self.preprocessor_.col_types_,
