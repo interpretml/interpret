@@ -3,7 +3,7 @@
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
-script_path="`dirname \"$0\"`"
+script_path=`dirname "$0"`
 
 if [ "$os_type" = "Darwin" ]; then
 
@@ -19,7 +19,7 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
-   echo "Compiling with $clang_pp_bin for $os_type release|x64"
+   echo "Compiling with $clang_pp_bin for macOS release|x64"
    [ -d "$script_path/tmp/clang/intermediate/release/mac/x64/ebmcore" ] || mkdir -p "$script_path/tmp/clang/intermediate/release/mac/x64/ebmcore"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -48,7 +48,7 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
-   echo "Compiling with $clang_pp_bin for $os_type debug|x64"
+   echo "Compiling with $clang_pp_bin for macOS debug|x64"
    [ -d "$script_path/tmp/clang/intermediate/debug/mac/x64/ebmcore" ] || mkdir -p "$script_path/tmp/clang/intermediate/debug/mac/x64/ebmcore"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -77,7 +77,7 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
-   # echo "Compiling with $clang_pp_bin for $os_type release|x86"
+   # echo "Compiling with $clang_pp_bin for macOS release|x86"
    # [ -d "$script_path/tmp/clang/intermediate/release/mac/x86/ebmcore" ] || mkdir -p "$script_path/tmp/clang/intermediate/release/mac/x86/ebmcore"
    # ret_code=$?
    # if [ $ret_code -ne 0 ]; then 
@@ -106,7 +106,7 @@ if [ "$os_type" = "Darwin" ]; then
    #    exit $ret_code
    # fi
 
-   # echo "Compiling with $clang_pp_bin for $os_type debug|x86"
+   # echo "Compiling with $clang_pp_bin for macOS debug|x86"
    # [ -d "$script_path/tmp/clang/intermediate/debug/mac/x86/ebmcore" ] || mkdir -p "$script_path/tmp/clang/intermediate/debug/mac/x86/ebmcore"
    # ret_code=$?
    # if [ $ret_code -ne 0 ]; then 
@@ -151,7 +151,7 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-   echo "Compiling with $g_pp_bin for $os_type release|x64"
+   echo "Compiling with $g_pp_bin for Linux release|x64"
    [ -d "$script_path/tmp/gcc/intermediate/release/linux/x64/ebmcore" ] || mkdir -p "$script_path/tmp/gcc/intermediate/release/linux/x64/ebmcore"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -180,7 +180,7 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-   echo "Compiling with $g_pp_bin for $os_type debug|x64"
+   echo "Compiling with $g_pp_bin for Linux debug|x64"
    [ -d "$script_path/tmp/gcc/intermediate/debug/linux/x64/ebmcore" ] || mkdir -p "$script_path/tmp/gcc/intermediate/debug/linux/x64/ebmcore"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -209,7 +209,7 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-   # echo "Compiling with $g_pp_bin for $os_type release|x86"
+   # echo "Compiling with $g_pp_bin for Linux release|x86"
    # [ -d "$script_path/tmp/gcc/intermediate/release/linux/x86/ebmcore" ] || mkdir -p "$script_path/tmp/gcc/intermediate/release/linux/x86/ebmcore"
    # ret_code=$?
    # if [ $ret_code -ne 0 ]; then 
@@ -238,7 +238,7 @@ elif [ "$os_type" = "Linux" ]; then
    #    exit $ret_code
    # fi
 
-   # echo "Compiling with $g_pp_bin for $os_type debug|x86"
+   # echo "Compiling with $g_pp_bin for Linux debug|x86"
    # [ -d "$script_path/tmp/gcc/intermediate/debug/linux/x86/ebmcore" ] || mkdir -p "$script_path/tmp/gcc/intermediate/debug/linux/x86/ebmcore"
    # ret_code=$?
    # if [ $ret_code -ne 0 ]; then 
@@ -268,6 +268,6 @@ elif [ "$os_type" = "Linux" ]; then
    # fi
 
 else
-   echo "OS $os_type not recognized.  We support $clang_pp_bin on Darwin and $g_pp_bin on Linux"
+   echo "OS $os_type not recognized.  We support $clang_pp_bin on macOS and $g_pp_bin on Linux"
    exit 1
 fi
