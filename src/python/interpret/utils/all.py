@@ -79,7 +79,7 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
-    else:
+    else:  # pragma: no cover
         return df
 
 
@@ -105,7 +105,7 @@ def gen_local_selector(X, y, y_hat, round=3):
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
-    else:
+    else:  # pragma: no cover
         return df
 
 
@@ -199,7 +199,7 @@ def unify_vector(data):
         new_data = np.array(data)
     elif isinstance(data, NDFrame) and data.shape[1] == 1:
         new_data = data.iloc[:, 0].values
-    else:
+    else:  # pragma: no cover
         msg = "Could not unify data of type: {0}".format(type(data))
         log.warning(msg)
         raise Exception(msg)
@@ -207,6 +207,7 @@ def unify_vector(data):
     return new_data
 
 
+# TODO: Docs for unify_data.
 def unify_data(data, labels=None, feature_names=None, feature_types=None):
     """ Attempts to unify data into a numpy array with feature names and types.
 
@@ -276,7 +277,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
             ]
         else:
             new_feature_types = feature_types
-    else:
+    else:  # pragma: no cover
         msg = "Could not unify data of type: {0}".format(type(data))
         log.warning(msg)
         raise Exception(msg)
@@ -327,7 +328,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
                     # schema[name]['order'] = list(set(X[name]))
             elif is_string_dtype(col_dtype):
                 schema[name]["type"] = "categorical"
-            else:
+            else:  # pragma: no cover
                 warnings.warn("Unknown column: " + name, RuntimeWarning)
                 schema[name]["type"] = "unknown"
             schema[name]["column_number"] = col_number
@@ -337,7 +338,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
         if feature_types is not None:
             for idx, name in enumerate(X.dtypes.index):
                 schema[name]["type"] = feature_types[idx]
-    else:
+    else:  # pragma: no cover
         raise TypeError("GA2M only supports numpy arrays or pandas dataframes.")
 
     return schema
@@ -350,5 +351,5 @@ def _assign_feature_type(feature_type, unique_count=0):
         return "categorical"
     elif is_numeric_dtype(feature_type):
         return "continuous"
-    else:
+    else:  # pragma: no cover
         return "unknown"

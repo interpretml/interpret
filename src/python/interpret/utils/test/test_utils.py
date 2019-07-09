@@ -2,13 +2,30 @@
 # Distributed under the MIT software license
 
 import pytest
+import numpy as np
 from .. import gen_feat_val_list, gen_name_from_class
-from .. import reverse_map
+from .. import reverse_map, unify_data
 
 
 @pytest.fixture
 def fixture_feat_val_list():
     return [("race", 3), ("age", -2), ("gender", 1)]
+
+
+def test_unify_list_data():
+    orig_data = [
+        [1, 2],
+        [3, 4],
+    ]
+    orig_labels = [0, 0]
+
+    data, labels, feature_names, feature_types = unify_data(orig_data, orig_labels)
+    assert feature_names is not None
+    assert feature_types is not None
+    assert isinstance(data, np.ndarray)
+    assert data.ndim == 2
+    assert isinstance(labels, np.ndarray)
+    assert labels.ndim == 1
 
 
 def test_that_names_generated():

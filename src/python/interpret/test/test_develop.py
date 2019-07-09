@@ -2,7 +2,20 @@
 # Distributed under the MIT software license
 
 from ..develop import print_debug_info, debug_info
-from ..develop import register_log
+from ..develop import register_log, debug_mode
+
+
+def test_debug_mode():
+    import sys
+    import logging
+    import pytest
+
+    handler = debug_mode(log_filename=sys.stderr, log_level="INFO", native_debug=False)
+    root = logging.getLogger("interpret")
+    root.removeHandler(handler)
+
+    with pytest.raises(Exception, match="Cannot call debug_mode more than once in the same session."):
+        debug_mode()
 
 
 def test_debug_info():

@@ -118,7 +118,7 @@ def sizeof_fmt(num, suffix="B"):
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)
+    return "%.1f%s%s" % (num, "Yi", suffix)  # pragma: no cover
 
 
 def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
@@ -130,7 +130,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
         native_debug: Load debug versions of native libraries if True.
 
     Returns:
-        None.
+        Logging handler.
     """
     import json
     import logging
@@ -143,7 +143,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
         this.is_debug_mode = True
 
     # Register log
-    register_log(log_filename, log_level)
+    handler = register_log(log_filename, log_level)
 
     # Write basic system diagnostic
     debug_dict = debug_info()
@@ -153,6 +153,8 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
 
     # Load native libraries in debug mode if needed
     internal.native = internal.Native(is_debug=native_debug)
+
+    return handler
 
 
 def register_log(filename, level="DEBUG"):

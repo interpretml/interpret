@@ -140,12 +140,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.col_types_ = []
         self.has_fitted_ = False
 
-        # TODO: Remove this.
-        if self.schema is not None:
-            self.schema_ = self.schema
-        else:
-            self.schema_ = autogen_schema(X, feature_names=self.feature_names)
-
         self.schema_ = (
             self.schema
             if self.schema is not None
@@ -251,7 +245,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             return list(self.hist_counts_[attribute_index])
         elif col_type == "categorical":
             return list(self.col_mapping_counts_[attribute_index])
-        else:
+        else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
     def get_hist_edges(self, attribute_index):
@@ -261,7 +255,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         elif col_type == "categorical":
             map = self.col_mapping_[attribute_index]
             return list(map.keys())
-        else:
+        else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
     # def get_bin_counts(self, attribute_index):
@@ -292,7 +286,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         elif col_type == "categorical":
             map = self.col_mapping_[attribute_index]
             return list(map.keys())
-        else:
+        else:  # pragma: no cover
             raise Exception("Unknown column type")
 
 
@@ -417,7 +411,7 @@ class BaseCoreEBM(BaseEstimator):
             inter_indices_ = []
         elif isinstance(self.interactions, list):
             inter_indices_ = self.interactions
-        else:
+        else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         return inter_indices_
@@ -815,7 +809,7 @@ class BaseEBM(BaseEstimator):
             pair_indices = []
         elif isinstance(self.interactions, list):
             pair_indices = self.interactions
-        else:
+        else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         # Average base models into one.
@@ -1022,7 +1016,7 @@ class BaseEBM(BaseEstimator):
                     "scores": model_graph,
                 }
                 data_dicts.append(data_dict)
-            else:
+            else:  # pragma: no cover
                 raise Exception("Interactions greater than 2 not supported.")
 
         overall_dict = {
