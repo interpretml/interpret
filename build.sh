@@ -9,6 +9,8 @@ all_compiles="\"$script_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$script
 
 if [ "$os_type" = "Darwin" ]; then
 
+   all_mac="$all_compiles -dynamiclib"
+
    echo "Creating initial directories"
    [ -d "$script_path/staging" ] || mkdir -p "$script_path/staging"
    ret_code=$?
@@ -32,7 +34,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`$clang_pp_bin "$script_path/src/core/ebmcore/DataSetByAttribute.cpp" "$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp" "$script_path/src/core/ebmcore/InteractionDetection.cpp" "$script_path/src/core/ebmcore/Logging.cpp" "$script_path/src/core/ebmcore/SamplingWithReplacement.cpp" "$script_path/src/core/ebmcore/Training.cpp" -I"$script_path/src/core/ebmcore" -I"$script_path/src/core/inc" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic -dynamiclib -m64 -DNDEBUG -install_name @rpath/ebmcore_mac_x64.dylib -o "$script_path/tmp/clang/bin/release/mac/x64/ebmcore/ebmcore_mac_x64.dylib" 2>&1`
+   compile_out=`eval $clang_pp_bin $all_mac -m64 -DNDEBUG -install_name @rpath/ebmcore_mac_x64.dylib -o \"$script_path/tmp/clang/bin/release/mac/x64/ebmcore/ebmcore_mac_x64.dylib\" 2>&1`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$script_path/tmp/clang/intermediate/release/mac/x64/ebmcore/ebmcore_release_mac_x64_build_log.txt"
@@ -61,7 +63,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`$clang_pp_bin "$script_path/src/core/ebmcore/DataSetByAttribute.cpp" "$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp" "$script_path/src/core/ebmcore/InteractionDetection.cpp" "$script_path/src/core/ebmcore/Logging.cpp" "$script_path/src/core/ebmcore/SamplingWithReplacement.cpp" "$script_path/src/core/ebmcore/Training.cpp" -I"$script_path/src/core/ebmcore" -I"$script_path/src/core/inc" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic -dynamiclib -m64 -install_name @rpath/ebmcore_mac_x64_debug.dylib -o "$script_path/tmp/clang/bin/debug/mac/x64/ebmcore/ebmcore_mac_x64_debug.dylib" 2>&1`
+   compile_out=`eval $clang_pp_bin $all_mac -m64 -install_name @rpath/ebmcore_mac_x64_debug.dylib -o \"$script_path/tmp/clang/bin/debug/mac/x64/ebmcore/ebmcore_mac_x64_debug.dylib\" 2>&1`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$script_path/tmp/clang/intermediate/debug/mac/x64/ebmcore/ebmcore_debug_mac_x64_build_log.txt"
@@ -90,7 +92,7 @@ if [ "$os_type" = "Darwin" ]; then
    # if [ $ret_code -ne 0 ]; then 
    #    exit $ret_code
    # fi
-   # compile_out=`$clang_pp_bin "$script_path/src/core/ebmcore/DataSetByAttribute.cpp" "$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp" "$script_path/src/core/ebmcore/InteractionDetection.cpp" "$script_path/src/core/ebmcore/Logging.cpp" "$script_path/src/core/ebmcore/SamplingWithReplacement.cpp" "$script_path/src/core/ebmcore/Training.cpp" -I"$script_path/src/core/ebmcore" -I"$script_path/src/core/inc" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic -dynamiclib -m32 -DNDEBUG -install_name @rpath/ebmcore_mac_x86.dylib -o "$script_path/tmp/clang/bin/release/mac/x86/ebmcore/ebmcore_mac_x86.dylib" 2>&1`
+   # compile_out=`eval $clang_pp_bin $all_mac -m32 -DNDEBUG -install_name @rpath/ebmcore_mac_x86.dylib -o \"$script_path/tmp/clang/bin/release/mac/x86/ebmcore/ebmcore_mac_x86.dylib\" 2>&1`
    # ret_code=$?
    # echo -n "$compile_out"
    # echo -n "$compile_out" > "$script_path/tmp/clang/intermediate/release/mac/x86/ebmcore/ebmcore_release_mac_x86_build_log.txt"
@@ -119,7 +121,7 @@ if [ "$os_type" = "Darwin" ]; then
    # if [ $ret_code -ne 0 ]; then 
    #    exit $ret_code
    # fi
-   # compile_out=`$clang_pp_bin "$script_path/src/core/ebmcore/DataSetByAttribute.cpp" "$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp" "$script_path/src/core/ebmcore/InteractionDetection.cpp" "$script_path/src/core/ebmcore/Logging.cpp" "$script_path/src/core/ebmcore/SamplingWithReplacement.cpp" "$script_path/src/core/ebmcore/Training.cpp" -I"$script_path/src/core/ebmcore" -I"$script_path/src/core/inc" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic -dynamiclib -m32 -install_name @rpath/ebmcore_mac_x86_debug.dylib -o "$script_path/tmp/clang/bin/debug/mac/x86/ebmcore/ebmcore_mac_x86_debug.dylib" 2>&1`
+   # compile_out=`eval $clang_pp_bin $all_mac -m32 -install_name @rpath/ebmcore_mac_x86_debug.dylib -o \"$script_path/tmp/clang/bin/debug/mac/x86/ebmcore/ebmcore_mac_x86_debug.dylib\" 2>&1`
    # ret_code=$?
    # echo -n "$compile_out"
    # echo -n "$compile_out" > "$script_path/tmp/clang/intermediate/debug/mac/x86/ebmcore/ebmcore_debug_mac_x86_build_log.txt"
