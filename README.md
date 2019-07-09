@@ -16,7 +16,7 @@
 
 <br/>
 
-InterpretML is an open-source package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
+InterpretML is an open-source python package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
 - Detecting bias - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
