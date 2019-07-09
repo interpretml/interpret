@@ -51,10 +51,10 @@ class AppRunner:
                     self.port = port
                     log.info("Found open port: {0}".format(port))
                     break
-                else:
+                else:  # pragma: no cover
                     log.info("Port already in use: {0}".format(port))
 
-            else:
+            else:  # pragma: no cover
                 msg = """Could not find open port.
                 Consider calling `interpret.set_show_addr(("127.0.0.1", 7001))` first.
                 """
@@ -79,7 +79,7 @@ class AppRunner:
             sock.bind(("::1", port))
             sock.listen(backlog)
             sock.close()
-        except socket.error:
+        except socket.error:  # pragma: no cover
             if rais:
                 raise RuntimeError(
                     "The server is already running on port {0}".format(port)
@@ -99,7 +99,7 @@ class AppRunner:
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             r = requests.post(url)
             log.debug(r)
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:  # pragma: no cover
             log.info("Dashboard stop failed: {0}".format(e))
             return False
 
@@ -122,7 +122,7 @@ class AppRunner:
             server = WSGIServer((self.ip, self.port), self.app, log=devnull)
             self.app.config["server"] = server
             server.serve_forever()
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(e, exc_info=True)
 
     def _obj_id(self, obj):
@@ -143,7 +143,7 @@ class AppRunner:
             requests.get(url)
             log.info("Dashboard ping succeeded")
             return True
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:  # pragma: no cover
             log.info("Dashboard ping failed: {0}".format(e))
             return False
 

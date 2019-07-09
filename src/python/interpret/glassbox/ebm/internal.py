@@ -562,7 +562,7 @@ class NativeEBM:
                 validation_weights,
                 ct.byref(metric_output),
             )
-            if return_code != 0:
+            if return_code != 0:  # pragma: no cover
                 raise Exception("TrainingStep Exception")
 
         # log.debug("Training step end")
@@ -642,7 +642,8 @@ def make_nd_array(c_pointer, shape, dtype=np.float64, order="C", own_data=True):
         buf_from_mem.restype = ct.py_object
         buf_from_mem.argtypes = (ct.c_void_p, ct.c_int, ct.c_int)
         buffer = buf_from_mem(c_pointer, arr_size, 0x100)
-    else:
+    # NOTE: This branch should not be called. We only support Python 3.
+    else:  # pragma: no cover
         buf_from_mem = ct.pythonapi.PyBuffer_FromMemory
         buf_from_mem.restype = ct.py_object
         buffer = buf_from_mem(c_pointer, arr_size)

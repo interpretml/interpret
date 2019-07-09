@@ -71,7 +71,7 @@ def plot_performance_curve(
 
 
 def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x_vals = data_dict["names"].copy()
@@ -249,7 +249,7 @@ def _two_plot(main_fig, secondary_fig, title="", share_xaxis=True):
 def plot_line(
     data_dict, title=None, xtitle="", ytitle="", name="Main", color=COLORS[0]
 ):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x_vals = data_dict["names"].copy()
@@ -328,7 +328,7 @@ def plot_line(
 
 
 def plot_bar(data_dict, title="", xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x = data_dict["names"].copy()
@@ -376,7 +376,7 @@ def _names_with_values(names, values):
 
 
 def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     scores = data_dict["scores"].copy()
@@ -426,7 +426,7 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
 
 
 def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     bin_labels_left = data_dict["left_names"]
@@ -519,7 +519,7 @@ def rules_to_html(data_dict, title=""):
         template_list.append(template_item)
     if len(template_list) != 0:
         rule_final = " ".join(template_list)
-    else:
+    else:  # pragma: no cover
         rule_final = "<h2>No rules found.</h2>"
 
     html_str = multi_html_template.format(title=title, rules=rule_final)
