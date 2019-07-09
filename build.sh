@@ -5,7 +5,7 @@ g_pp_bin=g++
 os_type=`uname`
 script_path=`dirname "$0"`
 
-all_compiles="\"$script_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\""
+all_compiles="\"$script_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$script_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$script_path/src/core/ebmcore/InteractionDetection.cpp\" \"$script_path/src/core/ebmcore/Logging.cpp\" \"$script_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$script_path/src/core/ebmcore/Training.cpp\" -I\"$script_path/src/core/ebmcore\" -I\"$script_path/src/core/inc\" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
 
@@ -164,7 +164,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $g_pp_bin $all_compiles \"$script_path/src/core/ebmcore/InteractionDetection.cpp\" \"$script_path/src/core/ebmcore/Logging.cpp\" \"$script_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$script_path/src/core/ebmcore/Training.cpp\" -I\"$script_path/src/core/ebmcore\" -I\"$script_path/src/core/inc\" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic -Wl,--version-script=\"$script_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$script_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared -m64 -DNDEBUG -o \"$script_path/tmp/gcc/bin/release/linux/x64/ebmcore/ebmcore_linux_x64.so\" 2>&1`
+   compile_out=`eval $g_pp_bin $all_compiles -Wl,--version-script=\"$script_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$script_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared -m64 -DNDEBUG -o \"$script_path/tmp/gcc/bin/release/linux/x64/ebmcore/ebmcore_linux_x64.so\" 2>&1`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$script_path/tmp/gcc/intermediate/release/linux/x64/ebmcore/ebmcore_release_linux_x64_build_log.txt"
