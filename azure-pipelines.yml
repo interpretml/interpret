@@ -18,12 +18,12 @@ jobs:
     condition: in(variables['image.name'], 'ubuntu-16.04')
   - script: |
       chmod +x build.sh
-      ./build.sh -x86
+      ./build.sh -32bit
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Building/moving native code (linux/mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      build.bat
+      build.bat -32bit
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Building/moving native code. (win)'
   - task: CopyFiles@2

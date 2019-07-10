@@ -5,10 +5,10 @@ g_pp_bin=g++
 os_type=`uname`
 script_path=`dirname "$0"`
 
-compile_x86=0
+build_32_bit=0
 for arg in "$@"; do
-   if [ "$arg" = "-x86" ]; then
-      compile_x86=1
+   if [ "$arg" = "-32bit" ]; then
+      build_32_bit=1
    fi
 done
 
@@ -89,7 +89,7 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
-   if [ $compile_x86 -eq 1 ]; then
+   if [ $build_32_bit -eq 1 ]; then
       echo "Compiling with $clang_pp_bin for macOS release|x86"
       [ -d "$script_path/tmp/clang/intermediate/release/mac/x86/ebmcore" ] || mkdir -p "$script_path/tmp/clang/intermediate/release/mac/x86/ebmcore"
       ret_code=$?
@@ -224,7 +224,7 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
-   if [ $compile_x86 -eq 1 ]; then
+   if [ $build_32_bit -eq 1 ]; then
       echo "Compiling with $g_pp_bin for Linux release|x86"
       [ -d "$script_path/tmp/gcc/intermediate/release/linux/x86/ebmcore" ] || mkdir -p "$script_path/tmp/gcc/intermediate/release/linux/x86/ebmcore"
       ret_code=$?

@@ -12,7 +12,7 @@ for %%x in (%*) do (
 
 IF %build_core% EQU 1 (
    ECHO Building Core library...
-   CALL "%script_path%..\..\..\build.bat"
+   CALL "%script_path%..\..\..\build.bat" -32bit
 ) ELSE (
    ECHO Core library NOT being built
 )
