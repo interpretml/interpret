@@ -42,7 +42,8 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $clang_pp_bin $all_mac -m64 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x64.dylib -o \"$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib\" 2>&1`
+   compile_command="$clang_pp_bin $all_mac -m64 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x64.dylib -o \"$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib\" 2>&1"
+   compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x64/ebmcore/ebmcore_release_mac_x64_build_log.txt"
@@ -71,7 +72,8 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $clang_pp_bin $all_mac -m64 -install_name @rpath/lib_ebmcore_mac_x64_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib\" 2>&1`
+   compile_command="$clang_pp_bin $all_mac -m64 -install_name @rpath/lib_ebmcore_mac_x64_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib\" 2>&1"
+   compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x64/ebmcore/ebmcore_debug_mac_x64_build_log.txt"
@@ -101,7 +103,8 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $clang_pp_bin $all_mac -m32 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x86.dylib -o \"$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib\" 2>&1`
+      compile_command="$clang_pp_bin $all_mac -m32 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x86.dylib -o \"$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib\" 2>&1"
+      compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
       echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x86/ebmcore/ebmcore_release_mac_x86_build_log.txt"
@@ -130,7 +133,8 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $clang_pp_bin $all_mac -m32 -install_name @rpath/lib_ebmcore_mac_x86_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib\" 2>&1`
+      compile_command="$clang_pp_bin $all_mac -m32 -install_name @rpath/lib_ebmcore_mac_x86_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib\" 2>&1"
+      compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
       echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x86/ebmcore/ebmcore_debug_mac_x86_build_log.txt"
@@ -177,7 +181,8 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $g_pp_bin $all_linux -m64 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so\" 2>&1`
+   compile_command="$g_pp_bin $all_linux -m64 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so\" 2>&1"
+   compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/release/linux/x64/ebmcore/ebmcore_release_linux_x64_build_log.txt"
@@ -206,7 +211,8 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $g_pp_bin $all_linux -m64 -o \"$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so\" 2>&1`
+   compile_command="$g_pp_bin $all_linux -m64 -o \"$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so\" 2>&1"
+   compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x64/ebmcore/ebmcore_debug_linux_x64_build_log.txt"
@@ -236,7 +242,8 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $g_pp_bin $all_linux -m32 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so\" 2>&1`
+      compile_command="$g_pp_bin $all_linux -m32 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so\" 2>&1"
+      compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
       echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/release/linux/x86/ebmcore/ebmcore_release_linux_x86_build_log.txt"
@@ -265,7 +272,8 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_out=`eval $g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so\" 2>&1`
+      compile_command="$g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so\" 2>&1"
+      compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
       echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x86/ebmcore/ebmcore_debug_linux_x86_build_log.txt"
