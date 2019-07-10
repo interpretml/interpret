@@ -12,12 +12,12 @@ for arg in "$@"; do
    fi
 done
 
-all_compiles="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
-   all_mac="$all_compiles -dynamiclib"
+   compile_mac="$compile_all -dynamiclib"
 
    echo "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
@@ -42,7 +42,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $all_mac -m64 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x64.dylib -o \"$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x64.dylib -o \"$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -72,7 +72,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $all_mac -m64 -install_name @rpath/lib_ebmcore_mac_x64_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -install_name @rpath/lib_ebmcore_mac_x64_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -103,7 +103,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$clang_pp_bin $all_mac -m32 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x86.dylib -o \"$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib\" 2>&1"
+      compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x86.dylib -o \"$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
@@ -133,7 +133,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$clang_pp_bin $all_mac -m32 -install_name @rpath/lib_ebmcore_mac_x86_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib\" 2>&1"
+      compile_command="$clang_pp_bin $compile_mac -m32 -install_name @rpath/lib_ebmcore_mac_x86_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
@@ -156,7 +156,7 @@ elif [ "$os_type" = "Linux" ]; then
 
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
-   all_linux="$all_compiles -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    echo "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
@@ -181,7 +181,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $all_linux -m64 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -211,7 +211,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $all_linux -m64 -o \"$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -o \"$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -242,7 +242,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$g_pp_bin $all_linux -m32 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
@@ -272,7 +272,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       echo -n "$compile_out"
