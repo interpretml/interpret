@@ -14,7 +14,9 @@ def test_debug_mode():
     root = logging.getLogger("interpret")
     root.removeHandler(handler)
 
-    with pytest.raises(Exception, match="Cannot call debug_mode more than once in the same session."):
+    with pytest.raises(
+        Exception, match="Cannot call debug_mode more than once in the same session."
+    ):
         debug_mode()
 
 

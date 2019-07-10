@@ -15,9 +15,7 @@ def explanations():
     return [local_exp, global_exp]
 
 
-# TODO: Fix up pytest config to ignore selenium unless asked.
 @pytest.mark.selenium
-@pytest.mark.skip
 def test_dashboard(explanations):
     from selenium import webdriver
     from selenium.webdriver.support.ui import WebDriverWait
@@ -37,7 +35,11 @@ def test_dashboard(explanations):
     driver.find_element_by_id("overview-tab")
 
     wait = WebDriverWait(driver, 10)
-    wait.until(EC.text_to_be_present_in_element((By.ID, "overview-tab"), "Welcome to Interpret ML"))
+    wait.until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "overview-tab"), "Welcome to Interpret ML"
+        )
+    )
 
     # Move to local
     # Move to global
@@ -46,5 +48,3 @@ def test_dashboard(explanations):
     driver.close()
 
     shutdown_show_server()
-
-

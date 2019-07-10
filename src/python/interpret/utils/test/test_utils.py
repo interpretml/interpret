@@ -13,10 +13,7 @@ def fixture_feat_val_list():
 
 
 def test_unify_list_data():
-    orig_data = [
-        [1, 2],
-        [3, 4],
-    ]
+    orig_data = [[1, 2], [3, 4]]
     orig_labels = [0, 0]
 
     data, labels, feature_names, feature_types = unify_data(orig_data, orig_labels)
