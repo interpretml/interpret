@@ -142,7 +142,7 @@ jobs:
     condition: in(variables['image.name'], 'macOS-10.13')
     displayName: 'Matplotlib patch for mac.'
   - script: |
-      python -m pip install -r requirements.txt
+      python -m pip install -r dev-requirements.txt
     workingDirectory: src/python
     displayName: 'Install requirements'
   - script: |
