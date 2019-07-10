@@ -146,9 +146,16 @@ jobs:
     workingDirectory: src/python
     displayName: 'Install requirements'
   - script: |
+      set PATH=%PATH%;%GeckoWebDriver%
+      python -m pytest -vv --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+    workingDirectory: src/python
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Run pytest (Windows)'
+  - script: |
       python -m pytest -vv --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: src/python
-    displayName: 'Run pytest'
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Run pytest (Non-Windows)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
@@ -160,6 +167,7 @@ jobs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+    condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
