@@ -14,7 +14,7 @@ jobs:
   steps:
   - script: |
       chmod +x build.sh
-      ./build.sh
+      ./build.sh -x86
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Building/moving native code (linux/mac).'
   - script: |
