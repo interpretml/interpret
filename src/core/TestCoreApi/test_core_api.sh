@@ -124,7 +124,7 @@ elif [ "$os_type" = "Linux" ]; then
    # "readelf -d <lib_filename.so>" should show library rpath:    $ORIGIN/    OR    ${ORIGIN}/    for Linux so that the console app will find the core library in the same directory as the app: https://stackoverflow.com/questions/6288206/lookup-failure-when-linking-using-rpath-and-origin
    # the -l<library> parameter for some reason adds a lib at the start and .so at the end
 
-   compile_linux="$compile_all"
+   compile_linux="$compile_all -L\"$root_path/staging\" -Wl,-rpath-link,\"$root_path/staging\" -Wl,-rpath,'\$ORIGIN/'"
 
 
 
@@ -258,16 +258,16 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebmcore_linux_x86_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/"
-   ret_code=$?
-   if [ $ret_code -ne 0 ]; then 
-      exit $ret_code
-   fi
-   compile_command="$g_pp_bin $compile_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" -L\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -l_ebmcore_linux_x86_debug -Wl,-rpath-link,\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -Wl,-rpath,'\$ORIGIN/' 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m32 -l_ebmcore_linux_x86_debug -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x86/TestCoreApi/TestCoreApi_debug_linux_x86_build_log.txt"
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   cp "$root_path/staging/lib_ebmcore_linux_x86_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/"
+   ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
