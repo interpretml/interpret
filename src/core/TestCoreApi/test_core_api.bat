@@ -2,24 +2,15 @@
 SETLOCAL
 
 SET script_path=%~dp0
-SET build_core=1
 
+SET build_core=1
 for %%x in (%*) do (
-   IF "%%x"=="nobuildcore" (
-      SET build_core=0
-   )
-   IF "%%x"=="+nobuildcore" (
-      SET build_core=0
-   )
    IF "%%x"=="-nobuildcore" (
-      SET build_core=0
-   )
-   IF "%%x"=="/nobuildcore" (
       SET build_core=0
    )
 )
 
-IF %build_core% NEQ 0 (
+IF %build_core% EQU 1 (
    ECHO Building Core library...
    CALL "%script_path%..\..\..\build.bat"
 ) ELSE (
