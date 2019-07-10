@@ -122,7 +122,7 @@ if [ "$os_type" = "Darwin" ]; then
 elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
-   all_linux="$all_compiles -Wl,-rpath,'$ORIGIN'"
+   all_linux="$all_compiles"
 
 
 
@@ -261,13 +261,19 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" -L\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -l_ebmcore_linux_x86_debug -Wl,-rpath-link,\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" 2>&1`
+   compile_out=`eval $g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" -L\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -l_ebmcore_linux_x86_debug -Wl,-rpath-link,\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -Wl,-rpath,\\\'${ORIGIN}\/' 2>&1`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x86/TestCoreApi/TestCoreApi_debug_linux_x86_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
+   "$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api"
+   ret_code=$?
+   if [ $ret_code -ne 0 ]; then 
+      exit $ret_code
+   fi
+   echo Passed All Tests
 else
    echo "OS $os_type not recognized.  We support $clang_pp_bin on macOS and $g_pp_bin on Linux"
    exit 1
