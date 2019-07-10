@@ -58,7 +58,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/ebmcore_*'
+      contents: '**/lib_ebmcore_*'
       targetFolder: 'src/python/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
@@ -122,7 +122,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/ebmcore_*'
+      contents: '**/lib_ebmcore_*'
       targetFolder: 'src/python/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'

@@ -109,10 +109,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ebmcore_win_x64_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_ebmcore_win_x64_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" ebmcore_win_x64_debug.dll ebmcore_win_x64_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x64_debug.dll lib_ebmcore_win_x64_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -140,10 +140,10 @@ EXIT /B 0
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ebmcore_win_x86_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_ebmcore_win_x86_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" ebmcore_win_x86_debug.dll ebmcore_win_x86_debug.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x86_debug.dll lib_ebmcore_win_x86_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -175,10 +175,10 @@ EXIT /B 0
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ebmcore_win_x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_ebmcore_win_x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" ebmcore_win_x86.dll ebmcore_win_x86.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x86.dll lib_ebmcore_win_x86.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -210,10 +210,10 @@ EXIT /B 0
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ebmcore_win_x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib_ebmcore_win_x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" ebmcore_win_x64.dll ebmcore_win_x64.pdb
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x64.dll lib_ebmcore_win_x64.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%

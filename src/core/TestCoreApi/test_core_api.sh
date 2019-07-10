@@ -35,7 +35,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_mac_x64.dylib" "$root_path/tmp/clang/bin/release/mac/x64/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_mac_x64.dylib" "$root_path/tmp/clang/bin/release/mac/x64/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -59,7 +59,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_mac_x64_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x64/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_mac_x64_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x64/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -83,7 +83,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_mac_x86.dylib" "$root_path/tmp/clang/bin/release/mac/x86/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_mac_x86.dylib" "$root_path/tmp/clang/bin/release/mac/x86/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -107,7 +107,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_mac_x86_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x86/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_mac_x86_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x86/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -160,7 +160,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_linux_x64.so" "$root_path/tmp/gcc/bin/release/linux/x64/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_linux_x64.so" "$root_path/tmp/gcc/bin/release/linux/x64/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -184,7 +184,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_linux_x64_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x64/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_linux_x64_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x64/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -208,7 +208,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_linux_x86.so" "$root_path/tmp/gcc/bin/release/linux/x86/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_linux_x86.so" "$root_path/tmp/gcc/bin/release/linux/x86/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -256,12 +256,12 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/ebmcore_linux_x86_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/"
+   cp "$root_path/staging/lib_ebmcore_linux_x86_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_out=`eval $g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" -L\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -lebmcore_linux_x86_debug -Wl,-rpath-link,\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" 2>&1`
+   compile_out=`eval $g_pp_bin $all_linux -m32 -o \"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi/test_core_api\" -L\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" -l_ebmcore_linux_x86_debug -Wl,-rpath-link,\"$root_path/tmp/gcc/bin/debug/linux/x86/TestCoreApi\" 2>&1`
    ret_code=$?
    echo -n "$compile_out"
    echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x86/TestCoreApi/TestCoreApi_debug_linux_x86_build_log.txt"
