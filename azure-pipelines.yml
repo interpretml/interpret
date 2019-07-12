@@ -53,17 +53,29 @@ jobs:
   pool:
     vmImage: '$(image.name)'
   steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'specific'
+    displayName: 'Download build artifacts'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/lib_ebmcore_*'
+      targetFolder: 'staging'
+      flattenFolders: true
+    displayName: 'Move binary to Python layer'
   - script: |
       sudo apt-get -y install g++-multilib
     displayName: 'Install prereq for linux.'
     condition: in(variables['image.name'], 'ubuntu-16.04')
   - script: |
-      /bin/sh ./src/core/TestCoreApi/test_core_api.sh
+      /bin/sh ./src/core/TestCoreApi/test_core_api.sh -nobuildcore
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Testing native code (linux/mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\src\core\TestCoreApi\test_core_api.bat
+      .\src\core\TestCoreApi\test_core_api.bat -nobuildcore
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Testing native code. (win)'
 

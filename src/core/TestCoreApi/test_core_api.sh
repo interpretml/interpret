@@ -14,6 +14,7 @@ for arg in "$@"; do
 done
 
 if [ $build_core -eq 1 ]; then
+   echo "Building Core library..."
    /bin/sh "$root_path/build.sh" -32bit
 fi
 
