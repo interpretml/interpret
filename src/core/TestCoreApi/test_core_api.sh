@@ -49,7 +49,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/release/linux/x64/TestCoreApi/test_core_api"
+   "$root_path/tmp/clang/bin/release/mac/x64/TestCoreApi/test_core_api"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -79,7 +79,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/debug/linux/x64/TestCoreApi/test_core_api"
+   "$root_path/tmp/clang/bin/debug/mac/x64/TestCoreApi/test_core_api"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -109,7 +109,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/release/linux/x86/TestCoreApi/test_core_api"
+   "$root_path/tmp/clang/bin/release/mac/x86/TestCoreApi/test_core_api"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -139,7 +139,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/debug/linux/x86/TestCoreApi/test_core_api"
+   "$root_path/tmp/clang/bin/debug/mac/x86/TestCoreApi/test_core_api"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code

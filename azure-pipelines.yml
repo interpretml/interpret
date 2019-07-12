@@ -54,10 +54,15 @@ jobs:
     vmImage: '$(image.name)'
   steps:
   - script: |
+      sudo apt-get -y install g++-multilib
+    displayName: 'Install prereq for linux.'
+    condition: in(variables['image.name'], 'ubuntu-16.04')
+  - script: |
       /bin/sh ./src/core/TestCoreApi/test_core_api.sh
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Testing native code (linux/mac).'
   - script: |
+      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\src\core\TestCoreApi\test_core_api.bat
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Testing native code. (win)'
