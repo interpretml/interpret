@@ -17,5 +17,5 @@ int main() {
    SetTraceLevel(TraceLevelWarning);
 
    std::cout << "Hello World!\n";
-   return 1;
+   return 0;
 }
