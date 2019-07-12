@@ -18,7 +18,3 @@
 #include <tuple>
 #include <stdio.h> // snprintf/vsnprintf for logging
 #include <stdarg.h> // va_start, va_end
-
-#ifndef NDEBUG
-#include <iostream> // cout
-#endif

@@ -20,24 +20,6 @@
 
 #ifndef NDEBUG
 
-static void PrintBinary(size_t term) {
-   bool isZero = false;
-   size_t bit = static_cast<size_t>(1) << (k_cBitsForSizeTCore - 1);
-   do {
-      if(0 == (term & bit)) {
-         if(isZero) {
-            printf("0");
-         } else {
-            printf(" ");
-         }
-      } else {
-         isZero = true;
-         printf("1");
-      }
-      bit >>= 1;
-   } while(0 != bit);
-}
-
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const size_t * const aiStart, const size_t * const aiLast, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);

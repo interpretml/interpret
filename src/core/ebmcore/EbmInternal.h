@@ -8,12 +8,6 @@
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
-#ifndef NDEBUG
-// enable output features for all debug builds everywhere in our library
-#include <iostream> // cout
-#include <stdio.h> // printf
-#endif
-
 #if defined(__clang__) || defined(__GNUC__) // compiler
 #ifndef __has_builtin
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it

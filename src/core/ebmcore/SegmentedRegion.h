@@ -788,38 +788,6 @@ public:
 
       return true;
    }
-
-   void Print() const {
-      size_t cValues = m_cVectorLength;
-      for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         std::cout << "Dimension#: " << iDimension << std::endl;
-         const DimensionInfo * const pDimension = &m_aDimensions[iDimension];
-         size_t cDivisions = pDimension->cDivisions;
-         if(0 != cDivisions) {
-            EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
-            cValues *= cDivisions + 1;
-
-            const TDivisions * pDCur = pDimension->aDivisions;
-            const TDivisions * const pDEnd = pDCur + cDivisions;
-            do {
-               std::cout << *pDCur << std::endl;
-               ++pDCur;
-            } while(LIKELY(pDEnd != pDCur));
-         }
-         std::cout << std::endl;
-      }
-
-      std::cout << "Values:" << std::endl;
-
-      const TValues * pVCur = &m_aValues[0];
-      const TValues * const pVEnd = pVCur + cValues;
-      do {
-         std::cout << *pVCur << std::endl;
-         ++pVCur;
-      } while(LIKELY(pVEnd != pVCur));
-
-      std::cout << std::endl;
-   }
 #endif // NDEBUG
 
    static_assert(std::is_pod<TDivisions>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");

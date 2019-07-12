@@ -6,6 +6,7 @@
 
 #include "ebmcore.h"
 
+#include <stdio.h>
 #include <iostream>
 
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
