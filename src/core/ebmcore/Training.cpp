@@ -841,7 +841,7 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
       } while(pTargetEnd != pTarget);
    }
 }
-#endif
+#endif // NDEBUG
 
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
@@ -911,7 +911,7 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
 #ifndef NDEBUG
    CheckTargets(cTargetStates, cTrainingCases, trainingTargets);
    CheckTargets(cTargetStates, cValidationCases, validationTargets);
-#endif
+#endif // NDEBUG
 
    LOG(TraceLevelInfo, "Entered EbmTrainingState");
    TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cAttributes, cAttributeCombinations, cInnerBags);

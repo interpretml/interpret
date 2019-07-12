@@ -130,9 +130,9 @@ constexpr TML_INLINE bool IsClassification(ptrdiff_t cCompilerClassificationTarg
 constexpr TML_INLINE bool IsBinaryClassification(ptrdiff_t cCompilerClassificationTargetStates) {
 #ifdef TREAT_BINARY_AS_MULTICLASS
    return false;
-#else //TREAT_BINARY_AS_MULTICLASS
+#else // TREAT_BINARY_AS_MULTICLASS
    return 2 == cCompilerClassificationTargetStates;
-#endif //TREAT_BINARY_AS_MULTICLASS
+#endif // TREAT_BINARY_AS_MULTICLASS
 }
 
 constexpr TML_INLINE size_t GetVectorLengthFlatCore(ptrdiff_t cTargetStates) {

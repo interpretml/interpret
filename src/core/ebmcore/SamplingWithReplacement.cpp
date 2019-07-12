@@ -29,7 +29,7 @@ size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
       cTotalCountCaseOccurrencesDebug += m_aCountOccurrences[i];
    }
    EBM_ASSERT(cTotalCountCaseOccurrencesDebug == cTotalCountCaseOccurrences);
-#endif
+#endif // NDEBUG
    return cTotalCountCaseOccurrences;
 }
 

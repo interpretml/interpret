@@ -375,7 +375,7 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
             if(LIKELY(0 != pCopyFrom->cCasesInBucket)) {
 #ifndef NDEBUG
                cCasesTotalDebug += pCopyFrom->cCasesInBucket;
-#endif
+#endif // NDEBUG
                ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pCopyTo, aBinnedBucketsEndDebug);
                memcpy(pCopyTo, pCopyFrom, cBytesPerBinnedBucket);
 
@@ -396,7 +396,7 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
       }
 #ifndef NDEBUG
       cCasesTotalDebug += pCopyFrom->cCasesInBucket;
-#endif
+#endif // NDEBUG
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aSumPredictionStatistics[iVector].Add(pCopyFrom->aPredictionStatistics[iVector]);
       }

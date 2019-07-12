@@ -212,7 +212,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //         free(aBinnedBucketsDebugCopy);
 //      }
-//#endif
+//#endif // NDEBUG
 //
 //      pCurrentIndexAndCountStates = &currentIndexAndCountStates[0];
 //      while(true) {
@@ -344,7 +344,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //         EBM_ASSERT(pDebugBucket->cCasesInBucket == pBinnedBucket->cCasesInBucket);
 //         free(aBinnedBucketsDebugCopy);
 //      }
-//#endif
+//#endif // NDEBUG
 //
 //      pCurrentIndexAndCountStates = &currentIndexAndCountStates[0];
 //      ptrdiff_t multipleTotal = -1;
