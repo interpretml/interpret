@@ -39,6 +39,29 @@ jobs:
       artifactName: native-$(image.name)
     displayName: 'Publish native library'
 
+- job: 'Test_Native'
+  dependsOn: 'Build_Native'
+  strategy:
+    matrix:
+      Linux:
+        image.name: 'ubuntu-16.04'
+      Windows:
+        image.name: 'windows-2019'
+      Mac:
+        image.name: 'macOS-10.13'
+    maxParallel: 3
+  pool:
+    vmImage: '$(image.name)'
+  steps:
+  - script: |
+      /bin/sh ./src/core/TestCoreApi/test_core_api.sh
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Testing native code (linux/mac).'
+  - script: |
+      .\src\core\TestCoreApi\test_core_api.bat
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Testing native code. (win)'
+
 - job: 'Build_Package'
   dependsOn: 'Build_Native'
   pool:
@@ -171,7 +194,9 @@ jobs:
     displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
-  dependsOn: 'Test'
+  dependsOn:
+  - 'Test'
+  - 'Test_Native'
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
