@@ -16,6 +16,8 @@ done
 if [ $build_core -eq 1 ]; then
    echo "Building Core library..."
    /bin/sh "$root_path/build.sh" -32bit
+else
+   echo "Core library NOT being built"
 fi
 
 compile_all="\"$root_path/src/core/TestCoreApi/TestCoreApi.cpp\" -I\"$root_path/src/core/TestCoreApi\" -I\"$root_path/src/core/inc\" -std=c++11 -fpermissive -O3 -march=core2"

@@ -64,7 +64,7 @@ jobs:
       contents: '**/lib_ebmcore_*'
       targetFolder: 'staging'
       flattenFolders: true
-    displayName: 'Move binary to Python layer'
+    displayName: 'Move binary to staging directory'
   - script: |
       sudo apt-get -y install g++-multilib
     displayName: 'Install prereq for linux.'
