@@ -106,6 +106,7 @@ setup(
         "ipython>=7.4.0",
         "numpy>=1.15.1",
         "scipy>=1.2.1",
+        "requests>=2.19.0",
         # Testing
         "pytest>=4.3.0",
         "pytest-runner>=4.4",

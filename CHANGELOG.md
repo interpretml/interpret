@@ -8,6 +8,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ### Fixed
 - Fix for duplicated logs.
 - EBM now throws exception for multi-class (not supported yet).
+- Added requests as dependency.
 ### Changed
 - File requirements.txt renamed to dev-requirements.txt
 - Native libraries' names now start with 'lib_' prefix.
