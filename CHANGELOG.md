@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.10] - 2019-07-16
+### Fixed
+- Fix for duplicated logs.
+- EBM now throws exception for multi-class (not supported yet).
+### Changed
+- File requirements.txt renamed to dev-requirements.txt
+- Native libraries' names now start with 'lib_' prefix.
+- Adjusted return type for debug_mode method to provide logging handler.
+- EBM native layer upgraded asserts to use logging.
+- EBM native layer hardened for edge case data.
+- Adjustments to dev dependencies.
+- Method debug_mode defaults log level to INFO.
+
 ## [v0.1.9] - 2019-06-14
 ### Added
 - Added method debug_mode in develop module.
@@ -106,6 +119,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.10]: https://github.com/microsoft/interpret/releases/tag/v0.1.10
 [v0.1.9]: https://github.com/microsoft/interpret/releases/tag/v0.1.9
 [v0.1.8]: https://github.com/microsoft/interpret/releases/tag/v0.1.8
 [v0.1.7]: https://github.com/microsoft/interpret/releases/tag/v0.1.7
