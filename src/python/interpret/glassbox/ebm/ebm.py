@@ -75,6 +75,7 @@ class EBMExplanation(FeatureValueExplanation):
                 title="Overall Importance:<br>Mean Absolute Score",
                 start_zero=True,
             )
+
             return figure
 
         # Continuous feature graph
@@ -84,7 +85,6 @@ class EBMExplanation(FeatureValueExplanation):
         ):
             title = self.feature_names[key]
             figure = plot_continuous_bar(data_dict, title=title)
-
 
             return figure
 

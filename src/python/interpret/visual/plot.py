@@ -358,12 +358,16 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
         xaxis=dict(title=xtitle, type="category"),
         yaxis=dict(title=ytitle),
     )
+    yrange = None
+    if data_dict.get("scores_range", None) is not None:
+        scores_range = data_dict["scores_range"]
+        yrange = scores_range
     main_fig = go.Figure(data=[trace], layout=layout)
 
     # Add density
     if data_dict.get("density", None) is not None:
         figure = _plot_with_density(
-            data_dict["density"], main_fig, title=title, is_categorical=True
+            data_dict["density"], main_fig, title=title, is_categorical=True, yrange=yrange
         )
     else:
         figure = main_fig
