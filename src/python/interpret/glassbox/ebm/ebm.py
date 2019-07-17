@@ -65,6 +65,7 @@ class EBMExplanation(FeatureValueExplanation):
         if data_dict is None:
             return None
 
+        # Overall graph
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
@@ -76,12 +77,15 @@ class EBMExplanation(FeatureValueExplanation):
             )
             return figure
 
+        # Continuous feature graph
         if (
             self.explanation_type == "global"
             and self.feature_types[key] == "continuous"
         ):
             title = self.feature_names[key]
             figure = plot_continuous_bar(data_dict, title=title)
+
+
             return figure
 
         return super().visualize(key)
@@ -972,6 +976,19 @@ class BaseEBM(BaseEstimator):
         if name is None:
             name = gen_name_from_class(self)
 
+        # Obtain min/max for model scores
+        lower_bound = np.inf
+        upper_bound = -np.inf
+        for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
+            errors = self.model_errors_[attribute_set_index]
+            scores = self.attribute_set_models_[attribute_set_index]
+
+            lower_bound = min(lower_bound, np.min(scores - errors))
+            upper_bound = max(upper_bound, np.max(scores + errors))
+
+        bounds = (lower_bound, upper_bound)
+        print(bounds)
+
         # Add per feature graph
         data_dicts = []
         for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
@@ -990,6 +1007,7 @@ class BaseEBM(BaseEstimator):
                     "type": "univariate",
                     "names": bin_labels,
                     "scores": list(model_graph),
+                    "scores_range": bounds,
                     "upper_bounds": list(model_graph + errors),
                     "lower_bounds": list(model_graph - errors),
                     "density": {
@@ -1014,6 +1032,7 @@ class BaseEBM(BaseEstimator):
                     "left_names": bin_labels_left,
                     "right_names": bin_labels_right,
                     "scores": model_graph,
+                    "scores_range": bounds,
                 }
                 data_dicts.append(data_dict)
             else:  # pragma: no cover
