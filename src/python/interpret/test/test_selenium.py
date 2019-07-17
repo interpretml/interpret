@@ -1,18 +1,30 @@
 import pytest
 from .utils import synthetic_classification
-from ..glassbox import LogisticRegression
+from ..data import ClassHistogram
+from ..perf import ROC
+from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 
 
 @pytest.fixture(scope="module")
 def explanations():
     data = synthetic_classification()
-    clf = LogisticRegression()
-    clf.fit(data["train"]["X"], data["train"]["y"])
+    ebm = ExplainableBoostingClassifier()
+    ebm.fit(data["train"]["X"], data["train"]["y"])
+    lr = LogisticRegression()
+    lr.fit(data["train"]["X"], data["train"]["y"])
 
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
-    return [local_exp, global_exp]
+    hist_exp = ClassHistogram().explain_data(data["train"]["X"], data["train"]["y"])
+
+    lr_global_exp = lr.explain_global()
+    lr_local_exp = lr.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
+    lr_perf = ROC(lr.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"])
+
+    ebm_global_exp = ebm.explain_global()
+    ebm_local_exp = ebm.explain_local(data["test"]["X"], data["test"]["y"])
+    ebm_perf = ROC(ebm.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"])
+
+    return [hist_exp, lr_local_exp, lr_global_exp, lr_perf, ebm_local_exp, ebm_global_exp, ebm_perf]
 
 
 @pytest.mark.selenium
