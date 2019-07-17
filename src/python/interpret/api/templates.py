@@ -27,6 +27,10 @@ class FeatureValueExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        # NOTE: Currently returns full internal object, open to change.
+        if key == -1:
+            return self._internal_obj
+
         if key is None:
             return self._internal_obj["overall"]
 
