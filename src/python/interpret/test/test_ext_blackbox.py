@@ -1,3 +1,6 @@
+# Copyright (c) 2019 Microsoft Corporation
+# Distributed under the MIT software license
+
 from six import raise_from
 
 

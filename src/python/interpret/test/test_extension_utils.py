@@ -1,3 +1,6 @@
+# Copyright (c) 2019 Microsoft Corporation
+# Distributed under the MIT software license
+
 import pytest
 from interpret.ext.extension_utils import _validate_class_name
 
