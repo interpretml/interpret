@@ -119,6 +119,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -161,6 +162,7 @@ EXIT /B 0
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -209,6 +211,7 @@ EXIT /B 0
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
@@ -257,6 +260,7 @@ EXIT /B 0
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
