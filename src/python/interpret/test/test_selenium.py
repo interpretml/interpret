@@ -53,6 +53,12 @@ def test_dashboard(explanations):
         )
     )
 
+    # Move to data
+    # tabs_el = driver.find_element_by_id("tabs")
+    # data_tab_el = tabs_el.find_element_by_xpath("//div[contains(text(),'Data')]")
+    # data_tab_el.click()
+
+    # Move to perf
     # Move to local
     # Move to global
 
