@@ -41,15 +41,16 @@ def test_show_selenium(explanations):
     mini_url = show_link(explanations[2])
 
     # Set up driver
+    timeout = 30
     driver = webdriver.Firefox()
-    driver.implicitly_wait(30)
+    driver.implicitly_wait(timeout)
 
     # Home page
     driver.get(dashboard_url)
     driver.find_element_by_id("overview-tab")
 
     # Expect overview tab's welcome message
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, timeout)
     wait.until(
         EC.text_to_be_present_in_element(
             (By.ID, "overview-tab"), "Welcome to Interpret ML"
