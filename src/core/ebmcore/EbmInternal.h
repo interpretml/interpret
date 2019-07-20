@@ -8,6 +8,31 @@
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
+#if defined(__clang__) // compiler type
+
+#define WARNING_PUSH _Pragma("clang diagnostic push")
+#define WARNING_POP _Pragma("clang diagnostic pop")
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+
+#elif defined(__GNUC__) // compiler type
+
+#define WARNING_PUSH _Pragma("GCC diagnostic push")
+#define WARNING_POP _Pragma("GCC diagnostic pop")
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+
+#elif defined(_MSC_VER) // compiler type
+
+#define WARNING_PUSH __pragma(warning(push))
+#define WARNING_POP __pragma(warning(pop))
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
+
+#else  // compiler type
+#error compiler not recognized
+#endif // compiler type
+
 #if defined(__clang__) || defined(__GNUC__) // compiler
 #ifndef __has_builtin
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it
@@ -24,23 +49,21 @@
 #endif // __has_builtin(__builtin_unpredictable)
 
 #define TML_INLINE inline
-#elif defined(_MSC_VER) /* compiler type */
+
+#elif defined(_MSC_VER) // compiler type
+
 #define LIKELY(b) (b)
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
 #define TML_INLINE __forceinline
-#else // compiler
-#error compiler not recognized
-#endif // compiler
 
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(push)
-#pragma warning(disable: 4018) // signed/unsigned mismatch
-#else // compiler
+#else // compiler type
 #error compiler not recognized
-#endif // compiler
+#endif // compiler type
+
+WARNING_PUSH
+WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
 constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
@@ -90,12 +113,8 @@ constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
    //   }
    //}
 }
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(pop)
-#else // compiler
-#error compiler not recognized
-#endif // compiler
+
+WARNING_POP
 
 enum AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
 

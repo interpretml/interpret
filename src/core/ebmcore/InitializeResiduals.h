@@ -88,7 +88,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= k_iZeroResidual) {
+               constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+               if(bZeroingResiduals) {
                   pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
@@ -162,7 +163,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= k_iZeroResidual) {
+               constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+               if(bZeroingResiduals) {
                   pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
                }
             }

@@ -22,23 +22,23 @@ template<bool bRegression>
 class TreeNode;
 
 template<bool bRegression>
-constexpr TML_INLINE const size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
+TML_INLINE const size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
    return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
 }
 template<bool bRegression>
-constexpr TML_INLINE const size_t GetTreeNodeSize(size_t cVectorLength) {
+TML_INLINE const size_t GetTreeNodeSize(size_t cVectorLength) {
    return sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-constexpr TML_INLINE TreeNode<bRegression> * AddBytesTreeNode(TreeNode<bRegression> * pTreeNode, size_t countBytesAdd) {
+TML_INLINE TreeNode<bRegression> * AddBytesTreeNode(TreeNode<bRegression> * pTreeNode, size_t countBytesAdd) {
    return reinterpret_cast<TreeNode<bRegression> *>(reinterpret_cast<char *>(pTreeNode) + countBytesAdd);
 }
 template<bool bRegression>
-constexpr TML_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
+TML_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    return pTreeNodeChildren;
 }
 template<bool bRegression>
-constexpr TML_INLINE TreeNode<bRegression> * GetRightTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
+TML_INLINE TreeNode<bRegression> * GetRightTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    return AddBytesTreeNode<bRegression>(pTreeNodeChildren, countBytesTreeNode);
 }
 

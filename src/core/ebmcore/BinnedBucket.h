@@ -39,19 +39,19 @@ template<bool bRegression>
 class BinnedBucket;
 
 template<bool bRegression>
-constexpr TML_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
+TML_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
    return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
 }
 template<bool bRegression>
-constexpr TML_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
+TML_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
    return sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-constexpr TML_INLINE BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
+TML_INLINE BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
    return reinterpret_cast<BinnedBucket<bRegression> *>(reinterpret_cast<char *>(aBinnedBuckets) + index * static_cast<ptrdiff_t>(cBytesPerBinnedBucket));
 }
 template<bool bRegression>
-constexpr TML_INLINE const BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, const BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
+TML_INLINE const BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, const BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
    return reinterpret_cast<const BinnedBucket<bRegression> *>(reinterpret_cast<const char *>(aBinnedBuckets) + index * static_cast<ptrdiff_t>(cBytesPerBinnedBucket));
 }
 

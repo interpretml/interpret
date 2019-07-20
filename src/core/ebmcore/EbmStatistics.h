@@ -18,13 +18,8 @@ TML_INLINE FractionalDataType ComputeNodeSplittingScore(const FractionalDataType
    return sumResidualError / cCases * sumResidualError;
 }
 
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(push)
-#pragma warning(disable: 4723) // potential divide by 0
-#else // compiler
-#error compiler not recognized
-#endif // compiler
+WARNING_PUSH
+WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 TML_INLINE FractionalDataType ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType sumDenominator) {
    if(LIKELY(static_cast<FractionalDataType>(0) != sumDenominator)) {
@@ -34,12 +29,8 @@ TML_INLINE FractionalDataType ComputeSmallChangeInClassificationLogOddPrediction
       return static_cast<FractionalDataType>(0);
    }
 }
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(pop)
-#else // compiler
-#error compiler not recognized
-#endif // compiler
+
+WARNING_POP
 
 TML_INLINE FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cCases) {
    // TODO: check again if we can ever have a zero here

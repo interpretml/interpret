@@ -209,7 +209,8 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // insted of allowing them to be scaled.  
                // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-               if(0 <= k_iZeroResidual) {
+               constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+               if(bZeroingResiduals) {
                   pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
@@ -482,7 +483,8 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
       //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
       //}
 
-      if(bTreatBinaryAsMulticlass && 2 == countCompilerClassificationTargetStates) {
+      constexpr bool bDividing = bTreatBinaryAsMulticlass && 2 == countCompilerClassificationTargetStates;
+      if(bDividing) {
          pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
       } else {
          pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
