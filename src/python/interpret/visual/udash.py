@@ -189,7 +189,7 @@ def gen_overall_plot(exp, model_idx):
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = ("example-overall-graph-{0}".format(model_idx),)
+        output_graph.id = "example-overall-graph-{0}".format(model_idx)
     else:  # pragma: no cover
         _type = type(figure)
         log.warning("Visualization type not supported: {0}".format(_type))
@@ -241,7 +241,7 @@ def gen_plot(exp, picker, model_idx, counter):
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = ("graph-{0}-{1}".format(model_idx, counter),)
+        output_graph.id = "graph-{0}-{1}".format(model_idx, counter)
     else:  # pragma: no cover
         _type = type(figure)
         log.warning("Visualization type not supported: {0}".format(_type))
