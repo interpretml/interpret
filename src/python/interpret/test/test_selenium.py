@@ -1,12 +1,12 @@
 import pytest
-from .utils import synthetic_classification
+from .utils import synthetic_classification, get_all_explainers
 from ..data import ClassHistogram
 from ..perf import ROC
 from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 
-# Timeout for element not show up in selenium driver.
-TIMEOUT = 120
+# Timeout for element to not show up in selenium driver.
+TIMEOUT = 180
 
 
 @pytest.fixture(scope="module")
@@ -26,7 +26,52 @@ def driver():
 
 
 @pytest.fixture(scope="module")
-def explanations():
+def all_explanations():
+    all_explainers = get_all_explainers()
+    data = synthetic_classification()
+    blackbox = LogisticRegression()
+    blackbox.fit(data["train"]["X"], data["train"]["y"])
+
+    explanations = []
+    predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
+    for explainer_class in all_explainers:
+        if explainer_class.explainer_type == "blackbox":
+            explainer = explainer_class(predict_fn, data["train"]["X"])
+        elif explainer_class.explainer_type == "model":
+            explainer = explainer_class()
+            explainer.fit(data["train"]["X"], data["train"]["y"])
+        elif explainer_class.explainer_type == "data":
+            explainer = explainer_class()
+        elif explainer_class.explainer_type == "perf":
+            explainer = explainer_class(predict_fn)
+        else:
+            raise Exception("Not supported explainer type.")
+
+        if "local" in explainer.available_explanations:
+            # With labels
+            explanation = explainer.explain_local(
+                data["test"]["X"].head(), data["test"]["y"].head()
+            )
+            explanations.append(explanation)
+
+            # Without labels
+            explanation = explainer.explain_local(data["test"]["X"].head())
+            explanations.append(explanation)
+        if "global" in explainer.available_explanations:
+            explanation = explainer.explain_global()
+            explanations.append(explanation)
+        if "data" in explainer.available_explanations:
+            explanation = explainer.explain_data(data["train"]["X"], data["train"]["y"])
+            explanations.append(explanation)
+        if "perf" in explainer.available_explanations:
+            explanation = explainer.explain_perf(data["test"]["X"], data["test"]["y"])
+            explanations.append(explanation)
+
+    return explanations
+
+
+@pytest.fixture(scope="module")
+def small_explanations():
     data = synthetic_classification()
     ebm = ExplainableBoostingClassifier()
     ebm.fit(data["train"]["X"], data["train"]["y"])
@@ -48,15 +93,15 @@ def explanations():
 
 # TODO: Code duplication, refactor.
 @pytest.mark.selenium
-def test_show_selenium(explanations, driver):
+def test_show_small_set_selenium(small_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
 
     target_addr = ("127.0.0.1", 7100)
     set_show_addr(target_addr)
-    dashboard_url = show_link(explanations)
-    mini_url = show_link(explanations[2])
+    dashboard_url = show_link(small_explanations)
+    mini_url = show_link(small_explanations[2])
 
     # Home page
     driver.get(dashboard_url)
