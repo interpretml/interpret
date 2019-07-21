@@ -6,7 +6,7 @@ from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 
 # Timeout for element not show up in selenium driver.
-TIMEOUT = 60
+TIMEOUT = 120
 
 
 @pytest.fixture(scope="module")
