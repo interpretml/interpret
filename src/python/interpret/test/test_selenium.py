@@ -41,7 +41,7 @@ def test_show_selenium(explanations):
     mini_url = show_link(explanations[2])
 
     # Set up driver
-    timeout = 30
+    timeout = 60
     driver = webdriver.Firefox()
     driver.implicitly_wait(timeout)
 
