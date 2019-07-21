@@ -5,6 +5,25 @@ from ..perf import ROC
 from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 
+# Timeout for element not show up in selenium driver.
+TIMEOUT = 60
+
+
+@pytest.fixture(scope="module")
+def driver():
+    from selenium import webdriver
+
+    _driver = webdriver.Firefox()
+
+    # Set up driver
+    _driver = webdriver.Firefox()
+    _driver.implicitly_wait(TIMEOUT)
+
+    yield _driver
+
+    # Close driver
+    _driver.close()
+
 
 @pytest.fixture(scope="module")
 def explanations():
@@ -29,8 +48,7 @@ def explanations():
 
 # TODO: Code duplication, refactor.
 @pytest.mark.selenium
-def test_show_selenium(explanations):
-    from selenium import webdriver
+def test_show_selenium(explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
@@ -40,17 +58,12 @@ def test_show_selenium(explanations):
     dashboard_url = show_link(explanations)
     mini_url = show_link(explanations[2])
 
-    # Set up driver
-    timeout = 60
-    driver = webdriver.Firefox()
-    driver.implicitly_wait(timeout)
-
     # Home page
     driver.get(dashboard_url)
     driver.find_element_by_id("overview-tab")
 
     # Expect overview tab's welcome message
-    wait = WebDriverWait(driver, timeout)
+    wait = WebDriverWait(driver, TIMEOUT)
     wait.until(
         EC.text_to_be_present_in_element(
             (By.ID, "overview-tab"), "Welcome to Interpret ML"
@@ -286,8 +299,5 @@ def test_show_selenium(explanations):
     wait.until(EC.presence_of_element_located(
         (By.ID, "graph-0-0")
     ))
-
-    # Close driver
-    driver.close()
 
     shutdown_show_server()

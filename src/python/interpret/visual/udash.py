@@ -127,36 +127,13 @@ def generate_app_mini(
         else:
             return gen_plot(explanation, int(value), 0, 0)
 
-    @server.errorhandler(404)
-    def page_not_found(_):
-        from flask import request
-
-        path = request.path
-        msg = "Could not find page: {0}".format(path)
-
-        log.error(msg)
-        return msg, 404
-
     @server.errorhandler(Exception)
-    def handle_error(e):
+    def handle_error(e):  # pragma: no cover
         log.error(e, exc_info=True)
         return "Internal Server Error caught by udash. See logs if available.", 500
 
-    @app.server.route("/shutdown", methods=["POST"])
-    def shutdown():
-        return shutdown_server(app)
-
     log.info("Generated mini dash")
     return app
-
-
-def shutdown_server(app):
-    log.info("ENDPOINT: Shutting down server")
-    server = app.config["server"]
-    server.stop()
-    log.info("ENDPOINT: Shut down server")
-
-    return "Shutdown Dashboard."
 
 
 def gen_overall_plot(exp, model_idx):
@@ -800,7 +777,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output_div)
 
     @server.errorhandler(Exception)
-    def handle_error(e):
+    def handle_error(e):  # pragma: no cover
         log.error(e, exc_info=True)
         return "Internal Server Error caught by udash. See logs if available.", 500
 
@@ -833,10 +810,6 @@ The explanations available are split into tabs, each covering an aspect of the p
         if tab is None or tab != "global":
             return None
         return gen_tab(tab)
-
-    @app.server.route("/shutdown", methods=["POST"])
-    def shutdown():
-        return shutdown_server(app)
 
     log.info("Generated full dash")
     return app
@@ -912,7 +885,7 @@ def generate_app(
         shared_frames = {supported_type: False for supported_type in supported_types}
     elif isinstance(share_tables, dict):
         shared_frames = share_tables
-    else:
+    else:  # pragma: no cover
         raise Exception("share_tables option must be True|False|None or dict.")
 
     new_options["share_tables"] = shared_frames
