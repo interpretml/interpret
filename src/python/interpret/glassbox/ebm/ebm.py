@@ -987,7 +987,6 @@ class BaseEBM(BaseEstimator):
             upper_bound = max(upper_bound, np.max(scores + errors))
 
         bounds = (lower_bound, upper_bound)
-        print(bounds)
 
         # Add per feature graph
         data_dicts = []
