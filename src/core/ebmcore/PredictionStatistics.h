@@ -57,9 +57,12 @@ struct PredictionStatistics<true> final {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return static_cast<FractionalDataType>(0);
    }
+WARNING_PUSH
+WARNING_DISABLE_UNREFERENCED_PARAMETER
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
+WARNING_POP
    TML_INLINE void Add(const PredictionStatistics<true> & other) {
       sumResidualError += other.sumResidualError;
    }

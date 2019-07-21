@@ -6,8 +6,6 @@
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/151/master.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2019.svg?style=flat-square)
 
-*Equal contributions: Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana*
-
 <br/>
 
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
@@ -116,9 +114,9 @@ If you are interested contributing directly to the code base, please see [CONTRI
 
 ## Acknowledgements
 
-Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
+InterpretML was originally created by (equal contributions): Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana
 
-<br/>
+Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
 
 We also build on top of many great packages. Please check them out!
 

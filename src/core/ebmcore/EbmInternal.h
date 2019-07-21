@@ -12,6 +12,7 @@
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
@@ -19,6 +20,7 @@
 
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
@@ -26,6 +28,7 @@
 
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER __pragma(warning(disable: 4100))
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 

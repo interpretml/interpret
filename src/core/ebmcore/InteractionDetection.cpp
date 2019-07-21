@@ -87,7 +87,8 @@ public:
          EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
          bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
-         AttributeInternalCore * pAttribute = new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+         // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
+         new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
          // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
          EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -200,12 +201,16 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRu
       return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
    }
 }
+
+WARNING_PUSH
+WARNING_DISABLE_UNREFERENCED_PARAMETER
 template<>
 TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
    return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
 }
+WARNING_POP
 
 // we made this a global because if we had put this variable inside the TmlInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad TmlInteractionState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
@@ -273,8 +278,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION CancelInteraction(PEbmInteraction ebmInteraction) {
    LOG(TraceLevelInfo, "Entered CancelInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
-   TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
-   EBM_ASSERT(nullptr != pEbmInteractionState);
+   EBM_ASSERT(nullptr != ebmInteraction);
    LOG(TraceLevelInfo, "Exited CancelInteraction");
 }
 

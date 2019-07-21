@@ -263,6 +263,10 @@ public:
       }
    }
 };
+
+WARNING_PUSH
+WARNING_DISABLE_UNREFERENCED_PARAMETER
+
 template<ptrdiff_t countCompilerClassificationTargetStates>
 class RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
@@ -280,6 +284,8 @@ public:
       );
    }
 };
+
+WARNING_POP
 
 // TODO: make the number of dimensions (pAttributeCombination->m_cAttributes) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
