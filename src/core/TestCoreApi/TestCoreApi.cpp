@@ -22,50 +22,44 @@
 
 #include "ebmcore.h"
 
-class Test;
-typedef void (* TestFunction)(Test& myTest);
+class TestCaseHidden;
+typedef void (* TestFunctionHidden)(TestCaseHidden& testCaseHidden);
 
-class Test {
+class TestCaseHidden {
 public:
-   Test(TestFunction pTestFunction, std::string description) {
+   TestCaseHidden(TestFunctionHidden pTestFunction, std::string description) {
       m_pTestFunction = pTestFunction;
       m_description = description;
       m_bPassed = true;
    }
 
-   TestFunction m_pTestFunction;
+   TestFunctionHidden m_pTestFunction;
    std::string m_description;
    bool m_bPassed;
 };
 
-std::vector<Test> g_tests;
+std::vector<TestCaseHidden> g_allTestsHidden;
 
-inline int RegisterTest(const Test& myTest) {
-   g_tests.push_back(myTest);
+inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
+   g_allTestsHidden.push_back(testCaseHidden);
    return 0;
 }
 
-#define COMBINE_TOKENS(t1, t2) t1##t2
-#define CONCATENATE(t1, t2) COMBINE_TOKENS(t1, t2)
+#define CONCATENATE_STRINGS(t1, t2) t1##t2
+#define CONCATENATE_TOKENS(t1, t2) CONCATENATE_STRINGS(t1, t2)
 #define TEST_CASE(description) \
-   static void CONCATENATE(MY_TEST_FUNCTION_, __LINE__)(Test& myTest); \
-   static int CONCATENATE(STUPID, __LINE__) = RegisterTest(Test(CONCATENATE(MY_TEST_FUNCTION_, __LINE__), description)); \
-   static void CONCATENATE(MY_TEST_FUNCTION_, __LINE__)(Test& myTest)
+   static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden); \
+   static int CONCATENATE_TOKENS(UNUSED_INTEGER_HIDDEN_, __LINE__) = RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description)); \
+   static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
-// for now we always terminate on error.  If it becomes a problem then make this more elegant
 #define CHECK(expression) \
    do { \
-      bool bFailed = !(expression); \
-      if(bFailed) { \
+      const bool bFailedHidden = !(expression); \
+      if(bFailedHidden) { \
          std::cout << " FAILED on \"" #expression << "\""; \
-         myTest.m_bPassed = false; \
+         testCaseHidden.m_bPassed = false; \
       } \
    } while((void)0, 0)
-
-// for now we always terminate on error.  If it becomes a problem then make this more elegant
-#define REQUIRE(expression) CHECK(expression)
-
-
 
 TEST_CASE("test 1") {
    CHECK(true);
@@ -89,17 +83,18 @@ int main() {
    SetTraceLevel(TraceLevelOff);
 
    bool bPassed = true;
-   for(auto& myTest : g_tests) {
-      std::cout << "Starting test: " << myTest.m_description;
-      myTest.m_pTestFunction(myTest);
-      if(myTest.m_bPassed) {
+   for(TestCaseHidden& testCaseHidden : g_allTestsHidden) {
+      std::cout << "Starting test: " << testCaseHidden.m_description;
+      testCaseHidden.m_pTestFunction(testCaseHidden);
+      if(testCaseHidden.m_bPassed) {
          std::cout << " PASSED" << std::endl;
       } else {
          bPassed = false;
+         // any failures (there can be multiple) have already been written out
          std::cout << std::endl;
       }
    }
 
-   std::cout << "C API test " << (bPassed ? "PASSED" : "FAILED")  << std::endl;
+   std::cout << "C API test " << (bPassed ? "PASSED" : "FAILED") << std::endl;
    return bPassed ? 0 : 1;
 }
