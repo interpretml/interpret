@@ -112,8 +112,11 @@ class BaseLinear:
             coef = sk_model_.coef_
 
         data_dicts = []
+        scores_list = []
+        intercept_list = []
         for i, instance in enumerate(X):
             scores = list(coef * instance)
+            scores_list.append(scores)
             data_dict = {}
             data_dict["data_type"] = "univariate"
 
@@ -134,7 +137,22 @@ class BaseLinear:
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
+            {
+                "explanation_type": "local_feature_importance",
+                "value": {
+                    "scores": scores_list,
+                    "intercepts": intercept_list
+                }
+            },
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {
+                    "dataset_x": X,
+                    "dataset_y": y
+                }
+            }
+        ]}
 
         selector = gen_local_selector(X, y, predictions)
 
@@ -201,7 +219,15 @@ class BaseLinear:
 
             specific_data_dicts.append(data_dict)
 
-        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
+        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts, "mli": [
+            {
+                "explanation_type": "global_feature_importance",
+                "value": {
+                    "scores": list(coef),
+                    "intercepts": intercept
+                }
+            }
+        ]}
         return LinearExplanation(
             "global",
             internal_obj,
@@ -248,8 +274,9 @@ class LinearExplanation(FeatureValueExplanation):
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
+            mli_dict = self.data(-1)["mli"]
             figure = plot_horizontal_bar(
-                data_dict, title="Overall Importance:<br>Coefficients"
+                mli_dict[0]["value"]["scores"], self.feature_names, title="Overall Importance:<br>Coefficients"
             )
             return figure
 

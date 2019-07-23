@@ -41,8 +41,8 @@ class FeatureValueExplanation(ExplanationMixin):
     def visualize(self, key=None):
         from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar
         from ..visual.plot import sort_take, plot_pairwise_heatmap
-
         data_dict = self.data(key)
+        mli_data = self.data(-1)["mli"]
         if data_dict is None:  # pragma: no cover
             return None
 
@@ -51,14 +51,15 @@ class FeatureValueExplanation(ExplanationMixin):
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
-            return plot_horizontal_bar(data_dict)
+            return plot_horizontal_bar(data_dict, ['names'])
 
         # Handle local instance graphs
         if self.explanation_type == "local":
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
-            return plot_horizontal_bar(data_dict)
+            # TODO this is currently unsorted
+            return plot_horizontal_bar(mli_data[0]["value"]["scores"][key], self.feature_names)
 
         # Handle global feature graphs
         feature_type = self.feature_types[key]

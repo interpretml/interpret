@@ -375,34 +375,35 @@ def _names_with_values(names, values):
     return li
 
 
-def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
-    if data_dict.get("scores", None) is None:  # pragma: no cover
-        return None
+def plot_horizontal_bar(scores, names, title="", xtitle="", ytitle="", start_zero=False):
+    # if data_dict.get("scores", None) is None:  # pragma: no cover
+    #     return None
 
-    scores = data_dict["scores"].copy()
-    names = data_dict["names"].copy()
-    values = data_dict.get("values", None)
+    # scores = data_dict["scores"].copy()
+    # names = data_dict["names"].copy()
+    # values = data_dict.get("values", None)
+    values = None
 
     if values is not None:
         values = data_dict["values"].copy()
         names = _names_with_values(names, values)
 
     # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
-    if data_dict.get("perf", None) is not None and title == "":
-        title_items = []
-        title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
-        title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
-        title = " | ".join(title_items)
+    # if data_dict.get("perf", None) is not None and title == "":
+    #     title_items = []
+    #     title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
+    #     title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
+    #     title = " | ".join(title_items)
 
     color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
 
-    extra = data_dict.get("extra", None)
-    if extra is not None:
-        scores.extend(extra["scores"])
-        names.extend(extra["names"])
-        if values is not None:
-            values.extend(extra["values"])
-        color.extend([COLORS[2]] * len(extra["scores"]))
+    # extra = data_dict.get("extra", None)
+    # if extra is not None:
+    #     scores.extend(extra["scores"])
+    #     names.extend(extra["names"])
+    #     if values is not None:
+    #         values.extend(extra["values"])
+    #     color.extend([COLORS[2]] * len(extra["scores"]))
 
     x = scores
     y = names
