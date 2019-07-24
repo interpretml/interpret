@@ -375,7 +375,57 @@ def _names_with_values(names, values):
     return li
 
 
-def plot_horizontal_bar(scores, names, title="", xtitle="", ytitle="", start_zero=False):
+def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
+    if data_dict.get("scores", None) is None:  # pragma: no cover
+        return None
+
+    scores = data_dict["scores"].copy()
+    names = data_dict["names"].copy()
+    values = data_dict.get("values", None)
+
+    if values is not None:
+        values = data_dict["values"].copy()
+        names = _names_with_values(names, values)
+
+    # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
+    if data_dict.get("perf", None) is not None and title == "":
+        title_items = []
+        title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
+        title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
+        title = " | ".join(title_items)
+
+    color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
+
+    extra = data_dict.get("extra", None)
+    if extra is not None:
+        scores.extend(extra["scores"])
+        names.extend(extra["names"])
+        if values is not None:
+            values.extend(extra["values"])
+        color.extend([COLORS[2]] * len(extra["scores"]))
+
+    x = scores
+    y = names
+    trace = go.Bar(x=x, y=y, orientation="h", marker=dict(color=color))
+
+    if start_zero:
+        x_range = [0, max(x)]
+    else:
+        max_abs_x = max(np.abs(x))
+        x_range = [-max_abs_x, max_abs_x]
+
+    layout = dict(
+        title=title,
+        yaxis=dict(automargin=True, title=ytitle),
+        xaxis=dict(range=x_range, title=xtitle),
+    )
+
+    figure = go.Figure(data=[trace], layout=layout)
+
+    return figure
+
+
+def plot_horizontal_bar2(scores, names, title="", xtitle="", ytitle="", start_zero=False):
     # if data_dict.get("scores", None) is None:  # pragma: no cover
     #     return None
 
@@ -463,6 +513,26 @@ def sort_take(
                 data_dict[key] = [data_dict[key][i] for i in sort_indexes]
 
     return data_dict
+
+
+def get_sort_indexes(data, sort_fn=None, top_n=None):
+    if top_n is None:
+        top_n = len(data)
+
+    if sort_fn is not None:
+        scored_vals = list(map(sort_fn, data))
+        return np.argsort(scored_vals)[:top_n]
+    else:
+        return np.array(range(top_n))
+
+
+def sort_take2(
+    data, sort_indexes, reverse_results=False
+):
+    if reverse_results:
+        return [data[i] for i in reversed(sort_indexes)]
+    else:
+        return [data[i] for i in sort_indexes]
 
 
 def rules_to_html(data_dict, title=""):

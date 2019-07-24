@@ -264,21 +264,28 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        from ..visual.plot import sort_take, plot_horizontal_bar
+        from ..visual.plot import sort_take, sort_take2, get_sort_indexes, plot_horizontal_bar, plot_horizontal_bar2
 
-        data_dict = self.data(key)
-        if data_dict is None:
-            return None
+        if "mli" in self.data(-1) and self.explanation_type == "global":
+            explanation_list = self.data(-1)["mli"]
+            scores = explanation_list[0]["value"]["scores"]
+            sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
+            sorted_scores = sort_take2(scores, sort_indexes, reverse_results=True)
+            sorted_names = sort_take2(self.feature_names, sort_indexes, reverse_results=True)
+            return plot_horizontal_bar2(sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients")
+        else:
+            data_dict = self.data(key)
+            if data_dict is None:
+                return None
 
-        if self.explanation_type == "global" and key is None:
-            data_dict = sort_take(
-                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
-            )
-            mli_dict = self.data(-1)["mli"]
-            figure = plot_horizontal_bar(
-                mli_dict[0]["value"]["scores"], self.feature_names, title="Overall Importance:<br>Coefficients"
-            )
-            return figure
+            if self.explanation_type == "global" and key is None:
+                data_dict = sort_take(
+                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+                )
+                figure = plot_horizontal_bar(
+                    data_dict, title="Overall Importance:<br>Coefficients"
+                )
+                return figure
 
         return super().visualize(key)
 
