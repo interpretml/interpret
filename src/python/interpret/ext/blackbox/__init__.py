@@ -12,7 +12,10 @@ BLACKBOX_EXTENSION_KEY = "interpret_ext_blackbox"
 
 
 def _is_valid_blackbox_explainer(proposed_blackbox_explainer):
-    return True
+    for explanation_type in ["local", "global", "perf", "data"]:
+        if hasattr(proposed_blackbox_explainer, "explain_" + explanation_type):
+            return True
+    return False
 
 
 # How to get the current module
