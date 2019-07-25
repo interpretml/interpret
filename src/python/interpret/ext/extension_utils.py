@@ -23,8 +23,8 @@ def _validate_class_name(proposed_class_name):
     match = re.match(r"[a-zA-Z_][a-zA-Z_0-9]+", proposed_class_name)
     if match is None or match.group(0) != proposed_class_name:
         raise ValueError("Invalid class name {}. Class names must start with a "
-                         " letter or underscore. And can continue with letters, "
-                         "underscores, and integers".format(proposed_class_name))
+                         "letter or an underscore and can continue with letters, "
+                         "numbers, and underscores.".format(proposed_class_name))
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
