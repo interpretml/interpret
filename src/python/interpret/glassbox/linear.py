@@ -226,7 +226,7 @@ class BaseLinear:
                 "explanation_type": "global_feature_importance",
                 "value": {
                     "scores": list(coef),
-                    "intercepts": intercept
+                    "intercept": intercept
                 }
             }
         ]}

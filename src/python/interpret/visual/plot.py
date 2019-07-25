@@ -425,7 +425,7 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     return figure
 
 
-def plot_horizontal_bar2(scores, names, values=None, perf=None, title="", xtitle="", ytitle="", start_zero=False):
+def plot_horizontal_bar2(scores, names, values=None, perf=None, intercept=None, title="", xtitle="", ytitle="", start_zero=False):
     if values is not None:
         names = _names_with_values(names, values)
 
@@ -438,13 +438,10 @@ def plot_horizontal_bar2(scores, names, values=None, perf=None, title="", xtitle
 
     color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
 
-    # extra = data_dict.get("extra", None)
-    # if extra is not None:
-    #     scores.extend(extra["scores"])
-    #     names.extend(extra["names"])
-    #     if values is not None:
-    #         values.extend(extra["values"])
-    #     color.extend([COLORS[2]] * len(extra["scores"]))
+    if intercept is not None:
+        scores.append(intercept)
+        names.append("Intercept")
+        color.append(COLORS[2])
 
     x = scores
     y = names
