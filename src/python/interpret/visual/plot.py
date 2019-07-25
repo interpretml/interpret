@@ -425,25 +425,16 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     return figure
 
 
-def plot_horizontal_bar2(scores, names, title="", xtitle="", ytitle="", start_zero=False):
-    # if data_dict.get("scores", None) is None:  # pragma: no cover
-    #     return None
-
-    # scores = data_dict["scores"].copy()
-    # names = data_dict["names"].copy()
-    # values = data_dict.get("values", None)
-    values = None
-
+def plot_horizontal_bar2(scores, names, values=None, perf=None, title="", xtitle="", ytitle="", start_zero=False):
     if values is not None:
-        values = data_dict["values"].copy()
         names = _names_with_values(names, values)
 
     # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
-    # if data_dict.get("perf", None) is not None and title == "":
-    #     title_items = []
-    #     title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
-    #     title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
-    #     title = " | ".join(title_items)
+    if perf is not None and title == "":
+        title_items = []
+        title_items.append("Predicted {0:.2f}".format(perf["predicted"]))
+        title_items.append("Actual {0:.2f}".format(perf["actual"]))
+        title = " | ".join(title_items)
 
     color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
 

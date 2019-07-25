@@ -113,7 +113,7 @@ class BaseLinear:
 
         data_dicts = []
         scores_list = []
-        intercept_list = []
+        perf_list = []
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             scores_list.append(scores)
@@ -122,6 +122,7 @@ class BaseLinear:
 
             # Performance related (conditional)
             data_dict["perf"] = perf_dict(y, predictions, i)
+            perf_list.append(perf_dict(y, predictions, i))
 
             # Names/scores
             data_dict["names"] = self.feature_names
@@ -142,7 +143,8 @@ class BaseLinear:
                 "explanation_type": "local_feature_importance",
                 "value": {
                     "scores": scores_list,
-                    "intercepts": intercept_list
+                    "intercept": intercept,
+                    "perf": perf_list
                 }
             },
             {
