@@ -126,12 +126,12 @@ jobs:
       LinuxPython35:
         python.version: '3.5'
         image.name: 'ubuntu-16.04'
-      LinuxPython36:
-        python.version: '3.6'
-        image.name: 'ubuntu-16.04'
-      LinuxPython37:
-        python.version: '3.7'
-        image.name: 'ubuntu-16.04'
+#      LinuxPython36:
+#        python.version: '3.6'
+#        image.name: 'ubuntu-16.04'
+#      LinuxPython37:
+#        python.version: '3.7'
+#        image.name: 'ubuntu-16.04'
       WindowsPython35:
         python.version: '3.5'
         image.name: 'windows-2019'
