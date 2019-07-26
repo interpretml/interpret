@@ -171,9 +171,9 @@ jobs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
   - script: |
-      sudo apt-get install g++
+      sudo apt-get install g++-4.9
     condition: in(variables['image.name'], 'ubuntu-16.04')
-    displayName: 'Install g++ for Linux (for SHAP)'
+    displayName: 'Install g++-4.9 for Linux (for SHAP)'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
