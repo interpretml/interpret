@@ -126,12 +126,12 @@ jobs:
       LinuxPython35:
         python.version: '3.5'
         image.name: 'ubuntu-16.04'
-#      LinuxPython36:
-#        python.version: '3.6'
-#        image.name: 'ubuntu-16.04'
-#      LinuxPython37:
-#        python.version: '3.7'
-#        image.name: 'ubuntu-16.04'
+      LinuxPython36:
+        python.version: '3.6'
+        image.name: 'ubuntu-16.04'
+      LinuxPython37:
+        python.version: '3.7'
+        image.name: 'ubuntu-16.04'
       WindowsPython35:
         python.version: '3.5'
         image.name: 'windows-2019'
@@ -170,6 +170,10 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
+  - script: |
+      sudo apt-get install g++
+    condition: in(variables['image.name'], 'ubuntu-16.04')
+    displayName: 'Install g++ for Linux (for SHAP)'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
