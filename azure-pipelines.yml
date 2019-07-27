@@ -170,10 +170,6 @@ jobs:
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
-  - script: |
-      sudo apt-get install g++-4.9
-    condition: in(variables['image.name'], 'ubuntu-16.04')
-    displayName: 'Install g++-4.9 for Linux (for SHAP)'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
@@ -186,6 +182,8 @@ jobs:
     condition: in(variables['image.name'], 'macOS-10.13')
     displayName: 'Matplotlib patch for mac.'
   - script: |
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
       python -m pip install -r dev-requirements.txt
     workingDirectory: src/python
     displayName: 'Install requirements'
