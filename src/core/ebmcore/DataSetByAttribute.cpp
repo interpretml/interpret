@@ -124,7 +124,7 @@ DataSetInternalCore::~DataSetInternalCore() {
 
    free(const_cast<FractionalDataType *>(m_aResidualErrors));
    if (nullptr != m_aaInputData) {
-      EBM_ASSERT(0 < m_cAttributes);
+      EBM_ASSERT(1 <= m_cAttributes);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;
       const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cAttributes;
       do {

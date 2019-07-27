@@ -127,6 +127,71 @@ public:
 static_assert(std::is_pod<BinnedBucket<false>>::value, "BinnedBucket will be more efficient as a POD as we make potentially large arrays of them!");
 static_assert(std::is_pod<BinnedBucket<true>>::value, "BinnedBucket will be more efficient as a POD as we make potentially large arrays of them!");
 
+template<ptrdiff_t countCompilerClassificationTargetStates>
+void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucketEntry, const SamplingMethod * const pTrainingSet, const size_t cTargetStates) {
+   LOG(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
+
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+
+   const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
+   EBM_ASSERT(0 < cCases);
+
+   const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
+   const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
+   const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
+   // this shouldn't overflow since we're accessing existing memory
+   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
+
+   PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const pPredictionStatistics = &pBinnedBucketEntry->aPredictionStatistics[0];
+   while(pResidualErrorEnd != pResidualError) {
+      // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
+      // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
+      // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
+      // taking all the above together, it seems unlikley we'll use a method of separating sets via single pass randomized set splitting.  Even if count is stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
+
+      // TODO : try using a sampling method with non-repeating cases, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
+
+      const size_t cOccurences = *pCountOccurrences;
+      ++pCountOccurrences;
+      pBinnedBucketEntry->cCasesInBucket += cOccurences;
+      const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
+
+#ifdef TREAT_BINARY_AS_MULTICLASS
+      constexpr bool bTreatBinaryAsMulticlass = true;
+#else // TREAT_BINARY_AS_MULTICLASS
+      constexpr bool bTreatBinaryAsMulticlass = false;
+#endif // TREAT_BINARY_AS_MULTICLASS
+
+#ifndef NDEBUG
+      FractionalDataType residualTotalDebug = 0;
+#endif // NDEBUG
+      size_t iVector = 0;
+      do {
+         const FractionalDataType residualError = *pResidualError;
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || iVector != k_iZeroResidual || 0 == residualError);
+#ifndef NDEBUG
+         residualTotalDebug += residualError;
+#endif // NDEBUG
+         pPredictionStatistics[iVector].sumResidualError += cFloatOccurences * residualError;
+         if(IsClassification(countCompilerClassificationTargetStates)) {
+            // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
+            const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
+            pPredictionStatistics[iVector].SetSumDenominator(pPredictionStatistics[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
+         }
+         ++pResidualError;
+         ++iVector;
+         // if we use this specific format where (iVector < cVectorLength) then the compiler collapses alway the loop for small cVectorLength values
+         // if we make this (iVector != cVectorLength) then the loop is not collapsed
+         // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
+      } while(iVector < cVectorLength);
+
+      EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+   }
+   LOG(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
+}
+
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
 void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
@@ -303,6 +368,8 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountCases();
 
+   size_t cAttributes = pAttributeCombination->m_cAttributes;
+   EBM_ASSERT(1 <= cAttributes); // for interactions, we just return 0 for interactions with zero attributes
    for(size_t iCase = 0; pResidualErrorEnd != pResidualError; ++iCase) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -315,7 +382,8 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
 
       size_t cBuckets = 1;
       size_t iBucket = 0;
-      for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
+      size_t iDimension = 0;
+      do {
          const AttributeInternalCore * const pInputAttribute = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute;
          const size_t cStates = pInputAttribute->m_cStates;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputAttribute);
@@ -326,8 +394,9 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
          EBM_ASSERT(iState < cStates);
          iBucket += cBuckets * iState;
          cBuckets *= cStates;
-      }
-
+         ++iDimension;
+      } while(iDimension < cAttributes);
+ 
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucketEntry = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucketEntry, aBinnedBucketsEndDebug);
       pBinnedBucketEntry->cCasesInBucket += 1;

@@ -224,7 +224,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
    LOG_COUNTED(&pEbmInteractionState->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
 
-   EBM_ASSERT(1 <= countAttributesInCombination);
+   EBM_ASSERT(0 <= countAttributesInCombination);
    EBM_ASSERT(nullptr != attributeIndexes);
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {

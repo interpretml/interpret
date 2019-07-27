@@ -198,9 +198,9 @@ constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
 template<typename T>
-constexpr size_t CountBitsRequiredCore(T cBitsMax) {
+constexpr size_t CountBitsRequiredCore(T maxValue) {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return 0 == cBitsMax ? 0 : 1 + CountBitsRequiredCore<T>(cBitsMax / 2);
+   return 0 == maxValue ? 0 : 1 + CountBitsRequiredCore<T>(maxValue / 2);
 }
 template<typename T>
 constexpr size_t CountBitsRequiredPositiveMax() {

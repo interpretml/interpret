@@ -529,16 +529,50 @@ retry_with_bigger_tree_node_children_array:
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the attribute first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
+bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+   LOG(TraceLevelVerbose, "Entered TrainZeroDimensional");
+
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+      // TODO : move this to initialization where we execute it only once (it needs to be in the attribute combination loop though)
+      LOG(TraceLevelWarning, "WARNING TODO fill this in");
+      return true;
+   }
+   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucket = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesPerBinnedBucket));
+   if(UNLIKELY(nullptr == pBinnedBucket)) {
+      LOG(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pBinnedBucket");
+      return true;
+   }
+   memset(pBinnedBucket, 0, cBytesPerBinnedBucket);
+
+   BinDataSetTrainingZeroDimensions<countCompilerClassificationTargetStates>(pBinnedBucket, pTrainingSet, cTargetStates);
+
+   const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics = &pBinnedBucket->aPredictionStatistics[0];
+   if(IsRegression(countCompilerClassificationTargetStates)) {
+      FractionalDataType smallChangeToModel = ComputeSmallChangeInRegressionPredictionForOneSegment(aSumPredictionStatistics[0].sumResidualError, pBinnedBucket->cCasesInBucket);
+      FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      pValues[0] = smallChangeToModel;
+   } else {
+      EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
+      FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         FractionalDataType smallChangeToModel = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
+         aValues[iVector] = smallChangeToModel;
+      }
+   }
+
+   LOG(TraceLevelVerbose, "Exited TrainZeroDimensional");
+   return false;
+}
+
+// TODO : make variable ordering consistent with BinDataSet call below (put the attribute first since that's a definition that happens before the training data set)
+template<ptrdiff_t countCompilerClassificationTargetStates>
 bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
-   size_t cTotalBuckets = 1;
-   for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
-      const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      EBM_ASSERT(!IsMultiplyError(cTotalBuckets, cStates)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
-      cTotalBuckets *= cStates;
-   }
+   EBM_ASSERT(1 == pAttributeCombination->m_cAttributes);
+   size_t cTotalBuckets = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {

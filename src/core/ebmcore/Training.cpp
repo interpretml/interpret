@@ -74,18 +74,25 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
          return nullptr;
       }
 
-      // TODO optimize the next few lines
-      // TODO there might be a nicer way to expand this at allocation time (fill with zeros is easier)
-      // we want to return a pointer to our interior state in the GetCurrentModel and GetBestModel functions.  For simplicity we don't transmit the divions, so we need to expand our SegmentedRegion before returning
-      // the easiest way to ensure that the SegmentedRegion is expanded is to start it off expanded, and then we don't have to check later since anything merged into an expanded SegmentedRegion will itself be expanded
-      size_t acDivisionIntegersEnd[k_cDimensionsMax];
-      for(size_t iDimension = 0; iDimension < pAttributeCombination->m_cAttributes; ++iDimension) {
-         acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      }
-      if(pSegmentedRegions->Expand(acDivisionIntegersEnd)) {
-         LOG(TraceLevelWarning, "WARNING InitializeSegmentsCore pSegmentedRegions->Expand(acDivisionIntegersEnd)");
-         DeleteSegmentsCore(cAttributeCombinations, apSegmentedRegions);
-         return nullptr;
+      if(0 != pAttributeCombination->m_cAttributes) {
+         // if our segmented region has no dimensions, then it's already a fully expanded with 1 bin
+
+         // TODO optimize the next few lines
+         // TODO there might be a nicer way to expand this at allocation time (fill with zeros is easier)
+         // we want to return a pointer to our interior state in the GetCurrentModel and GetBestModel functions.  For simplicity we don't transmit the divions, so we need to expand our SegmentedRegion before returning
+         // the easiest way to ensure that the SegmentedRegion is expanded is to start it off expanded, and then we don't have to check later since anything merged into an expanded SegmentedRegion will itself be expanded
+         size_t acDivisionIntegersEnd[k_cDimensionsMax];
+         size_t iDimension = 0;
+         do {
+            acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+            ++iDimension;
+         } while(iDimension < pAttributeCombination->m_cAttributes);
+
+         if(pSegmentedRegions->Expand(acDivisionIntegersEnd)) {
+            LOG(TraceLevelWarning, "WARNING InitializeSegmentsCore pSegmentedRegions->Expand(acDivisionIntegersEnd)");
+            DeleteSegmentsCore(cAttributeCombinations, apSegmentedRegions);
+            return nullptr;
+         }
       }
 
       *ppSegmentedRegions = pSegmentedRegions;
@@ -104,12 +111,87 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
    LOG(TraceLevelVerbose, "Entered TrainingSetTargetAttributeLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cCases = pTrainingSet->GetCountCases();
+   EBM_ASSERT(0 < cCases);
+
+   if(0 == pAttributeCombination->m_cAttributes) {
+      FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
+      const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
+
+      if(IsRegression(countCompilerClassificationTargetStates)) {
+         const FractionalDataType * pValues = pSmallChangeToModel->GetValueDirect(0);
+         const FractionalDataType smallChangeToPrediction = pValues[0];
+         while(pResidualErrorEnd != pResidualError) {
+            // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
+            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            *pResidualError = residualError;
+            ++pResidualError;
+         }
+      } else {
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
+         FractionalDataType * pTrainingPredictionScores = pTrainingSet->GetPredictionScores();
+         const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
+
+         const FractionalDataType * pValues = pSmallChangeToModel->GetValueDirect(0);
+         while(pResidualErrorEnd != pResidualError) {
+            StorageDataTypeCore targetData = *pTargetData;
+
+            if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
+               // TODO : because there is only one bin for a zero attribute attribute combination, we can move the fetch of smallChangeToPredictionScores outside of our loop so that the code doesn't have this dereference each loop
+               const FractionalDataType smallChangeToPredictionScores = pValues[0];
+               // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
+               const FractionalDataType trainingPredictionScore = *pTrainingPredictionScores + smallChangeToPredictionScores;
+               *pTrainingPredictionScores = trainingPredictionScore;
+               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
+               *pResidualError = residualError;
+               ++pResidualError;
+            } else {
+               FractionalDataType sumExp = 0;
+               size_t iVector1 = 0;
+               do {
+                  // TODO : because there is only one bin for a zero attribute attribute combination, we could move these values to the stack where the copmiler could reason about their visibility and optimize small arrays into registers
+                  const FractionalDataType smallChangeToPredictionScores = pValues[iVector1];
+                  // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
+                  const FractionalDataType trainingPredictionScores = pTrainingPredictionScores[iVector1] + smallChangeToPredictionScores;
+                  pTrainingPredictionScores[iVector1] = trainingPredictionScores;
+                  sumExp += std::exp(trainingPredictionScores);
+                  ++iVector1;
+               } while(iVector1 < cVectorLength);
+
+               EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
+               const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
+               StorageDataTypeCore iVector2 = 0;
+               do {
+                  // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
+                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
+                  *pResidualError = residualError;
+                  ++pResidualError;
+                  ++iVector2;
+               } while(iVector2 < cVectorLengthStorage);
+               // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
+               // 
+               // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
+               // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
+               // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
+               // insted of allowing them to be scaled.  
+               // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be multiplication outside the exp(..), which
+               // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
+               constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+               if(bZeroingResiduals) {
+                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+               }
+            }
+            pTrainingPredictionScores += cVectorLength;
+            ++pTargetData;
+         }
+      }
+      LOG(TraceLevelVerbose, "Exited TrainingSetTargetAttributeLoop - Zero dimensions");
+      return;
+   }
+
    const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-
-   const size_t cCases = pTrainingSet->GetCountCases();
-   EBM_ASSERT(0 < cCases);
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pAttributeCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
@@ -151,8 +233,8 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
       }
       EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    } else {
-      FractionalDataType * pTrainingPredictionScores = pTrainingSet->GetPredictionScores();
       EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
+      FractionalDataType * pTrainingPredictionScores = pTrainingSet->GetPredictionScores();
       const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
@@ -273,18 +355,85 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
    LOG(TraceLevelVerbose, "Entering ValidationSetTargetAttributeLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
-   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
-   const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-
    const size_t cCases = pValidationSet->GetCountCases();
    EBM_ASSERT(0 < cCases);
 
+   if(0 == pAttributeCombination->m_cAttributes) {
+      if(IsRegression(countCompilerClassificationTargetStates)) {
+         FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
+         const FractionalDataType * const pResidualErrorEnd = pResidualError + cCases;
+
+         const FractionalDataType * pValues = pSmallChangeToModel->GetValueDirect(0);
+         const FractionalDataType smallChangeToPrediction = pValues[0];
+
+         FractionalDataType rootMeanSquareError = 0;
+         while(pResidualErrorEnd != pResidualError) {
+            // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
+            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            rootMeanSquareError += residualError * residualError;
+            *pResidualError = residualError;
+            ++pResidualError;
+         }
+
+         rootMeanSquareError /= pValidationSet->GetCountCases();
+         LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop - Zero dimensions");
+         return sqrt(rootMeanSquareError);
+      } else {
+         EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
+         FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
+         const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
+
+         const FractionalDataType * const pValidationPredictionEnd = pValidationPredictionScores + cVectorLength * cCases;
+
+         const FractionalDataType * pValues = pSmallChangeToModel->GetValueDirect(0);
+
+         FractionalDataType sumLogLoss = 0;
+         while(pValidationPredictionEnd != pValidationPredictionScores) {
+            StorageDataTypeCore targetData = *pTargetData;
+
+            if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
+               const FractionalDataType smallChangeToPredictionScores = pValues[0];
+               // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
+               const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
+               *pValidationPredictionScores = validationPredictionScores;
+               sumLogLoss += ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
+               ++pValidationPredictionScores;
+            } else {
+               FractionalDataType sumExp = 0;
+               size_t iVector = 0;
+               do {
+                  const FractionalDataType smallChangeToPredictionScores = pValues[iVector];
+                  // this will apply a small fix to our existing validationPredictionScores, either positive or negative, whichever is needed
+
+                  // TODO : this is no longer a prediction for multiclass.  It is a weight.  Change all instances of this naming. -> validationLogWeight
+                  const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
+                  *pValidationPredictionScores = validationPredictionScores;
+                  sumExp += std::exp(validationPredictionScores);
+                  ++pValidationPredictionScores;
+
+                  // TODO : consider replacing iVector with pValidationPredictionScoresInnerEnd
+                  ++iVector;
+               } while(iVector < cVectorLength);
+               // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
+               sumLogLoss += ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
+            }
+            ++pTargetData;
+         }
+
+         LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop - Zero dimensions");
+         return sumLogLoss;
+      }
+      EBM_ASSERT(false);
+   }
+
+   const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
+   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
    const StorageDataTypeCore * pInputData = pValidationSet->GetDataPointer(pAttributeCombination);
 
    if(IsRegression(countCompilerClassificationTargetStates)) {
       FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
+      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
 
       FractionalDataType rootMeanSquareError = 0;
       size_t cItemsRemaining;
@@ -327,8 +476,8 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
       LOG(TraceLevelVerbose, "Exited ValidationSetTargetAttributeLoop");
       return sqrt(rootMeanSquareError);
    } else {
-      FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
       EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
+      FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
       const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
       size_t cItemsRemaining;
@@ -444,7 +593,11 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
 
    for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-      if(1 == pAttributeCombination->m_cAttributes) {
+      if(0 == pAttributeCombination->m_cAttributes) {
+         if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
+            return true;
+         }
+      } else if(1 == pAttributeCombination->m_cAttributes) {
          if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
             return true;
          }
@@ -493,13 +646,17 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
       pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
    }
 
-   // pSmallChangeToModelAccumulated was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
-   size_t acDivisionIntegersEnd[k_cDimensionsMax];
-   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-   }
-   if(pSmallChangeToModelAccumulated->Expand(acDivisionIntegersEnd)) {
-      return true;
+   if(0 != cDimensions) {
+      // pSmallChangeToModelAccumulated was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
+      size_t acDivisionIntegersEnd[k_cDimensionsMax];
+      size_t iDimension = 0;
+      do {
+         acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+         ++iDimension;
+      } while(iDimension < cDimensions);
+      if(pSmallChangeToModelAccumulated->Expand(acDivisionIntegersEnd)) {
+         return true;
+      }
    }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegion = apCurrentModel[iCurrentModel % cAttributeCombinations];
@@ -709,13 +866,14 @@ public:
             const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
 
             IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
-            EBM_ASSERT(1 <= countAttributesInCombination);
+            EBM_ASSERT(0 <= countAttributesInCombination);
             if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
                return true;
             }
             size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
             EBM_ASSERT(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
+            // TODO : we can allow more dimensions, if some of the dimensions have only 1 state
             if (k_cDimensionsMax < cAttributesInCombination) {
                // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize k_cDimensionsMax < cAttributesInCombination");
@@ -730,30 +888,35 @@ public:
             // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
             m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
 
-            size_t cTensorStates = 1;
-            for (size_t iAttributeInCombination = 0; iAttributeInCombination < cAttributesInCombination; ++iAttributeInCombination) {
-               const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
-               EBM_ASSERT(0 <= indexAttributeInterop);
+            // if cAttributesInCombination is zero, don't both initializing pAttributeCombination->m_cItemsPerBitPackDataUnit
+            if(0 != cAttributesInCombination) {
+               size_t cTensorStates = 1;
+               size_t iAttributeInCombination = 0;
+               do {
+                  const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
+                  EBM_ASSERT(0 <= indexAttributeInterop);
 
-               ++pAttributeCombinationIndex;
+                  ++pAttributeCombinationIndex;
 
-               if (!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
-                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
-                  return true;
-               }
-               const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-               EBM_ASSERT(iAttributeForCombination < m_cAttributes);
-               AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
-               pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pInputAttribute;
-               if (IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)) {
-                  // if this overflows, we definetly won't be able to allocate it
-                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)");
-                  return true;
-               }
-               cTensorStates *= pInputAttribute->m_cStates;
+                  if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
+                     LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
+                     return true;
+                  }
+                  const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
+                  EBM_ASSERT(iAttributeForCombination < m_cAttributes);
+                  AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
+                  pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pInputAttribute;
+                  if(IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)) {
+                     // if this overflows, we definetly won't be able to allocate it
+                     LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, pInputAttribute->m_cStates)");
+                     return true;
+                  }
+                  cTensorStates *= pInputAttribute->m_cStates;
+                  ++iAttributeInCombination;
+               } while(iAttributeInCombination < cAttributesInCombination);
+               size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates - 1);
+               pAttributeCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
             }
-            size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates);
-            pAttributeCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
          }
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize finished attribute combination processing");
 
@@ -1089,7 +1252,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iAttributeCombination];
-   EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(0 == pCurrentModel->m_cDimensions || pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
 
    LOG(TraceLevelInfo, "Exited GetCurrentModel %p", static_cast<void *>(pRet));
@@ -1107,7 +1270,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iAttributeCombination];
-   EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(0 == pBestModel->m_cDimensions || pBestModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pBestModel->GetValuePointer();
 
    LOG(TraceLevelInfo, "Exited GetBestModel %p", static_cast<void *>(pRet));
