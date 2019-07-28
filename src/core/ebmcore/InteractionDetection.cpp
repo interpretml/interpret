@@ -202,8 +202,6 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRu
    }
 }
 
-WARNING_PUSH
-WARNING_DISABLE_UNREFERENCED_PARAMETER
 template<>
 TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(cRuntimeTargetStates);
@@ -211,7 +209,6 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
    return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
 }
-WARNING_POP
 
 // we made this a global because if we had put this variable inside the TmlInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad TmlInteractionState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that

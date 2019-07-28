@@ -33,14 +33,11 @@ template<bool bRegression>
 TML_INLINE TreeNode<bRegression> * AddBytesTreeNode(TreeNode<bRegression> * pTreeNode, size_t countBytesAdd) {
    return reinterpret_cast<TreeNode<bRegression> *>(reinterpret_cast<char *>(pTreeNode) + countBytesAdd);
 }
-WARNING_PUSH
-WARNING_DISABLE_UNREFERENCED_PARAMETER
 template<bool bRegression>
 TML_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    UNUSED(countBytesTreeNode);
    return pTreeNodeChildren;
 }
-WARNING_POP
 template<bool bRegression>
 TML_INLINE TreeNode<bRegression> * GetRightTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    return AddBytesTreeNode<bRegression>(pTreeNodeChildren, countBytesTreeNode);

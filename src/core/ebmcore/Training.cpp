@@ -1143,12 +1143,9 @@ TML_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(
    return &pTmlState->m_cachedThreadResourcesUnion.regression;
 }
 
-// TODO remove this after we use aTrainingWeights and aValidationWeights into the TrainingStepPerTargetStates function
-WARNING_PUSH
-WARNING_DISABLE_UNREFERENCED_PARAMETER
-
 template<ptrdiff_t countCompilerClassificationTargetStates>
 static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
+   // TODO remove this after we use aTrainingWeights and aValidationWeights into the TrainingStepPerTargetStates function
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
 
@@ -1190,8 +1187,6 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
    return 0;
 }
 
-WARNING_POP
-
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
 TML_INLINE IntegerDataType CompilerRecursiveTrainingStep(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
@@ -1203,9 +1198,6 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep(const size_t cRuntimeTa
    }
 }
 
-WARNING_PUSH
-WARNING_DISABLE_UNREFERENCED_PARAMETER
-
 template<>
 TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
    UNUSED(cRuntimeTargetStates);
@@ -1213,8 +1205,6 @@ TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTar
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
    return TrainingStepPerTargetStates<k_DynamicClassification>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);
 }
-
-WARNING_POP
 
 // we made this a global because if we had put this variable inside the EbmTrainingState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmTrainingState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
