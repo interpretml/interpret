@@ -845,7 +845,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    size_t directionVectorHigh = directionVectorLow | static_cast<size_t>(1) << iDimensionSweep;
 
    const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
-   EBM_ASSERT(1 <= cStates); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(2 <= cStates);
 
    size_t iBestCut = 0;
 
@@ -856,8 +856,8 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsHigh, aBinnedBucketsEndDebug);
 
    FractionalDataType bestSplit = -std::numeric_limits<FractionalDataType>::infinity();
-   // NOTE: we can't use a DO loop here if cStates is allowed to be 1
-   for(size_t iState = 0; iState < cStates - 1; ++iState) {
+   size_t iState = 0;
+   do {
       *piPoint = iState;
 
       GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiPoint, directionVectorLow, cTargetStates, pTotalsLow
@@ -875,6 +875,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
       FractionalDataType splittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
+         EBM_ASSERT(0 <= splittingScore);
          splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
          EBM_ASSERT(0 <= splittingScore);
       }
@@ -888,10 +889,14 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pTotalsLow, 1), aBinnedBucketsEndDebug);
          memcpy(pBinnedBucketBestAndTemp, pTotalsLow, cBytesPerTwoBinnedBuckets);
       }
-   }
+      ++iState;
+   } while(iState < cStates - 1);
    *piBestCut = iBestCut;
    return bestSplit;
 }
+
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
 // TODO: consider adding controls to disallow cuts that would leave too few cases in a region
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
@@ -1086,8 +1091,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
       const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
       const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
-      EBM_ASSERT(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(2 <= cStatesDimension1);
+      EBM_ASSERT(2 <= cStatesDimension2);
 
       FractionalDataType bestSplittingScoreFirst = -std::numeric_limits<FractionalDataType>::infinity();
 
@@ -1101,8 +1106,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 3);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST state sweep loop");
-      // note : if cStatesDimension1 can be 1 then we can't use a do loop
-      for(size_t iState1 = 0; iState1 < cStatesDimension1 - 1; ++iState1) {
+      size_t iState1 = 0;
+      do {
          aiStart[0] = iState1;
 
          splittingScore = 0;
@@ -1115,6 +1120,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
             );
+         EBM_ASSERT(0 <= splittingScore);
 
          size_t cutSecond1HighBest;
          BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 8);
@@ -1124,6 +1130,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
             );
+         EBM_ASSERT(0 <= splittingScore);
 
          if(bestSplittingScoreFirst < splittingScore) {
             bestSplittingScoreFirst = splittingScore;
@@ -1136,7 +1143,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pTotals1HighLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighLowBest, cTargetStates);
             pTotals1HighHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighHighBest, cTargetStates);
          }
-      }
+         ++iState1;
+      } while(iState1 < cStatesDimension1 - 1);
 
       bool bCutFirst2 = false;
 
@@ -1150,8 +1158,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 15);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND state sweep loop");
-      // note : if cStatesDimension2 can be 1 then we can't use a do loop
-      for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
+      size_t iState2 = 0;
+      do {
          aiStart[1] = iState2;
 
          splittingScore = 0;
@@ -1164,6 +1172,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
             );
+         EBM_ASSERT(0 <= splittingScore);
 
          size_t cutSecond2HighBest;
          BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBestInner = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pAuxiliaryBucketZone, 20);
@@ -1173,6 +1182,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             , aBinnedBucketsDebugCopy, aBinnedBucketsEndDebug
 #endif // NDEBUG
             );
+         EBM_ASSERT(0 <= splittingScore);
 
          if(bestSplittingScoreFirst < splittingScore) {
             bestSplittingScoreFirst = splittingScore;
@@ -1187,7 +1197,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             bCutFirst2 = true;
          }
-      }
+         ++iState2;
+      } while(iState2 < cStatesDimension2 - 1);
       LOG(TraceLevelVerbose, "TrainMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
@@ -1420,7 +1431,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    LOG(TraceLevelVerbose, "Exited TrainMultiDimensional");
    return false;
 }
-
+WARNING_POP
 
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 //bool TrainMultiDimensionalPaulAlgorithm(CachedThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const AttributeInternal * const pTargetAttribute, SamplingMethod const * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {

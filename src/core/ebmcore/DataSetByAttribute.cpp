@@ -83,16 +83,18 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      // TODO : eliminate the counts here and use pointers
-      for(size_t iCase = 0; iCase < cCases; ++iCase) {
-         // TODO: eliminate this extra internal index lookup (very bad!).  Since the attributes will be in-order, we can probably just use a single pointer to the input data and just keep incrementing it over all the attributes
-         const IntegerDataType data = aInputDataFrom[pAttribute->m_iAttributeData * cCases + iCase];
+      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pAttribute->m_iAttributeData * cCases];
+      const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cCases];
+      do {
+         const IntegerDataType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
          EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
          EBM_ASSERT(static_cast<size_t>(data) < pAttribute->m_cStates);
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
-         pInputDataTo[iCase] = static_cast<StorageDataTypeCore>(data);
-      }
+         *pInputDataTo = static_cast<StorageDataTypeCore>(data);
+         ++pInputDataTo;
+         ++pInputDataFrom;
+      } while(pInputDataFromEnd != pInputDataFrom);
 
       ++pAttribute;
    } while(pAttributeEnd != pAttribute);
@@ -122,7 +124,8 @@ DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cA
 DataSetInternalCore::~DataSetInternalCore() {
    LOG(TraceLevelInfo, "Entered ~DataSetInternalCore");
 
-   free(const_cast<FractionalDataType *>(m_aResidualErrors));
+   FractionalDataType * aResidualErrors = const_cast<FractionalDataType *>(m_aResidualErrors);
+   free(aResidualErrors);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cAttributes);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;

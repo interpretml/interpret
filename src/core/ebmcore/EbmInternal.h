@@ -7,12 +7,14 @@
 
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
+#include <limits> // numeric_limits
 
 #if defined(__clang__) // compiler type
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
 #define WARNING_DISABLE_UNREFERENCED_PARAMETER
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
@@ -21,6 +23,7 @@
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
 #define WARNING_DISABLE_UNREFERENCED_PARAMETER
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
@@ -29,6 +32,7 @@
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))
 #define WARNING_DISABLE_UNREFERENCED_PARAMETER __pragma(warning(disable: 4100))
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 
@@ -229,6 +233,8 @@ constexpr TML_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPac
    return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }
 
+WARNING_PUSH
+WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 // TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
 // TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
 constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
@@ -241,6 +247,7 @@ constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
    // it will never overflow if num1 is zero
    return 0 != num1 && ((std::numeric_limits<size_t>::max() - num1 + 1) / num1 < num2);
 }
+WARNING_POP
 
 constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
