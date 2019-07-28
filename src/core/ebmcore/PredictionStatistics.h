@@ -60,6 +60,7 @@ struct PredictionStatistics<true> final {
 WARNING_PUSH
 WARNING_DISABLE_UNREFERENCED_PARAMETER
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
+      UNUSED(sumDenominator);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
 WARNING_POP

@@ -111,6 +111,7 @@ public:
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
    TML_INLINE void AssertZero(const size_t cTargetStates) {
+      UNUSED(cTargetStates);
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 #ifndef NDEBUG
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -339,6 +340,7 @@ public:
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
    ) {
+      UNUSED(cRuntimeDimensions);
       EBM_ASSERT(k_cDimensionsMax == cRuntimeDimensions);
       BinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax>(aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG

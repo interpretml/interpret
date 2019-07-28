@@ -37,6 +37,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNREFERENCED_PARAMETER
 template<bool bRegression>
 TML_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
+   UNUSED(countBytesTreeNode);
    return pTreeNodeChildren;
 }
 WARNING_POP

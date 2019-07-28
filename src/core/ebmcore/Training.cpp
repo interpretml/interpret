@@ -1149,6 +1149,9 @@ WARNING_DISABLE_UNREFERENCED_PARAMETER
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
 static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
+   UNUSED(aTrainingWeights);
+   UNUSED(aValidationWeights);
+
    LOG(TraceLevelVerbose, "Entered TrainingStepPerTargetStates");
 
    const size_t cSamplingSetsAfterZero = 0 == pTmlState->m_cSamplingSets ? 1 : pTmlState->m_cSamplingSets;
@@ -1205,6 +1208,7 @@ WARNING_DISABLE_UNREFERENCED_PARAMETER
 
 template<>
 TML_INLINE IntegerDataType CompilerRecursiveTrainingStep<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iAttributeCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pValidationMetricReturn) {
+   UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates || 1 == cRuntimeTargetStates);
    return TrainingStepPerTargetStates<k_DynamicClassification>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pValidationMetricReturn);

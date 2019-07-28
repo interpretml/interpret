@@ -9,11 +9,14 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
+#define UNUSED(x) (void)(x)
+
 #if defined(__clang__) // compiler type
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
-#define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("clang diagnostic ignored \"-Wunused-parameter\"")
+//#define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("clang diagnostic ignored \"-Wunused-parameter\"")
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("clang diagnostic ignored \"-Wmaybe-uninitialized\"")
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
@@ -22,7 +25,8 @@
 
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
-#define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
+//#define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
@@ -31,7 +35,8 @@
 
 #define WARNING_PUSH __pragma(warning(push))
 #define WARNING_POP __pragma(warning(pop))
-#define WARNING_DISABLE_UNREFERENCED_PARAMETER __pragma(warning(disable: 4100))
+//#define WARNING_DISABLE_UNREFERENCED_PARAMETER __pragma(warning(disable: 4100))
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))

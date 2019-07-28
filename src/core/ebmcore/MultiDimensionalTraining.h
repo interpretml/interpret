@@ -99,7 +99,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
    }
 
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison2 = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesPerBinnedBucket));
-   if(nullptr != pComparison) {
+   if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aBinnedBuckets, pAttributeCombination, aiStart, aiLast, cTargetStates, pComparison2);
       EBM_ASSERT(pComparison->cCasesInBucket == pComparison2->cCasesInBucket);

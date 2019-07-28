@@ -104,6 +104,10 @@ TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
    }
    const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cCases;
    StorageDataTypeCore * const aTargetData = static_cast<StorageDataTypeCore *>(malloc(cTargetArrayBytes));
+   if(nullptr == aTargetData) {
+      LOG(TraceLevelWarning, "WARNING nullptr == aTargetData");
+      return nullptr;
+   }
 
    const IntegerDataType * pTargetFrom = aTargets;
    const IntegerDataType * const pTargetFromEnd = aTargets + cCases;
