@@ -133,7 +133,6 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
    EBM_ASSERT(0 < cCases);
@@ -158,13 +157,12 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
       pBinnedBucketEntry->cCasesInBucket += cOccurences;
       const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
 
+#ifndef NDEBUG
 #ifdef TREAT_BINARY_AS_MULTICLASS
       constexpr bool bTreatBinaryAsMulticlass = true;
 #else // TREAT_BINARY_AS_MULTICLASS
       constexpr bool bTreatBinaryAsMulticlass = false;
 #endif // TREAT_BINARY_AS_MULTICLASS
-
-#ifndef NDEBUG
       FractionalDataType residualTotalDebug = 0;
 #endif // NDEBUG
       size_t iVector = 0;

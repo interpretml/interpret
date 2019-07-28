@@ -22,7 +22,7 @@
 
 #define WARNING_PUSH _Pragma("GCC diagnostic push")
 #define WARNING_POP _Pragma("GCC diagnostic pop")
-#define WARNING_DISABLE_UNREFERENCED_PARAMETER
+#define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
@@ -55,7 +55,7 @@
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
 
-#define TML_INLINE inline
+#define TML_INLINE inline __attribute__((always_inline))
 
 #elif defined(_MSC_VER) // compiler type
 
