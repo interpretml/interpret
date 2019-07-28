@@ -123,7 +123,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
          const FractionalDataType smallChangeToPrediction = pValues[0];
          while(pResidualErrorEnd != pResidualError) {
             // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
-            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             *pResidualError = residualError;
             ++pResidualError;
          }
@@ -142,7 +142,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType trainingPredictionScore = *pTrainingPredictionScores + smallChangeToPredictionScores;
                *pTrainingPredictionScores = trainingPredictionScore;
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
@@ -163,7 +163,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                StorageDataTypeCore iVector2 = 0;
                do {
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
                   *pResidualError = residualError;
                   ++pResidualError;
                   ++iVector2;
@@ -213,7 +213,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
 
             const FractionalDataType smallChangeToPrediction = pValues[0];
             // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
-            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             *pResidualError = residualError;
             ++pResidualError;
 
@@ -258,7 +258,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // this will apply a small fix to our existing TrainingPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType trainingPredictionScore = *pTrainingPredictionScores + smallChangeToPredictionScores;
                *pTrainingPredictionScores = trainingPredictionScore;
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
@@ -278,7 +278,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                StorageDataTypeCore iVector2 = 0;
                do {
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, pTrainingPredictionScores[iVector2], targetData, iVector2);
                   *pResidualError = residualError;
                   ++pResidualError;
                   ++iVector2;
@@ -369,7 +369,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
          FractionalDataType rootMeanSquareError = 0;
          while(pResidualErrorEnd != pResidualError) {
             // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
-            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             rootMeanSquareError += residualError * residualError;
             *pResidualError = residualError;
             ++pResidualError;
@@ -396,7 +396,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
                // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
                *pValidationPredictionScores = validationPredictionScores;
-               sumLogLoss += ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
                ++pValidationPredictionScores;
             } else {
                FractionalDataType sumExp = 0;
@@ -415,7 +415,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
                   ++iVector;
                } while(iVector < cVectorLength);
                // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
-               sumLogLoss += ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
             }
             ++pTargetData;
          }
@@ -451,7 +451,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
 
             const FractionalDataType smallChangeToPrediction = pValues[0];
             // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
-            const FractionalDataType residualError = ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             rootMeanSquareError += residualError * residualError;
             *pResidualError = residualError;
             ++pResidualError;
@@ -504,7 +504,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
                // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
                *pValidationPredictionScores = validationPredictionScores;
-               sumLogLoss += ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
                ++pValidationPredictionScores;
             } else {
                FractionalDataType sumExp = 0;
@@ -523,7 +523,7 @@ static FractionalDataType ValidationSetTargetAttributeLoop(const AttributeCombin
                   ++iVector;
                } while(iVector < cVectorLength);
                // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
-               sumLogLoss += ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
             }
             ++pTargetData;
 

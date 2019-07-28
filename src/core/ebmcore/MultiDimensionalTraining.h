@@ -874,9 +874,9 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 
       FractionalDataType splittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
+         splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
          EBM_ASSERT(0 <= splittingScore);
-         splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
+         splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
          EBM_ASSERT(0 <= splittingScore);
       }
       EBM_ASSERT(0 <= splittingScore);
@@ -1272,17 +1272,17 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             if(IsRegression(countCompilerClassificationTargetStates)) {
                // regression
-               predictionLowLow = 0 == pTotals2LowLowBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->cCasesInBucket);
-               predictionLowHigh = 0 == pTotals2LowHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->cCasesInBucket);
-               predictionHighLow = 0 == pTotals2HighLowBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->cCasesInBucket);
-               predictionHighHigh = 0 == pTotals2HighHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->cCasesInBucket);
+               predictionLowLow = 0 == pTotals2LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->cCasesInBucket);
+               predictionLowHigh = 0 == pTotals2LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->cCasesInBucket);
+               predictionHighLow = 0 == pTotals2HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->cCasesInBucket);
+               predictionHighHigh = 0 == pTotals2HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->cCasesInBucket);
             } else {
                // classification
                EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
-               predictionLowLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionLowHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
             }
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1378,17 +1378,17 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             if(IsRegression(countCompilerClassificationTargetStates)) {
                // regression
-               predictionLowLow = 0 == pTotals1LowLowBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->cCasesInBucket);
-               predictionLowHigh = 0 == pTotals1LowHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->cCasesInBucket);
-               predictionHighLow = 0 == pTotals1HighLowBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->cCasesInBucket);
-               predictionHighHigh = 0 == pTotals1HighHighBest->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->cCasesInBucket);
+               predictionLowLow = 0 == pTotals1LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->cCasesInBucket);
+               predictionLowHigh = 0 == pTotals1LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->cCasesInBucket);
+               predictionHighLow = 0 == pTotals1HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->cCasesInBucket);
+               predictionHighHigh = 0 == pTotals1HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->cCasesInBucket);
             } else {
                EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
                // classification
-               predictionLowLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionLowHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighLow = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighHigh = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
             }
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -1856,10 +1856,10 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
             FractionalDataType splittingScore = 0;
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               splittingScore += 0 == pTotalsLowLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLowLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLowLow->cCasesInBucket);
-               splittingScore += 0 == pTotalsLowHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsLowHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsLowHigh->cCasesInBucket);
-               splittingScore += 0 == pTotalsHighLow->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHighLow->aPredictionStatistics[iVector].sumResidualError, pTotalsHighLow->cCasesInBucket);
-               splittingScore += 0 == pTotalsHighHigh->cCasesInBucket ? 0 : ComputeNodeSplittingScore(pTotalsHighHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHighHigh->cCasesInBucket);
+               splittingScore += 0 == pTotalsLowLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLowLow->cCasesInBucket);
+               splittingScore += 0 == pTotalsLowHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsLowHigh->cCasesInBucket);
+               splittingScore += 0 == pTotalsHighLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighLow->aPredictionStatistics[iVector].sumResidualError, pTotalsHighLow->cCasesInBucket);
+               splittingScore += 0 == pTotalsHighHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHighHigh->cCasesInBucket);
                EBM_ASSERT(0 <= splittingScore);
             }
             EBM_ASSERT(0 <= splittingScore);

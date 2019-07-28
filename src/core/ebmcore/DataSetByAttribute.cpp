@@ -39,7 +39,15 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
-   InitializeResidualsFlat(bRegression, cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
+   if(bRegression) {
+      InitializeResiduals<k_Regression>(cCases, aTargetData, aPredictionScores, aResidualErrors, 0);
+   } else {
+      if(2 == cTargetStates) {
+         InitializeResiduals<2>(cCases, aTargetData, aPredictionScores, aResidualErrors, 2);
+      } else {
+         InitializeResiduals<k_DynamicClassification>(cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
+      }
+   }
 
    LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructResidualErrors");
    return aResidualErrors;

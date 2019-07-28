@@ -177,7 +177,7 @@ public:
          const FractionalDataType sumResidualError1 = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
          const FractionalDataType sumResidualError2 = this->aPredictionStatistics[iVector].sumResidualError - sumResidualError1;
 
-         BEST_nodeSplittingScoreChildren += ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
+         BEST_nodeSplittingScoreChildren += EbmStatistics::ComputeNodeSplittingScore(sumResidualError1, cCases1) + EbmStatistics::ComputeNodeSplittingScore(sumResidualError2, cCases2);
 
          aSumPredictionStatistics1[iVector].sumResidualError = sumResidualError1;
          aSumPredictionStatisticsBest[iVector].sumResidualError = sumResidualError1;
@@ -213,7 +213,7 @@ public:
             aSumResidualErrors2[iVector] = sumResidualError2;
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
-            const FractionalDataType nodeSplittingScoreChildrenOneVector = ComputeNodeSplittingScore(sumResidualError1, cCases1) + ComputeNodeSplittingScore(sumResidualError2, cCases2);
+            const FractionalDataType nodeSplittingScoreChildrenOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualError1, cCases1) + EbmStatistics::ComputeNodeSplittingScore(sumResidualError2, cCases2);
             EBM_ASSERT(0 <= nodeSplittingScoreChildren);
             nodeSplittingScoreChildren += nodeSplittingScoreChildrenOneVector;
          }
@@ -256,7 +256,7 @@ public:
       FractionalDataType nodeSplittingScoreParent = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FractionalDataType sumResidualErrorParent = this->aPredictionStatistics[iVector].sumResidualError;
-         nodeSplittingScoreParent += ComputeNodeSplittingScore(sumResidualErrorParent, cCasesParent);
+         nodeSplittingScoreParent += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cCasesParent);
       }
 
       // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.beforeSplit BEFORE setting anything in m_UNION.afterSplit as we do below this comment!  The call above to this->GetCases() needs to be done above these lines because it uses m_UNION.beforeSplit for classification!
@@ -291,9 +291,9 @@ public:
          do {
             FractionalDataType smallChangeToModel;
             if(bRegression) {
-               smallChangeToModel = ComputeSmallChangeInRegressionPredictionForOneSegment(pPredictionStatistics->sumResidualError, this->GetCases());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pPredictionStatistics->sumResidualError, this->GetCases());
             } else {
-               smallChangeToModel = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pPredictionStatistics->sumResidualError, pPredictionStatistics->GetSumDenominator());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pPredictionStatistics->sumResidualError, pPredictionStatistics->GetSumDenominator());
             }
             *pValuesCur = smallChangeToModel;
 
@@ -330,14 +330,14 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
       // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
       if(IsRegression(countCompilerClassificationTargetStates)) {
-         FractionalDataType smallChangeToModel = ComputeSmallChangeInRegressionPredictionForOneSegment(aSumPredictionStatistics[0].sumResidualError, cCasesTotal);
+         FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumPredictionStatistics[0].sumResidualError, cCasesTotal);
          FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          pValues[0] = smallChangeToModel;
       } else {
          EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
          FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FractionalDataType smallChangeToModel = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
+            FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
             aValues[iVector] = smallChangeToModel;
          }
       }
@@ -398,13 +398,13 @@ retry_with_bigger_tree_node_children_array:
 
       FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       if(IsRegression(countCompilerClassificationTargetStates)) {
-         aValues[0] = ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aPredictionStatistics[0].sumResidualError, pLeftChild->GetCases());
-         aValues[1] = ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aPredictionStatistics[0].sumResidualError, pRightChild->GetCases());
+         aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aPredictionStatistics[0].sumResidualError, pLeftChild->GetCases());
+         aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aPredictionStatistics[0].sumResidualError, pRightChild->GetCases());
       } else {
          EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            aValues[iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pLeftChild->aPredictionStatistics[iVector].sumResidualError, pLeftChild->aPredictionStatistics[iVector].GetSumDenominator());
-            aValues[cVectorLength + iVector] = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pRightChild->aPredictionStatistics[iVector].sumResidualError, pRightChild->aPredictionStatistics[iVector].GetSumDenominator());
+            aValues[iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pLeftChild->aPredictionStatistics[iVector].sumResidualError, pLeftChild->aPredictionStatistics[iVector].GetSumDenominator());
+            aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pRightChild->aPredictionStatistics[iVector].sumResidualError, pRightChild->aPredictionStatistics[iVector].GetSumDenominator());
          }
       }
 
@@ -550,14 +550,14 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
 
    const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics = &pBinnedBucket->aPredictionStatistics[0];
    if(IsRegression(countCompilerClassificationTargetStates)) {
-      FractionalDataType smallChangeToModel = ComputeSmallChangeInRegressionPredictionForOneSegment(aSumPredictionStatistics[0].sumResidualError, pBinnedBucket->cCasesInBucket);
+      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumPredictionStatistics[0].sumResidualError, pBinnedBucket->cCasesInBucket);
       FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       pValues[0] = smallChangeToModel;
    } else {
       EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
       FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         FractionalDataType smallChangeToModel = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
+         FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumPredictionStatistics[iVector].sumResidualError, aSumPredictionStatistics[iVector].GetSumDenominator());
          aValues[iVector] = smallChangeToModel;
       }
    }

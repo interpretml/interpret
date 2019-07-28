@@ -44,7 +44,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
             EBM_ASSERT(!std::isnan(data));
             EBM_ASSERT(!std::isinf(data));
             const FractionalDataType predictionScore = 0;
-            const FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(predictionScore, data);
             EBM_ASSERT(*pResidualError == residualError);
             ++pTargetData;
             ++pResidualError;
@@ -55,8 +55,8 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
 
          const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
 
-         const FractionalDataType matchValue = ComputeClassificationResidualErrorMulticlass(true, static_cast<FractionalDataType>(cVectorLength));
-         const FractionalDataType nonMatchValue = ComputeClassificationResidualErrorMulticlass(false, static_cast<FractionalDataType>(cVectorLength));
+         const FractionalDataType matchValue = EbmStatistics::ComputeClassificationResidualErrorMulticlass(true, static_cast<FractionalDataType>(cVectorLength));
+         const FractionalDataType nonMatchValue = EbmStatistics::ComputeClassificationResidualErrorMulticlass(false, static_cast<FractionalDataType>(cVectorLength));
 
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
@@ -70,13 +70,13 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
             EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(data);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(data);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(data, iVector, matchValue, nonMatchValue);
-                  EBM_ASSERT(ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(data, iVector, matchValue, nonMatchValue);
+                  EBM_ASSERT(EbmStatistics::ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
                   *pResidualError = residualError;
                   ++pResidualError;
                }
@@ -105,7 +105,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
             EBM_ASSERT(!std::isnan(data));
             EBM_ASSERT(!std::isinf(data));
             const FractionalDataType predictionScore = *pPredictionScores;
-            const FractionalDataType residualError = ComputeRegressionResidualError(predictionScore, data);
+            const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(predictionScore, data);
             *pResidualError = residualError;
             ++pTargetData;
             ++pPredictionScores;
@@ -129,7 +129,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
                const FractionalDataType predictionScore = *pPredictionScores;
-               const FractionalDataType residualError = ComputeClassificationResidualErrorBinaryclass(predictionScore, data);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(predictionScore, data);
                *pResidualError = residualError;
                ++pPredictionScores;
                ++pResidualError;
@@ -150,7 +150,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FractionalDataType predictionScore = *pPredictionScores - subtract;
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
-                  const FractionalDataType residualError = ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
                   *pResidualError = residualError;
                   ++pPredictionScores;
                   ++pResidualError;
@@ -173,18 +173,6 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
       }
    }
    LOG(TraceLevelInfo, "Exited InitializeResiduals");
-}
-
-TML_INLINE static void InitializeResidualsFlat(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
-   if(bRegression) {
-      InitializeResiduals<k_Regression>(cCases, aTargetData, aPredictionScores, pResidualError, 0);
-   } else {
-      if(2 == cTargetStates) {
-         InitializeResiduals<2>(cCases, aTargetData, aPredictionScores, pResidualError, 2);
-      } else {
-         InitializeResiduals<k_DynamicClassification>(cCases, aTargetData, aPredictionScores, pResidualError, cTargetStates);
-      }
-   }
 }
 
 #endif // INITIALIZE_RESIDUALS_H
