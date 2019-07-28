@@ -12,7 +12,8 @@ for arg in "$@"; do
    fi
 done
 
-compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wold-style-cast -Wuseless-cast -Wjump-misses-init -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+# re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict 
+compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wnull-dereference -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -156,7 +157,8 @@ elif [ "$os_type" = "Linux" ]; then
 
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
-   compile_linux="$compile_all -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
+   # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
+   compile_linux="$compile_all -Wlogical-op -Wuseless-cast -Wjump-misses-init -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    echo "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
