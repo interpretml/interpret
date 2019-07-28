@@ -12,7 +12,7 @@ for arg in "$@"; do
    fi
 done
 
-compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict -Wnull-dereference -Wold-style-cast -Wuseless-cast -Wjump-misses-init -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -45,8 +45,8 @@ if [ "$os_type" = "Darwin" ]; then
    compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x64.dylib -o \"$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
-   echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x64/ebmcore/ebmcore_release_mac_x64_build_log.txt"
+   echo "$compile_out"
+   echo "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x64/ebmcore/ebmcore_release_mac_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -75,8 +75,8 @@ if [ "$os_type" = "Darwin" ]; then
    compile_command="$clang_pp_bin $compile_mac -m64 -install_name @rpath/lib_ebmcore_mac_x64_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
-   echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x64/ebmcore/ebmcore_debug_mac_x64_build_log.txt"
+   echo "$compile_out"
+   echo "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x64/ebmcore/ebmcore_debug_mac_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -106,8 +106,8 @@ if [ "$os_type" = "Darwin" ]; then
       compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -install_name @rpath/lib_ebmcore_mac_x86.dylib -o \"$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
-      echo -n "$compile_out"
-      echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x86/ebmcore/ebmcore_release_mac_x86_build_log.txt"
+      echo "$compile_out"
+      echo "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x86/ebmcore/ebmcore_release_mac_x86_build_log.txt"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
@@ -136,8 +136,8 @@ if [ "$os_type" = "Darwin" ]; then
       compile_command="$clang_pp_bin $compile_mac -m32 -install_name @rpath/lib_ebmcore_mac_x86_debug.dylib -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
-      echo -n "$compile_out"
-      echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x86/ebmcore/ebmcore_debug_mac_x86_build_log.txt"
+      echo "$compile_out"
+      echo "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x86/ebmcore/ebmcore_debug_mac_x86_build_log.txt"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
