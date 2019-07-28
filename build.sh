@@ -159,7 +159,7 @@ elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all -Wlogical-op -Wuseless-cast -Wjump-misses-init -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    echo "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"

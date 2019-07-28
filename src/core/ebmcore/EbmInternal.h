@@ -18,6 +18,7 @@
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING _Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"")
 
 #elif defined(__GNUC__) // compiler type
 
@@ -26,6 +27,7 @@
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 
 #elif defined(_MSC_VER) // compiler type
 
@@ -34,6 +36,7 @@
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 
 #else  // compiler type
 #error compiler not recognized
@@ -55,6 +58,14 @@
 #endif // __has_builtin(__builtin_unpredictable)
 
 #define TML_INLINE inline __attribute__((always_inline))
+
+// TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are not aliased
+// EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program (the memory wasn't reached previously)
+#define EBM_RESTRICT_FUNCTION_RETURN __declspec(restrict)
+// EBM_RESTRICT_PARAM_VARIABLE tells the compiler that a pointer passed into a function doesn't refer to memory passed in via annohter pointer
+#define EBM_RESTRICT_PARAM_VARIABLE __restrict
+// EBM_NOALIAS tells the compiler that a function does not modify global state and only modified data DIRECTLY pointed to via it's parameters (first level indirection)
+#define EBM_NOALIAS __declspec(noalias)
 
 #elif defined(_MSC_VER) // compiler type
 
