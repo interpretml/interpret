@@ -78,7 +78,6 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
 void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison) {
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
@@ -158,7 +157,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 //   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
-//   const size_t permuteVectorEnd = static_cast<size_t>(1) << cDimensions;
+//   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
 //
 //   goto skip_intro;
@@ -289,7 +288,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //   static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 //   EBM_ASSERT(cDimensions < k_cBitsForSizeT);
-//   const size_t permuteVectorEnd = static_cast<size_t>(1) << cDimensions;
+//   const size_t permuteVectorEnd = size_t { 1 } << cDimensions;
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
 //
 //   goto skip_intro;
@@ -572,7 +571,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
    static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
    EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
    EBM_ASSERT(2 <= cDimensions);
-   const size_t permuteVectorEnd = static_cast<size_t>(1) << (cDimensions - 1);
+   const size_t permuteVectorEnd = size_t { 1 } << (cDimensions - 1);
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucket = aBinnedBuckets;
    
    ptrdiff_t multipliedIndexCur0 = 0;
@@ -832,7 +831,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 
    EBM_ASSERT(1 <= pAttributeCombination->m_cAttributes);
    EBM_ASSERT(iDimensionSweep < pAttributeCombination->m_cAttributes);
-   EBM_ASSERT(0 == (directionVectorLow & (static_cast<size_t>(1) << iDimensionSweep)));
+   EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -842,7 +841,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 
    size_t * const piPoint = &aiPoint[iDimensionSweep];
    *piPoint = 0;
-   size_t directionVectorHigh = directionVectorLow | static_cast<size_t>(1) << iDimensionSweep;
+   size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
    const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimensionSweep].m_pAttribute->m_cStates;
    EBM_ASSERT(2 <= cStates);

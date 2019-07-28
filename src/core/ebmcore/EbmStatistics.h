@@ -26,11 +26,11 @@ public:
    WARNING_PUSH
    WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
    TML_INLINE static FractionalDataType ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType sumDenominator) {
-      if(LIKELY(static_cast<FractionalDataType>(0) != sumDenominator)) {
+      if(LIKELY(FractionalDataType { 0 } != sumDenominator)) {
          // this is a very predictable branch, so we'd prefer this to be an actual branch rather than an unpredictable one
          return sumResidualError / sumDenominator;
       } else {
-         return static_cast<FractionalDataType>(0);
+         return FractionalDataType { 0 };
       }
    }
    WARNING_POP
@@ -78,15 +78,15 @@ public:
 
    TML_INLINE static FractionalDataType ComputeClassificationResidualErrorMulticlass(const FractionalDataType sumExp, const FractionalDataType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
       // TODO: is it better to use the non-branching conditional below, or is it better to assign all the items the negation case and then AFTERWARDS adding one to the single case that is equal to iVector 
-      const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? static_cast<FractionalDataType>(1) : static_cast<FractionalDataType>(0);
+      const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FractionalDataType { 1 } : static_cast<FractionalDataType>(0);
       const FractionalDataType ret = yi - std::exp(trainingLogWeight) / sumExp;
       return ret;
    }
 
    // if trainingLogWeight is zero, we can call this simpler function
    TML_INLINE static FractionalDataType ComputeClassificationResidualErrorMulticlass(const bool isMatch, const FractionalDataType sumExp) {
-      const FractionalDataType yi = UNPREDICTABLE(isMatch) ? static_cast<FractionalDataType>(1) : static_cast<FractionalDataType>(0);
-      const FractionalDataType ret = yi - static_cast<FractionalDataType>(1) / sumExp;
+      const FractionalDataType yi = UNPREDICTABLE(isMatch) ? FractionalDataType { 1 } : FractionalDataType { 0 };
+      const FractionalDataType ret = yi - FractionalDataType { 1 } / sumExp;
 
       EBM_ASSERT(!isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 1) == ret);
       EBM_ASSERT(isMatch || ComputeClassificationResidualErrorMulticlass(sumExp, 0, 1, 2) == ret);

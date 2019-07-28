@@ -16,7 +16,7 @@
 #include "AttributeCombinationInternal.h"
 #include "DataSetByAttributeCombination.h"
 
-#define INVALID_POINTER (reinterpret_cast<void *>(~static_cast<size_t>(0)))
+#define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))
 
 TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
    LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructResidualErrors");

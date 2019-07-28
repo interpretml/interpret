@@ -55,7 +55,7 @@ struct PredictionStatistics<true> final {
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
-      return static_cast<FractionalDataType>(0);
+      return FractionalDataType { 0 };
    }
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
       UNUSED(sumDenominator);

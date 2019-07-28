@@ -81,9 +81,9 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
 
 constexpr size_t GetVectorLength(size_t cTargetStates) {
 #ifdef TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 1 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #else // TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 2 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #endif // TREAT_BINARY_AS_MULTICLASS
 }
 

@@ -333,7 +333,7 @@ static void TrainingSetInputAttributeLoop(const AttributeCombinationCore * const
       TrainingSetTargetAttributeLoop<cInputBits, 8, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 16) {
       TrainingSetTargetAttributeLoop<cInputBits, 16, countCompilerClassificationTargetStates>(pAttributeCombination, pTrainingSet, pSmallChangeToModel, cTargetStates);
-   } else if(cTargetStates <= static_cast<uint64_t>(1) << 32) {
+   } else if(static_cast<uint64_t>(cTargetStates) <= uint64_t { 1 } << 32) {
       // if this is a 32 bit system, then m_cStates can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cStates will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
@@ -564,7 +564,7 @@ static FractionalDataType ValidationSetInputAttributeLoop(const AttributeCombina
       return ValidationSetTargetAttributeLoop<cInputBits, 8, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModel, cTargetStates);
    } else if(cTargetStates <= 1 << 16) {
       return ValidationSetTargetAttributeLoop<cInputBits, 16, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModel, cTargetStates);
-   } else if(cTargetStates <= static_cast<uint64_t>(1) << 32) {
+   } else if(static_cast<uint64_t>(cTargetStates) <= uint64_t { 1 } << 32) {
       // if this is a 32 bit system, then m_cStates can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cStates will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 

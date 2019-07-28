@@ -250,13 +250,12 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
          PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * pPredictionStatistics = &pBinnedBucketEntry->aPredictionStatistics[0];
          size_t iVector = 0;
 
+#ifndef NDEBUG
 #ifdef TREAT_BINARY_AS_MULTICLASS
          constexpr bool bTreatBinaryAsMulticlass = true;
 #else // TREAT_BINARY_AS_MULTICLASS
          constexpr bool bTreatBinaryAsMulticlass = false;
 #endif // TREAT_BINARY_AS_MULTICLASS
-
-#ifndef NDEBUG
          FractionalDataType residualTotalDebug = 0;
 #endif // NDEBUG
          do {
