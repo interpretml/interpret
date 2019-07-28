@@ -13,7 +13,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
-class PredictionStatistics;
+struct PredictionStatistics;
 
 template<>
 struct PredictionStatistics<false> final {

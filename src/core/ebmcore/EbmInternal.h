@@ -15,7 +15,7 @@
 #define WARNING_POP _Pragma("clang diagnostic pop")
 #define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("clang diagnostic ignored \"-Wunused-parameter\"")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("clang diagnostic ignored \"-Wmaybe-uninitialized\"")
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 #elif defined(__GNUC__) // compiler type
@@ -24,7 +24,7 @@
 #define WARNING_POP _Pragma("GCC diagnostic pop")
 #define WARNING_DISABLE_UNREFERENCED_PARAMETER _Pragma("GCC diagnostic ignored \"-Wunused-parameter\"")
 #define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
-#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
 #elif defined(_MSC_VER) // compiler type
@@ -255,7 +255,7 @@ constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
 }
 
 // TODO : keep this constant, but make it global and compile out the costs... we want to document that it's possible and how, but we have tested it and found it's worse
-static constexpr int k_iZeroResidual = -1;
-static constexpr int k_iZeroClassificationLogitAtInitialize = -1;
+static constexpr ptrdiff_t k_iZeroResidual = -1;
+static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
 #endif // TRANSPARENT_ML_CORE_INTERNAL_H

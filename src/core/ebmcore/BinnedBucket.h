@@ -168,7 +168,7 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
       size_t iVector = 0;
       do {
          const FractionalDataType residualError = *pResidualError;
-         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || iVector != k_iZeroResidual || 0 == residualError);
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
 #ifndef NDEBUG
          residualTotalDebug += residualError;
 #endif // NDEBUG
@@ -260,7 +260,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
 #endif // NDEBUG
          do {
             const FractionalDataType residualError = *pResidualError;
-            EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || iVector != k_iZeroResidual || 0 == residualError);
+            EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
 #ifndef NDEBUG
             residualTotalDebug += residualError;
 #endif // NDEBUG

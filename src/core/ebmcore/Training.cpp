@@ -178,7 +178,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
                constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
                if(bZeroingResiduals) {
-                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+                  pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
             pTrainingPredictionScores += cVectorLength;
@@ -293,7 +293,7 @@ static void TrainingSetTargetAttributeLoop(const AttributeCombinationCore * cons
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
                constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
                if(bZeroingResiduals) {
-                  pResidualError[static_cast<ptrdiff_t>(k_iZeroResidual) - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+                  pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
                }
             }
             pTrainingPredictionScores += cVectorLength;
