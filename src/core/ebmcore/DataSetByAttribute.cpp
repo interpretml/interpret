@@ -24,14 +24,14 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    const size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if (IsMultiplyError(cCases, cVectorLength)) {
+   if(IsMultiplyError(cCases, cVectorLength)) {
       LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
-   if (IsMultiplyError(sizeof(FractionalDataType), cElements)) {
+   if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
       LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
@@ -60,13 +60,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    }
    const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cCases;
 
-   if (IsMultiplyError(sizeof(void *), cAttributes)) {
+   if(IsMultiplyError(sizeof(void *), cAttributes)) {
       LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData IsMultiplyError(sizeof(void *), cAttributes)");
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cAttributes;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
-   if (nullptr == aaInputDataTo) {
+   if(nullptr == aaInputDataTo) {
       LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
@@ -76,7 +76,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    const AttributeInternalCore * const pAttributeEnd = aAttributes + cAttributes;
    do {
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
-      if (nullptr == pInputDataTo) {
+      if(nullptr == pInputDataTo) {
          LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
@@ -84,7 +84,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       ++paInputDataTo;
 
       // TODO : eliminate the counts here and use pointers
-      for (size_t iCase = 0; iCase < cCases; ++iCase) {
+      for(size_t iCase = 0; iCase < cCases; ++iCase) {
          // TODO: eliminate this extra internal index lookup (very bad!).  Since the attributes will be in-order, we can probably just use a single pointer to the input data and just keep incrementing it over all the attributes
          const IntegerDataType data = aInputDataFrom[pAttribute->m_iAttributeData * cCases + iCase];
          EBM_ASSERT(0 <= data);
@@ -95,13 +95,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       }
 
       ++pAttribute;
-   } while (pAttributeEnd != pAttribute);
+   } while(pAttributeEnd != pAttribute);
 
    LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
-   while (aaInputDataTo != paInputDataTo) {
+   while(aaInputDataTo != paInputDataTo) {
       --paInputDataTo;
       free(*paInputDataTo);
    }
@@ -123,7 +123,7 @@ DataSetInternalCore::~DataSetInternalCore() {
    LOG(TraceLevelInfo, "Entered ~DataSetInternalCore");
 
    free(const_cast<FractionalDataType *>(m_aResidualErrors));
-   if (nullptr != m_aaInputData) {
+   if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cAttributes);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;
       const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cAttributes;
@@ -131,7 +131,7 @@ DataSetInternalCore::~DataSetInternalCore() {
          EBM_ASSERT(nullptr != *paInputData);
          free(const_cast<StorageDataTypeCore *>(*paInputData));
          ++paInputData;
-      } while (paInputDataEnd != paInputData);
+      } while(paInputDataEnd != paInputData);
       free(const_cast<StorageDataTypeCore * *>(m_aaInputData));
    }
 

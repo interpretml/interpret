@@ -1191,7 +1191,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       LOG(TraceLevelVerbose, "TrainMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
-         if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+         if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
             LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
@@ -1218,7 +1218,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2LowBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
          } else if(cutFirst2HighBest < cutFirst2LowBest) {
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1235,7 +1235,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst2HighBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
          } else {
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1243,7 +1243,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
                return true;
             }
 
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1296,7 +1296,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             }
          }
       } else {
-         if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+         if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
             LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
             free(aBinnedBucketsDebugCopy);
@@ -1306,7 +1306,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
 
          if(cutFirst1LowBest < cutFirst1HighBest) {
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1314,7 +1314,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
                return true;
             }
 
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1324,7 +1324,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
          } else if(cutFirst1HighBest < cutFirst1LowBest) {
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1332,7 +1332,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
                return true;
             }
 
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
@@ -1342,14 +1342,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
-            if (pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
                LOG(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aBinnedBucketsDebugCopy);

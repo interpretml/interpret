@@ -55,7 +55,7 @@ public:
 
       EBM_ASSERT(0 < cAttributeCombinations);
       AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
-      if (LIKELY(nullptr != apAttributeCombinations)) {
+      if(LIKELY(nullptr != apAttributeCombinations)) {
          // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
          EBM_ASSERT(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
          memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);

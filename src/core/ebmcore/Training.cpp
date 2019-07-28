@@ -788,34 +788,34 @@ public:
    bool Initialize(const IntegerDataType randomSeed, const EbmAttribute * const aAttributes, const EbmAttributeCombination * const aAttributeCombinations, const IntegerDataType * attributeCombinationIndexes, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
       LOG(TraceLevelInfo, "Entered EbmTrainingState::Initialize");
       try {
-         if (m_bRegression) {
-            if (m_cachedThreadResourcesUnion.regression.IsError()) {
+         if(m_bRegression) {
+            if(m_cachedThreadResourcesUnion.regression.IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
                return true;
             }
          } else {
-            if (m_cachedThreadResourcesUnion.classification.IsError()) {
+            if(m_cachedThreadResourcesUnion.classification.IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
                return true;
             }
          }
 
-         if (nullptr == m_aAttributes) {
+         if(nullptr == m_aAttributes) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_aAttributes");
             return true;
          }
 
-         if (UNLIKELY(nullptr == m_apAttributeCombinations)) {
+         if(UNLIKELY(nullptr == m_apAttributeCombinations)) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apAttributeCombinations");
             return true;
          }
 
-         if (UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
+         if(UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
             return true;
          }
 
-         if (UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
+         if(UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
             return true;
          }
@@ -834,7 +834,7 @@ public:
 
             IntegerDataType countStates = pAttributeInitialize->countStates;
             EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-            if (!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
+            if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
                return true;
             }
@@ -855,19 +855,19 @@ public:
 
             ++iAttributeInitialize;
             ++pAttributeInitialize;
-         } while (pAttributeEnd != pAttributeInitialize);
+         } while(pAttributeEnd != pAttributeInitialize);
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize done attribute processing");
 
          size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
 
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize starting attribute combination processing");
          const IntegerDataType * pAttributeCombinationIndex = attributeCombinationIndexes;
-         for (size_t iAttributeCombination = 0; iAttributeCombination < m_cAttributeCombinations; ++iAttributeCombination) {
+         for(size_t iAttributeCombination = 0; iAttributeCombination < m_cAttributeCombinations; ++iAttributeCombination) {
             const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
 
             IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
             EBM_ASSERT(0 <= countAttributesInCombination);
-            if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
+            if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
                return true;
             }
@@ -947,7 +947,7 @@ public:
 
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pTrainingSet");
          m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
-         if (nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
+         if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
             return true;
          }
@@ -955,7 +955,7 @@ public:
 
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pValidationSet");
          m_pValidationSet = new (std::nothrow) DataSetAttributeCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
-         if (nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
+         if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
             return true;
          }
@@ -965,29 +965,29 @@ public:
 
          EBM_ASSERT(nullptr == m_apSamplingSets);
          m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
-         if (UNLIKELY(nullptr == m_apSamplingSets)) {
+         if(UNLIKELY(nullptr == m_apSamplingSets)) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
             return true;
          }
 
          EBM_ASSERT(nullptr == m_apCurrentModel);
          m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
-         if (nullptr == m_apCurrentModel) {
+         if(nullptr == m_apCurrentModel) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
             return true;
          }
          EBM_ASSERT(nullptr == m_apBestModel);
          m_apBestModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
-         if (nullptr == m_apBestModel) {
+         if(nullptr == m_apBestModel) {
             LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apBestModel");
             return true;
          }
 
-         if (m_bRegression) {
+         if(m_bRegression) {
             InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
             InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
          } else {
-            if (2 == m_cTargetStates) {
+            if(2 == m_cTargetStates) {
                InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
             } else {
                InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
@@ -1055,27 +1055,27 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    // validationPredictionScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countAttributes)");
       return nullptr;
    }
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countAttributeCombinations)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributeCombinations)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countAttributeCombinations)");
       return nullptr;
    }
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)");
       return nullptr;
    }
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)");
       return nullptr;
    }
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)");
       return nullptr;
    }
-   if (!IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)) {
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)");
       return nullptr;
    }
@@ -1089,11 +1089,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
 
    size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
 
-   if (IsMultiplyError(cVectorLength, cTrainingCases)) {
+   if(IsMultiplyError(cVectorLength, cTrainingCases)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cTrainingCases)");
       return nullptr;
    }
-   if (IsMultiplyError(cVectorLength, cValidationCases)) {
+   if(IsMultiplyError(cVectorLength, cValidationCases)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cValidationCases)");
       return nullptr;
    }
@@ -1106,11 +1106,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    LOG(TraceLevelInfo, "Entered EbmTrainingState");
    TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cAttributes, cAttributeCombinations, cInnerBags);
    LOG(TraceLevelInfo, "Exited EbmTrainingState %p", static_cast<void *>(pTmlState));
-   if (UNLIKELY(nullptr == pTmlState)) {
+   if(UNLIKELY(nullptr == pTmlState)) {
       LOG(TraceLevelWarning, "WARNING AllocateCore nullptr == pTmlState");
       return nullptr;
    }
-   if (UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+   if(UNLIKELY(pTmlState->Initialize(randomSeed, attributes, attributeCombinations, attributeCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
       LOG(TraceLevelWarning, "WARNING AllocateCore pTmlState->Initialize");
       delete pTmlState;
       return nullptr;
