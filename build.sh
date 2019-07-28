@@ -13,12 +13,13 @@ for arg in "$@"; do
 done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict 
-compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wnull-dereference -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
 
-   compile_mac="$compile_all -dynamiclib"
+   # try moving some of these clang specific warnings into compile_all if g++ eventually supports them
+   compile_mac="$compile_all -Wnull-dereference -dynamiclib"
 
    echo "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
