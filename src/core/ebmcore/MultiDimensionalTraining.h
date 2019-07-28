@@ -1708,30 +1708,14 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pAttributeCombination->m_cAttributes);
-   if(0 == cDimensions) {
-      // we could alternatively calculate the real interaction term by binning everying into one single bin, then calculating the score with ComputeNodeSplittingScore 
-      // BUT why would I do all that work.  In the end, we don't want to ever choose an interaction with zero attributes, so let's set it to zero, the lowest possible score
-      // so that it will never be selected by our calling framework.
-      *pInteractionScoreReturn = 0;
-      LOG(TraceLevelWarning, "WARNING Exited CalculateInteractionScore from zero dimensions.  Our caller should filter this out");
-      return false;
-   }
+   EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       const size_t cStates = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-      if(1 == cStates) {
-         // we could alternatively calculate the real interaction term by eliminating one dimension and then calculating the score on the reduced dimension representation, 
-         // which should be identical to how it would work without eliminating the one dimension
-         // BUT why would I do all that work.  In the end, we don't want to ever choose an interaction that has a dimension with 1 state since it should actually be processed with the reduced dimension combinations
-         // So let's set it to zero, the lowest possible score so that it will never be selected by our calling framework.
-         *pInteractionScoreReturn = 0;
-         LOG(TraceLevelWarning, "WARNING Exited CalculateInteractionScore from zero dimensions.  Our caller should filter this out");
-         return false;
-      }
-
-      EBM_ASSERT(2 <= cStates); // we filer out 1 == cStates.  If cStates could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
+      EBM_ASSERT(2 <= cStates); // situations with 1 state should have been filtered out before this function was called (but still inside the C++)
+      // if cStates could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cStates must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace; // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below

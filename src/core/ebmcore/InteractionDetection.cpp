@@ -232,33 +232,60 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       return 1;
    }
    size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
+   if(0 == cAttributesInCombination) {
+      LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information");
+      *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      return 0;
+   }
+
+   const AttributeInternalCore * const aAttributes = pEbmInteractionState->m_aAttributes;
+   const IntegerDataType * pAttributeCombinationIndex = attributeIndexes;
+   const IntegerDataType * const pAttributeCombinationIndexEnd = attributeIndexes + cAttributesInCombination;
+
+   do {
+      const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
+      EBM_ASSERT(0 <= indexAttributeInterop);
+      if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
+         LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
+         return 1;
+      }
+      size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
+      EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
+      const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
+      if(1 == pAttribute->m_cStates) {
+         LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with Attributes with only 1 state since these provide no useful information");
+         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+         return 0;
+      }
+      ++pAttributeCombinationIndex;
+   } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
+
    if(k_cDimensionsMax < cAttributesInCombination) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
       LOG(TraceLevelWarning, "WARNING GetInteractionScore k_cDimensionsMax < cAttributesInCombination");
       return 1;
    }
 
-   // TODO : !! change our code so that we don't need to allocate an AttributeCombinationCore each time we do an interaction score calculation
-   AttributeCombinationCore * pAttributeCombination = AttributeCombinationCore::Allocate(cAttributesInCombination, 0);
-   if(nullptr == pAttributeCombination) {
-      LOG(TraceLevelWarning, "WARNING GetInteractionScore nullptr == pAttributeCombination");
-      return 1;
-   }
-   AttributeInternalCore * const aAttributes = pEbmInteractionState->m_aAttributes;
-   for(size_t iAttributeInCombination = 0; iAttributeInCombination < cAttributesInCombination; ++iAttributeInCombination) {
-      IntegerDataType indexAttributeInterop = attributeIndexes[iAttributeInCombination];
+   // put the pAttributeCombination object on the stack. We want to put it into a AttributeCombinationCore object since we want to share code with training, which calls things like building the tensor totals (which is templated to be compiled many times)
+   char AttributeCombinationBuffer[k_cBytesAttributeCombinationMax];
+   AttributeCombinationCore * const pAttributeCombination = reinterpret_cast<AttributeCombinationCore *>(&AttributeCombinationBuffer);
+   pAttributeCombination->Initialize(cAttributesInCombination, 0);
+
+   pAttributeCombinationIndex = attributeIndexes; // restart from the start
+   AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
+   do {
+      const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
       EBM_ASSERT(0 <= indexAttributeInterop);
-      if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
-         LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
-         AttributeCombinationCore::Free(pAttributeCombination);
-         return 1;
-      }
-      // we already checked indexAttributeInterop was good above
+      EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop))); // we already checked indexAttributeInterop was good above
       size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
       EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
-      AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
-      pAttributeCombination->m_AttributeCombinationEntry[iAttributeInCombination].m_pAttribute = pAttribute;
-   }
+      const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
+      EBM_ASSERT(2 <= pAttribute->m_cStates); // we should have filtered out anything with 1 state above
+
+      pAttributeCombinationEntry->m_pAttribute = pAttribute;
+      ++pAttributeCombinationEntry;
+      ++pAttributeCombinationIndex;
+   } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
 
    IntegerDataType ret;
    if(pEbmInteractionState->m_bRegression) {
@@ -267,8 +294,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
       ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
-   AttributeCombinationCore::Free(pAttributeCombination);
-
+   EBM_ASSERT(0 <= *interactionScoreReturn);
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
    }

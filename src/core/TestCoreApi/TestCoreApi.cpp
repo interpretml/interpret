@@ -383,6 +383,313 @@ TEST_CASE("AttributeCombination with zero attributes, Interaction, multiclass") 
    FreeInteraction(pEbmInteraction);
 }
 
+TEST_CASE("AttributeCombination with one attribute with one state, Training, regression") {
+   constexpr IntegerDataType randomSeed = 42;
+   constexpr size_t cVectorLength = 1;
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinations = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cTrainingCases = 1;
+   constexpr size_t cValidationCases = 1;
+   constexpr IntegerDataType countInnerBags = 0;
+   constexpr IntegerDataType countIterations = 2;
+   constexpr FractionalDataType learningRate = 0.01;
+   constexpr IntegerDataType countTreeSplitsMax = 2;
+   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   FractionalDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
+   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
+   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
+   FractionalDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
+   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
+   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinations[0].countAttributesInCombination = 1;
+
+   combinationIndexes[0] = 0;
+
+   trainingTargets[0] = 10.5;
+   trainingData[0] = 0;
+   trainingPredictionScores[0] = 0;
+
+   validationTargets[0] = 10.4;
+   validationData[0] = 0;
+   validationPredictionScores[0] = 0;
+
+   PEbmTraining pEbmTraining = InitializeTrainingRegression(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
+
+   FractionalDataType validationMetricReturn;
+   IntegerDataType result;
+   int count = countIterations;
+   while(count--) {
+      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
+      CHECK(0 == result);
+      if(0 != result) {
+         return;
+      }
+      if(1 == count) {
+         CHECK_APPROX(validationMetricReturn, 10.295000000000000);
+      } else if(0 == count) {
+         CHECK_APPROX(validationMetricReturn, 10.191050000000001);
+      }
+   }
+   double * pModel = GetCurrentModel(pEbmTraining, 0);
+   double modelValue = pModel[0];
+   CHECK_APPROX(modelValue, 0.20895000000000000);
+   FreeTraining(pEbmTraining);
+}
+
+TEST_CASE("AttributeCombination with one attribute with one state, Training, Binary") {
+   constexpr IntegerDataType randomSeed = 42;
+   constexpr IntegerDataType countTargetStates = 2;
+   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinations = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cTrainingCases = 1;
+   constexpr size_t cValidationCases = 1;
+   constexpr IntegerDataType countInnerBags = 0;
+   constexpr IntegerDataType countIterations = 2;
+   constexpr FractionalDataType learningRate = 0.01;
+   constexpr IntegerDataType countTreeSplitsMax = 2;
+   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
+   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
+   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
+   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
+   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
+   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinations[0].countAttributesInCombination = 1;
+
+   combinationIndexes[0] = 0;
+
+   trainingTargets[0] = 0;
+   trainingData[0] = 0;
+   trainingPredictionScores[0] = 0;
+
+   validationTargets[0] = 0;
+   validationData[0] = 0;
+   validationPredictionScores[0] = 0;
+
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
+
+   FractionalDataType validationMetricReturn;
+   IntegerDataType result;
+   int count = countIterations;
+   while(count--) {
+      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
+      CHECK(0 == result);
+      if(0 != result) {
+         return;
+      }
+      if(1 == count) {
+         CHECK_APPROX(validationMetricReturn, 0.68319717972663419);
+      } else if(0 == count) {
+         CHECK_APPROX(validationMetricReturn, 0.67344419889200957);
+      }
+   }
+   double * pModel = GetCurrentModel(pEbmTraining, 0);
+   double modelValue = pModel[0];
+   CHECK_APPROX(modelValue, -0.039801986733067563);
+   FreeTraining(pEbmTraining);
+}
+
+TEST_CASE("AttributeCombination with one attribute with one state, Training, multiclass") {
+   constexpr IntegerDataType randomSeed = 42;
+   constexpr IntegerDataType countTargetStates = 3;
+   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinations = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cTrainingCases = 1;
+   constexpr size_t cValidationCases = 1;
+   constexpr IntegerDataType countInnerBags = 0;
+   constexpr IntegerDataType countIterations = 2;
+   constexpr FractionalDataType learningRate = 0.01;
+   constexpr IntegerDataType countTreeSplitsMax = 2;
+   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
+   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
+   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
+   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
+   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
+   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinations[0].countAttributesInCombination = 1;
+
+   combinationIndexes[0] = 0;
+
+   trainingTargets[0] = 0;
+   trainingData[0] = 0;
+   trainingPredictionScores[0] = 0;
+   trainingPredictionScores[1] = 0;
+   trainingPredictionScores[2] = 0;
+
+   validationTargets[0] = 0;
+   validationData[0] = 0;
+   validationPredictionScores[0] = 0;
+   validationPredictionScores[1] = 0;
+   validationPredictionScores[2] = 0;
+
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
+
+   FractionalDataType validationMetricReturn;
+   IntegerDataType result;
+   int count = countIterations;
+   while(count--) {
+      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
+      CHECK(0 == result);
+      if(0 != result) {
+         return;
+      }
+      if(1 == count) {
+         CHECK_APPROX(validationMetricReturn, 1.0688384008227103);
+      } else if(0 == count) {
+         CHECK_APPROX(validationMetricReturn, 1.0401627411809615);
+      }
+   }
+   double * pModel = GetCurrentModel(pEbmTraining, 0);
+   double modelValue1 = pModel[0];
+   double modelValue2 = pModel[1];
+   double modelValue3 = pModel[2];
+   CHECK_APPROX(modelValue1, 0.059119949636662006);
+   CHECK_APPROX(modelValue2, -0.029887518980531450);
+   CHECK_APPROX(modelValue3, -0.029887518980531450);
+   FreeTraining(pEbmTraining);
+}
+
+TEST_CASE("AttributeCombination with one attribute with one state, Interaction, regression") {
+   constexpr size_t cVectorLength = 1;
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cCases = 1;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   FractionalDataType targets[std::max(std::size_t { 1 }, cCases)];
+   IntegerDataType data[std::max(std::size_t { 1 }, cCases * cAttributes)];
+   FractionalDataType predictionScores[std::max(std::size_t { 1 }, cCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinationIndexes[0] = 0;
+
+   targets[0] = 10.5;
+   data[0] = 0;
+   predictionScores[0] = 0;
+
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(cAttributes, attributes, cCases, targets, data, predictionScores);
+
+   FractionalDataType metricReturn;
+   IntegerDataType result;
+   result = GetInteractionScore(pEbmInteraction, cAttributeCombinationsIndexes, combinationIndexes, &metricReturn);
+   CHECK(0 == result);
+   if(0 != result) {
+      return;
+   }
+   CHECK(0 == metricReturn);
+   FreeInteraction(pEbmInteraction);
+}
+
+TEST_CASE("AttributeCombination with one attribute with one state, Interaction, Binary") {
+   constexpr IntegerDataType countTargetStates = 2;
+   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cCases = 1;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   IntegerDataType targets[std::max(std::size_t { 1 }, cCases)];
+   IntegerDataType data[std::max(std::size_t { 1 }, cCases * cAttributes)];
+   FractionalDataType predictionScores[std::max(std::size_t { 1 }, cCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinationIndexes[0] = 0;
+
+   targets[0] = 0;
+   data[0] = 0;
+   predictionScores[0] = 0;
+
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(cAttributes, attributes, countTargetStates, cCases, targets, data, predictionScores);
+
+   FractionalDataType metricReturn;
+   IntegerDataType result;
+   result = GetInteractionScore(pEbmInteraction, cAttributeCombinationsIndexes, combinationIndexes, &metricReturn);
+   CHECK(0 == result);
+   if(0 != result) {
+      return;
+   }
+   CHECK(0 == metricReturn);
+   FreeInteraction(pEbmInteraction);
+}
+
+TEST_CASE("AttributeCombination with one attribute with one state, Interaction, multiclass") {
+   constexpr IntegerDataType countTargetStates = 3;
+   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
+   constexpr size_t cAttributes = 1;
+   constexpr size_t cAttributeCombinationsIndexes = 1;
+   constexpr size_t cCases = 1;
+
+   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
+   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
+   IntegerDataType targets[std::max(std::size_t { 1 }, cCases)];
+   IntegerDataType data[std::max(std::size_t { 1 }, cCases * cAttributes)];
+   FractionalDataType predictionScores[std::max(std::size_t { 1 }, cCases * cVectorLength)];
+
+   attributes[0].attributeType = AttributeTypeOrdinal;
+   attributes[0].countStates = 1;
+   attributes[0].hasMissing = 0;
+
+   combinationIndexes[0] = 0;
+
+   targets[0] = 0;
+   data[0] = 0;
+   predictionScores[0] = 0;
+   predictionScores[1] = 0;
+   predictionScores[2] = 0;
+
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(cAttributes, attributes, countTargetStates, cCases, targets, data, predictionScores);
+
+   FractionalDataType metricReturn;
+   IntegerDataType result;
+   result = GetInteractionScore(pEbmInteraction, cAttributeCombinationsIndexes, combinationIndexes, &metricReturn);
+   CHECK(0 == result);
+   if(0 != result) {
+      return;
+   }
+   CHECK(0 == metricReturn);
+   FreeInteraction(pEbmInteraction);
+}
 
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
    printf("%d - %s\n", traceLevel, message);
