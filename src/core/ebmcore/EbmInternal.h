@@ -15,7 +15,7 @@
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
 #define WARNING_POP _Pragma("clang diagnostic pop")
-#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("clang diagnostic ignored \"-Wmaybe-uninitialized\"")
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
