@@ -9,6 +9,7 @@ from interpret.ext.extension_utils import _validate_class_name
                                                ( "1332", False),
                                                ("&sgag", False),
                                                ("aaaaaa", True),
+                                               (",,,,", False),
                                                ("", False),
                                                ("_AmValid", True),
                                                ("_AM_NOT_NICE_BUT_VALID", True)])
