@@ -42,7 +42,6 @@ class FeatureValueExplanation(ExplanationMixin):
         from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar, plot_horizontal_bar2
         from ..visual.plot import get_sort_indexes, sort_take, sort_take2, plot_pairwise_heatmap
         data_dict = self.data(key)
-        mli_data = self.data(-1)["mli"]
         if data_dict is None:  # pragma: no cover
             return None
 
