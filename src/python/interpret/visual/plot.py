@@ -520,6 +520,13 @@ def sort_take(
 
 
 def get_sort_indexes(data, sort_fn=None, top_n=None):
+    if isinstance(data[0], list):
+        return get_sort_indexes_2d(data, sort_fn=sort_fn, top_n=top_n)
+    else:
+        return get_sort_indexes_1d(data, sort_fn=sort_fn, top_n=top_n)
+
+
+def get_sort_indexes_1d(data, sort_fn=None, top_n=None):
     if top_n is None:
         top_n = len(data)
 
@@ -530,9 +537,31 @@ def get_sort_indexes(data, sort_fn=None, top_n=None):
         return np.array(range(top_n))
 
 
+def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
+    if top_n is None:
+        top_n = len(data[0])
+
+    if sort_fn is not None:
+        out_list = []
+        for data_instance in data:
+            sorted_vals = list(map(sort_fn, data_instance))
+            out_list.append(np.argsort(sorted_vals)[:top_n])
+        return out_list
+    else:
+        return np.array(range(top_n))
+
+
 def sort_take2(
     data, sort_indexes, reverse_results=False
 ):
+    if isinstance(data[0], list):
+        out_list = []
+        for j, data_instance in enumerate(data):
+            if reverse_results:
+                out_list.append([data_instance[i] for i in reversed(sort_indexes[j])])
+            else:
+                out_list.append([data_instance[i] for i in sort_indexes[j]])
+        return out_list
     if reverse_results:
         return [data[i] for i in reversed(sort_indexes)]
     else:
