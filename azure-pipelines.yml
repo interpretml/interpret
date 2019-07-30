@@ -182,12 +182,14 @@ jobs:
     condition: in(variables['image.name'], 'macOS-10.13')
     displayName: 'Matplotlib patch for mac.'
   - script: |
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
       python -m pip install -r dev-requirements.txt
     workingDirectory: src/python
     displayName: 'Install requirements'
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
-      python -m pytest -vv --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest -vv --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: src/python
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Run pytest (Windows)'

@@ -25,7 +25,7 @@ public:
 };
 
 template<bool bRegression>
-class PredictionStatistics;
+struct PredictionStatistics;
 
 template<bool bRegression>
 class CachedTrainingThreadResources {

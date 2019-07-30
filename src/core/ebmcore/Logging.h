@@ -30,7 +30,8 @@ extern const char g_assertLogMessage[];
          assert(nullptr != g_pLogMessageFunc); \
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
-         if(0 == LOG__cArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
+         constexpr bool bZeroArguments = 0 == LOG__cArguments; \
+         if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
             (*g_pLogMessageFunc)(LOG__traceLevel, LOG__originalMessage); \
          } else { \
             InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, ##__VA_ARGS__); \
@@ -50,13 +51,14 @@ extern const char g_assertLogMessage[];
       static_assert(LOG__traceLevelBefore < LOG__traceLevelAfter, "We only support increasing the required trace level after N iterations and it doesn't make sense to have equal values, otherwise just use LOG(..)"); \
       if(UNLIKELY(LOG__traceLevelBefore <= g_traceLevel)) { \
          constexpr size_t LOG__cArguments = std::tuple_size<decltype(std::make_tuple(__VA_ARGS__))>::value; \
+         constexpr bool bZeroArguments = 0 == LOG__cArguments; \
          constexpr static char LOG__originalMessage[] = (pLogMessage); /* we only use pLogMessage once, which avoids pre and post decrement issues with macros */ \
          unsigned int * const LOG__pLogCountDecrement = (pLogCountDecrement); /* we only use pLogCountDecrement once, which avoids pre and post decrement issues with macros */ \
          const unsigned int LOG__logCount = *LOG__pLogCountDecrement; \
          if(0 < LOG__logCount) { \
             *LOG__pLogCountDecrement = LOG__logCount - 1; \
             assert(nullptr != g_pLogMessageFunc); \
-            if(0 == LOG__cArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
+            if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
                (*g_pLogMessageFunc)(LOG__traceLevelBefore, LOG__originalMessage); \
             } else { \
                InteralLogWithArguments(LOG__traceLevelBefore, LOG__originalMessage, ##__VA_ARGS__); \
@@ -64,7 +66,7 @@ extern const char g_assertLogMessage[];
          } else { \
             if(UNLIKELY(LOG__traceLevelAfter <= g_traceLevel)) { \
                assert(nullptr != g_pLogMessageFunc); \
-               if(0 == LOG__cArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
+               if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
                   (*g_pLogMessageFunc)(LOG__traceLevelAfter, LOG__originalMessage); \
                } else { \
                   InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, ##__VA_ARGS__); \
@@ -79,7 +81,7 @@ extern const char g_assertLogMessage[];
 // the "assert(!#bCondition)" condition needs some explanation.  At that point we definetly want to assert false, and we also want to include the text of the assert that triggered the failure.
 // Any string will have a non-zero pointer, so negating it will always fail, and we'll get to see the text of the original failure in the message
 // this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion failures without using the undocumented function that assert calls internally on each platform
-#define EBM_ASSERT(bCondition) ((void)(UNLIKELY(bCondition) ? 0 : (assert(UNLIKELY(nullptr != g_pLogMessageFunc)), UNLIKELY(TraceLevelError <= g_traceLevel) ? (InteralLogWithArguments(TraceLevelError, g_assertLogMessage, static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), 0) : 0, assert(!#bCondition), 0)))
+#define EBM_ASSERT(bCondition) ((void)(UNLIKELY(bCondition) ? 0 : (assert(UNLIKELY(nullptr != g_pLogMessageFunc)), UNLIKELY(TraceLevelError <= g_traceLevel) ? (InteralLogWithArguments(TraceLevelError, g_assertLogMessage, static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), 0) : 0, assert(!   #bCondition), 0)))
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG

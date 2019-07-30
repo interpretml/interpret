@@ -7,6 +7,40 @@
 
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
+#include <limits> // numeric_limits
+
+#define UNUSED(x) (void)(x)
+
+#if defined(__clang__) // compiler type
+
+#define WARNING_PUSH _Pragma("clang diagnostic push")
+#define WARNING_POP _Pragma("clang diagnostic pop")
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING _Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"")
+
+#elif defined(__GNUC__) // compiler type
+
+#define WARNING_PUSH _Pragma("GCC diagnostic push")
+#define WARNING_POP _Pragma("GCC diagnostic pop")
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+
+#elif defined(_MSC_VER) // compiler type
+
+#define WARNING_PUSH __pragma(warning(push))
+#define WARNING_POP __pragma(warning(pop))
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE __pragma(warning(disable: 4701))
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+
+#else  // compiler type
+#error compiler not recognized
+#endif // compiler type
 
 #if defined(__clang__) || defined(__GNUC__) // compiler
 #ifndef __has_builtin
@@ -23,24 +57,30 @@
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
 
-#define TML_INLINE inline
-#elif defined(_MSC_VER) /* compiler type */
+#define TML_INLINE inline __attribute__((always_inline))
+
+// TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are not aliased
+// EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program (the memory wasn't reached previously)
+#define EBM_RESTRICT_FUNCTION_RETURN __declspec(restrict)
+// EBM_RESTRICT_PARAM_VARIABLE tells the compiler that a pointer passed into a function doesn't refer to memory passed in via annohter pointer
+#define EBM_RESTRICT_PARAM_VARIABLE __restrict
+// EBM_NOALIAS tells the compiler that a function does not modify global state and only modified data DIRECTLY pointed to via it's parameters (first level indirection)
+#define EBM_NOALIAS __declspec(noalias)
+
+#elif defined(_MSC_VER) // compiler type
+
 #define LIKELY(b) (b)
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
 #define TML_INLINE __forceinline
-#else // compiler
-#error compiler not recognized
-#endif // compiler
 
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(push)
-#pragma warning(disable: 4018) // signed/unsigned mismatch
-#else // compiler
+#else // compiler type
 #error compiler not recognized
-#endif // compiler
+#endif // compiler type
+
+WARNING_PUSH
+WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
 constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
@@ -90,12 +130,8 @@ constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
    //   }
    //}
 }
-#if defined(__clang__) || defined(__GNUC__) // compiler
-#elif defined(_MSC_VER) /* compiler type */
-#pragma warning(pop)
-#else // compiler
-#error compiler not recognized
-#endif // compiler
+
+WARNING_POP
 
 enum AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
 
@@ -138,17 +174,17 @@ constexpr TML_INLINE bool IsBinaryClassification(ptrdiff_t cCompilerClassificati
 constexpr TML_INLINE size_t GetVectorLengthFlatCore(ptrdiff_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 1 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #else // TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 2 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #endif // TREAT_BINARY_AS_MULTICLASS
 }
 constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 1 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #else // TREAT_BINARY_AS_MULTICLASS
-   return cTargetStates <= 2 ? static_cast<size_t>(1) : static_cast<size_t>(cTargetStates);
+   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #endif // TREAT_BINARY_AS_MULTICLASS
 }
 
@@ -176,9 +212,9 @@ constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
 template<typename T>
-constexpr size_t CountBitsRequiredCore(T cBitsMax) {
+constexpr size_t CountBitsRequiredCore(T maxValue) {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return 0 == cBitsMax ? 0 : 1 + CountBitsRequiredCore<T>(cBitsMax / 2);
+   return 0 == maxValue ? 0 : 1 + CountBitsRequiredCore<T>(maxValue / 2);
 }
 template<typename T>
 constexpr size_t CountBitsRequiredPositiveMax() {
@@ -207,6 +243,8 @@ constexpr TML_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPac
    return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }
 
+WARNING_PUSH
+WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 // TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
 // TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
 constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
@@ -219,6 +257,7 @@ constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
    // it will never overflow if num1 is zero
    return 0 != num1 && ((std::numeric_limits<size_t>::max() - num1 + 1) / num1 < num2);
 }
+WARNING_POP
 
 constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
@@ -226,7 +265,7 @@ constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
 }
 
 // TODO : keep this constant, but make it global and compile out the costs... we want to document that it's possible and how, but we have tested it and found it's worse
-static constexpr int k_iZeroResidual = -1;
-static constexpr int k_iZeroClassificationLogitAtInitialize = -1;
+static constexpr ptrdiff_t k_iZeroResidual = -1;
+static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
 #endif // TRANSPARENT_ML_CORE_INTERNAL_H

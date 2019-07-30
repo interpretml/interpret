@@ -13,7 +13,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
-class PredictionStatistics;
+struct PredictionStatistics;
 
 template<>
 struct PredictionStatistics<false> final {
@@ -55,9 +55,10 @@ struct PredictionStatistics<true> final {
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
-      return static_cast<FractionalDataType>(0);
+      return FractionalDataType { 0 };
    }
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
+      UNUSED(sumDenominator);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
    TML_INLINE void Add(const PredictionStatistics<true> & other) {

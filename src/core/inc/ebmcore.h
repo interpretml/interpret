@@ -18,7 +18,7 @@ extern "C" {
 #define EBMCORE_IMPORT_EXPORT __attribute__ ((visibility ("default")))
 #define EBMCORE_CALLING_CONVENTION
 
-#elif defined(_MSC_VER) /* compiler type */
+#elif defined(_MSC_VER) // compiler type
 
 #ifdef EBMCORE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
@@ -37,9 +37,9 @@ extern "C" {
 #define EBMCORE_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
-#else // compiler
+#else // compiler type
 #error compiler not recognized
-#endif // compiler
+#endif // compiler type
 
 typedef struct {
    // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
