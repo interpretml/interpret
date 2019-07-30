@@ -59,11 +59,11 @@ class FeatureValueExplanation(ExplanationMixin):
                 local_explanation = explanation_list[0]["value"]
                 scores = local_explanation["scores"]
                 perf = local_explanation["perf"]
-                sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
-                sorted_scores = sort_take2(scores, sort_indexes, reverse_results=True)
+                sort_indexes = get_sort_indexes(scores[key], sort_fn=lambda x: -abs(x), top_n=15)
+                sorted_scores = sort_take2(scores[key], sort_indexes, reverse_results=True)
                 sorted_names = sort_take2(self.feature_names, sort_indexes, reverse_results=True)
                 instances = explanation_list[1]["value"]["dataset_x"]
-                return plot_horizontal_bar2(sorted_scores[key], sorted_names[key], values=instances[key], perf=perf[key])
+                return plot_horizontal_bar2(sorted_scores, sorted_names, values=instances[key], perf=perf[key])
             else:
                 data_dict = sort_take(
                     data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
