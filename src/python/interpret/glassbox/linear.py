@@ -266,11 +266,13 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        from ..visual.plot import sort_take, sort_take2, get_sort_indexes, plot_horizontal_bar, plot_horizontal_bar2
+        from ..visual.plot import sort_take, sort_take2, get_sort_indexes, get_explanation_index, \
+            plot_horizontal_bar, plot_horizontal_bar2
 
         if "mli" in self.data(-1) and self.explanation_type == "global":
             explanation_list = self.data(-1)["mli"]
-            scores = explanation_list[0]["value"]["scores"]
+            explanation_index = get_explanation_index(explanation_list, "global_feature_importance")
+            scores = explanation_list[explanation_index]["value"]["scores"]
             sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
             sorted_scores = sort_take2(scores, sort_indexes, reverse_results=True)
             sorted_names = sort_take2(self.feature_names, sort_indexes, reverse_results=True)

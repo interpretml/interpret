@@ -40,7 +40,7 @@ class FeatureValueExplanation(ExplanationMixin):
 
     def visualize(self, key=None):
         from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar, plot_horizontal_bar2
-        from ..visual.plot import get_sort_indexes, sort_take, sort_take2, plot_pairwise_heatmap
+        from ..visual.plot import get_sort_indexes, get_explanation_index, sort_take, sort_take2, plot_pairwise_heatmap
         data_dict = self.data(key)
         if data_dict is None:  # pragma: no cover
             return None
@@ -56,7 +56,8 @@ class FeatureValueExplanation(ExplanationMixin):
         if self.explanation_type == "local":
             if "mli" in self.data(-1):
                 explanation_list = self.data(-1)["mli"]
-                local_explanation = explanation_list[0]["value"]
+                explanation_index = get_explanation_index(explanation_list, "local_feature_importance")
+                local_explanation = explanation_list[explanation_index]["value"]
                 scores = local_explanation["scores"]
                 perf = local_explanation["perf"]
                 sort_indexes = get_sort_indexes(scores[key], sort_fn=lambda x: -abs(x), top_n=15)

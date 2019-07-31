@@ -534,7 +534,7 @@ def get_sort_indexes_1d(data, sort_fn=None, top_n=None):
         scored_vals = list(map(sort_fn, data))
         return np.argsort(scored_vals)[:top_n]
     else:
-        return np.array(range(top_n))
+        return np.arange(top_n)
 
 
 def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
@@ -548,7 +548,7 @@ def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
             out_list.append(np.argsort(sorted_vals)[:top_n])
         return out_list
     else:
-        return np.array(range(top_n))
+        return np.arange(top_n)
 
 
 def sort_take2(
@@ -566,6 +566,12 @@ def sort_take2(
         return [data[i] for i in reversed(sort_indexes)]
     else:
         return [data[i] for i in sort_indexes]
+
+def get_explanation_index(explanation_list, explanation_type):
+    for i, explanation in enumerate(explanation_list):
+        if explanation["explanation_type"] == explanation_type:
+            return i
+    return None
 
 
 def rules_to_html(data_dict, title=""):
