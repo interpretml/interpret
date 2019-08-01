@@ -21,6 +21,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 #include "ebmcore.h"
 
