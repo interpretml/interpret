@@ -6,7 +6,6 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
 from ..utils import perf_dict, hist_per_column
 from ..utils import unify_data
-from ..visual.plot import sort_take, plot_horizontal_bar
 
 from abc import abstractmethod
 from sklearn.base import is_classifier
@@ -239,6 +238,8 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        from ..visual.plot import sort_take, plot_horizontal_bar
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

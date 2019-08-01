@@ -74,25 +74,25 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebmcore_win_x86_debug</TargetName>
+    <TargetName>lib_ebmcore_win_x86_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebmcore_win_x64_debug</TargetName>
+    <TargetName>lib_ebmcore_win_x64_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebmcore_win_x86</TargetName>
+    <TargetName>lib_ebmcore_win_x86</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebmcore_win_x64</TargetName>
+    <TargetName>lib_ebmcore_win_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -106,34 +106,34 @@
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <StringPooling>true</StringPooling>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.dll" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86_debug.pdb" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
+EXIT /B 0
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -149,34 +149,35 @@ IF %ERRORLEVEL% NEQ 0 (
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <OmitFramePointers>false</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.dll" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64_debug.pdb" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
+EXIT /B 0
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -187,7 +188,7 @@ IF %ERRORLEVEL% NEQ 0 (
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -195,6 +196,16 @@ IF %ERRORLEVEL% NEQ 0 (
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -203,28 +214,20 @@ IF %ERRORLEVEL% NEQ 0 (
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.dll" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x86.pdb" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
+EXIT /B 0
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -235,7 +238,7 @@ IF %ERRORLEVEL% NEQ 0 (
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -243,6 +246,16 @@ IF %ERRORLEVEL% NEQ 0 (
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <OmitFramePointers>true</OmitFramePointers>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <CreateHotpatchableImage>false</CreateHotpatchableImage>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <OpenMPSupport>false</OpenMPSupport>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -251,28 +264,20 @@ IF %ERRORLEVEL% NEQ 0 (
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb" "$(ProjectDir)..\..\..\src\python\interpret\lib\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
+robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+ECHO robocopy returned error code %ERRORLEVEL%
+IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.dll" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
-xcopy /Y "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\ebmcore_win_x64.pdb" "$(ProjectDir)..\..\..\staging\"
-IF %ERRORLEVEL% NEQ 0 (
-   ECHO xcopy returned error code %ERRORLEVEL%
-   EXIT /B %ERRORLEVEL%
-)
+EXIT /B 0
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -310,9 +315,18 @@ IF %ERRORLEVEL% NEQ 0 (
     </ClCompile>
     <ClCompile Include="SamplingWithReplacement.cpp" />
     <ClCompile Include="Training.cpp" />
+    <ClCompile Include="WrapFunc.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ebmcore.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="EbmCoreExports.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

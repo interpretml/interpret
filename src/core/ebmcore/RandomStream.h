@@ -17,7 +17,7 @@ class RandomStream final {
 
 public:
    TML_INLINE RandomStream(const IntegerDataType seed)
-      : m_randomGenerator((unsigned int)seed) /* initializing default_random_engine doesn't have official nothrow properties, but a random number generator should not have to throw */ {
+      : m_randomGenerator(static_cast<unsigned int>(seed)) /* initializing default_random_engine doesn't have official nothrow properties, but a random number generator should not have to throw */ {
       // TODO : change this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
    }
 

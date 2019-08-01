@@ -49,13 +49,15 @@ class AppRunner:
                 port = random.randint(7000, 7999)
                 if self._local_port_available(port, rais=False):
                     self.port = port
-                    log.debug("Found open port: {0}".format(port))
+                    log.info("Found open port: {0}".format(port))
                     break
-                else:
-                    log.debug("Port already in use: {0}".format(port))
+                else:  # pragma: no cover
+                    log.info("Port already in use: {0}".format(port))
 
-            else:
-                msg = "Could not find open port"
+            else:  # pragma: no cover
+                msg = """Could not find open port.
+                Consider calling `interpret.set_show_addr(("127.0.0.1", 7001))` first.
+                """
                 log.error(msg)
                 raise RuntimeError(msg)
         else:
@@ -77,7 +79,7 @@ class AppRunner:
             sock.bind(("::1", port))
             sock.listen(backlog)
             sock.close()
-        except socket.error:
+        except socket.error:  # pragma: no cover
             if rais:
                 raise RuntimeError(
                     "The server is already running on port {0}".format(port)
@@ -88,14 +90,17 @@ class AppRunner:
 
     def stop(self):
         # Shutdown
-        log.debug("Triggering shutdown")
+        if self._thread is None:
+            return True
+
+        log.info("Triggering shutdown")
         try:
             path = _build_path("shutdown")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
             r = requests.post(url)
             log.debug(r)
-        except requests.exceptions.RequestException as e:
-            log.debug("Dashboard stop failed: {0}".format(e))
+        except requests.exceptions.RequestException as e:  # pragma: no cover
+            log.info("Dashboard stop failed: {0}".format(e))
             return False
 
         if self._thread is not None:
@@ -103,6 +108,8 @@ class AppRunner:
             if self._thread.is_alive():
                 log.error("Thread still alive despite shutdown called.")
                 return False
+
+            self._thread = None
 
         return True
 
@@ -115,14 +122,14 @@ class AppRunner:
             server = WSGIServer((self.ip, self.port), self.app, log=devnull)
             self.app.config["server"] = server
             server.serve_forever()
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(e, exc_info=True)
 
     def _obj_id(self, obj):
         return str(id(obj))
 
     def start(self):
-        log.debug("Running app runner on: {0}:{1}".format(self.ip, self.port))
+        log.info("Running app runner on: {0}:{1}".format(self.ip, self.port))
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -133,11 +140,11 @@ class AppRunner:
         try:
             path = _build_path("")
             url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
-            requests.post(url)
-            log.debug("Dashboard ping succeeded")
+            requests.get(url)
+            log.info("Dashboard ping succeeded")
             return True
-        except requests.exceptions.RequestException as e:
-            log.debug("Dashboard ping failed: {0}".format(e))
+        except requests.exceptions.RequestException as e:  # pragma: no cover
+            log.info("Dashboard ping failed: {0}".format(e))
             return False
 
     def status(self):
@@ -145,7 +152,7 @@ class AppRunner:
         status_dict["addr"] = self.ip, self.port
         status_dict["base_url"] = self.base_url
         status_dict["use_relative_links"] = self.use_relative_links
-        status_dict["thread_alive"] = self._thread.is_alive()
+        status_dict["thread_alive"] = self._thread.is_alive() if self._thread else False
 
         http_reachable = self.ping()
         status_dict["http_reachable"] = http_reachable
@@ -156,7 +163,7 @@ class AppRunner:
         # The path to this instance should be id based.
         self.app.register(ctx, **kwargs)
 
-    def display(self, ctx, width="100%", height=800, open_link=False):
+    def display_link(self, ctx):
         obj_path = self._obj_id(ctx) + "/"
         path = (
             obj_path
@@ -170,7 +177,12 @@ class AppRunner:
         )
 
         url = "{0}{1}".format(start_url, path)
-        log.debug("Display URL: {0}".format(url))
+        log.info("Display URL: {0}".format(url))
+
+        return url
+
+    def display(self, ctx, width="100%", height=800, open_link=False):
+        url = self.display_link(ctx)
 
         html_str = "<!-- {0} -->\n".format(url)
         if open_link:
@@ -214,7 +226,7 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            log.debug("Creating App Entry: {0}".format(ctx_id))
+            log.info("Creating App Entry: {0}".format(ctx_id))
             ctx_path = (
                 "/{0}/".format(ctx_id)
                 if self.base_url is None
@@ -243,27 +255,26 @@ class DispatcherApp:
         try:
 
             if path_info == self.root_path:
-                log.debug("Root path requested.")
+                log.info("Root path requested.")
                 start_response("200 OK", [("content-type", "text/html")])
                 content = self._root_content()
                 return [content.encode("utf-8")]
 
             if path_info == self.shutdown_path:
-                log.debug("Shutting down.")
+                log.info("Shutting down.")
                 server = self.config["server"]
                 server.stop()
                 start_response("200 OK", [("content-type", "text/html")])
                 return ["Shutdown".encode("utf-8")]
 
             if path_info == self.favicon_path:
-                log.debug("Favicon requested.")
+                log.info("Favicon requested.")
 
                 start_response("200 OK", [("content-type", "image/x-icon")])
                 with open(self.favicon_res, "rb") as handler:
                     return [handler.read()]
 
             match = re.search(self.app_pattern, path_info)
-            log.debug("App pattern match: {0}".format(match))
             if match is None or self.pool.get(match.group(1), None) is None:
                 msg = "URL not supported: {0}".format(path_info)
                 log.error(msg)
@@ -271,19 +282,19 @@ class DispatcherApp:
                 return [msg.encode("utf-8")]
 
             ctx_id = match.group(1)
-            log.debug("Routing request: {0}".format(ctx_id))
+            log.info("Routing request: {0}".format(ctx_id))
             app = self.pool[ctx_id]
             if self.base_url and not environ["PATH_INFO"].startswith(
                 "/{0}".format(self.base_url)
             ):
-                log.debug("No base url in path. Rewrite to include in path.")
+                log.info("No base url in path. Rewrite to include in path.")
                 environ["PATH_INFO"] = "/{0}{1}".format(
                     self.base_url, environ["PATH_INFO"]
                 )
 
             return app(environ, start_response)
 
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(e, exc_info=True)
             try:
                 start_response(

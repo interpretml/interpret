@@ -71,14 +71,14 @@ setup(
     packages=find_packages(),
     package_data={
         "interpret": [
-            "lib/ebmcore_win_x64.dll",
-            "lib/ebmcore_linux_x64.so",
-            "lib/ebmcore_mac_x64.dylib",
-            "lib/ebmcore_win_x64_debug.dll",
-            "lib/ebmcore_linux_x64_debug.so",
-            "lib/ebmcore_mac_x64_debug.dylib",
-            "lib/ebmcore_win_x64.pdb",
-            "lib/ebmcore_win_x64_debug.pdb",
+            "lib/lib_ebmcore_win_x64.dll",
+            "lib/lib_ebmcore_linux_x64.so",
+            "lib/lib_ebmcore_mac_x64.dylib",
+            "lib/lib_ebmcore_win_x64_debug.dll",
+            "lib/lib_ebmcore_linux_x64_debug.so",
+            "lib/lib_ebmcore_mac_x64_debug.dylib",
+            "lib/lib_ebmcore_win_x64.pdb",
+            "lib/lib_ebmcore_win_x64_debug.pdb",
             "visual/assets/udash.css",
             "visual/assets/udash.js",
             "visual/assets/favicon.ico",
@@ -117,7 +117,7 @@ setup(
         "ipykernel>=5.1.0",
         "ipython>=7.4.0",
         "numpy>=1.15.1",
-        "scipy>=1.2.1"
+        "scipy>=1.2.1",
     ],
     extras_require=EXTRAS
 )

@@ -7,7 +7,10 @@ from .utils import assert_valid_explanation, assert_valid_model_explainer
 
 from ..glassbox import LogisticRegression
 
+import pytest
 
+
+@pytest.mark.slow
 def test_spec_synthetic():
     all_explainers = get_all_explainers()
     data = synthetic_classification()

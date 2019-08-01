@@ -1,6 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+# NOTE: This module is going to through some major refactoring shortly. Do not use directly.
+
 import plotly.graph_objs as go
 import numpy as np
 from plotly import tools
@@ -69,7 +71,7 @@ def plot_performance_curve(
 
 
 def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x_vals = data_dict["names"].copy()
@@ -141,11 +143,16 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
         xaxis=dict(title=xtitle),
         yaxis=dict(title=ytitle),
     )
+    yrange = None
+    if data_dict.get("scores_range", None) is not None:
+        scores_range = data_dict["scores_range"]
+        yrange = scores_range
+
     main_fig = go.Figure(data=data, layout=layout)
 
     # Add density
     if data_dict.get("density", None) is not None:
-        figure = _plot_with_density(data_dict["density"], main_fig, title=title)
+        figure = _plot_with_density(data_dict["density"], main_fig, title=title, yrange=yrange)
     else:
         figure = main_fig
 
@@ -217,6 +224,7 @@ def _plot_with_density(
     title="",
     xtitle="",
     ytitle="",
+    yrange=None,
     is_categorical=False,
     density_name="Distribution",
 ):
@@ -227,6 +235,9 @@ def _plot_with_density(
     figure = _two_plot(main_fig, bar_fig, title=title, share_xaxis=is_categorical)
     figure["layout"]["yaxis1"].update(title="Score")
     figure["layout"]["yaxis2"].update(title="Density")
+
+    if yrange is not None:
+        figure["layout"]["yaxis1"].update(range=yrange)
 
     return figure
 
@@ -247,7 +258,7 @@ def _two_plot(main_fig, secondary_fig, title="", share_xaxis=True):
 def plot_line(
     data_dict, title=None, xtitle="", ytitle="", name="Main", color=COLORS[0]
 ):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x_vals = data_dict["names"].copy()
@@ -326,7 +337,7 @@ def plot_line(
 
 
 def plot_bar(data_dict, title="", xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     x = data_dict["names"].copy()
@@ -347,12 +358,16 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
         xaxis=dict(title=xtitle, type="category"),
         yaxis=dict(title=ytitle),
     )
+    yrange = None
+    if data_dict.get("scores_range", None) is not None:
+        scores_range = data_dict["scores_range"]
+        yrange = scores_range
     main_fig = go.Figure(data=[trace], layout=layout)
 
     # Add density
     if data_dict.get("density", None) is not None:
         figure = _plot_with_density(
-            data_dict["density"], main_fig, title=title, is_categorical=True
+            data_dict["density"], main_fig, title=title, is_categorical=True, yrange=yrange
         )
     else:
         figure = main_fig
@@ -374,7 +389,7 @@ def _names_with_values(names, values):
 
 
 def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     scores = data_dict["scores"].copy()
@@ -424,7 +439,7 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
 
 
 def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
-    if data_dict.get("scores", None) is None:
+    if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
     bin_labels_left = data_dict["left_names"]
@@ -432,6 +447,9 @@ def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
     bin_vals = data_dict["scores"]
 
     heatmap = go.Heatmap(z=bin_vals.T, x=bin_labels_left, y=bin_labels_right)
+    if data_dict.get("scores_range", None) is not None:
+        heatmap["zmin"] = data_dict["scores_range"][0]
+        heatmap["zmax"] = data_dict["scores_range"][1]
 
     layout = go.Layout(title=title, xaxis=dict(title=xtitle), yaxis=dict(title=ytitle))
     figure = go.Figure(data=[heatmap], layout=layout)
@@ -517,7 +535,7 @@ def rules_to_html(data_dict, title=""):
         template_list.append(template_item)
     if len(template_list) != 0:
         rule_final = " ".join(template_list)
-    else:
+    else:  # pragma: no cover
         rule_final = "<h2>No rules found.</h2>"
 
     html_str = multi_html_template.format(title=title, rules=rule_final)

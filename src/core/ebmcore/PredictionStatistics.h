@@ -10,15 +10,17 @@
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
-class PredictionStatistics;
+struct PredictionStatistics;
 
 template<>
 struct PredictionStatistics<false> final {
    // classification version of the PredictionStatistics class
 
    FractionalDataType sumResidualError;
+   // TODO: for single features, we probably want to just do a single pass of the data and collect our sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
    FractionalDataType sumDenominator;
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
@@ -40,8 +42,8 @@ struct PredictionStatistics<false> final {
       sumDenominator = other.sumDenominator;
    }
    TML_INLINE void AssertZero() {
-      assert(0 == sumResidualError);
-      assert(0 == sumDenominator);
+      EBM_ASSERT(0 == sumResidualError);
+      EBM_ASSERT(0 == sumDenominator);
    }
 };
 
@@ -52,11 +54,12 @@ struct PredictionStatistics<true> final {
    FractionalDataType sumResidualError;
 
    TML_INLINE FractionalDataType GetSumDenominator() const {
-      assert(false); // this should never be called, but the compiler seems to want it to exist
-      return static_cast<FractionalDataType>(0);
+      EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
+      return FractionalDataType { 0 };
    }
    TML_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
-      assert(false); // this should never be called, but the compiler seems to want it to exist
+      UNUSED(sumDenominator);
+      EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
    TML_INLINE void Add(const PredictionStatistics<true> & other) {
       sumResidualError += other.sumResidualError;
@@ -68,7 +71,7 @@ struct PredictionStatistics<true> final {
       sumResidualError = other.sumResidualError;
    }
    TML_INLINE void AssertZero() {
-      assert(0 == sumResidualError);
+      EBM_ASSERT(0 == sumResidualError);
    }
 };
 

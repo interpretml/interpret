@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.10] - 2019-07-16
+### Fixed
+- Fix for duplicated logs.
+- EBM now throws exception for multi-class (not supported yet).
+- Added requests as dependency.
+### Changed
+- File requirements.txt renamed to dev-requirements.txt
+- Native libraries' names now start with 'lib_' prefix.
+- Adjusted return type for debug_mode method to provide logging handler.
+- EBM native layer upgraded asserts to use logging.
+- EBM native layer hardened for edge case data.
+- Adjustments to dev dependencies.
+- Method debug_mode defaults log level to INFO.
+
+## [v0.1.9] - 2019-06-14
+### Added
+- Added method debug_mode in develop module.
+- Connected native logging to Python layer.
+- Native libraries can now be in release/debug mode.
+### Fixed
+- Increased system compatibility for C++ code.
+### Changed
+- Debug related methods expose memory info in human readable form.
+- Clean-up of logging levels.
+- Various internal C+ fixes.
+
+## [v0.1.8] - 2019-06-07
+### Fixed
+- Fixed calibration issue with EBM.
+- Method show_link fix for anonymous explanation lists.
+### Changed
+- Method show_link now takes same arguments as show.
+- Better error messages with random port allocation.
+- More testing for various modules.
+- Various internal C+ fixes.
+
+## [v0.1.7] - 2019-06-03
+### Added
+- Added show_link method. Exposes the URL of show(explanation) as a returned string.
+### Fixed
+- Fixed shutdown_show_server, can now be called multiple times without failure.
+### Changed
+- Hardened status_show_server method.
+- Testing added for interactive module.
+- Removal of extra memory allocation in C++ code for EBM.
+- Various internal C++ fixes.
+
+## [v0.1.6] - 2019-05-31
+### Added
+- Integer indexing for preserve method.
+- Public-facing CI build added. Important for pull requests.
+### Changed
+- Visual-related imports are now loaded when visualize is called for explanations.
+
 ## [v0.1.5] - 2019-05-30
 ### Added
 - Added preserve method. Can now save visuals into notebook/file - does not work with decision trees.
@@ -66,6 +120,11 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.10]: https://github.com/microsoft/interpret/releases/tag/v0.1.10
+[v0.1.9]: https://github.com/microsoft/interpret/releases/tag/v0.1.9
+[v0.1.8]: https://github.com/microsoft/interpret/releases/tag/v0.1.8
+[v0.1.7]: https://github.com/microsoft/interpret/releases/tag/v0.1.7
+[v0.1.6]: https://github.com/microsoft/interpret/releases/tag/v0.1.6
 [v0.1.5]: https://github.com/microsoft/interpret/releases/tag/v0.1.5
 [v0.1.4]: https://github.com/microsoft/interpret/releases/tag/v0.1.4
 [v0.1.3]: https://github.com/microsoft/interpret/releases/tag/v0.1.3

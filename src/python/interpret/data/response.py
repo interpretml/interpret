@@ -3,9 +3,7 @@
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import unify_data, gen_name_from_class, gen_global_selector
-from ..visual.plot import plot_density, COLORS
 
-import plotly.graph_objs as go
 import numpy as np
 from scipy.stats import pearsonr
 
@@ -120,6 +118,9 @@ class MarginalExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_density
+        import plotly.graph_objs as go
+
         data_dict = self.data(key)
         if data_dict is None:
             return None
@@ -275,6 +276,9 @@ class ClassHistogramExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
+        from ..visual.plot import plot_density, COLORS
+        import plotly.graph_objs as go
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

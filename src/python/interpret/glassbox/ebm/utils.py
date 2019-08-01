@@ -1,8 +1,9 @@
 # Copyright (c) 2019 Microsoft Corporation
+
 # Distributed under the MIT software license
 # TODO: Test EBMUtils
 
-from sklearn.utils.extmath import softmax
+from scipy.special import expit
 import numpy as np
 
 import logging
@@ -87,8 +88,10 @@ class EBMUtils:
             estimator.intercept_,
             skip_attr_set_idxs,
         )
-        log_odds_trans = np.c_[-log_odds_vector, log_odds_vector]
-        scores = softmax(log_odds_trans, copy=True)
+
+        # NOTE: Generalize predict when multiclass is supported.
+        prob = expit(log_odds_vector)
+        scores = np.vstack([1 - prob, prob]).T
         return scores
 
     @staticmethod

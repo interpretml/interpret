@@ -10,7 +10,6 @@ from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...utils import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
-from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
 
 import numpy as np
 
@@ -60,10 +59,13 @@ class EBMExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
+
         data_dict = self.data(key)
         if data_dict is None:
             return None
 
+        # Overall graph
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
@@ -73,14 +75,17 @@ class EBMExplanation(FeatureValueExplanation):
                 title="Overall Importance:<br>Mean Absolute Score",
                 start_zero=True,
             )
+
             return figure
 
+        # Continuous feature graph
         if (
             self.explanation_type == "global"
             and self.feature_types[key] == "continuous"
         ):
             title = self.feature_names[key]
             figure = plot_continuous_bar(data_dict, title=title)
+
             return figure
 
         return super().visualize(key)
@@ -138,12 +143,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.col_names_ = []
         self.col_types_ = []
         self.has_fitted_ = False
-
-        # TODO: Remove this.
-        if self.schema is not None:
-            self.schema_ = self.schema
-        else:
-            self.schema_ = autogen_schema(X, feature_names=self.feature_names)
 
         self.schema_ = (
             self.schema
@@ -250,7 +249,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             return list(self.hist_counts_[attribute_index])
         elif col_type == "categorical":
             return list(self.col_mapping_counts_[attribute_index])
-        else:
+        else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
     def get_hist_edges(self, attribute_index):
@@ -260,7 +259,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         elif col_type == "categorical":
             map = self.col_mapping_[attribute_index]
             return list(map.keys())
-        else:
+        else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
     # def get_bin_counts(self, attribute_index):
@@ -291,7 +290,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         elif col_type == "categorical":
             map = self.col_mapping_[attribute_index]
             return list(map.keys())
-        else:
+        else:  # pragma: no cover
             raise Exception("Unknown column type")
 
 
@@ -397,7 +396,7 @@ class BaseCoreEBM(BaseEstimator):
 
     def _build_interactions(self, native_ebm):
         if isinstance(self.interactions, int) and self.interactions != 0:
-            log.debug("Estimating with FAST")
+            log.info("Estimating with FAST")
             interaction_scores = []
             interaction_indices = [
                 x for x in combinations(range(len(self.col_types)), 2)
@@ -416,13 +415,13 @@ class BaseCoreEBM(BaseEstimator):
             inter_indices_ = []
         elif isinstance(self.interactions, list):
             inter_indices_ = self.interactions
-        else:
+        else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         return inter_indices_
 
     def _fit_main(self, native_ebm, main_attr_sets):
-        log.debug("Train main effects")
+        log.info("Train main effects")
         self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
             native_ebm, main_attr_sets, "Main"
         )
@@ -440,10 +439,10 @@ class BaseCoreEBM(BaseEstimator):
 
         self.inter_episode_idx_ = 0
         if len(inter_indices) == 0:
-            log.debug("No interactions to train")
+            log.info("No interactions to train")
             return self
 
-        log.debug("Training interactions")
+        log.info("Training interactions")
 
         # Split data into train/val
         X_train, X_val, y_train, y_val = train_test_split(
@@ -489,7 +488,7 @@ class BaseCoreEBM(BaseEstimator):
                 random_state=self.random_state,
             )
         ) as native_ebm:
-            log.debug("Train interactions")
+            log.info("Train interactions")
             self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
                 native_ebm, inter_attr_sets, "Pair"
             )
@@ -514,7 +513,7 @@ class BaseCoreEBM(BaseEstimator):
         curr_metric = np.inf
         min_metric = np.inf
         bp_metric = np.inf
-        log.debug("Start boosting {0}".format(name))
+        log.info("Start boosting {0}".format(name))
         curr_episode_index = 0
         for data_episode_index in range(self.data_n_episodes):
             curr_episode_index = data_episode_index
@@ -551,9 +550,9 @@ class BaseCoreEBM(BaseEstimator):
                 self.early_stopping_run_length >= 0
                 and no_change_run_length >= self.early_stopping_run_length
             ):
-                log.debug("Early break {0}: {1}".format(name, data_episode_index))
+                log.info("Early break {0}: {1}".format(name, data_episode_index))
                 break
-        log.debug("End boosting {0}".format(name))
+        log.info("End boosting {0}".format(name))
 
         return curr_metric, curr_episode_index
 
@@ -601,7 +600,8 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
 
     def predict_proba(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self)
+        return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
@@ -732,6 +732,9 @@ class BaseEBM(BaseEstimator):
 
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
+            if len(self.classes_) > 2:
+                raise RuntimeError("Multiclass currently not supported.")
+
             proto_estimator = CoreEBMClassifier(
                 # Data
                 col_types=self.preprocessor_.col_types_,
@@ -810,7 +813,7 @@ class BaseEBM(BaseEstimator):
             pair_indices = []
         elif isinstance(self.interactions, list):
             pair_indices = self.interactions
-        else:
+        else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         # Average base models into one.
@@ -973,6 +976,18 @@ class BaseEBM(BaseEstimator):
         if name is None:
             name = gen_name_from_class(self)
 
+        # Obtain min/max for model scores
+        lower_bound = np.inf
+        upper_bound = -np.inf
+        for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
+            errors = self.model_errors_[attribute_set_index]
+            scores = self.attribute_set_models_[attribute_set_index]
+
+            lower_bound = min(lower_bound, np.min(scores - errors))
+            upper_bound = max(upper_bound, np.max(scores + errors))
+
+        bounds = (lower_bound, upper_bound)
+
         # Add per feature graph
         data_dicts = []
         for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
@@ -991,6 +1006,7 @@ class BaseEBM(BaseEstimator):
                     "type": "univariate",
                     "names": bin_labels,
                     "scores": list(model_graph),
+                    "scores_range": bounds,
                     "upper_bounds": list(model_graph + errors),
                     "lower_bounds": list(model_graph - errors),
                     "density": {
@@ -1015,9 +1031,10 @@ class BaseEBM(BaseEstimator):
                     "left_names": bin_labels_left,
                     "right_names": bin_labels_right,
                     "scores": model_graph,
+                    "scores_range": bounds,
                 }
                 data_dicts.append(data_dict)
-            else:
+            else:  # pragma: no cover
                 raise Exception("Interactions greater than 2 not supported.")
 
         overall_dict = {
@@ -1164,7 +1181,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
-        return EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self)
+        return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")

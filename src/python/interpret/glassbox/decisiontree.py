@@ -13,7 +13,6 @@ import numpy as np
 from abc import abstractmethod
 from sklearn.tree import _tree
 from copy import deepcopy
-import dash_cytoscape as cyto
 
 import logging
 
@@ -51,6 +50,8 @@ class TreeExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        import dash_cytoscape as cyto
+
         data_dict = self.data(key)
         if data_dict is None:
             return None

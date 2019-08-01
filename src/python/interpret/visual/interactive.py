@@ -1,12 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from .dashboard import AppRunner
 import sys
-from plotly import graph_objs as go
-from pandas.core.generic import NDFrame
-import dash.development.base_component as dash_base
-
 import logging
 
 log = logging.getLogger(__name__)
@@ -47,7 +42,7 @@ def shutdown_show_server():
     if this.app_runner is not None:
         return this.app_runner.stop()
 
-    return True
+    return True  # pragma: no cover
 
 
 def status_show_server():
@@ -78,12 +73,14 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     Returns:
         None.
     """
+    from .dashboard import AppRunner
+
     if this.app_runner is not None:
-        log.debug("Stopping previous app runner at {0}".format(this.app_addr))
+        log.info("Stopping previous app runner at {0}".format(this.app_addr))
         shutdown_show_server()
         this.app_runner = None
 
-    log.debug("Create app runner at {0}".format(addr))
+    log.info("Create app runner at {0}".format(addr))
     this.app_runner = AppRunner(
         addr, base_url=base_url, use_relative_links=use_relative_links
     )
@@ -100,20 +97,17 @@ def show(explanation, share_tables=None):
     The visualization provided is not preserved when the notebook exits.
 
     Args:
-        explanation: Either a scalar Explanation or a list of Explanations.
-        share_tables: Boolean or dictionary that dictates if Explanations
-                      should all use the same selector
-                      (table used for selecting in the Dashboard).
+        explanation: As provided in 'show'.
+        share_tables: As provided in 'show'.
 
     Returns:
         None.
     """
+
     try:
         # Initialize server if needed
-        if this.app_runner is None:
+        if this.app_runner is None:  # pragma: no cover
             init_show_server(this.app_addr)
-
-        log.debug("Running existing app runner.")
 
         # Register
         this.app_runner.register(explanation, share_tables=share_tables)
@@ -121,11 +115,39 @@ def show(explanation, share_tables=None):
         # Display
         open_link = isinstance(explanation, list)
         this.app_runner.display(explanation, open_link=open_link)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e
 
     return None
+
+
+def show_link(explanation, share_tables=None):
+    """ Provides the backing URL link behind the associated 'show' call for explanation.
+
+    Args:
+        explanation: Either a scalar Explanation or list of Explanations
+                     that would be provided to 'show'.
+        share_tables: Boolean or dictionary that dictates if Explanations
+                      should all use the same selector as provided to 'show'.
+                      (table used for selecting in the Dashboard).
+
+    Returns:
+        URL as a string.
+    """
+    # Initialize server if needed
+    if this.app_runner is None:  # pragma: no cover
+        init_show_server(this.app_addr)
+
+    # Register
+    this.app_runner.register(explanation, share_tables=share_tables)
+
+    try:
+        url = this.app_runner.display_link(explanation)
+        return url
+    except Exception as e:  # pragma: no cover
+        log.error(e, exc_info=True)
+        raise e
 
 
 def preserve(explanation, selector_key=None, file_name=None, **kwargs):
@@ -139,7 +161,7 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
 
     Args:
         explanation: An explanation.
-        selector_key: Key into first column of the explanation's selector. If None, returns overall visual.
+        selector_key: If integer, treat as index for explanation. Otherwise, looks up value in first column, gets index.
         file_name: If assigned, will save the visualization to this filename.
         **kwargs: Kwargs which are passed to the underlying render/export call.
 
@@ -151,6 +173,8 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         # Get explanation key
         if selector_key is None:
             key = None
+        elif isinstance(selector_key, int):
+            key = selector_key
         else:
             series = explanation.selector[explanation.selector.columns[0]]
             key = series[series == selector_key].index[0]
@@ -167,7 +191,7 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
             **kwargs
         )
         return None
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e
 
@@ -179,6 +203,10 @@ def _preserve_output(
     from IPython.display import display, display_html
     from base64 import b64encode
 
+    from plotly import graph_objs as go
+    from pandas.core.generic import NDFrame
+    import dash.development.base_component as dash_base
+
     init_notebook_mode(connected=True)
 
     def render_html(html_string):
@@ -188,7 +216,7 @@ def _preserve_output(
         )
         display_html(final_html, raw=True)
 
-    if visual is None:
+    if visual is None:  # pragma: no cover
         msg = "No visualization for explanation [{0}] with selector_key [{1}]".format(
             explanation_name, selector_key
         )
@@ -215,13 +243,13 @@ def _preserve_output(
         else:
             with open(file_name, "w") as f:
                 f.write(visual)
-    elif isinstance(visual, dash_base.Component):
+    elif isinstance(visual, dash_base.Component):  # pragma: no cover
         msg = "Preserving dash components is currently not supported."
         if file_name is None:
             render_html(msg)
         log.error(msg)
         return False
-    else:
+    else:  # pragma: no cover
         msg = "Visualization cannot be preserved for type: {0}.".format(type(visual))
         if file_name is None:
             render_html(msg)

@@ -3,10 +3,8 @@
 ![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
-![Build Status](https://img.shields.io/azure-devops/build/paulkochms/explainableml/13/master.svg?style=flat-square)
+![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/151/master.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2019.svg?style=flat-square)
-
-*Equal contributions: Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana*
 
 <br/>
 
@@ -16,7 +14,7 @@
 
 <br/>
 
-InterpretML is an open-source package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
+InterpretML is an open-source python package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
 - Detecting bias - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
@@ -112,13 +110,13 @@ Currently we're working on:
 
 ## Contributing
 
-If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Acknowledgements
 
-Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
+InterpretML was originally created by (equal contributions): Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana
 
-<br/>
+Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
 
 We also build on top of many great packages. Please check them out!
 
@@ -137,7 +135,7 @@ We also build on top of many great packages. Please check them out!
 
 ## Contact us
 
-Multiple ways to get in touch:
+There are multiple ways to get in touch:
 - Email us at interpret@microsoft.com
 - Or, feel free to raise a GitHub issue
 

@@ -9,6 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
 class DataSetAttributeCombination;
@@ -20,7 +21,7 @@ public:
 
    TML_INLINE SamplingMethod(const DataSetAttributeCombination * const pOriginDataSet)
       : m_pOriginDataSet(pOriginDataSet) {
-      assert(nullptr != pOriginDataSet);
+      EBM_ASSERT(nullptr != pOriginDataSet);
    }
 
    virtual ~SamplingMethod() {
@@ -39,7 +40,7 @@ public:
    TML_INLINE SamplingWithReplacement(const DataSetAttributeCombination * const pOriginDataSet, const size_t * const aCountOccurrences)
       : SamplingMethod(pOriginDataSet)
       , m_aCountOccurrences(aCountOccurrences) {
-      assert(nullptr != aCountOccurrences);
+      EBM_ASSERT(nullptr != aCountOccurrences);
    }
 
    virtual ~SamplingWithReplacement() final override;

@@ -1,12 +1,17 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ....test.utils import synthetic_classification, adult_classification
+from ....test.utils import (
+    synthetic_multiclass,
+    synthetic_classification,
+    adult_classification,
+)
 from ....test.utils import synthetic_regression
 from ..ebm import ExplainableBoostingRegressor, ExplainableBoostingClassifier
 
 import numpy as np
 from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
+import pytest
 
 import warnings
 
@@ -16,6 +21,16 @@ def warn(*args, **kwargs):
 
 
 warnings.warn = warn
+
+
+def test_no_multiclass_ebm():
+    data = synthetic_multiclass()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=1)
+    with pytest.raises(RuntimeError, match="Multiclass currently not supported"):
+        clf.fit(X, y)
 
 
 def test_prefit_ebm():
@@ -31,6 +46,7 @@ def test_prefit_ebm():
         assert not has_non_zero
 
 
+@pytest.mark.slow
 def test_ebm_synthetic_regression():
     data = synthetic_regression()
     X = data["full"]["X"]
@@ -52,6 +68,7 @@ def valid_ebm(ebm):
         assert all_finite
 
 
+@pytest.mark.slow
 def test_ebm_synthetic_classfication():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -67,7 +84,11 @@ def test_ebm_synthetic_classfication():
     valid_ebm(clf)
 
 
+@pytest.mark.visual
+@pytest.mark.slow
 def test_ebm_adult():
+    from .... import preserve, show, shutdown_show_server, set_show_addr
+
     data = adult_classification()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -85,3 +106,19 @@ def test_ebm_adult():
     assert within_bounds
 
     valid_ebm(clf)
+
+    set_show_addr(("127.0.0.1", 6000))
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X[:5, :], y[:5])
+
+    # Smoke test: should run without crashing.
+    preserve(global_exp)
+    preserve(local_exp)
+    show(global_exp)
+    show(local_exp)
+
+    # Check all features for global (including interactions).
+    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+        preserve(global_exp, selector_key)
+
+    shutdown_show_server()

@@ -6,6 +6,7 @@
 #define SEGMENTED_REGION_H
 
 // TODO : check for multiplication overflows within this class (we could overflow in several parts)
+// TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
 
 #include <type_traits> // std::is_pod
 #include <assert.h>
@@ -13,6 +14,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
+#include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
 // we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedRegions right now for different types
@@ -57,26 +59,37 @@ public:
    DimensionInfo m_aDimensions[1];
 
    TML_INLINE static SegmentedRegionCore * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
-      assert(0 < cDimensionsMax);
-      assert(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
+      EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
+      EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
+      if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
+         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
+         return nullptr;
+      }
+      const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
+      if(IsMultiplyError(sizeof(TValues), cValueCapacity)) {
+         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(TValues), cValueCapacity)");
+         return nullptr;
+      }
+      const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
+
+      // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
       const size_t cBytesSegmentedRegion = sizeof(SegmentedRegionCore) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
       SegmentedRegionCore * const pSegmentedRegion = static_cast<SegmentedRegionCore *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
+         LOG(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
       }
       memset(pSegmentedRegion, 0, cBytesSegmentedRegion); // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to only free pointers that had non-initialized garbage inside of them
 
       pSegmentedRegion->m_cVectorLength = cVectorLength;
-
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
-
-      const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
-      const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
+
       TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
+         LOG(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
          return nullptr;
       }
@@ -84,17 +97,22 @@ public:
       // we only need to set the base case to zero, not our entire initial allocation
       memset(aValues, 0, sizeof(TValues) * cVectorLength);
 
-      DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
-      for(size_t iDimension = 0; iDimension < cDimensionsMax; ++iDimension) {
-         assert(0 == pDimension->cDivisions);
-         pDimension->cDivisionCapacity = k_initialDivisionCapacity;
-         TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity));
-         if(UNLIKELY(nullptr == aDivisions)) {
-            Free(pSegmentedRegion); // free everything!
-            return nullptr;
-         }
-         pDimension->aDivisions = aDivisions;
-         ++pDimension;
+      if(0 != cDimensionsMax) {
+         DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
+         size_t iDimension = 0;
+         do {
+            EBM_ASSERT(0 == pDimension->cDivisions);
+            pDimension->cDivisionCapacity = k_initialDivisionCapacity;
+            TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
+            if(UNLIKELY(nullptr == aDivisions)) {
+               LOG(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
+               Free(pSegmentedRegion); // free everything!
+               return nullptr;
+            }
+            pDimension->aDivisions = aDivisions;
+            ++pDimension;
+            ++iDimension;
+         } while(iDimension < cDimensionsMax);
       }
       return pSegmentedRegion;
    }
@@ -110,22 +128,17 @@ public:
    }
 
    TML_INLINE void SetCountDimensions(const size_t cDimensions) {
-      assert(0 < cDimensions);
-      assert(cDimensions <= m_cDimensionsMax);
+      EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
 
    TML_INLINE size_t GetStackMemorySizeBytes() {
-      return sizeof(DimensionInfo) * m_cDimensions;
-   }
-
-   TML_INLINE size_t GetCountDivisions(const size_t iDimension) const {
-      assert(iDimension < m_cDimensions);
-      return m_aDimensions[iDimension].cDivisions;
+      EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
+      return sizeof(DimensionInfoStack) * m_cDimensions; // this can't overflow since m_cDimensions is limited in size
    }
 
    TML_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
-      assert(iDimension < m_cDimensions);
+      EBM_ASSERT(iDimension < m_cDimensions);
       return &m_aDimensions[iDimension].aDivisions[0];
    }
 
@@ -138,24 +151,35 @@ public:
          m_aDimensions[iDimension].cDivisions = 0;
       }
       // we only need to set the base case to zero
+      // this can't overflow since we previously allocated this memory
       memset(m_aValues, 0, sizeof(TValues) * m_cVectorLength);
       m_bExpanded = false;
    }
 
    TML_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
-      assert(iDimension < m_cDimensions);
+      EBM_ASSERT(iDimension < m_cDimensions);
       DimensionInfo * const pDimension = &m_aDimensions[iDimension];
-      assert(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+      EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
       if(UNLIKELY(pDimension->cDivisionCapacity < cDivisions)) {
-         assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+         EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
+         if(IsAddError(cDivisions, cDivisions >> 1)) {
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
+            return true;
+         }
          size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1); // just increase it by 50% since we don't expect to grow our divisions often after an initial period, and realloc takes some of the cost of growing away
+         LOG(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
 
+         if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)");
+            return true;
+         }
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
          TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->aDivisions, cBytes));
          if(UNLIKELY(nullptr == aNewDivisions)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
+            LOG(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
             return true;
          }
          pDimension->aDivisions = aNewDivisions;
@@ -167,15 +191,25 @@ public:
 
    TML_INLINE bool EnsureValueCapacity(const size_t cValues) {
       if(UNLIKELY(m_cValueCapacity < cValues)) {
-         assert(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+         EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
+         if(IsAddError(cValues, cValues >> 1)) {
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
+            return true;
+         }
          size_t cNewValueCapacity = cValues + (cValues >> 1); // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
+         LOG(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
 
+         if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(TValues), cNewValueCapacity)");
+            return true;
+         }
          size_t cBytes = sizeof(TValues) * cNewValueCapacity;
          TValues * const aNewValues = static_cast<TValues *>(realloc(m_aValues, cBytes));
          if(UNLIKELY(nullptr == aNewValues)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
+            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
             return true;
          }
          m_aValues = aNewValues;
@@ -185,21 +219,26 @@ public:
    }
 
    TML_INLINE bool Copy(const SegmentedRegionCore & rhs) {
-      assert(m_cDimensions == rhs.m_cDimensions);
+      EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
       size_t cValues = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const DimensionInfo * const pDimension = &rhs.m_aDimensions[iDimension];
          size_t cDivisions = pDimension->cDivisions;
+         EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+            LOG(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
+         EBM_ASSERT(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
          memcpy(m_aDimensions[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
+         LOG(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
          return true;
       }
+      EBM_ASSERT(!IsMultiplyError(sizeof(TValues), cValues)); // we're copying this memory, so multiplication can't overflow
       memcpy(m_aValues, rhs.m_aValues, sizeof(TValues) * cValues);
       m_bExpanded = rhs.m_bExpanded;
       return false;
@@ -207,9 +246,11 @@ public:
 
 #ifndef NDEBUG
    TML_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+      if(0 == m_cDimensions) {
+         return &m_aValues[0]; // there are no dimensions, and only 1 value
+      }
       const DimensionInfo * pDimension = m_aDimensions;
       const TDivisions * pDivisionValue = aDivisionValue;
-      assert(0 < m_cDimensions);
       const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
       size_t iValue = 0;
       size_t valueMultiple = m_cVectorLength;
@@ -217,13 +258,17 @@ public:
       if(m_bExpanded) {
          while(true) {
             const TDivisions d = *pDivisionValue;
-            iValue += d * valueMultiple;
+            EBM_ASSERT(!IsMultiplyError(d, valueMultiple)); // we're accessing existing memory, so it can't overflow
+            size_t addValue = d * valueMultiple;
+            EBM_ASSERT(!IsAddError(addValue, iValue)); // we're accessing existing memory, so it can't overflow
+            iValue += addValue;
             ++pDivisionValue;
             if(pDivisionValueEnd == pDivisionValue) {
                break;
             }
             const size_t cDivisions = pDimension->cDivisions;
-            assert(1 <= cDivisions); // since we're expanded we should have at least one division and two values
+            EBM_ASSERT(1 <= cDivisions); // since we're expanded we should have at least one division and two values
+            EBM_ASSERT(!IsMultiplyError(cDivisions + 1, valueMultiple)); // we're accessing existing memory, so it can't overflow
             valueMultiple *= cDivisions + 1;
             ++pDimension;
          }
@@ -250,7 +295,11 @@ public:
                } while(LIKELY(low <= high));
                middle = UNPREDICTABLE(midVal < d) ? middle + 1 : middle;
             no_check:
-               iValue += middle * valueMultiple;
+               EBM_ASSERT(!IsMultiplyError(middle, valueMultiple)); // we're accessing existing memory, so it can't overflow
+               ptrdiff_t addValue = middle * valueMultiple;
+               EBM_ASSERT(!IsAddError(iValue, addValue)); // we're accessing existing memory, so it can't overflow
+               iValue += addValue;
+               EBM_ASSERT(!IsMultiplyError(valueMultiple, cDivisions + 1)); // we're accessing existing memory, so it can't overflow
                valueMultiple *= cDivisions + 1;
             }
             ++pDimension;
@@ -262,12 +311,15 @@ public:
 #endif // NDEBUG
 
    TML_INLINE TValues * GetValueDirect(const size_t index) const {
+      EBM_ASSERT(0 == m_cDimensions || m_bExpanded); // this function doesn't make sense unless the underlying data has been expanded
+      EBM_ASSERT(!IsMultiplyError(index, m_cVectorLength)); // we're accessing existing memory, so it can't overflow
       return &m_aValues[index * m_cVectorLength];
    }
 
    TML_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
+         EBM_ASSERT(!IsMultiplyError(cValues, m_aDimensions[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
          cValues *= m_aDimensions[iDimension].cDivisions + 1;
       }
 
@@ -281,17 +333,21 @@ public:
    }
 
    bool Expand(const size_t * const acDivisionsPlusOne) {
-      assert(nullptr != acDivisionsPlusOne);
+      LOG(TraceLevelVerbose, "Entered Expand");
+
+      EBM_ASSERT(1 <= m_cDimensions); // you can't really expand something with zero dimensions
+      EBM_ASSERT(nullptr != acDivisionsPlusOne);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
       // TODO : see if we can change this back to size_t somehow.  I remember we got negative numbers some places either here or in the Add function and that why I used ptrdiff_t, but if it's just -1, then we can still use size_t.
-      assert(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
+      EBM_ASSERT(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
+         LOG(TraceLevelVerbose, "Exited Expand");
          return false;
       }
 
-      assert(m_cDimensions <= k_cDimensionsMax);
+      EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
 
       const DimensionInfo * pDimensionFirst1 = m_aDimensions;
@@ -303,35 +359,44 @@ public:
       size_t cValues1 = 1;
       size_t cNewValues = 1;
 
-      assert(0 < m_cDimensions);
+      EBM_ASSERT(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
          const size_t cDivisions1 = pDimensionFirst1->cDivisions;
 
+         EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cValues1 *= cDivisions1 + 1;
          const TDivisions * const p1End = &pDimensionFirst1->aDivisions[cDivisions1];
 
          pDimensionInfoStackFirst->pDivision1 = p1End - 1;
          const size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cDivisionsPlusOne)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cNewValues *= cDivisionsPlusOne;
          const size_t maxDivision = cDivisionsPlusOne - 2;
 
          pDimensionInfoStackFirst->iDivision2 = maxDivision;
-         pDimensionInfoStackFirst->cNewDivisions = maxDivision;
+         pDimensionInfoStackFirst->cNewDivisions = maxDivision; // maxDivision can be a negative number, but I think it isn't used below if it's negative, so converting it to size_t is ok here
 
          ++pDimensionFirst1;
          ++pcDivisionsPlusOne;
          ++pDimensionInfoStackFirst;
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
+      if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         LOG(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
+         return true;
+      }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
+         LOG(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
          return true;
       }
 
       TValues * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = m_aDimensions;
 
+      EBM_ASSERT(cValues1 <= cNewValues);
+      EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1];
       TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1];
 
@@ -369,11 +434,13 @@ public:
             TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 <= pDivision1)) {
-               assert(0 <= iDivision2);
+               EBM_ASSERT(0 <= iDivision2);
                const TDivisions d1 = *pDivision1;
 
                const size_t change1 = UNPREDICTABLE(iDivision2 <= d1) ? 1 : 0;
                pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
+               // this doesn't need to be checked since change1 is either 0 or 1
+               // TODO: let's use a conditional here since it's either zero or 1
                pValue1 -= change1 * multiplication1;
 
                pDimensionInfoStackSecond->iDivision2 = iDivision2 - 1;
@@ -388,6 +455,7 @@ public:
 
                   const size_t cDivisions1 = pDimensionSecond1->cDivisions;
 
+                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
                   multiplication1 *= 1 + cDivisions1;
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
@@ -403,8 +471,8 @@ public:
          }
       }
 
-      assert(pValueTop == m_aValues - 1);
-      assert(pValue1 == m_aValues + m_cVectorLength - 1);
+      EBM_ASSERT(pValueTop == m_aValues - 1);
+      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength - 1);
 
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const size_t cDivisions = acDivisionsPlusOne[iDimension] - 1;
@@ -414,6 +482,7 @@ public:
          }
 
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
+            LOG(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
 
@@ -423,14 +492,31 @@ public:
       }
 
       m_bExpanded = true;
+      LOG(TraceLevelVerbose, "Exited Expand");
       return false;
    }
 
    // TODO : change this to eliminate pStackMemory and replace it with true on stack memory (we know that there can't be more than 63 dimensions)
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
    bool Add(const SegmentedRegionCore & rhs, void * pStackMemory) {
-      assert(nullptr != pStackMemory);
-      assert(m_cDimensions == rhs.m_cDimensions);
+      EBM_ASSERT(nullptr != pStackMemory);
+      EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
+
+      if(0 == m_cDimensions) {
+         EBM_ASSERT(1 <= m_cValueCapacity);
+         EBM_ASSERT(nullptr != m_aValues);
+
+         TValues * pTo = &m_aValues[0];
+         const TValues * pFrom = &rhs.m_aValues[0];
+         const TValues * const pToEnd = &pTo[m_cVectorLength];
+         do {
+            *pTo += *pFrom;
+            ++pTo;
+            ++pFrom;
+         } while(pToEnd != pTo);
+
+         return false;
+      }
 
       if(m_bExpanded) {
          // TODO: the existing code below works, but handle this differently (we can do it more efficiently)
@@ -450,7 +536,7 @@ public:
       size_t cValues2 = 1;
       size_t cNewValues = 1;
 
-      assert(0 < m_cDimensions);
+      EBM_ASSERT(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
          const size_t cDivisions1 = pDimensionFirst1->cDivisions;
@@ -491,6 +577,7 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->cNewDivisions = cNewSingleDimensionDivisions;
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;
@@ -499,19 +586,24 @@ public:
          ++pDimensionInfoStackFirst;
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
+      if(IsMultiplyError(cNewValues, m_cVectorLength)) {
+         LOG(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
+         return true;
+      }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
+         LOG(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
          return true;
       }
 
-      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2 - 1];
+      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2 - 1];  // we're accessing allocated memory, so it can't overflow
       const DimensionInfo * const aDimension2 = rhs.m_aDimensions;
 
       TValues * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = m_aDimensions;
 
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1];
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1];
+      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1]; // we're accessing allocated memory, so it can't overflow
+      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1]; // we're accessing allocated memory, so it can't overflow
 
       const TValues * const aValuesEnd = aValues - 1;
 
@@ -581,7 +673,9 @@ public:
                   const size_t cDivisions1 = pDimensionSecond1->cDivisions;
                   const size_t cDivisions2 = pDimensionSecond2->cDivisions;
 
+                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're accessing allocated memory, so it can't overflow
                   multiplication1 *= 1 + cDivisions1;
+                  EBM_ASSERT(!IsMultiplyError(multiplication2, 1 + cDivisions2)); // we're accessing allocated memory, so it can't overflow
                   multiplication2 *= 1 + cDivisions2;
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
@@ -598,9 +692,9 @@ public:
          }
       }
 
-      assert(pValueTop == m_aValues - 1);
-      assert(pValue1 == m_aValues + m_cVectorLength - 1);
-      assert(pValue2 == rhs.m_aValues + m_cVectorLength - 1);
+      EBM_ASSERT(pValueTop == m_aValues - 1);
+      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength - 1);
+      EBM_ASSERT(pValue2 == rhs.m_aValues + m_cVectorLength - 1);
 
       // now finally do the divisions
 
@@ -614,6 +708,7 @@ public:
          
          // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
          if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
+            LOG(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
             return true;
          }
          
@@ -624,11 +719,11 @@ public:
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            assert(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedRegions have zero divisions
-            assert(&pDimension1Cur->aDivisions[-1] <= p1Cur);
-            assert(&pDimension2Cur->aDivisions[-1] <= p2Cur);
-            assert(p1Cur <= pTopCur);
-            assert(reinterpret_cast<const char *>(p2Cur) <= reinterpret_cast<const char *>(pTopCur) + diffDivisions);
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedRegions have zero divisions
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur);
+            EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur);
+            EBM_ASSERT(p1Cur <= pTopCur);
+            EBM_ASSERT(reinterpret_cast<const char *>(p2Cur) <= reinterpret_cast<const char *>(pTopCur) + diffDivisions);
 
             if(UNLIKELY(pTopCur == p1Cur)) {
                // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
@@ -636,7 +731,7 @@ public:
             }
             // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays.  Adding diffDivisions to a pointer that references an index in pDimension1Cur->aDivisions turns it into a pointer indexed from pDimension2Cur->aDivisions.  They both point to TValues items, so we can cross reference them this way
             if(UNLIKELY(reinterpret_cast<const char *>(pTopCur) + diffDivisions == reinterpret_cast<const char *>(p2Cur))) {
-               assert(pDimension1Cur->aDivisions <= pTopCur);
+               EBM_ASSERT(pDimension1Cur->aDivisions <= pTopCur);
                // direct copy the remaining divisions.  There should be at least one
                memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, (pTopCur - pDimension1Cur->aDivisions + 1) * sizeof(TDivisions));
                break;
@@ -679,7 +774,8 @@ public:
          }
 
          if(0 != cDivisions) {
-            cValues *= (cDivisions + 1);
+            EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
+            cValues *= cDivisions + 1;
 
             const TDivisions * pD1Cur = pDimension1->aDivisions;
             const TDivisions * pD2Cur = pDimension2->aDivisions;
@@ -706,37 +802,6 @@ public:
       } while(LIKELY(pV1End != pV1Cur));
 
       return true;
-   }
-
-   void Print() const {
-      size_t cValues = m_cVectorLength;
-      for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         std::cout << "Dimension#: " << iDimension << std::endl;
-         const DimensionInfo * const pDimension = &m_aDimensions[iDimension];
-         size_t cDivisions = pDimension->cDivisions;
-         if(0 != cDivisions) {
-            cValues *= (cDivisions + 1);
-
-            const TDivisions * pDCur = pDimension->aDivisions;
-            const TDivisions * const pDEnd = pDCur + cDivisions;
-            do {
-               std::cout << *pDCur << std::endl;
-               ++pDCur;
-            } while(LIKELY(pDEnd != pDCur));
-         }
-         std::cout << std::endl;
-      }
-
-      std::cout << "Values:" << std::endl;
-
-      const TValues * pVCur = &m_aValues[0];
-      const TValues * const pVEnd = pVCur + cValues;
-      do {
-         std::cout << *pVCur << std::endl;
-         ++pVCur;
-      } while(LIKELY(pVEnd != pVCur));
-
-      std::cout << std::endl;
    }
 #endif // NDEBUG
 

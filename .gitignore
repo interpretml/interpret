@@ -7,7 +7,7 @@
 
 # Visual Studio User-specific files
 *.user
-*.vcxproj.filter
+*.vcxproj.filters
 
 # Intellij files
 .idea/

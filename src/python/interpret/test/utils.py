@@ -1,8 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from ..data import ClassHistogram
-from ..perf import ROC, RegressionPerf
+from ..data import ClassHistogram, Marginal
+from ..perf import ROC, PR, RegressionPerf
 
 from ..blackbox import LimeTabular
 from ..blackbox import ShapKernel
@@ -24,8 +24,8 @@ from sklearn.base import is_classifier
 
 
 def get_all_explainers():
-    data_explainer_classes = [ClassHistogram]
-    perf_explainer_classes = [ROC, RegressionPerf]
+    data_explainer_classes = [ClassHistogram, Marginal]
+    perf_explainer_classes = [ROC, PR, RegressionPerf]
     model_explainer_classes = [
         ClassificationTree,
         DecisionListClassifier,
@@ -60,11 +60,18 @@ def synthetic_classification():
     return dataset
 
 
+def synthetic_multiclass():
+    dataset = _synthetic("multiclass")
+    return dataset
+
+
 def _synthetic(mode="regression"):
     n_rows = 100
     X_df = pd.DataFrame(np.random.randn(n_rows, 4), columns=list("ABCD"))
     if mode == "classification":
         y_df = pd.DataFrame(np.random.randint(2, size=n_rows), columns=list("Y"))
+    elif mode == "multiclass":
+        y_df = pd.DataFrame(np.random.randint(3, size=n_rows), columns=list("Y"))
     else:
         y_df = pd.DataFrame(np.random.randn(n_rows, 1), columns=list("Y"))
     X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
@@ -109,7 +116,8 @@ def adult_classification():
     train_cols = df.columns[0:-1]
     label = df.columns[-1]
     X_df = df[train_cols].values
-    y_df = df[label].values
+    y_df = df[label].apply(lambda x: 0 if x == " <=50K" else 1)
+
     X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
         X_df, y_df, test_size=0.20, random_state=1
     )

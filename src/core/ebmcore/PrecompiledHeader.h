@@ -16,8 +16,5 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 #include <tuple>
-#include <stdio.h> // snprintf for logging
-
-#ifndef NDEBUG
-#include <iostream> // cout
-#endif
+#include <stdio.h> // snprintf/vsnprintf for logging
+#include <stdarg.h> // va_start, va_end
