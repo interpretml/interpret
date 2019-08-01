@@ -59,6 +59,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
    return std::abs(expected - value) < std::abs(expected * percentage);
 }
 
+// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
 #define CHECK(expression) \
    do { \
       const bool bFailedHidden = !(expression); \
@@ -68,6 +69,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
       } \
    } while((void)0, 0)
 
+// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK_APPROX(expression) is called
 #define CHECK_APPROX(value, expected) \
    do { \
       const double valueHidden = (value); \
@@ -78,8 +80,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
       } \
    } while((void)0, 0)
 
-
-
+// TODO : erase this.. let our helper class handle the details of the vector length
 constexpr size_t GetVectorLength(size_t cTargetStates) {
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
@@ -108,44 +109,44 @@ public:
 
 class RegressionCase {
 public:
-   FractionalDataType m_target;
-   std::vector<IntegerDataType> m_data;
-   FractionalDataType m_score;
-   bool m_bNullTrainingPredictionScores;
+   const FractionalDataType m_target;
+   const std::vector<IntegerDataType> m_data;
+   const FractionalDataType m_score;
+   const bool m_bNullTrainingPredictionScores;
 
-   RegressionCase(FractionalDataType target, std::vector<IntegerDataType> data) {
-      m_target = target;
-      m_data = data;
-      m_score = 0;
-      m_bNullTrainingPredictionScores = true;
+   RegressionCase(const FractionalDataType target, const std::vector<IntegerDataType> data) :
+      m_target(target),
+      m_data(data),
+      m_score(0),
+      m_bNullTrainingPredictionScores(true) {
    }
 
-   RegressionCase(FractionalDataType target, std::vector<IntegerDataType> data, FractionalDataType score) {
-      m_target = target;
-      m_data = data;
-      m_score = score;
-      m_bNullTrainingPredictionScores = false;
+   RegressionCase(const FractionalDataType target, const std::vector<IntegerDataType> data, const FractionalDataType score) :
+      m_target(target),
+      m_data(data),
+      m_score(score),
+      m_bNullTrainingPredictionScores(false) {
    }
 };
 
 class ClassificationCase {
 public:
-   IntegerDataType m_target;
-   std::vector<IntegerDataType> m_data;
-   std::vector<FractionalDataType> m_logits;
-   bool m_bNullTrainingPredictionScores;
+   const IntegerDataType m_target;
+   const std::vector<IntegerDataType> m_data;
+   const std::vector<FractionalDataType> m_logits;
+   const bool m_bNullTrainingPredictionScores;
 
-   ClassificationCase(IntegerDataType target, std::vector<IntegerDataType> data) {
-      m_target = target;
-      m_data = data;
-      m_bNullTrainingPredictionScores = true;
+   ClassificationCase(const IntegerDataType target, const std::vector<IntegerDataType> data) :
+      m_target(target),
+      m_data(data),
+      m_bNullTrainingPredictionScores(true) {
    }
 
-   ClassificationCase(IntegerDataType target, std::vector<IntegerDataType> data, std::vector<FractionalDataType> logits) {
-      m_target = target;
-      m_data = data;
-      m_logits = logits;
-      m_bNullTrainingPredictionScores = false;
+   ClassificationCase(IntegerDataType target, std::vector<IntegerDataType> data, std::vector<FractionalDataType> logits) :
+      m_target(target),
+      m_data(data),
+      m_logits(logits),
+      m_bNullTrainingPredictionScores(false) {
    }
 };
 
@@ -255,7 +256,7 @@ public:
          }
       }
       for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-         EbmAttribute attribute = m_attributes[iAttribute];
+         const EbmAttribute attribute = m_attributes[iAttribute];
          for(size_t iCase = 0; iCase < cCases; ++iCase) {
             IntegerDataType data = cases[iCase].m_data[iAttribute];
             if(data < 0) {
@@ -307,7 +308,7 @@ public:
          m_trainingClassificationTargets.push_back(target);
          if(!bNullTrainingPredictionScores) {
             ptrdiff_t iLogit = 0;
-            for(FractionalDataType oneLogit : oneCase.m_logits) {
+            for(const FractionalDataType oneLogit : oneCase.m_logits) {
                if(std::isnan(oneLogit)) {
                   exit(1);
                }
@@ -358,9 +359,9 @@ public:
          }
       }
       for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-         EbmAttribute attribute = m_attributes[iAttribute];
+         const EbmAttribute attribute = m_attributes[iAttribute];
          for(size_t iCase = 0; iCase < cCases; ++iCase) {
-            IntegerDataType data = cases[iCase].m_data[iAttribute];
+            const IntegerDataType data = cases[iCase].m_data[iAttribute];
             if(data < 0) {
                exit(1);
             }
@@ -398,7 +399,7 @@ public:
       m_stage = Stage::Training;
    }
 
-   FractionalDataType Train(PEbmTraining ebmTraining, IntegerDataType indexAttributeCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, std::vector<FractionalDataType> trainingWeights, std::vector<FractionalDataType> validationWeights) {
+   FractionalDataType Train(const PEbmTraining ebmTraining, const IntegerDataType indexAttributeCombination, const FractionalDataType learningRate, const IntegerDataType countTreeSplitsMax, const IntegerDataType countCasesRequiredForSplitParentMin, const std::vector<FractionalDataType> trainingWeights, const std::vector<FractionalDataType> validationWeights) {
       if(Stage::Training != m_stage) {
          exit(1);
       }
@@ -428,7 +429,7 @@ public:
       }
 
       FractionalDataType validationMetricReturn;
-      IntegerDataType ret = TrainingStep(m_pEbmTraining, indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
+      const IntegerDataType ret = TrainingStep(m_pEbmTraining, indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
       if(0 != ret) {
          exit(1);
       }
