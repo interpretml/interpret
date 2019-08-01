@@ -59,7 +59,6 @@ public:
    DimensionInfo m_aDimensions[1];
 
    TML_INLINE static SegmentedRegionCore * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
-      EBM_ASSERT(0 < cDimensionsMax);
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
       EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
@@ -84,11 +83,10 @@ public:
       memset(pSegmentedRegion, 0, cBytesSegmentedRegion); // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to only free pointers that had non-initialized garbage inside of them
 
       pSegmentedRegion->m_cVectorLength = cVectorLength;
-
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
-
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
+
       TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
          LOG(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
@@ -99,18 +97,22 @@ public:
       // we only need to set the base case to zero, not our entire initial allocation
       memset(aValues, 0, sizeof(TValues) * cVectorLength);
 
-      DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
-      for(size_t iDimension = 0; iDimension < cDimensionsMax; ++iDimension) {
-         EBM_ASSERT(0 == pDimension->cDivisions);
-         pDimension->cDivisionCapacity = k_initialDivisionCapacity;
-         TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
-         if(UNLIKELY(nullptr == aDivisions)) {
-            LOG(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
-            Free(pSegmentedRegion); // free everything!
-            return nullptr;
-         }
-         pDimension->aDivisions = aDivisions;
-         ++pDimension;
+      if(0 != cDimensionsMax) {
+         DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
+         size_t iDimension = 0;
+         do {
+            EBM_ASSERT(0 == pDimension->cDivisions);
+            pDimension->cDivisionCapacity = k_initialDivisionCapacity;
+            TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
+            if(UNLIKELY(nullptr == aDivisions)) {
+               LOG(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
+               Free(pSegmentedRegion); // free everything!
+               return nullptr;
+            }
+            pDimension->aDivisions = aDivisions;
+            ++pDimension;
+            ++iDimension;
+         } while(iDimension < cDimensionsMax);
       }
       return pSegmentedRegion;
    }
@@ -126,7 +128,6 @@ public:
    }
 
    TML_INLINE void SetCountDimensions(const size_t cDimensions) {
-      EBM_ASSERT(0 < cDimensions);
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
@@ -134,11 +135,6 @@ public:
    TML_INLINE size_t GetStackMemorySizeBytes() {
       EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
       return sizeof(DimensionInfoStack) * m_cDimensions; // this can't overflow since m_cDimensions is limited in size
-   }
-
-   TML_INLINE size_t GetCountDivisions(const size_t iDimension) const {
-      EBM_ASSERT(iDimension < m_cDimensions);
-      return m_aDimensions[iDimension].cDivisions;
    }
 
    TML_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
@@ -250,9 +246,11 @@ public:
 
 #ifndef NDEBUG
    TML_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+      if(0 == m_cDimensions) {
+         return &m_aValues[0]; // there are no dimensions, and only 1 value
+      }
       const DimensionInfo * pDimension = m_aDimensions;
       const TDivisions * pDivisionValue = aDivisionValue;
-      EBM_ASSERT(0 < m_cDimensions);
       const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
       size_t iValue = 0;
       size_t valueMultiple = m_cVectorLength;
@@ -313,7 +311,7 @@ public:
 #endif // NDEBUG
 
    TML_INLINE TValues * GetValueDirect(const size_t index) const {
-      EBM_ASSERT(m_bExpanded); // this function doesn't make sense unless the underlying data has been expanded
+      EBM_ASSERT(0 == m_cDimensions || m_bExpanded); // this function doesn't make sense unless the underlying data has been expanded
       EBM_ASSERT(!IsMultiplyError(index, m_cVectorLength)); // we're accessing existing memory, so it can't overflow
       return &m_aValues[index * m_cVectorLength];
    }
@@ -337,6 +335,7 @@ public:
    bool Expand(const size_t * const acDivisionsPlusOne) {
       LOG(TraceLevelVerbose, "Entered Expand");
 
+      EBM_ASSERT(1 <= m_cDimensions); // you can't really expand something with zero dimensions
       EBM_ASSERT(nullptr != acDivisionsPlusOne);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
@@ -502,6 +501,22 @@ public:
    bool Add(const SegmentedRegionCore & rhs, void * pStackMemory) {
       EBM_ASSERT(nullptr != pStackMemory);
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
+
+      if(0 == m_cDimensions) {
+         EBM_ASSERT(1 <= m_cValueCapacity);
+         EBM_ASSERT(nullptr != m_aValues);
+
+         TValues * pTo = &m_aValues[0];
+         const TValues * pFrom = &rhs.m_aValues[0];
+         const TValues * const pToEnd = &pTo[m_cVectorLength];
+         do {
+            *pTo += *pFrom;
+            ++pTo;
+            ++pFrom;
+         } while(pToEnd != pTo);
+
+         return false;
+      }
 
       if(m_bExpanded) {
          // TODO: the existing code below works, but handle this differently (we can do it more efficiently)

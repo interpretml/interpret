@@ -57,7 +57,7 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
 
    try {
       for(size_t iCase = 0; iCase < cCases; ++iCase) {
-         const size_t iCountOccurrences = pRandomStream->Next(static_cast<size_t>(0), cCases - 1);
+         const size_t iCountOccurrences = pRandomStream->Next(size_t { 0 }, cCases - 1);
          ++aCountOccurrences[iCountOccurrences];
       }
    } catch(...) {

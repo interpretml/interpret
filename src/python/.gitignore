@@ -11,6 +11,7 @@ docs/_build/
 lib/
 log.txt
 test-log.txt
+dev-log.txt
 *.csv
 *.ipynb
 .coverage.*

@@ -15,7 +15,7 @@ class AttributeCombinationCore final {
 public:
 
    struct AttributeCombinationEntry {
-      AttributeInternalCore * m_pAttribute;
+      const AttributeInternalCore * m_pAttribute;
    };
 
    size_t m_cItemsPerBitPackDataUnit;
@@ -25,18 +25,24 @@ public:
    unsigned int m_cLogExitMessages;
    AttributeCombinationEntry m_AttributeCombinationEntry[1];
 
-   TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
-      EBM_ASSERT(0 < cAttributes);
+   TML_INLINE static size_t GetAttributeCombinationCountBytes(const size_t cAttributes) {
+      return sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationCore::AttributeCombinationEntry) + sizeof(AttributeCombinationCore::AttributeCombinationEntry) * cAttributes;
+   }
 
-      const size_t cBytes = sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationEntry) + sizeof(AttributeCombinationEntry) * cAttributes;
+   TML_INLINE void Initialize(const size_t cAttributes, const size_t iAttributeCombination) {
+      m_cAttributes = cAttributes;
+      m_iInputData = iAttributeCombination;
+      m_cLogEnterMessages = 2;
+      m_cLogExitMessages = 2;
+   }
+
+   TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
+      const size_t cBytes = GetAttributeCombinationCountBytes(cAttributes);
       AttributeCombinationCore * const pAttributeCombination = static_cast<AttributeCombinationCore *>(malloc(cBytes));
       if(UNLIKELY(nullptr == pAttributeCombination)) {
          return nullptr;
       }
-      pAttributeCombination->m_cAttributes = cAttributes;
-      pAttributeCombination->m_iInputData = iAttributeCombination;
-      pAttributeCombination->m_cLogEnterMessages = 2;
-      pAttributeCombination->m_cLogExitMessages = 2;
+      pAttributeCombination->Initialize(cAttributes, iAttributeCombination);
       return pAttributeCombination;
    }
 
@@ -49,7 +55,7 @@ public:
 
       EBM_ASSERT(0 < cAttributeCombinations);
       AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
-      if (LIKELY(nullptr != apAttributeCombinations)) {
+      if(LIKELY(nullptr != apAttributeCombinations)) {
          // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
          EBM_ASSERT(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
          memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);
@@ -70,5 +76,22 @@ public:
    }
 };
 static_assert(std::is_pod<AttributeCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
+
+// these need to be declared AFTER the class above since the size of AttributeCombinationCore isn't set until the class has been completely declared, and constexpr needs the size before constexpr
+constexpr size_t GetAttributeCombinationCountBytesConst(const size_t cAttributes) {
+   return sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationCore::AttributeCombinationEntry) + sizeof(AttributeCombinationCore::AttributeCombinationEntry) * cAttributes;
+}
+constexpr size_t k_cBytesAttributeCombinationMax = GetAttributeCombinationCountBytesConst(k_cDimensionsMax);
+
+#ifndef NDEBUG
+class AttributeCombinationCheck final {
+public:
+   AttributeCombinationCheck() {
+      // we need two separate functions for determining the maximum size of AttributeCombinationCore, so let's check that they match at runtime
+      EBM_ASSERT(k_cBytesAttributeCombinationMax == AttributeCombinationCore::GetAttributeCombinationCountBytes(k_cDimensionsMax));
+   }
+};
+static AttributeCombinationCheck DEBUG_AttributeCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
+#endif // NDEBUG
 
 #endif // ATTRIBUTE_COMBINATION_H

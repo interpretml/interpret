@@ -97,21 +97,26 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>PrecompiledHeaderTestCoreApi.h</PrecompiledHeaderFile>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebmcore_win_x64_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
-    <PostBuildEvent>
+    <CustomBuildStep>
+      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebmcore_win_x64_debug.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebmcore_win_x64_debug.dll</Inputs>
+      <Message>Copying ebmcore DLL to TestCoreApi</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x64_debug.dll lib_ebmcore_win_x64_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -119,30 +124,31 @@ IF %ERRORLEVEL% GEQ 2 (
 )
 EXIT /B 0
 </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>PrecompiledHeaderTestCoreApi.h</PrecompiledHeaderFile>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebmcore_win_x86_debug.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
-    <PostBuildEvent>
+    <CustomBuildStep>
+      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebmcore_win_x86_debug.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebmcore_win_x86_debug.dll</Inputs>
+      <Message>Copying ebmcore DLL to TestCoreApi</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x86_debug.dll lib_ebmcore_win_x86_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -150,16 +156,12 @@ IF %ERRORLEVEL% GEQ 2 (
 )
 EXIT /B 0
 </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -168,6 +170,7 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>PrecompiledHeaderTestCoreApi.h</PrecompiledHeaderFile>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,8 +179,12 @@ EXIT /B 0
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebmcore_win_x86.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
-    <PostBuildEvent>
+    <CustomBuildStep>
+      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebmcore_win_x86.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebmcore_win_x86.dll</Inputs>
+      <Message>Copying ebmcore DLL to TestCoreApi</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x86.dll lib_ebmcore_win_x86.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -185,16 +192,12 @@ IF %ERRORLEVEL% GEQ 2 (
 )
 EXIT /B 0
 </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -203,6 +206,7 @@ EXIT /B 0
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>PrecompiledHeaderTestCoreApi.h</PrecompiledHeaderFile>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -211,8 +215,12 @@ EXIT /B 0
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\staging\</AdditionalLibraryDirectories>
       <AdditionalDependencies>lib_ebmcore_win_x64.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
-    <PostBuildEvent>
+    <CustomBuildStep>
+      <Outputs>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebmcore_win_x64.dll</Outputs>
+      <Inputs>$(ProjectDir)..\..\..\staging\lib_ebmcore_win_x64.dll</Inputs>
+      <Message>Copying ebmcore DLL to TestCoreApi</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\staging" "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebmcore_win_x64.dll lib_ebmcore_win_x64.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -220,11 +228,7 @@ IF %ERRORLEVEL% GEQ 2 (
 )
 EXIT /B 0
 </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="PrecompiledHeaderTestCoreApi.cpp">

@@ -11,14 +11,16 @@ extern "C" {
 
 #include <inttypes.h>
 
-//#define TREAT_BINARY_AS_MULTICLASS
+//#define EXPAND_BINARY_LOGITS
+// TODO: implement REDUCE_MULTICLASS_LOGITS
+//#define REDUCE_MULTICLASS_LOGITS
 
 #if defined(__clang__) || defined(__GNUC__)
 
 #define EBMCORE_IMPORT_EXPORT __attribute__ ((visibility ("default")))
 #define EBMCORE_CALLING_CONVENTION
 
-#elif defined(_MSC_VER) /* compiler type */
+#elif defined(_MSC_VER) // compiler type
 
 #ifdef EBMCORE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
@@ -37,9 +39,9 @@ extern "C" {
 #define EBMCORE_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
-#else // compiler
+#else // compiler type
 #error compiler not recognized
-#endif // compiler
+#endif // compiler type
 
 typedef struct {
    // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
@@ -80,6 +82,7 @@ typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char tra
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
+// BINARY VS MULTICLASS AND LOGIT REDUCTION
 // - I initially considered storing our model files as negated logits [storing them as (0 - mathematical_logit)], but that's a bad choice because:
 //   - if you use the wrong formula, you need a negation for binary classification, but the best formula requires a logit without negation 
 //     - for calculating binary classification you can use one of these formulas:
@@ -125,6 +128,34 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
 // - binary classification can be thought of as multiclass classification with 2 bins.  For binary classification, we probably also want to make the FIRST hidden bin (we only present 1 logit) as the implicit zero value because
 //   - it's consistent with multiclass
 //   - if in our original data the 0 value is the default case, then we really want to graph and are interested in the non-default case most of the time.  That means we want the default case zeroed [the 1st bin which is zero], and graph/report the 2nd bin [which is in the array index 1, and non-zero].  Eg: in the age vs death graph, we want the prediction from the logit to predict death and we want it increasing with increasing age.  That means our logit should be the FIRST bin.
+// - which target to zero the residuals/logits for:
+//   - we should zero the 0th bin since when checking the target value we can do a comparison to zero which is easier than checking the .Length value which requires an extra register/variable
+//   - in the python code we should change the order of the targets for multiclass.  Everything else being equal, and assuming there is no benefit regarding which class is zeroed, we should zero the domiant class since then we can avoid the call to exp(..) on the majority of the data
+//   - we need to have the python re-order the target multiclass values, since the multiclass logits get exposed in the model tensor, so our caller needs to have the same indexes because we don't want to re-order these
+//   - since we want the dominant class in the 0th index, we might as well have the python sort the target values in multiclass by the dominance
+//   - binary classification doesn't benefit/require re-ordering, but we should consider doing it there too for consistency, but that leads to some oddities
+
+// MISSING VALUES (put missing values in the 0th index)
+// - mostly because when processing the tensor we can keep 1 bit to indicate if a dimension is missing and maybe 1 more bit to indicate if it's categorical vs having those bits PLUS the total count AND having to do subtraction to determine when to stop the ordinal values.  Missing is an unconditional branch which chooses either 0 or 1 which are special constants that are faster).  Also, if missing is first, when we start processing a tensor, we can have code that creates an initial split that DOESN'T need to consider if there are any other splits in the model (this is best for tensors again)
+//    - concepts:
+//       - binning float/dobule/int data in python/numpy consists of first calling np.histogram to get the cuts, then calling np.digitize to do the actually binning
+//       - binning is done via binary search.  numpy might send the data to c++.  massive amounts of binary searching is probably better in c++, but for most datasets, we can implement this directly in python efficiently
+//       - if you use numpy to do the binning, then it creates the bins and turns missing into NaN values.  We think the NaN values are either stored as indexes to missing values or as a bitfield array.  After generating the binned dataset, if using numpy to do the binning you need to then postprocess the data by turning missing values into either zero or N, and if using zero for missing you need to increment all the other values.  It seems that doing your own binning would be better since it's easy and efficient to do
+//    - arguments for putting at end :
+//       - On the graph, we'd want missing to go on the right since on the left it would shift any graphs to the right or require whitespace when no missing values are present
+//       - if when graphing we put the missing value on the right, then maybe we should store it in the model that way(in the Nth position)
+//       - for non-missing values, you need a check to know if you start from the 0th or 1st position, but that can be done in a non - branching way(isMissing ? 1 : 0), but in any case it might be more confusing code wise since you might miss the need to start from a different index. BUT, maybe you don't gain much since if the missing is at the end then you need to have you stopping condition (isMissing ? count - 1 : count), which requries a bit more math and doesn't use the zero value which is more efficient in non - branching instructions
+//       - one drawback is that if you put it in the 0th position, then you need to mentally shift all the values upwards only when there is a missing value
+//    - arguments for putting at start :
+//       - when looking in debugger, it's nice to have the exceptional condition first where you can see it easily
+//       - having 0 as missing might be ok since it's always at an exact point, whereas we need to keep the index for missing otherwise
+//       - probably having 0 as missing is the best since when converting python values to indexes, we'll probably use a hashtable or a sorted list or something, and there we can just code everything to the index without worrying about missing, BUT if we see a missing we just know to put it in the 0th bin without keeping an extra variable indicating the index position
+//       - when binning, we don't care if any of the bins are missing (this is the slow part for mains, so for mains there probably isn't any benefit to putting missing at the start)
+//       - we want binning to be efficient, so we won't pass in -1 values.  We'll pass in either 0 or (count - 1) values to indicate missing
+//       - when cutting mains, it might be slighly nicer to have the missing value in the 0 position since you can do any work on the missing value before entering any loop to process the ordinal values, so you don't have to carry some state over the loop (you can do it before register pressure increases with loop variables, etc).
+//       - when cutting N - dimensions, it becomes a lot nicer to have missing in the 0 bin since then we just need to store a single bit to indicate if the tensor's first value is missing.  If we were to put the missing value in the (count - 1) position, we'd need to store the count, the bit if missing, and do some math to calculate the non - missing cut point.All of this is bad
+//       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.  I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
+//       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags);
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags);

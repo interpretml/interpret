@@ -275,7 +275,6 @@ class DispatcherApp:
                     return [handler.read()]
 
             match = re.search(self.app_pattern, path_info)
-            log.debug("App pattern match: {0}".format(match))
             if match is None or self.pool.get(match.group(1), None) is None:
                 msg = "URL not supported: {0}".format(path_info)
                 log.error(msg)

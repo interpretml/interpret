@@ -31,6 +31,8 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
    g_traceLevel = traceLevel;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 extern void InteralLogWithArguments(signed char traceLevel, const char * const pOriginalMessage, ...) {
    // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an inline function then the 
    // memory gets reserved on the stack of the function which calls our logging MACRO.  The reserved memory will be held when our calling function calls any
@@ -50,3 +52,4 @@ extern void InteralLogWithArguments(signed char traceLevel, const char * const p
    }
    va_end(args);
 }
+WARNING_POP
