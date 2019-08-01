@@ -621,13 +621,13 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    // we need to divide by the number of sampling sets that we constructed this from.
    // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
    if(IsClassification(countCompilerClassificationTargetStates)) {
-#ifdef TREAT_BINARY_AS_MULTICLASS
-      constexpr bool bTreatBinaryAsMulticlass = true;
-#else // TREAT_BINARY_AS_MULTICLASS
-      constexpr bool bTreatBinaryAsMulticlass = false;
-#endif // TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
+      constexpr bool bExpandBinaryLogits = true;
+#else // EXPAND_BINARY_LOGITS
+      constexpr bool bExpandBinaryLogits = false;
+#endif // EXPAND_BINARY_LOGITS
 
-      //if(0 <= k_iZeroResidual || 2 == cTargetStates && bTreatBinaryAsMulticlass) {
+      //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
       //   EBM_ASSERT(2 <= cTargetStates);
       //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
       //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
@@ -636,7 +636,7 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
       //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
       //}
 
-      constexpr bool bDividing = bTreatBinaryAsMulticlass && 2 == countCompilerClassificationTargetStates;
+      constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
       if(bDividing) {
          pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
       } else {

@@ -164,28 +164,28 @@ constexpr TML_INLINE bool IsClassification(ptrdiff_t cCompilerClassificationTarg
    return 0 <= cCompilerClassificationTargetStates;
 }
 constexpr TML_INLINE bool IsBinaryClassification(ptrdiff_t cCompilerClassificationTargetStates) {
-#ifdef TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
    return false;
-#else // TREAT_BINARY_AS_MULTICLASS
+#else // EXPAND_BINARY_LOGITS
    return 2 == cCompilerClassificationTargetStates;
-#endif // TREAT_BINARY_AS_MULTICLASS
+#endif // EXPAND_BINARY_LOGITS
 }
 
 constexpr TML_INLINE size_t GetVectorLengthFlatCore(ptrdiff_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
-#ifdef TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
-#else // TREAT_BINARY_AS_MULTICLASS
+#else // EXPAND_BINARY_LOGITS
    return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
-#endif // TREAT_BINARY_AS_MULTICLASS
+#endif // EXPAND_BINARY_LOGITS
 }
 constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
-#ifdef TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
-#else // TREAT_BINARY_AS_MULTICLASS
+#else // EXPAND_BINARY_LOGITS
    return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
-#endif // TREAT_BINARY_AS_MULTICLASS
+#endif // EXPAND_BINARY_LOGITS
 }
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function

@@ -159,17 +159,17 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
       const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
 
 #ifndef NDEBUG
-#ifdef TREAT_BINARY_AS_MULTICLASS
-      constexpr bool bTreatBinaryAsMulticlass = true;
-#else // TREAT_BINARY_AS_MULTICLASS
-      constexpr bool bTreatBinaryAsMulticlass = false;
-#endif // TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
+      constexpr bool bExpandBinaryLogits = true;
+#else // EXPAND_BINARY_LOGITS
+      constexpr bool bExpandBinaryLogits = false;
+#endif // EXPAND_BINARY_LOGITS
       FractionalDataType residualTotalDebug = 0;
 #endif // NDEBUG
       size_t iVector = 0;
       do {
          const FractionalDataType residualError = *pResidualError;
-         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
 #ifndef NDEBUG
          residualTotalDebug += residualError;
 #endif // NDEBUG
@@ -186,7 +186,7 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
          // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
       } while(iVector < cVectorLength);
 
-      EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+      EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
    }
    LOG(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
@@ -251,16 +251,16 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
          size_t iVector = 0;
 
 #ifndef NDEBUG
-#ifdef TREAT_BINARY_AS_MULTICLASS
-         constexpr bool bTreatBinaryAsMulticlass = true;
-#else // TREAT_BINARY_AS_MULTICLASS
-         constexpr bool bTreatBinaryAsMulticlass = false;
-#endif // TREAT_BINARY_AS_MULTICLASS
+#ifdef EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = true;
+#else // EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = false;
+#endif // EXPAND_BINARY_LOGITS
          FractionalDataType residualTotalDebug = 0;
 #endif // NDEBUG
          do {
             const FractionalDataType residualError = *pResidualError;
-            EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
+            EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
 #ifndef NDEBUG
             residualTotalDebug += residualError;
 #endif // NDEBUG
@@ -277,7 +277,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
             // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
          } while(iVector < cVectorLength);
 
-         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bTreatBinaryAsMulticlass || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
 
          iBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away

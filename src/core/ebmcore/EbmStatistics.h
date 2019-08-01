@@ -16,7 +16,9 @@ class EbmStatistics final {
    TML_INLINE EbmStatistics() {
       // DON'T allow anyone to make this static class
    }
+
 public:
+
    TML_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cCases) {
       // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
       EBM_ASSERT(0 < cCases); // we purge bins that have case counts of zero, so cCases should never be zero
