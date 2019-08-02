@@ -83,7 +83,7 @@ WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
-constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
+constexpr TML_INLINE bool IsNumberConvertable(const TFrom number) {
    // TODO: this function won't work for some floats and doubles.  For example, if you had just a bit more than the maximum integer in a double, it might round down properly, but this function will say that it won't.
 
    // the general rules of conversion are as follows:
@@ -133,7 +133,7 @@ constexpr TML_INLINE bool IsNumberConvertable(TFrom number) {
 
 WARNING_POP
 
-enum AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
+enum class AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetStatesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
@@ -155,15 +155,17 @@ typedef size_t StorageDataTypeCore;
 // we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
 typedef ptrdiff_t ActiveDataType;
 
+// TODO : rename cCompilerClassificationTargetStates -> compilerLearningTypeOrCountClassificationStates (see the testing program for how this would look)
+
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
-constexpr TML_INLINE bool IsRegression(ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr TML_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetStates) {
    return k_Regression == cCompilerClassificationTargetStates;
 }
-constexpr TML_INLINE bool IsClassification(ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr TML_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
    return 0 <= cCompilerClassificationTargetStates;
 }
-constexpr TML_INLINE bool IsBinaryClassification(ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr TML_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
 #ifdef EXPAND_BINARY_LOGITS
    return false;
 #else // EXPAND_BINARY_LOGITS
@@ -171,7 +173,7 @@ constexpr TML_INLINE bool IsBinaryClassification(ptrdiff_t cCompilerClassificati
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(ptrdiff_t cTargetStates) {
+constexpr TML_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
@@ -179,7 +181,7 @@ constexpr TML_INLINE size_t GetVectorLengthFlatCore(ptrdiff_t cTargetStates) {
    return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
+constexpr TML_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
@@ -212,7 +214,7 @@ constexpr TML_INLINE size_t GetVectorLengthFlatCore(size_t cTargetStates) {
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
 template<typename T>
-constexpr size_t CountBitsRequiredCore(T maxValue) {
+constexpr size_t CountBitsRequiredCore(const T maxValue) {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
    return 0 == maxValue ? 0 : 1 + CountBitsRequiredCore<T>(maxValue / 2);
 }
@@ -247,7 +249,7 @@ WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 // TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
 // TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
-constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
+constexpr TML_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -259,7 +261,7 @@ constexpr TML_INLINE bool IsMultiplyError(size_t num1, size_t num2) {
 }
 WARNING_POP
 
-constexpr TML_INLINE bool IsAddError(size_t num1, size_t num2) {
+constexpr TML_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }

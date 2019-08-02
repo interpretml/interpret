@@ -9,7 +9,7 @@
 
 #include "EbmInternal.h" // TML_INLINE
 
-enum AttributeTypeCore;
+enum class AttributeTypeCore;
 
 // AttributeInternal is a class internal to our library.  Our public interface will not have a "Attribute" POD that we can use for C interop since everything will be a specific type of attribute like OrdinalAttribute (POD)
 class AttributeInternalCore final {

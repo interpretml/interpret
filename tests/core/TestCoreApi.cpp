@@ -90,24 +90,23 @@ constexpr size_t GetVectorLength(size_t cTargetStates) {
 }
 
 constexpr IntegerDataType randomSeed = 42;
-
 enum class AttributeType : IntegerDataType { Ordinal = AttributeTypeOrdinal, Nominal = AttributeTypeNominal };
 
-class Attribute {
+class Attribute final {
 public:
 
-   AttributeType m_attributeType;
-   bool m_hasMissing;
-   IntegerDataType m_countStates;
+   const AttributeType m_attributeType;
+   const bool m_hasMissing;
+   const IntegerDataType m_countStates;
 
-   Attribute(AttributeType attributeType, bool hasMissing, IntegerDataType countStates) {
-      m_attributeType = attributeType;
-      m_hasMissing = hasMissing;
-      m_countStates = countStates;
+   Attribute(const AttributeType attributeType, const bool hasMissing, const IntegerDataType countStates) :
+      m_attributeType(attributeType),
+      m_hasMissing(hasMissing),
+      m_countStates(countStates) {
    }
 };
 
-class RegressionCase {
+class RegressionCase final {
 public:
    const FractionalDataType m_target;
    const std::vector<IntegerDataType> m_data;
@@ -129,7 +128,7 @@ public:
    }
 };
 
-class ClassificationCase {
+class ClassificationCase final {
 public:
    const IntegerDataType m_target;
    const std::vector<IntegerDataType> m_data;
@@ -142,7 +141,7 @@ public:
       m_bNullTrainingPredictionScores(true) {
    }
 
-   ClassificationCase(IntegerDataType target, std::vector<IntegerDataType> data, std::vector<FractionalDataType> logits) :
+   ClassificationCase(const IntegerDataType target, const std::vector<IntegerDataType> data, const std::vector<FractionalDataType> logits) :
       m_target(target),
       m_data(data),
       m_logits(logits),
@@ -150,12 +149,18 @@ public:
    }
 };
 
-class TestApi {
-public:
+constexpr ptrdiff_t k_learningTypeRegression = ptrdiff_t { -1 };
+constexpr bool IsClassification(const ptrdiff_t learningTypeOrCountClassificationStates) {
+   return 0 <= learningTypeOrCountClassificationStates;
+}
 
-   enum class Stage { Attributes, AttributeCombinations, Training, Validation, Initialize, Steps };
+class TestApi {
+   enum class Stage {
+      Beginning, AttributesAdded, AttributeCombinationsAdded, TrainingAdded, ValidationAdded, Initialized
+   };
 
    Stage m_stage;
+   const ptrdiff_t m_learningTypeOrCountClassificationStates;
    const ptrdiff_t m_iZeroClassificationLogit;
 
    std::vector<EbmAttribute> m_attributes;
@@ -176,13 +181,27 @@ public:
 
    PEbmTraining m_pEbmTraining;
 
-   TestApi(const ptrdiff_t iZeroClassificationLogit = ptrdiff_t { -1 }) :
-      m_stage(Stage::Attributes),
-      m_iZeroClassificationLogit(iZeroClassificationLogit) {
+public:
+
+   TestApi(const ptrdiff_t learningTypeOrCountClassificationStates, const ptrdiff_t iZeroClassificationLogit = ptrdiff_t { -1 }) :
+      m_stage(Stage::Beginning),
+      m_learningTypeOrCountClassificationStates(learningTypeOrCountClassificationStates),
+      m_iZeroClassificationLogit(iZeroClassificationLogit),
+      m_bNullTrainingPredictionScores(true),
+      m_bNullValidationPredictionScores(true) {
+      if(IsClassification(learningTypeOrCountClassificationStates)) {
+         if(learningTypeOrCountClassificationStates <= iZeroClassificationLogit) {
+            exit(1);
+         }
+      } else {
+         if(ptrdiff_t { -1 } != iZeroClassificationLogit) {
+            exit(1);
+         }
+      }
    }
 
    void AddAttributes(const std::vector<Attribute> attributes) {
-      if(Stage::Attributes != m_stage) {
+      if(Stage::Beginning != m_stage) {
          exit(1);
       }
 
@@ -194,11 +213,11 @@ public:
          m_attributes.push_back(attribute);
       }
 
-      m_stage = Stage::AttributeCombinations;
+      m_stage = Stage::AttributesAdded;
    }
 
    void AddAttributeCombinations(const std::vector<std::vector<size_t>> attributeCombinations) {
-      if(Stage::AttributeCombinations != m_stage) {
+      if(Stage::AttributesAdded != m_stage) {
          exit(1);
       }
 
@@ -207,172 +226,170 @@ public:
          attributeCombination.countAttributesInCombination = oneAttributeCombination.size();
          m_attributeCombinations.push_back(attributeCombination);
          for(const size_t oneIndex : oneAttributeCombination) {
-            if(oneIndex <= m_attributes.size()) {
+            if(m_attributes.size() <= oneIndex) {
                exit(1);
             }
             m_attributeCombinationsIndexes.push_back(oneIndex);
          }
       }
 
-      m_stage = Stage::Training;
+      m_stage = Stage::AttributeCombinationsAdded;
    }
 
    void AddTrainingCases(const std::vector<RegressionCase> cases) {
-      if(Stage::Training != m_stage) {
+      if(Stage::AttributeCombinationsAdded != m_stage) {
+         exit(1);
+      }
+      if(k_learningTypeRegression != m_learningTypeOrCountClassificationStates) {
          exit(1);
       }
       const size_t cCases = cases.size();
-      if(0 == cCases) {
-         return;
-      }
-      const size_t cAttributes = m_attributes.size();
-      const bool bNullTrainingPredictionScores = cases[0].m_bNullTrainingPredictionScores;
-      m_bNullTrainingPredictionScores = bNullTrainingPredictionScores;
+      if(0 != cCases) {
+         const size_t cAttributes = m_attributes.size();
+         const bool bNullTrainingPredictionScores = cases[0].m_bNullTrainingPredictionScores;
+         m_bNullTrainingPredictionScores = bNullTrainingPredictionScores;
 
-      for(const RegressionCase oneCase : cases) {
-         if(cAttributes != oneCase.m_data.size()) {
-            exit(1);
-         }
-         if(bNullTrainingPredictionScores != oneCase.m_bNullTrainingPredictionScores) {
-            exit(1);
-         }
-         FractionalDataType target = oneCase.m_target;
-         if(std::isnan(target)) {
-            exit(1);
-         }
-         if(std::isinf(target)) {
-            exit(1);
-         }
-         m_trainingRegressionTargets.push_back(target);
-         if(!bNullTrainingPredictionScores) {
-            FractionalDataType score = oneCase.m_score;
-            if(std::isnan(score)) {
+         for(const RegressionCase oneCase : cases) {
+            if(cAttributes != oneCase.m_data.size()) {
                exit(1);
             }
-            if(std::isinf(score)) {
+            if(bNullTrainingPredictionScores != oneCase.m_bNullTrainingPredictionScores) {
                exit(1);
             }
-            m_trainingPredictionScores.push_back(score);
+            const FractionalDataType target = oneCase.m_target;
+            if(std::isnan(target)) {
+               exit(1);
+            }
+            if(std::isinf(target)) {
+               exit(1);
+            }
+            m_trainingRegressionTargets.push_back(target);
+            if(!bNullTrainingPredictionScores) {
+               const FractionalDataType score = oneCase.m_score;
+               if(std::isnan(score)) {
+                  exit(1);
+               }
+               if(std::isinf(score)) {
+                  exit(1);
+               }
+               m_trainingPredictionScores.push_back(score);
+            }
+         }
+         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
+            const EbmAttribute attribute = m_attributes[iAttribute];
+            for(size_t iCase = 0; iCase < cCases; ++iCase) {
+               const IntegerDataType data = cases[iCase].m_data[iAttribute];
+               if(data < 0) {
+                  exit(1);
+               }
+               if(attribute.countStates <= data) {
+                  exit(1);
+               }
+               m_trainingData.push_back(data);
+            }
          }
       }
-      for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-         const EbmAttribute attribute = m_attributes[iAttribute];
-         for(size_t iCase = 0; iCase < cCases; ++iCase) {
-            IntegerDataType data = cases[iCase].m_data[iAttribute];
-            if(data < 0) {
-               exit(1);
-            }
-            if(attribute.countStates <= data) {
-               exit(1);
-            }
-            m_trainingData.push_back(data);
-         }
-      }
-
-      m_stage = Stage::Validation;
+      m_stage = Stage::TrainingAdded;
    }
 
    void AddTrainingCases(const std::vector<ClassificationCase> cases) {
-      if(Stage::Training != m_stage) {
+      if(Stage::AttributeCombinationsAdded != m_stage) {
+         exit(1);
+      }
+      if(!IsClassification(m_learningTypeOrCountClassificationStates)) {
          exit(1);
       }
       const size_t cCases = cases.size();
-      if(0 == cCases) {
-         return;
-      }
-      const size_t cAttributes = m_attributes.size();
-      const size_t cClasses = cases[0].m_logits.size();
-      if(static_cast<ptrdiff_t>(cClasses) <= m_iZeroClassificationLogit) {
-         exit(1);
-      }
-      const bool bNullTrainingPredictionScores = cases[0].m_bNullTrainingPredictionScores;
-      m_bNullTrainingPredictionScores = bNullTrainingPredictionScores;
+      if(0 != cCases) {
+         const size_t cAttributes = m_attributes.size();
+         const bool bNullTrainingPredictionScores = cases[0].m_bNullTrainingPredictionScores;
+         m_bNullTrainingPredictionScores = bNullTrainingPredictionScores;
 
-      for(const ClassificationCase oneCase : cases) {
-         if(cAttributes != oneCase.m_data.size()) {
-            exit(1);
-         }
-         if(cClasses != oneCase.m_logits.size()) {
-            exit(1);
-         }
-         if(bNullTrainingPredictionScores != oneCase.m_bNullTrainingPredictionScores) {
-            exit(1);
-         }
-         const IntegerDataType target = oneCase.m_target;
-         if(target < 0) {
-            exit(1);
-         }
-         if(cClasses <= static_cast<size_t>(target)) {
-            exit(1);
-         }
-         m_trainingClassificationTargets.push_back(target);
-         if(!bNullTrainingPredictionScores) {
-            ptrdiff_t iLogit = 0;
-            for(const FractionalDataType oneLogit : oneCase.m_logits) {
-               if(std::isnan(oneLogit)) {
+         for(const ClassificationCase oneCase : cases) {
+            if(cAttributes != oneCase.m_data.size()) {
+               exit(1);
+            }
+            if(bNullTrainingPredictionScores != oneCase.m_bNullTrainingPredictionScores) {
+               exit(1);
+            }
+            const IntegerDataType target = oneCase.m_target;
+            if(target < 0) {
+               exit(1);
+            }
+            if(m_learningTypeOrCountClassificationStates <= static_cast<ptrdiff_t>(target)) {
+               exit(1);
+            }
+            m_trainingClassificationTargets.push_back(target);
+            if(!bNullTrainingPredictionScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) != oneCase.m_logits.size()) {
                   exit(1);
                }
-               if(std::isinf(oneLogit)) {
-                  exit(1);
-               }
-               if(2 == cClasses) {
-                  // binary classification
+               ptrdiff_t iLogit = 0;
+               for(const FractionalDataType oneLogit : oneCase.m_logits) {
+                  if(std::isnan(oneLogit)) {
+                     exit(1);
+                  }
+                  if(std::isinf(oneLogit)) {
+                     exit(1);
+                  }
+                  if(2 == m_learningTypeOrCountClassificationStates) {
+                     // binary classification
 #ifdef EXPAND_BINARY_LOGITS
-                  if(m_iZeroClassificationLogit < 0) {
-                     m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
-                  } else {
-                     m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
-                  }
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_trainingPredictionScores.push_back(oneLogit);
+                     } else {
+                        m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                     }
 #else // EXPAND_BINARY_LOGITS
-                  if(m_iZeroClassificationLogit < 0) {
-                     if(0 != iLogit) {
-                        m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
                      }
-                  } else {
-                     if(m_iZeroClassificationLogit != iLogit) {
-                        m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
-                     }
-                  }
 #endif // EXPAND_BINARY_LOGITS
-               } else {
-                  // multiclass
-#ifdef REDUCE_MULTICLASS_LOGITS
-                  if(m_iZeroClassificationLogit < 0) {
-                     if(0 != iLogit) {
-                        m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
-                     }
                   } else {
-                     if(m_iZeroClassificationLogit != iLogit) {
+                     // multiclass
+#ifdef REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
+                     }
+#else // REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_trainingPredictionScores.push_back(oneLogit);
+                     } else {
                         m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
                      }
-                  }
-#else // REDUCE_MULTICLASS_LOGITS
-                  if(m_iZeroClassificationLogit < 0) {
-                     m_trainingPredictionScores.push_back(oneLogit);
-                  } else {
-                     m_trainingPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
-                  }
 #endif // REDUCE_MULTICLASS_LOGITS
+                  }
+                  ++iLogit;
                }
-               ++iLogit;
+            }
+         }
+         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
+            const EbmAttribute attribute = m_attributes[iAttribute];
+            for(size_t iCase = 0; iCase < cCases; ++iCase) {
+               const IntegerDataType data = cases[iCase].m_data[iAttribute];
+               if(data < 0) {
+                  exit(1);
+               }
+               if(attribute.countStates <= data) {
+                  exit(1);
+               }
+               m_trainingData.push_back(data);
             }
          }
       }
-      for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-         const EbmAttribute attribute = m_attributes[iAttribute];
-         for(size_t iCase = 0; iCase < cCases; ++iCase) {
-            const IntegerDataType data = cases[iCase].m_data[iAttribute];
-            if(data < 0) {
-               exit(1);
-            }
-            if(attribute.countStates <= data) {
-               exit(1);
-            }
-            m_trainingData.push_back(data);
-         }
-      }
-
-      m_stage = Stage::Validation;
+      m_stage = Stage::TrainingAdded;
    }
 
 
@@ -388,19 +405,24 @@ public:
 
 
    void Initialize(const IntegerDataType countInnerBags) {
-      if(Stage::Initialize != m_stage) {
+      if(Stage::ValidationAdded != m_stage) {
          exit(1);
       }
       if(countInnerBags < IntegerDataType { 0 }) {
          exit(1);
       }
-      m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), &m_attributes[0], m_attributeCombinations.size(), &m_attributeCombinations[0], &m_attributeCombinationsIndexes[0], m_trainingRegressionTargets.size(), &m_trainingRegressionTargets[0], &m_trainingData[0], &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), &m_validationRegressionTargets[0], &m_validationData[0], &m_validationPredictionScores[0], countInnerBags);
-
-      m_stage = Stage::Training;
+      if(IsClassification(m_learningTypeOrCountClassificationStates)) {
+         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), &m_attributes[0], m_attributeCombinations.size(), &m_attributeCombinations[0], &m_attributeCombinationsIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), &m_trainingClassificationTargets[0], &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), &m_validationClassificationTargets[0], &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+      } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
+         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), &m_attributes[0], m_attributeCombinations.size(), &m_attributeCombinations[0], &m_attributeCombinationsIndexes[0], m_trainingRegressionTargets.size(), &m_trainingRegressionTargets[0], &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), &m_validationRegressionTargets[0], &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+      } else {
+         exit(1);
+      }
+      m_stage = Stage::Initialized;
    }
 
    FractionalDataType Train(const PEbmTraining ebmTraining, const IntegerDataType indexAttributeCombination, const FractionalDataType learningRate, const IntegerDataType countTreeSplitsMax, const IntegerDataType countCasesRequiredForSplitParentMin, const std::vector<FractionalDataType> trainingWeights, const std::vector<FractionalDataType> validationWeights) {
-      if(Stage::Training != m_stage) {
+      if(Stage::Initialized != m_stage) {
          exit(1);
       }
       if(nullptr == ebmTraining) {
@@ -421,14 +443,14 @@ public:
       if(std::isinf(learningRate)) {
          exit(1);
       }
-      if(countTreeSplitsMax < FractionalDataType { 1 }) {
+      if(countTreeSplitsMax < FractionalDataType { 0 }) {
          exit(1);
       }
-      if(countCasesRequiredForSplitParentMin < FractionalDataType { 2 }) {
+      if(countCasesRequiredForSplitParentMin < FractionalDataType { 0 }) {
          exit(1);
       }
 
-      FractionalDataType validationMetricReturn;
+      FractionalDataType validationMetricReturn = FractionalDataType { 0 };
       const IntegerDataType ret = TrainingStep(m_pEbmTraining, indexAttributeCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
       if(0 != ret) {
          exit(1);

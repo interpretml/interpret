@@ -14,6 +14,9 @@ extern "C" {
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
 //#define REDUCE_MULTICLASS_LOGITS
+#if defined(EXPAND_BINARY_LOGITS) && defined(REDUCE_MULTICLASS_LOGITS)
+#error we should not be expanding binary logits while reducing multiclass logits
+#endif
 
 #if defined(__clang__) || defined(__GNUC__)
 
