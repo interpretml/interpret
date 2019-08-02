@@ -4,7 +4,7 @@ clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
 script_path=`dirname "$0"`
-root_path="$script_path/../../.."
+root_path="$script_path/../.."
 
 build_core=1
 for arg in "$@"; do
@@ -20,7 +20,7 @@ else
    echo "Core library NOT being built"
 fi
 
-compile_all="\"$root_path/src/core/TestCoreApi/TestCoreApi.cpp\" -I\"$root_path/src/core/TestCoreApi\" -I\"$root_path/src/core/inc\" -std=c++11 -fpermissive -O3 -march=core2"
+compile_all="\"$root_path/tests/core/TestCoreApi/TestCoreApi.cpp\" -I\"$root_path/tests/core/TestCoreApi\" -I\"$root_path/core/inc\" -std=c++11 -fpermissive -O3 -march=core2"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html

@@ -12,8 +12,8 @@ for arg in "$@"; do
    fi
 done
 
-# re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict 
-compile_all="\"$root_path/src/core/ebmcore/DataSetByAttribute.cpp\" \"$root_path/src/core/ebmcore/DataSetByAttributeCombination.cpp\" \"$root_path/src/core/ebmcore/InteractionDetection.cpp\" \"$root_path/src/core/ebmcore/Logging.cpp\" \"$root_path/src/core/ebmcore/SamplingWithReplacement.cpp\" \"$root_path/src/core/ebmcore/Training.cpp\" -I\"$root_path/src/core/ebmcore\" -I\"$root_path/src/core/inc\" -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+# re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
+compile_all="\"$root_path/core/DataSetByAttribute.cpp\" \"$root_path/core/DataSetByAttributeCombination.cpp\" \"$root_path/core/InteractionDetection.cpp\" \"$root_path/core/Logging.cpp\" \"$root_path/core/SamplingWithReplacement.cpp\" \"$root_path/core/Training.cpp\" -I\"$root_path/core\" -I\"$root_path/core/inc\" -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -27,7 +27,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/src/python/interpret/lib" ] || mkdir -p "$root_path/src/python/interpret/lib"
+   [ -d "$root_path/python/interpret/lib" ] || mkdir -p "$root_path/python/interpret/lib"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -52,7 +52,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib" "$root_path/src/python/interpret/lib/"
+   cp "$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib" "$root_path/python/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -82,7 +82,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib" "$root_path/src/python/interpret/lib/"
+   cp "$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib" "$root_path/python/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -113,7 +113,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib" "$root_path/src/python/interpret/lib/"
+      cp "$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib" "$root_path/python/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -143,7 +143,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib" "$root_path/src/python/interpret/lib/"
+      cp "$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib" "$root_path/python/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -159,7 +159,7 @@ elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/src/core/ebmcore/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/src/core/ebmcore/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/core/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/core/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
@@ -167,7 +167,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/src/python/interpret/lib" ] || mkdir -p "$root_path/src/python/interpret/lib"
+   [ -d "$root_path/python/interpret/lib" ] || mkdir -p "$root_path/python/interpret/lib"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -192,7 +192,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so" "$root_path/src/python/interpret/lib/"
+   cp "$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so" "$root_path/python/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -222,7 +222,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so" "$root_path/src/python/interpret/lib/"
+   cp "$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so" "$root_path/python/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -253,7 +253,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so" "$root_path/src/python/interpret/lib/"
+      cp "$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so" "$root_path/python/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -283,7 +283,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so" "$root_path/src/python/interpret/lib/"
+      cp "$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so" "$root_path/python/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
