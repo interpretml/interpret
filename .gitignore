@@ -4,6 +4,7 @@
 
 # Visual Studio cache/options directory
 .vs/
+.vscode/
 
 # Visual Studio User-specific files
 *.user
