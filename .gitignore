@@ -1,19 +1,20 @@
-# root directory outputs
+# compile script output directories
 /staging/
 /tmp/
 
-# Visual Studio cache/options directory
+# Visual Studio
 .vs/
-.vscode/
-
-# Visual Studio User-specific files
+enc_temp_folder/
 *.user
 *.vcxproj.filters
 
-# Intellij files
+# Visual Studio Code
+.vscode/
+
+# Intellij
 .idea/
 
-# Python-specific
+# Python
 *.egg-info/
 *.ipynb_checkpoints/
 venv/

@@ -73,7 +73,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
 #define CHECK_APPROX(value, expected) \
    do { \
       const double valueHidden = (value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, (expected), 0.01); \
+      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 0.01 }); \
       if(!bApproxEqualHidden) { \
          std::cout << " FAILED on \"" #value "(" << valueHidden << ") approx " #expected "\""; \
          testCaseHidden.m_bPassed = false; \
@@ -123,7 +123,7 @@ public:
    const bool m_hasMissing;
    const IntegerDataType m_countStates;
 
-   Attribute(const AttributeType attributeType, const bool hasMissing, const IntegerDataType countStates) :
+   Attribute(const IntegerDataType countStates, const AttributeType attributeType = AttributeType::Ordinal, const bool hasMissing = false) :
       m_attributeType(attributeType),
       m_hasMissing(hasMissing),
       m_countStates(countStates) {
@@ -316,6 +316,10 @@ public:
       if(nullptr != m_pEbmTraining) {
          FreeTraining(m_pEbmTraining);
       }
+   }
+
+   size_t GetAttributeCombinationsCount() {
+      return m_attributeCombinations.size();
    }
 
    void AddAttributes(const std::vector<Attribute> attributes) {
@@ -581,7 +585,7 @@ public:
 
 
 
-   void Initialize(const IntegerDataType countInnerBags = 0) {
+   void Initialize(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
       EbmAttribute attributes[1];
       EbmAttributeCombination attributeCombinations[1];
       IntegerDataType attributeCombinationIndexes[1];
@@ -613,7 +617,7 @@ public:
       m_stage = Stage::Initialized;
    }
 
-   FractionalDataType Train(const IntegerDataType indexAttributeCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = 0.01, const IntegerDataType countTreeSplitsMax = 4, const IntegerDataType countCasesRequiredForSplitParentMin = 2) {
+   FractionalDataType Train(const IntegerDataType indexAttributeCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = FractionalDataType { 0.01 }, const IntegerDataType countTreeSplitsMax = IntegerDataType { 4 }, const IntegerDataType countCasesRequiredForSplitParentMin = IntegerDataType { 2 }) {
       if(Stage::Initialized != m_stage) {
          exit(1);
       }
@@ -647,7 +651,7 @@ public:
       return validationMetricReturn;
    }
 
-   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore) {
+   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore = size_t { 0 }) {
       FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
@@ -655,36 +659,33 @@ public:
 };
 
 TEST_CASE("AttributeCombination with zero attributes, Training, regression") {
-   constexpr IntegerDataType countInnerBags = 0;
-   constexpr FractionalDataType learningRate = 0.01;
-   constexpr IntegerDataType countTreeSplitsMax = 2;
-   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
-
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddAttributes({ Attribute(AttributeType::Ordinal, false, 2) });
+   test.AddAttributes({ Attribute(2) });
    test.AddAttributeCombinations({ {} });
-   test.AddTrainingCases({ RegressionCase(10.5, { 0 }, 0) });
-   test.AddValidationCases({ RegressionCase(10.4, { 0 }, 0) });
-   test.Initialize(countInnerBags);
+   test.AddTrainingCases({ RegressionCase(10, { 0 }) });
+   test.AddValidationCases({ RegressionCase(12, { 0 }) });
+   test.Initialize();
 
-   FractionalDataType validationMetric;
-   FractionalDataType modelValue;
-   for(int i = 0; i < 1000; ++i) {
-      validationMetric = test.Train(0, {}, {}, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin);
-      if(0 == i) {
-         CHECK_APPROX(validationMetric, 10.295000000000000);
-         modelValue = test.GetCurrentModelValue(0, {}, 0);
-         CHECK_APPROX(modelValue, 0.10500000000000000);
-      }
-      if(1 == i) {
-         CHECK_APPROX(validationMetric, 10.191050000000001);
-         modelValue = test.GetCurrentModelValue(0, {}, 0);
-         CHECK_APPROX(modelValue, 0.20895000000000000);
+   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 11.900000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {});
+            CHECK_APPROX(modelValue, 0.1000000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 11.801000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {});
+            CHECK_APPROX(modelValue, 0.1990000000000000);
+         }
       }
    }
-   CHECK_APPROX(validationMetric, 0.0995467);
-   modelValue = test.GetCurrentModelValue(0, {}, 0);
-   CHECK_APPROX(modelValue, 10.4995);
+   CHECK_APPROX(validationMetric, 2.0004317124741098);
+   modelValue = test.GetCurrentModelValue(0, {});
+   CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Training, Binary") {
