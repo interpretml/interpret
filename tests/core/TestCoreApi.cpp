@@ -454,7 +454,7 @@ public:
             if(target < 0) {
                exit(1);
             }
-            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= target) {
+            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= static_cast<size_t>(target)) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(target);
@@ -753,7 +753,7 @@ public:
             if(target < 0) {
                exit(1);
             }
-            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= target) {
+            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= static_cast<size_t>(target)) {
                exit(1);
             }
             m_interactionClassificationTargets.push_back(target);
@@ -863,7 +863,7 @@ public:
          if(oneAttributeIndex < IntegerDataType { 0 }) {
             exit(1);
          }
-         if(m_attributes.size() <= oneAttributeIndex) {
+         if(m_attributes.size() <= static_cast<size_t>(oneAttributeIndex)) {
             exit(1);
          }
       }
