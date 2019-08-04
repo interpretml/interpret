@@ -175,18 +175,18 @@ public:
 
 class TestApi {
    enum class Stage {
-      Beginning, AttributesAdded, AttributeCombinationsAdded, TrainingAdded, ValidationAdded, Initialized
+      Beginning, AttributesAdded, AttributeCombinationsAdded, TrainingAdded, ValidationAdded, InitializedTraining, InteractionAdded, InitializedInteraction
    };
 
    Stage m_stage;
    const ptrdiff_t m_learningTypeOrCountClassificationStates;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<std::vector<size_t>> m_niceAttributeCombinations;
-
    std::vector<EbmAttribute> m_attributes;
    std::vector<EbmAttributeCombination> m_attributeCombinations;
    std::vector<IntegerDataType> m_attributeCombinationIndexes;
+
+   std::vector<std::vector<size_t>> m_niceAttributeCombinations;
 
    std::vector<FractionalDataType> m_trainingRegressionTargets;
    std::vector<IntegerDataType> m_trainingClassificationTargets;
@@ -202,8 +202,16 @@ class TestApi {
 
    PEbmTraining m_pEbmTraining;
 
+   std::vector<FractionalDataType> m_interactionRegressionTargets;
+   std::vector<IntegerDataType> m_interactionClassificationTargets;
+   std::vector<IntegerDataType> m_interactionData;
+   std::vector<FractionalDataType> m_interactionPredictionScores;
+   bool m_bNullInteractionPredictionScores;
+
+   PEbmInteraction m_pEbmInteraction;
+
    const FractionalDataType * GetScores(const size_t iAttributeCombination, const FractionalDataType * const pModel, const std::vector<size_t> indexes) const {
-      if(Stage::Initialized != m_stage) {
+      if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
       const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountClassificationStates);
@@ -300,7 +308,9 @@ public:
       m_iZeroClassificationLogit(iZeroClassificationLogit),
       m_bNullTrainingPredictionScores(true),
       m_bNullValidationPredictionScores(true),
-      m_pEbmTraining(nullptr) {
+      m_pEbmTraining(nullptr),
+      m_bNullInteractionPredictionScores(true),
+      m_pEbmInteraction(nullptr) {
       if(IsClassification(learningTypeOrCountClassificationStates)) {
          if(learningTypeOrCountClassificationStates <= iZeroClassificationLogit) {
             exit(1);
@@ -315,6 +325,9 @@ public:
    ~TestApi() {
       if(nullptr != m_pEbmTraining) {
          FreeTraining(m_pEbmTraining);
+      }
+      if(nullptr != m_pEbmInteraction) {
+         FreeInteraction(m_pEbmInteraction);
       }
    }
 
@@ -441,7 +454,7 @@ public:
             if(target < 0) {
                exit(1);
             }
-            if(m_learningTypeOrCountClassificationStates <= static_cast<ptrdiff_t>(target)) {
+            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= target) {
                exit(1);
             }
             m_trainingClassificationTargets.push_back(target);
@@ -585,7 +598,7 @@ public:
 
 
 
-   void Initialize(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
+   void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
       EbmAttribute attributes[1];
       EbmAttributeCombination attributeCombinations[1];
       IntegerDataType attributeCombinationIndexes[1];
@@ -614,11 +627,11 @@ public:
       if(nullptr == m_pEbmTraining) {
          exit(1);
       }
-      m_stage = Stage::Initialized;
+      m_stage = Stage::InitializedTraining;
    }
 
    FractionalDataType Train(const IntegerDataType indexAttributeCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = FractionalDataType { 0.01 }, const IntegerDataType countTreeSplitsMax = IntegerDataType { 4 }, const IntegerDataType countCasesRequiredForSplitParentMin = IntegerDataType { 2 }) {
-      if(Stage::Initialized != m_stage) {
+      if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
       if(indexAttributeCombination < IntegerDataType { 0 }) {
@@ -652,9 +665,215 @@ public:
    }
 
    FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore = size_t { 0 }) {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
       FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
+   }
+
+   void AddInteractionCases(const std::vector<RegressionCase> cases) {
+      if(Stage::AttributesAdded != m_stage) {
+         exit(1);
+      }
+      if(k_learningTypeRegression != m_learningTypeOrCountClassificationStates) {
+         exit(1);
+      }
+      const size_t cCases = cases.size();
+      if(0 != cCases) {
+         const size_t cAttributes = m_attributes.size();
+         const bool bNullPredictionScores = cases[0].m_bNullPredictionScores;
+         m_bNullInteractionPredictionScores = bNullPredictionScores;
+
+         for(const RegressionCase oneCase : cases) {
+            if(cAttributes != oneCase.m_data.size()) {
+               exit(1);
+            }
+            if(bNullPredictionScores != oneCase.m_bNullPredictionScores) {
+               exit(1);
+            }
+            const FractionalDataType target = oneCase.m_target;
+            if(std::isnan(target)) {
+               exit(1);
+            }
+            if(std::isinf(target)) {
+               exit(1);
+            }
+            m_interactionRegressionTargets.push_back(target);
+            if(!bNullPredictionScores) {
+               const FractionalDataType score = oneCase.m_score;
+               if(std::isnan(score)) {
+                  exit(1);
+               }
+               if(std::isinf(score)) {
+                  exit(1);
+               }
+               m_interactionPredictionScores.push_back(score);
+            }
+         }
+         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
+            const EbmAttribute attribute = m_attributes[iAttribute];
+            for(size_t iCase = 0; iCase < cCases; ++iCase) {
+               const IntegerDataType data = cases[iCase].m_data[iAttribute];
+               if(data < 0) {
+                  exit(1);
+               }
+               if(attribute.countStates <= data) {
+                  exit(1);
+               }
+               m_interactionData.push_back(data);
+            }
+         }
+      }
+      m_stage = Stage::InteractionAdded;
+   }
+
+   void AddInteractionCases(const std::vector<ClassificationCase> cases) {
+      if(Stage::AttributesAdded != m_stage) {
+         exit(1);
+      }
+      if(!IsClassification(m_learningTypeOrCountClassificationStates)) {
+         exit(1);
+      }
+      const size_t cCases = cases.size();
+      if(0 != cCases) {
+         const size_t cAttributes = m_attributes.size();
+         const bool bNullPredictionScores = cases[0].m_bNullPredictionScores;
+         m_bNullInteractionPredictionScores = bNullPredictionScores;
+
+         for(const ClassificationCase oneCase : cases) {
+            if(cAttributes != oneCase.m_data.size()) {
+               exit(1);
+            }
+            if(bNullPredictionScores != oneCase.m_bNullPredictionScores) {
+               exit(1);
+            }
+            const IntegerDataType target = oneCase.m_target;
+            if(target < 0) {
+               exit(1);
+            }
+            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= target) {
+               exit(1);
+            }
+            m_interactionClassificationTargets.push_back(target);
+            if(!bNullPredictionScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) != oneCase.m_logits.size()) {
+                  exit(1);
+               }
+               ptrdiff_t iLogit = 0;
+               for(const FractionalDataType oneLogit : oneCase.m_logits) {
+                  if(std::isnan(oneLogit)) {
+                     exit(1);
+                  }
+                  if(std::isinf(oneLogit)) {
+                     exit(1);
+                  }
+                  if(2 == m_learningTypeOrCountClassificationStates) {
+                     // binary classification
+#ifdef EXPAND_BINARY_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_interactionPredictionScores.push_back(oneLogit);
+                     } else {
+                        m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                     }
+#else // EXPAND_BINARY_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
+                     }
+#endif // EXPAND_BINARY_LOGITS
+                  } else {
+                     // multiclass
+#ifdef REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
+                     }
+#else // REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_interactionPredictionScores.push_back(oneLogit);
+                     } else {
+                        m_interactionPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                     }
+#endif // REDUCE_MULTICLASS_LOGITS
+                  }
+                  ++iLogit;
+               }
+            }
+         }
+         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
+            const EbmAttribute attribute = m_attributes[iAttribute];
+            for(size_t iCase = 0; iCase < cCases; ++iCase) {
+               const IntegerDataType data = cases[iCase].m_data[iAttribute];
+               if(data < 0) {
+                  exit(1);
+               }
+               if(attribute.countStates <= data) {
+                  exit(1);
+               }
+               m_interactionData.push_back(data);
+            }
+         }
+      }
+      m_stage = Stage::InteractionAdded;
+   }
+
+   void InitializeInteraction() {
+      EbmAttribute attributes[1];
+      FractionalDataType interactionRegressionTargets[1];
+      IntegerDataType interactionClassificationTargets[1];
+      IntegerDataType interactionData[1];
+
+      if(Stage::InteractionAdded != m_stage) {
+         exit(1);
+      }
+
+      if(IsClassification(m_learningTypeOrCountClassificationStates)) {
+         m_pEbmInteraction = InitializeInteractionClassification(m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_learningTypeOrCountClassificationStates, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? &interactionClassificationTargets[0] : &m_interactionClassificationTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+      } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
+         m_pEbmInteraction = InitializeInteractionRegression(m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? &interactionRegressionTargets[0] : &m_interactionRegressionTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+      } else {
+         exit(1);
+      }
+
+      if(nullptr == m_pEbmInteraction) {
+         exit(1);
+      }
+      m_stage = Stage::InitializedInteraction;
+   }
+
+   FractionalDataType InteractionScore(const std::vector<IntegerDataType> attributesInCombination) {
+      IntegerDataType attributesInCombinationEmpty[1];
+
+      if(Stage::InitializedInteraction != m_stage) {
+         exit(1);
+      }
+      for(const IntegerDataType oneAttributeIndex : attributesInCombination) {
+         if(oneAttributeIndex < IntegerDataType { 0 }) {
+            exit(1);
+         }
+         if(m_attributes.size() <= oneAttributeIndex) {
+            exit(1);
+         }
+      }
+
+      FractionalDataType interactionScoreReturn = FractionalDataType { 0 };
+      const IntegerDataType ret = GetInteractionScore(m_pEbmInteraction, attributesInCombination.size(), 0 == attributesInCombination.size() ? &attributesInCombinationEmpty[0] : &attributesInCombination[0], &interactionScoreReturn);
+      if(0 != ret) {
+         exit(1);
+      }
+      return interactionScoreReturn;
    }
 };
 
@@ -664,7 +883,7 @@ TEST_CASE("AttributeCombination with zero attributes, Training, regression") {
    test.AddAttributeCombinations({ {} });
    test.AddTrainingCases({ RegressionCase(10, { 0 }) });
    test.AddValidationCases({ RegressionCase(12, { 0 }) });
-   test.Initialize();
+   test.InitializeTraining();
 
    FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
    FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
@@ -819,36 +1038,12 @@ TEST_CASE("AttributeCombination with zero attributes, Training, multiclass") {
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Interaction, regression") {
-   constexpr size_t cVectorLength = 1;
-   constexpr size_t cAttributes = 1;
-   constexpr size_t cAttributeCombinationsIndexes = 0;
-   constexpr size_t cCases = 1;
-
-   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
-   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
-   FractionalDataType targets[std::max(std::size_t { 1 }, cCases)];
-   IntegerDataType data[std::max(std::size_t { 1 }, cCases * cAttributes)];
-   FractionalDataType predictionScores[std::max(std::size_t { 1 }, cCases * cVectorLength)];
-
-   attributes[0].attributeType = AttributeTypeOrdinal;
-   attributes[0].countStates = 2;
-   attributes[0].hasMissing = 0;
-
-   targets[0] = 10.5;
-   data[0] = 0;
-   predictionScores[0] = 0;
-
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(cAttributes, attributes, cCases, targets, data, predictionScores);
-
-   FractionalDataType metricReturn;
-   IntegerDataType result;
-   result = GetInteractionScore(pEbmInteraction, cAttributeCombinationsIndexes, combinationIndexes, &metricReturn);
-   CHECK(0 == result);
-   if(0 != result) {
-      return;
-   }
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases({ RegressionCase(10.5, { 0 }) });
+   test.InitializeInteraction();
+   FractionalDataType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
-   FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Interaction, Binary") {
