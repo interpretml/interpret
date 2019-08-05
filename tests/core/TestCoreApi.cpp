@@ -1129,12 +1129,12 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ RegressionCase(12, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricZeroAttributesInCombination;
+   FractionalDataType modelValueZeroAttributesInCombination;
+   FractionalDataType validationMetricOneState;
+   FractionalDataType modelValueOneState;
+   FractionalDataType validationMetricTwoStates;
+   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
@@ -1176,12 +1176,12 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricZeroAttributesInCombination;
+   FractionalDataType modelValueZeroAttributesInCombination;
+   FractionalDataType validationMetricOneState;
+   FractionalDataType modelValueOneState;
+   FractionalDataType validationMetricTwoStates;
+   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
@@ -1229,12 +1229,12 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType validationMetricTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValueTwoStates = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricZeroAttributesInCombination;
+   FractionalDataType modelValueZeroAttributesInCombination;
+   FractionalDataType validationMetricOneState;
+   FractionalDataType modelValueOneState;
+   FractionalDataType validationMetricTwoStates;
+   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
@@ -1291,6 +1291,114 @@ TEST_CASE("AttributeCombination with one attribute with one state, interaction, 
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({0});
    CHECK(0 == metricReturn);
+}
+
+TEST_CASE("Test Rehydration, training, regression") {
+   TestApi testContinuous = TestApi(k_learningTypeRegression);
+   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributeCombinations({ {} });
+   testContinuous.AddTrainingCases({ RegressionCase(10, { 0 }) });
+   testContinuous.AddValidationCases({ RegressionCase(12, { 0 }) });
+   testContinuous.InitializeTraining();
+
+   FractionalDataType model0 = 0;
+
+   FractionalDataType validationMetricContinuous;
+   FractionalDataType modelValueContinuous;
+   FractionalDataType validationMetricRestart;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      TestApi testRestart = TestApi(k_learningTypeRegression);
+      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributeCombinations({ {} });
+      testRestart.AddTrainingCases({ RegressionCase(10, { 0 }, model0) });
+      testRestart.AddValidationCases({ RegressionCase(12, { 0 }, model0) });
+      testRestart.InitializeTraining();
+
+      validationMetricRestart = testRestart.Train(0);
+      validationMetricContinuous = testContinuous.Train(0);
+      CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 0);
+      model0 += testRestart.GetCurrentModelValue(0, {}, 0);
+      CHECK_APPROX(modelValueContinuous, model0);
+   }
+}
+
+TEST_CASE("Test Rehydration, training, binary") {
+   TestApi testContinuous = TestApi(2);
+   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributeCombinations({ {} });
+   testContinuous.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.InitializeTraining();
+
+   FractionalDataType model0 = 0;
+   FractionalDataType model1 = 0;
+
+   FractionalDataType validationMetricContinuous;
+   FractionalDataType modelValueContinuous;
+   FractionalDataType validationMetricRestart;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      TestApi testRestart = TestApi(2);
+      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributeCombinations({ {} });
+      testRestart.AddTrainingCases({ ClassificationCase(0, { 0 }, { model0, model1 }) });
+      testRestart.AddValidationCases({ ClassificationCase(0, { 0 }, { model0, model1 }) });
+      testRestart.InitializeTraining();
+
+      validationMetricRestart = testRestart.Train(0);
+      validationMetricContinuous = testContinuous.Train(0);
+      CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 0);
+      model0 += testRestart.GetCurrentModelValue(0, {}, 0);
+      CHECK_APPROX(modelValueContinuous, model0);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 1);
+      model1 += testRestart.GetCurrentModelValue(0, {}, 1);
+      CHECK_APPROX(modelValueContinuous, model1);
+   }
+}
+
+TEST_CASE("Test Rehydration, training, multiclass") {
+   TestApi testContinuous = TestApi(3);
+   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributeCombinations({ {} });
+   testContinuous.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.InitializeTraining();
+
+   FractionalDataType model0 = 0;
+   FractionalDataType model1 = 0;
+   FractionalDataType model2 = 0;
+
+   FractionalDataType validationMetricContinuous;
+   FractionalDataType modelValueContinuous;
+   FractionalDataType validationMetricRestart;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      TestApi testRestart = TestApi(3);
+      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributeCombinations({ {} });
+      testRestart.AddTrainingCases({ ClassificationCase(0, { 0 }, { model0, model1, model2 }) });
+      testRestart.AddValidationCases({ ClassificationCase(0, { 0 }, { model0, model1, model2 }) });
+      testRestart.InitializeTraining();
+
+      validationMetricRestart = testRestart.Train(0);
+      validationMetricContinuous = testContinuous.Train(0);
+      CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 0);
+      model0 += testRestart.GetCurrentModelValue(0, {}, 0);
+      CHECK_APPROX(modelValueContinuous, model0);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 1);
+      model1 += testRestart.GetCurrentModelValue(0, {}, 1);
+      CHECK_APPROX(modelValueContinuous, model1);
+
+      modelValueContinuous = testContinuous.GetCurrentModelValue(0, {}, 2);
+      model2 += testRestart.GetCurrentModelValue(0, {}, 2);
+      CHECK_APPROX(modelValueContinuous, model2);
+   }
 }
 
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
