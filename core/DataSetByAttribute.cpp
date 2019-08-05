@@ -121,12 +121,11 @@ free_all:
 
 DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
    : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates))
-   , m_aaInputData(ConstructInputData(cAttributes, aAttributes, cCases, aInputDataFrom))
+   , m_aaInputData(0 == cAttributes ? nullptr : ConstructInputData(cAttributes, aAttributes, cCases, aInputDataFrom))
    , m_cCases(cCases)
    , m_cAttributes(cAttributes) {
 
    EBM_ASSERT(0 < cCases);
-   EBM_ASSERT(0 < cAttributes);
 }
 
 DataSetInternalCore::~DataSetInternalCore() {

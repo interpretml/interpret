@@ -37,11 +37,10 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributes(cAttributes)
-      , m_aAttributes(IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      , m_aAttributes(0 == cAttributes || IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
       , m_pDataSet(nullptr)
       , m_cLogEnterMessages (1000)
       , m_cLogExitMessages(1000) {
-      EBM_ASSERT(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
 
    ~TmlInteractionState() {
@@ -56,47 +55,49 @@ public:
    bool InitializeInteraction(const EbmAttribute * const aAttributes, const size_t cCases, const void * const aTargets, const IntegerDataType * const aInputData, const FractionalDataType * const aPredictionScores) {
       LOG(TraceLevelInfo, "Entered InitializeInteraction");
 
-      if(nullptr == m_aAttributes) {
-         LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == m_aAttributes");
+      if(0 != m_cAttributes && nullptr == m_aAttributes) {
+         LOG(TraceLevelWarning, "WARNING InitializeInteraction 0 != m_cAttributes && nullptr == m_aAttributes");
          return true;
       }
 
       LOG(TraceLevelInfo, "InitializeInteraction starting attribute processing");
-      EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
-      const EbmAttribute * pAttributeInitialize = aAttributes;
-      const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
-      EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
-      size_t iAttributeInitialize = 0;
-      do {
-         static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
-         static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
-         EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
-         AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
+      if(0 != m_cAttributes) {
+         EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+         const EbmAttribute * pAttributeInitialize = aAttributes;
+         const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
+         EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
+         size_t iAttributeInitialize = 0;
+         do {
+            static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
+            static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
+            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
+            AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
-         IntegerDataType countStates = pAttributeInitialize->countStates;
-         EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-         if(1 == countStates) {
-            LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
-         }
-         if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
-            LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
-            return true;
-         }
-         size_t cStates = static_cast<size_t>(countStates);
+            IntegerDataType countStates = pAttributeInitialize->countStates;
+            EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+            if(1 == countStates) {
+               LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
+            }
+            if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
+               LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
+               return true;
+            }
+            size_t cStates = static_cast<size_t>(countStates);
 
-         EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
-         bool bMissing = 0 != pAttributeInitialize->hasMissing;
+            EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
+            bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
-         // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-         new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-         // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
+            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
+            new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
-         EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
-         EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
+            EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
+            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
 
-         ++iAttributeInitialize;
-         ++pAttributeInitialize;
-      } while(pAttributeEnd != pAttributeInitialize);
+            ++iAttributeInitialize;
+            ++pAttributeInitialize;
+         } while(pAttributeEnd != pAttributeInitialize);
+      }
       LOG(TraceLevelInfo, "InitializeInteraction done attribute processing");
 
       LOG(TraceLevelInfo, "Entered DataSetInternalCore");
@@ -124,8 +125,8 @@ public:
 // a*PredictionScores = predictedValue for regression
 TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const void * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
    // bRegression is set in our program, so our caller can't pass in invalid data
-   EBM_ASSERT(1 <= countAttributes);
-   EBM_ASSERT(nullptr != attributes);
+   EBM_ASSERT(0 <= countAttributes);
+   EBM_ASSERT(0 == countAttributes || nullptr != attributes);
    EBM_ASSERT(bRegression || 2 <= countTargetStates);
    EBM_ASSERT(1 <= countCases);
    EBM_ASSERT(nullptr != targets);

@@ -694,7 +694,6 @@ public:
    }
 
    void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
-      EbmAttribute attributes[1];
       EbmAttributeCombination attributeCombinations[1];
       IntegerDataType attributeCombinationIndexes[1];
       FractionalDataType trainingRegressionTargets[1];
@@ -712,9 +711,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountClassificationStates)) {
-         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
-         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else {
          exit(1);
       }
@@ -925,7 +924,6 @@ public:
    }
 
    void InitializeInteraction() {
-      EbmAttribute attributes[1];
       FractionalDataType interactionRegressionTargets[1];
       IntegerDataType interactionClassificationTargets[1];
       IntegerDataType interactionData[1];
@@ -935,9 +933,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountClassificationStates)) {
-         m_pEbmInteraction = InitializeInteractionClassification(m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_learningTypeOrCountClassificationStates, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? &interactionClassificationTargets[0] : &m_interactionClassificationTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionClassification(m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_learningTypeOrCountClassificationStates, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? &interactionClassificationTargets[0] : &m_interactionClassificationTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
-         m_pEbmInteraction = InitializeInteractionRegression(m_attributes.size(), 0 == m_attributes.size() ? &attributes[0] : &m_attributes[0], m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? &interactionRegressionTargets[0] : &m_interactionRegressionTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionRegression(m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? &interactionRegressionTargets[0] : &m_interactionRegressionTargets[0], 0 == m_interactionData.size() ? &interactionData[0] : &m_interactionData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else {
          exit(1);
       }
@@ -974,10 +972,10 @@ public:
 
 TEST_CASE("AttributeCombination with zero attributes, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddAttributes({ Attribute(2) });
+   test.AddAttributes({});
    test.AddAttributeCombinations({ {} });
-   test.AddTrainingCases({ RegressionCase(10, { 0 }) });
-   test.AddValidationCases({ RegressionCase(12, { 0 }) });
+   test.AddTrainingCases({ RegressionCase(10, {}) });
+   test.AddValidationCases({ RegressionCase(12, {}) });
    test.InitializeTraining();
 
    FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
@@ -1004,10 +1002,10 @@ TEST_CASE("AttributeCombination with zero attributes, training, regression") {
 
 TEST_CASE("AttributeCombination with zero attributes, training, binary") {
    TestApi test = TestApi(2);
-   test.AddAttributes({ Attribute(2) });
+   test.AddAttributes({});
    test.AddAttributeCombinations({ {} });
-   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
    test.InitializeTraining();
 
    FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
@@ -1040,10 +1038,10 @@ TEST_CASE("AttributeCombination with zero attributes, training, binary") {
 
 TEST_CASE("AttributeCombination with zero attributes, training, multiclass") {
    TestApi test = TestApi(3);
-   test.AddAttributes({ Attribute(2) });
+   test.AddAttributes({ });
    test.AddAttributeCombinations({ {} });
-   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
    test.InitializeTraining();
 
    FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
@@ -1082,8 +1080,8 @@ TEST_CASE("AttributeCombination with zero attributes, training, multiclass") {
 
 TEST_CASE("AttributeCombination with zero attributes, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddAttributes({ Attribute(2) });
-   test.AddInteractionCases({ RegressionCase(10, { 0 }) });
+   test.AddAttributes({});
+   test.AddInteractionCases({ RegressionCase(10, {}) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -1091,8 +1089,8 @@ TEST_CASE("AttributeCombination with zero attributes, interaction, regression") 
 
 TEST_CASE("AttributeCombination with zero attributes, interaction, binary") {
    TestApi test = TestApi(2);
-   test.AddAttributes({ Attribute(2) });
-   test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
+   test.AddAttributes({});
+   test.AddInteractionCases({ ClassificationCase(0, {}) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -1100,8 +1098,8 @@ TEST_CASE("AttributeCombination with zero attributes, interaction, binary") {
 
 TEST_CASE("AttributeCombination with zero attributes, interaction, multiclass") {
    TestApi test = TestApi(3);
-   test.AddAttributes({ Attribute(2) });
-   test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
+   test.AddAttributes({});
+   test.AddInteractionCases({ ClassificationCase(0, {}) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -1109,10 +1107,10 @@ TEST_CASE("AttributeCombination with zero attributes, interaction, multiclass") 
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, regression") {
    TestApi testZeroAttributesInCombination = TestApi(k_learningTypeRegression);
-   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributes({});
    testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ RegressionCase(10, { 0 }) });
-   testZeroAttributesInCombination.AddValidationCases({ RegressionCase(12, { 0 }) });
+   testZeroAttributesInCombination.AddTrainingCases({ RegressionCase(10, {}) });
+   testZeroAttributesInCombination.AddValidationCases({ RegressionCase(12, {}) });
    testZeroAttributesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
@@ -1156,10 +1154,10 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, binary") {
    TestApi testZeroAttributesInCombination = TestApi(2);
-   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributes({});
    testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
+   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
    testZeroAttributesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(2);
@@ -1209,10 +1207,10 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, multiclass") {
    TestApi testZeroAttributesInCombination = TestApi(3);
-   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributes({});
    testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
+   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
    testZeroAttributesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(3);
@@ -1295,10 +1293,10 @@ TEST_CASE("AttributeCombination with one attribute with one state, interaction, 
 
 TEST_CASE("Test Rehydration, training, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);
-   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributes({});
    testContinuous.AddAttributeCombinations({ {} });
-   testContinuous.AddTrainingCases({ RegressionCase(10, { 0 }) });
-   testContinuous.AddValidationCases({ RegressionCase(12, { 0 }) });
+   testContinuous.AddTrainingCases({ RegressionCase(10, {}) });
+   testContinuous.AddValidationCases({ RegressionCase(12, {}) });
    testContinuous.InitializeTraining();
 
    FractionalDataType model0 = 0;
@@ -1308,10 +1306,10 @@ TEST_CASE("Test Rehydration, training, regression") {
    FractionalDataType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(k_learningTypeRegression);
-      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributes({});
       testRestart.AddAttributeCombinations({ {} });
-      testRestart.AddTrainingCases({ RegressionCase(10, { 0 }, model0) });
-      testRestart.AddValidationCases({ RegressionCase(12, { 0 }, model0) });
+      testRestart.AddTrainingCases({ RegressionCase(10, {}, model0) });
+      testRestart.AddValidationCases({ RegressionCase(12, {}, model0) });
       testRestart.InitializeTraining();
 
       validationMetricRestart = testRestart.Train(0);
@@ -1326,10 +1324,10 @@ TEST_CASE("Test Rehydration, training, regression") {
 
 TEST_CASE("Test Rehydration, training, binary") {
    TestApi testContinuous = TestApi(2);
-   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributes({});
    testContinuous.AddAttributeCombinations({ {} });
-   testContinuous.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   testContinuous.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.AddTrainingCases({ ClassificationCase(0, {}) });
+   testContinuous.AddValidationCases({ ClassificationCase(0, {}) });
    testContinuous.InitializeTraining();
 
    FractionalDataType model0 = 0;
@@ -1340,10 +1338,10 @@ TEST_CASE("Test Rehydration, training, binary") {
    FractionalDataType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(2);
-      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributes({});
       testRestart.AddAttributeCombinations({ {} });
-      testRestart.AddTrainingCases({ ClassificationCase(0, { 0 }, { model0, model1 }) });
-      testRestart.AddValidationCases({ ClassificationCase(0, { 0 }, { model0, model1 }) });
+      testRestart.AddTrainingCases({ ClassificationCase(0, {}, { model0, model1 }) });
+      testRestart.AddValidationCases({ ClassificationCase(0, {}, { model0, model1 }) });
       testRestart.InitializeTraining();
 
       validationMetricRestart = testRestart.Train(0);
@@ -1362,10 +1360,10 @@ TEST_CASE("Test Rehydration, training, binary") {
 
 TEST_CASE("Test Rehydration, training, multiclass") {
    TestApi testContinuous = TestApi(3);
-   testContinuous.AddAttributes({ Attribute(2) });
+   testContinuous.AddAttributes({});
    testContinuous.AddAttributeCombinations({ {} });
-   testContinuous.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   testContinuous.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testContinuous.AddTrainingCases({ ClassificationCase(0, {}) });
+   testContinuous.AddValidationCases({ ClassificationCase(0, {}) });
    testContinuous.InitializeTraining();
 
    FractionalDataType model0 = 0;
@@ -1377,10 +1375,10 @@ TEST_CASE("Test Rehydration, training, multiclass") {
    FractionalDataType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(3);
-      testRestart.AddAttributes({ Attribute(2) });
+      testRestart.AddAttributes({});
       testRestart.AddAttributeCombinations({ {} });
-      testRestart.AddTrainingCases({ ClassificationCase(0, { 0 }, { model0, model1, model2 }) });
-      testRestart.AddValidationCases({ ClassificationCase(0, { 0 }, { model0, model1, model2 }) });
+      testRestart.AddTrainingCases({ ClassificationCase(0, {}, { model0, model1, model2 }) });
+      testRestart.AddValidationCases({ ClassificationCase(0, {}, { model0, model1, model2 }) });
       testRestart.InitializeTraining();
 
       validationMetricRestart = testRestart.Train(0);
