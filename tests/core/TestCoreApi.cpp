@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <assert.h>
 
 #include "ebmcore.h"
 
@@ -965,7 +966,7 @@ public:
    }
 };
 
-TEST_CASE("AttributeCombination with zero attributes, Training, regression") {
+TEST_CASE("AttributeCombination with zero attributes, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({ Attribute(2) });
    test.AddAttributeCombinations({ {} });
@@ -995,7 +996,7 @@ TEST_CASE("AttributeCombination with zero attributes, Training, regression") {
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
-TEST_CASE("AttributeCombination with zero attributes, Training, Binary") {
+TEST_CASE("AttributeCombination with zero attributes, training, binary") {
    TestApi test = TestApi(2);
    test.AddAttributes({ Attribute(2) });
    test.AddAttributeCombinations({ {} });
@@ -1031,7 +1032,7 @@ TEST_CASE("AttributeCombination with zero attributes, Training, Binary") {
    CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
-TEST_CASE("AttributeCombination with zero attributes, Training, multiclass") {
+TEST_CASE("AttributeCombination with zero attributes, training, multiclass") {
    TestApi test = TestApi(3);
    test.AddAttributes({ Attribute(2) });
    test.AddAttributeCombinations({ {} });
@@ -1073,7 +1074,7 @@ TEST_CASE("AttributeCombination with zero attributes, Training, multiclass") {
    CHECK_APPROX(modelValue, -10.232489007525166);
 }
 
-TEST_CASE("AttributeCombination with zero attributes, Interaction, regression") {
+TEST_CASE("AttributeCombination with zero attributes, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({ Attribute(2) });
    test.AddInteractionCases({ RegressionCase(10.5, { 0 }) });
@@ -1082,7 +1083,7 @@ TEST_CASE("AttributeCombination with zero attributes, Interaction, regression") 
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("AttributeCombination with zero attributes, Interaction, Binary") {
+TEST_CASE("AttributeCombination with zero attributes, interaction, binary") {
    TestApi test = TestApi(2);
    test.AddAttributes({ Attribute(2) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
@@ -1091,7 +1092,7 @@ TEST_CASE("AttributeCombination with zero attributes, Interaction, Binary") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("AttributeCombination with zero attributes, Interaction, multiclass") {
+TEST_CASE("AttributeCombination with zero attributes, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddAttributes({ Attribute(2) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
@@ -1100,115 +1101,116 @@ TEST_CASE("AttributeCombination with zero attributes, Interaction, multiclass") 
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Training, regression") {
-   TestApi test = TestApi(k_learningTypeRegression);
-   test.AddAttributes({ Attribute(1) });
-   test.AddAttributeCombinations({ { 0 } });
-   test.AddTrainingCases({ RegressionCase(10, { 0 }) });
-   test.AddValidationCases({ RegressionCase(12, { 0 }) });
-   test.InitializeTraining();
+TEST_CASE("AttributeCombination with one attribute with one state is the exact same as zero AttributeCombinations, training, regression") {
+   TestApi testZeroAttributesInCombination = TestApi(k_learningTypeRegression);
+   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
+   testZeroAttributesInCombination.AddTrainingCases({ RegressionCase(10, { 0 }) });
+   testZeroAttributesInCombination.AddValidationCases({ RegressionCase(12, { 0 }) });
+   testZeroAttributesInCombination.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   TestApi testOneState = TestApi(k_learningTypeRegression);
+   testOneState.AddAttributes({ Attribute(1) });
+   testOneState.AddAttributeCombinations({ { 0 } });
+   testOneState.AddTrainingCases({ RegressionCase(10, { 0 }) });
+   testOneState.AddValidationCases({ RegressionCase(12, { 0 }) });
+   testOneState.InitializeTraining();
+
+   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetric = test.Train(iAttributeCombination);
-         if(0 == iAttributeCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.900000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-            CHECK_APPROX(modelValue, 0.1000000000000000);
-         }
-         if(0 == iAttributeCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.801000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-            CHECK_APPROX(modelValue, 0.1990000000000000);
-         }
+      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testOneState.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
       }
    }
-   CHECK_APPROX(validationMetric, 2.0004317124741098);
-   modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
-   CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Training, Binary") {
-   TestApi test = TestApi(2);
-   test.AddAttributes({ Attribute(1) });
-   test.AddAttributeCombinations({ { 0 } });
-   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
-   test.InitializeTraining();
+TEST_CASE("AttributeCombination with one attribute with one state is the exact same as zero AttributeCombinations, training, binary") {
+   TestApi testZeroAttributesInCombination = TestApi(2);
+   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
+   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   TestApi testOneState = TestApi(2);
+   testOneState.AddAttributes({ Attribute(1) });
+   testOneState.AddAttributeCombinations({ { 0 } });
+   testOneState.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testOneState.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testOneState.InitializeTraining();
+
+   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetric = test.Train(iAttributeCombination);
-         if(0 == iAttributeCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.68319717972663419);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 0);
-            CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 1);
-            CHECK_APPROX(modelValue, -0.020000000000000000);
-         }
-         if(0 == iAttributeCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 0.67344419889200957);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 0);
-            CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 1);
-            CHECK_APPROX(modelValue, -0.039801986733067563);
-         }
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testOneState.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
       }
    }
-   CHECK_APPROX(validationMetric, 2.2621439908125974e-05);
-   modelValue = test.GetCurrentModelValue(0, {0}, 0);
-   CHECK_APPROX(modelValue, 0);
-   modelValue = test.GetCurrentModelValue(0, {0}, 1);
-   CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Training, multiclass") {
-   TestApi test = TestApi(3);
-   test.AddAttributes({ Attribute(1) });
-   test.AddAttributeCombinations({ { 0 } });
-   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
-   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
-   test.InitializeTraining();
+TEST_CASE("AttributeCombination with one attribute with one state is the exact same as zero AttributeCombinations, training, multiclass") {
+   TestApi testZeroAttributesInCombination = TestApi(3);
+   testZeroAttributesInCombination.AddAttributes({ Attribute(2) });
+   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
+   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testZeroAttributesInCombination.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   TestApi testOneState = TestApi(3);
+   testOneState.AddAttributes({ Attribute(1) });
+   testOneState.AddAttributeCombinations({ { 0 } });
+   testOneState.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   testOneState.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   testOneState.InitializeTraining();
+
+   FractionalDataType validationMetricZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueZeroAttributesInCombination = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetricOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValueOneState = std::numeric_limits<FractionalDataType>::quiet_NaN();
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetric = test.Train(iAttributeCombination);
-         if(0 == iAttributeCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.0688384008227103);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-            CHECK_APPROX(modelValue, 0.03000000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-            CHECK_APPROX(modelValue, -0.01500000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
-            CHECK_APPROX(modelValue, -0.01500000000000000);
-         }
-         if(0 == iAttributeCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 1.0401627411809615);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-            CHECK_APPROX(modelValue, 0.059119949636662006);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-            CHECK_APPROX(modelValue, -0.029887518980531450);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
-            CHECK_APPROX(modelValue, -0.029887518980531450);
-         }
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testOneState.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
+
+         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 2);
+         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
+         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
       }
    }
-   CHECK_APPROX(validationMetric, 1.7171897252232722e-09);
-   modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
-   CHECK_APPROX(modelValue, 10.643234965479628);
-   modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
-   CHECK_APPROX(modelValue, -10.232489007525166);
-   modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
-   CHECK_APPROX(modelValue, -10.232489007525166);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Interaction, regression") {
+TEST_CASE("AttributeCombination with one attribute with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({ Attribute(1) });
    test.AddInteractionCases({ RegressionCase(10.5, { 0 }) });
@@ -1217,7 +1219,7 @@ TEST_CASE("AttributeCombination with one attribute with one state, Interaction, 
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Interaction, Binary") {
+TEST_CASE("AttributeCombination with one attribute with one state, interaction, Binary") {
    TestApi test = TestApi(2);
    test.AddAttributes({ Attribute(1) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
@@ -1226,7 +1228,7 @@ TEST_CASE("AttributeCombination with one attribute with one state, Interaction, 
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("AttributeCombination with one attribute with one state, Interaction, multiclass") {
+TEST_CASE("AttributeCombination with one attribute with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddAttributes({ Attribute(1) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
