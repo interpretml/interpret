@@ -173,7 +173,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     if self.density_bins == False:
                         bins = self.cont_n_bins
                     else:
-                        bins = sorted([np.percentile(col_data, q = (i/self.cont_n_bins)*100) for i in list(range(self.cont_n_bins+1))])
+                        bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.cont_n_bins + 1)))
 
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
