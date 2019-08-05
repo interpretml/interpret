@@ -56,7 +56,7 @@ inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
 inline bool IsApproxEqual(const double value, const double expected, const double percentage) {
-   return std::abs(expected - value) < std::abs(expected * percentage);
+   return std::abs(expected - value) <= std::abs(expected * percentage);
 }
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
@@ -586,17 +586,105 @@ public:
       m_stage = Stage::ValidationAdded;
    }
 
+   void AddValidationCases(const std::vector<ClassificationCase> cases) {
+      if(Stage::TrainingAdded != m_stage) {
+         exit(1);
+      }
+      if(!IsClassification(m_learningTypeOrCountClassificationStates)) {
+         exit(1);
+      }
+      const size_t cCases = cases.size();
+      if(0 != cCases) {
+         const size_t cAttributes = m_attributes.size();
+         const bool bNullPredictionScores = cases[0].m_bNullPredictionScores;
+         m_bNullValidationPredictionScores = bNullPredictionScores;
 
-
-
-
-
-
-
-
-
-
-
+         for(const ClassificationCase oneCase : cases) {
+            if(cAttributes != oneCase.m_data.size()) {
+               exit(1);
+            }
+            if(bNullPredictionScores != oneCase.m_bNullPredictionScores) {
+               exit(1);
+            }
+            const IntegerDataType target = oneCase.m_target;
+            if(target < 0) {
+               exit(1);
+            }
+            if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) <= static_cast<size_t>(target)) {
+               exit(1);
+            }
+            m_validationClassificationTargets.push_back(target);
+            if(!bNullPredictionScores) {
+               if(static_cast<size_t>(m_learningTypeOrCountClassificationStates) != oneCase.m_logits.size()) {
+                  exit(1);
+               }
+               ptrdiff_t iLogit = 0;
+               for(const FractionalDataType oneLogit : oneCase.m_logits) {
+                  if(std::isnan(oneLogit)) {
+                     exit(1);
+                  }
+                  if(std::isinf(oneLogit)) {
+                     exit(1);
+                  }
+                  if(2 == m_learningTypeOrCountClassificationStates) {
+                     // binary classification
+#ifdef EXPAND_BINARY_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_validationPredictionScores.push_back(oneLogit);
+                     } else {
+                        m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                     }
+#else // EXPAND_BINARY_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
+                     }
+#endif // EXPAND_BINARY_LOGITS
+                  } else {
+                     // multiclass
+#ifdef REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        if(0 != iLogit) {
+                           m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[0]);
+                        }
+                     } else {
+                        if(m_iZeroClassificationLogit != iLogit) {
+                           m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                        }
+                     }
+#else // REDUCE_MULTICLASS_LOGITS
+                     if(m_iZeroClassificationLogit < 0) {
+                        m_validationPredictionScores.push_back(oneLogit);
+                     } else {
+                        m_validationPredictionScores.push_back(oneLogit - oneCase.m_logits[m_iZeroClassificationLogit]);
+                     }
+#endif // REDUCE_MULTICLASS_LOGITS
+                  }
+                  ++iLogit;
+               }
+            }
+         }
+         for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
+            const EbmAttribute attribute = m_attributes[iAttribute];
+            for(size_t iCase = 0; iCase < cCases; ++iCase) {
+               const IntegerDataType data = cases[iCase].m_data[iAttribute];
+               if(data < 0) {
+                  exit(1);
+               }
+               if(attribute.countStates <= data) {
+                  exit(1);
+               }
+               m_validationData.push_back(data);
+            }
+         }
+      }
+      m_stage = Stage::ValidationAdded;
+   }
 
    void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
       EbmAttribute attributes[1];
@@ -664,7 +752,7 @@ public:
       return validationMetricReturn;
    }
 
-   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore = size_t { 0 }) {
+   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore) {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
@@ -892,149 +980,97 @@ TEST_CASE("AttributeCombination with zero attributes, Training, regression") {
          validationMetric = test.Train(iAttributeCombination);
          if(0 == iAttributeCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 11.900000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {});
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1000000000000000);
          }
          if(0 == iAttributeCombination && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 11.801000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, {});
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1990000000000000);
          }
       }
    }
    CHECK_APPROX(validationMetric, 2.0004317124741098);
-   modelValue = test.GetCurrentModelValue(0, {});
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Training, Binary") {
-   constexpr IntegerDataType countTargetStates = 2;
-   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
-   constexpr size_t cAttributes = 1;
-   constexpr size_t cAttributeCombinations = 1;
-   constexpr size_t cAttributeCombinationsIndexes = 0;
-   constexpr size_t cTrainingCases = 1;
-   constexpr size_t cValidationCases = 1;
-   constexpr IntegerDataType countInnerBags = 0;
-   constexpr IntegerDataType countIterations = 2;
-   constexpr FractionalDataType learningRate = 0.01;
-   constexpr IntegerDataType countTreeSplitsMax = 2;
-   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+   TestApi test = TestApi(2);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.InitializeTraining();
 
-   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
-   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
-   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
-   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
-   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
-   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
-   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
-   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
-   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
-
-   attributes[0].attributeType = AttributeTypeOrdinal;
-   attributes[0].countStates = 2;
-   attributes[0].hasMissing = 0;
-
-   combinations[0].countAttributesInCombination = 0;
-
-   trainingTargets[0] = 0;
-   trainingData[0] = 0;
-   trainingPredictionScores[0] = 0;
-
-   validationTargets[0] = 0;
-   validationData[0] = 0;
-   validationPredictionScores[0] = 0;
-
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
-
-   FractionalDataType validationMetricReturn;
-   IntegerDataType result;
-   int count = countIterations;
-   while(count--) {
-      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
-      CHECK(0 == result);
-      if(0 != result) {
-         return;
-      }
-      if(1 == count) {
-         CHECK_APPROX(validationMetricReturn, 0.68319717972663419);
-      } else if(0 == count) {
-         CHECK_APPROX(validationMetricReturn, 0.67344419889200957);
+   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.68319717972663419);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, -0.020000000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.67344419889200957);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, -0.039801986733067563);
+         }
       }
    }
-   double * pModel = GetCurrentModel(pEbmTraining, 0);
-   double modelValue = pModel[0];
-   CHECK_APPROX(modelValue, -0.039801986733067563);
-   FreeTraining(pEbmTraining);
+   CHECK_APPROX(validationMetric, 2.2621439908125974e-05);
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
+   CHECK_APPROX(modelValue, 0);
+   modelValue = test.GetCurrentModelValue(0, {}, 1);
+   CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Training, multiclass") {
-   constexpr IntegerDataType countTargetStates = 3;
-   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
-   constexpr size_t cAttributes = 1;
-   constexpr size_t cAttributeCombinations = 1;
-   constexpr size_t cAttributeCombinationsIndexes = 0;
-   constexpr size_t cTrainingCases = 1;
-   constexpr size_t cValidationCases = 1;
-   constexpr IntegerDataType countInnerBags = 0;
-   constexpr IntegerDataType countIterations = 2;
-   constexpr FractionalDataType learningRate = 0.01;
-   constexpr IntegerDataType countTreeSplitsMax = 2;
-   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+   TestApi test = TestApi(3);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.InitializeTraining();
 
-   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
-   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
-   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
-   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
-   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
-   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
-   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
-   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
-   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
-
-   attributes[0].attributeType = AttributeTypeOrdinal;
-   attributes[0].countStates = 2;
-   attributes[0].hasMissing = 0;
-
-   combinations[0].countAttributesInCombination = 0;
-
-   trainingTargets[0] = 0;
-   trainingData[0] = 0;
-   trainingPredictionScores[0] = 0;
-   trainingPredictionScores[1] = 0;
-   trainingPredictionScores[2] = 0;
-
-   validationTargets[0] = 0;
-   validationData[0] = 0;
-   validationPredictionScores[0] = 0;
-   validationPredictionScores[1] = 0;
-   validationPredictionScores[2] = 0;
-
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
-
-   FractionalDataType validationMetricReturn;
-   IntegerDataType result;
-   int count = countIterations;
-   while(count--) {
-      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
-      CHECK(0 == result);
-      if(0 != result) {
-         return;
-      }
-      if(1 == count) {
-         CHECK_APPROX(validationMetricReturn, 1.0688384008227103);
-      } else if(0 == count) {
-         CHECK_APPROX(validationMetricReturn, 1.0401627411809615);
+   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.0688384008227103);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0.03000000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, -0.01500000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+            CHECK_APPROX(modelValue, -0.01500000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.0401627411809615);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0.059119949636662006);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, -0.029887518980531450);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+            CHECK_APPROX(modelValue, -0.029887518980531450);
+         }
       }
    }
-   double * pModel = GetCurrentModel(pEbmTraining, 0);
-   double modelValue1 = pModel[0];
-   double modelValue2 = pModel[1];
-   double modelValue3 = pModel[2];
-   CHECK_APPROX(modelValue1, 0.059119949636662006);
-   CHECK_APPROX(modelValue2, -0.029887518980531450);
-   CHECK_APPROX(modelValue3, -0.029887518980531450);
-   FreeTraining(pEbmTraining);
+   CHECK_APPROX(validationMetric, 1.7171897252232722e-09);
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
+   CHECK_APPROX(modelValue, 10.643234965479628);
+   modelValue = test.GetCurrentModelValue(0, {}, 1);
+   CHECK_APPROX(modelValue, -10.232489007525166);
+   modelValue = test.GetCurrentModelValue(0, {}, 2);
+   CHECK_APPROX(modelValue, -10.232489007525166);
 }
 
 TEST_CASE("AttributeCombination with zero attributes, Interaction, regression") {
@@ -1079,153 +1115,97 @@ TEST_CASE("AttributeCombination with one attribute with one state, Training, reg
          validationMetric = test.Train(iAttributeCombination);
          if(0 == iAttributeCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 11.900000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 });
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
             CHECK_APPROX(modelValue, 0.1000000000000000);
          }
          if(0 == iAttributeCombination && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 11.801000000000000);
-            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 });
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
             CHECK_APPROX(modelValue, 0.1990000000000000);
          }
       }
    }
    CHECK_APPROX(validationMetric, 2.0004317124741098);
-   modelValue = test.GetCurrentModelValue(0, { 0 });
+   modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
 TEST_CASE("AttributeCombination with one attribute with one state, Training, Binary") {
-   constexpr IntegerDataType countTargetStates = 2;
-   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
-   constexpr size_t cAttributes = 1;
-   constexpr size_t cAttributeCombinations = 1;
-   constexpr size_t cAttributeCombinationsIndexes = 1;
-   constexpr size_t cTrainingCases = 1;
-   constexpr size_t cValidationCases = 1;
-   constexpr IntegerDataType countInnerBags = 0;
-   constexpr IntegerDataType countIterations = 2;
-   constexpr FractionalDataType learningRate = 0.01;
-   constexpr IntegerDataType countTreeSplitsMax = 2;
-   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+   TestApi test = TestApi(2);
+   test.AddAttributes({ Attribute(1) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.InitializeTraining();
 
-   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
-   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
-   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
-   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
-   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
-   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
-   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
-   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
-   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
-
-   attributes[0].attributeType = AttributeTypeOrdinal;
-   attributes[0].countStates = 1;
-   attributes[0].hasMissing = 0;
-
-   combinations[0].countAttributesInCombination = 1;
-
-   combinationIndexes[0] = 0;
-
-   trainingTargets[0] = 0;
-   trainingData[0] = 0;
-   trainingPredictionScores[0] = 0;
-
-   validationTargets[0] = 0;
-   validationData[0] = 0;
-   validationPredictionScores[0] = 0;
-
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
-
-   FractionalDataType validationMetricReturn;
-   IntegerDataType result;
-   int count = countIterations;
-   while(count--) {
-      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
-      CHECK(0 == result);
-      if(0 != result) {
-         return;
-      }
-      if(1 == count) {
-         CHECK_APPROX(validationMetricReturn, 0.68319717972663419);
-      } else if(0 == count) {
-         CHECK_APPROX(validationMetricReturn, 0.67344419889200957);
+   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.68319717972663419);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 1);
+            CHECK_APPROX(modelValue, -0.020000000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.67344419889200957);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {0}, 1);
+            CHECK_APPROX(modelValue, -0.039801986733067563);
+         }
       }
    }
-   double * pModel = GetCurrentModel(pEbmTraining, 0);
-   double modelValue = pModel[0];
-   CHECK_APPROX(modelValue, -0.039801986733067563);
-   FreeTraining(pEbmTraining);
+   CHECK_APPROX(validationMetric, 2.2621439908125974e-05);
+   modelValue = test.GetCurrentModelValue(0, {0}, 0);
+   CHECK_APPROX(modelValue, 0);
+   modelValue = test.GetCurrentModelValue(0, {0}, 1);
+   CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
 TEST_CASE("AttributeCombination with one attribute with one state, Training, multiclass") {
-   constexpr IntegerDataType countTargetStates = 3;
-   constexpr size_t cVectorLength = GetVectorLength(countTargetStates);
-   constexpr size_t cAttributes = 1;
-   constexpr size_t cAttributeCombinations = 1;
-   constexpr size_t cAttributeCombinationsIndexes = 1;
-   constexpr size_t cTrainingCases = 1;
-   constexpr size_t cValidationCases = 1;
-   constexpr IntegerDataType countInnerBags = 0;
-   constexpr IntegerDataType countIterations = 2;
-   constexpr FractionalDataType learningRate = 0.01;
-   constexpr IntegerDataType countTreeSplitsMax = 2;
-   constexpr IntegerDataType countCasesRequiredForSplitParentMin = 2;
+   TestApi test = TestApi(3);
+   test.AddAttributes({ Attribute(1) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ ClassificationCase(0, { 0 }) });
+   test.AddValidationCases({ ClassificationCase(0, { 0 }) });
+   test.InitializeTraining();
 
-   EbmAttribute attributes[std::max(std::size_t { 1 }, cAttributes)];
-   EbmAttributeCombination combinations[std::max(std::size_t { 1 }, cAttributeCombinations)];
-   IntegerDataType combinationIndexes[std::max(std::size_t { 1 }, cAttributeCombinationsIndexes)];
-   IntegerDataType trainingTargets[std::max(std::size_t { 1 }, cTrainingCases)];
-   IntegerDataType trainingData[std::max(std::size_t { 1 }, cTrainingCases * cAttributes)];
-   FractionalDataType trainingPredictionScores[std::max(std::size_t { 1 }, cTrainingCases * cVectorLength)];
-   IntegerDataType validationTargets[std::max(std::size_t { 1 }, cValidationCases)];
-   IntegerDataType validationData[std::max(std::size_t { 1 }, cValidationCases * cAttributes)];
-   FractionalDataType validationPredictionScores[std::max(std::size_t { 1 }, cValidationCases * cVectorLength)];
-
-   attributes[0].attributeType = AttributeTypeOrdinal;
-   attributes[0].countStates = 1;
-   attributes[0].hasMissing = 0;
-
-   combinations[0].countAttributesInCombination = 1;
-
-   combinationIndexes[0] = 0;
-
-   trainingTargets[0] = 0;
-   trainingData[0] = 0;
-   trainingPredictionScores[0] = 0;
-   trainingPredictionScores[1] = 0;
-   trainingPredictionScores[2] = 0;
-
-   validationTargets[0] = 0;
-   validationData[0] = 0;
-   validationPredictionScores[0] = 0;
-   validationPredictionScores[1] = 0;
-   validationPredictionScores[2] = 0;
-
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, cAttributes, attributes, cAttributeCombinations, combinations, combinationIndexes, countTargetStates, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags);
-
-   FractionalDataType validationMetricReturn;
-   IntegerDataType result;
-   int count = countIterations;
-   while(count--) {
-      result = TrainingStep(pEbmTraining, 0, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, nullptr, nullptr, &validationMetricReturn);
-      CHECK(0 == result);
-      if(0 != result) {
-         return;
-      }
-      if(1 == count) {
-         CHECK_APPROX(validationMetricReturn, 1.0688384008227103);
-      } else if(0 == count) {
-         CHECK_APPROX(validationMetricReturn, 1.0401627411809615);
+   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.0688384008227103);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+            CHECK_APPROX(modelValue, 0.03000000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+            CHECK_APPROX(modelValue, -0.01500000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
+            CHECK_APPROX(modelValue, -0.01500000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.0401627411809615);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+            CHECK_APPROX(modelValue, 0.059119949636662006);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+            CHECK_APPROX(modelValue, -0.029887518980531450);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
+            CHECK_APPROX(modelValue, -0.029887518980531450);
+         }
       }
    }
-   double * pModel = GetCurrentModel(pEbmTraining, 0);
-   double modelValue1 = pModel[0];
-   double modelValue2 = pModel[1];
-   double modelValue3 = pModel[2];
-   CHECK_APPROX(modelValue1, 0.059119949636662006);
-   CHECK_APPROX(modelValue2, -0.029887518980531450);
-   CHECK_APPROX(modelValue3, -0.029887518980531450);
-   FreeTraining(pEbmTraining);
+   CHECK_APPROX(validationMetric, 1.7171897252232722e-09);
+   modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+   CHECK_APPROX(modelValue, 10.643234965479628);
+   modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+   CHECK_APPROX(modelValue, -10.232489007525166);
+   modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
+   CHECK_APPROX(modelValue, -10.232489007525166);
 }
 
 TEST_CASE("AttributeCombination with one attribute with one state, Interaction, regression") {
