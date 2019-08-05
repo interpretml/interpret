@@ -878,6 +878,7 @@ public:
             if(UNLIKELY(0 == cAttributesInCombination)) {
                LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information for training");
             } else {
+               assert(nullptr != attributeCombinationIndexes);
                const IntegerDataType * pAttributeCombinationIndexTemp = pAttributeCombinationIndex;
                do {
                   const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndexTemp;
@@ -915,6 +916,7 @@ public:
             m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
 
             if(LIKELY(0 != cSignificantAttributesInCombination)) {
+               assert(nullptr != attributeCombinationIndexes);
                size_t cTensorStates = 1;
                AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
                do {
@@ -1043,7 +1045,7 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(0 == countAttributes || nullptr != attributes);
    EBM_ASSERT(1 <= countAttributeCombinations);
    EBM_ASSERT(nullptr != attributeCombinations);
-   EBM_ASSERT(nullptr != attributeCombinationIndexes);
+   // EBM_ASSERT(nullptr != attributeCombinationIndexes); It's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
    EBM_ASSERT(bRegression || 2 <= countTargetStates);
    EBM_ASSERT(1 <= countTrainingCases);
    EBM_ASSERT(nullptr != trainingTargets);

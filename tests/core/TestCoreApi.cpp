@@ -695,7 +695,6 @@ public:
 
    void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
       EbmAttributeCombination attributeCombinations[1];
-      IntegerDataType attributeCombinationIndexes[1];
       FractionalDataType trainingRegressionTargets[1];
       IntegerDataType trainingClassificationTargets[1];
       IntegerDataType trainingData[1];
@@ -711,9 +710,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountClassificationStates)) {
-         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
-         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? &attributeCombinationIndexes[0] : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else {
          exit(1);
       }
@@ -947,8 +946,6 @@ public:
    }
 
    FractionalDataType InteractionScore(const std::vector<IntegerDataType> attributesInCombination) const {
-      IntegerDataType attributesInCombinationEmpty[1];
-
       if(Stage::InitializedInteraction != m_stage) {
          exit(1);
       }
@@ -962,7 +959,7 @@ public:
       }
 
       FractionalDataType interactionScoreReturn = FractionalDataType { 0 };
-      const IntegerDataType ret = GetInteractionScore(m_pEbmInteraction, attributesInCombination.size(), 0 == attributesInCombination.size() ? &attributesInCombinationEmpty[0] : &attributesInCombination[0], &interactionScoreReturn);
+      const IntegerDataType ret = GetInteractionScore(m_pEbmInteraction, attributesInCombination.size(), 0 == attributesInCombination.size() ? nullptr : &attributesInCombination[0], &interactionScoreReturn);
       if(0 != ret) {
          exit(1);
       }
