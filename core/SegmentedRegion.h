@@ -132,7 +132,7 @@ public:
       m_cDimensions = cDimensions;
    }
 
-   TML_INLINE size_t GetStackMemorySizeBytes() {
+   TML_INLINE size_t GetStackMemorySizeBytes() const {
       EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
       return sizeof(DimensionInfoStack) * m_cDimensions; // this can't overflow since m_cDimensions is limited in size
    }

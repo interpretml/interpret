@@ -338,7 +338,7 @@ public:
       }
    }
 
-   size_t GetAttributeCombinationsCount() {
+   size_t GetAttributeCombinationsCount() const {
       return m_attributeCombinations.size();
    }
 
@@ -759,7 +759,7 @@ public:
       return validationMetricReturn;
    }
 
-   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore) {
+   FractionalDataType GetCurrentModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
@@ -948,7 +948,7 @@ public:
       m_stage = Stage::InitializedInteraction;
    }
 
-   FractionalDataType InteractionScore(const std::vector<IntegerDataType> attributesInCombination) {
+   FractionalDataType InteractionScore(const std::vector<IntegerDataType> attributesInCombination) const {
       IntegerDataType attributesInCombinationEmpty[1];
 
       if(Stage::InitializedInteraction != m_stage) {
