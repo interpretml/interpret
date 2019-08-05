@@ -267,12 +267,11 @@ DataSetAttributeCombination::DataSetAttributeCombination(const bool bAllocateRes
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cCases, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aPredictionScores(bAllocatePredictionScores ? ConstructPredictionScores(cCases, cVectorLength, aPredictionScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cCases, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))
-   , m_aaInputData(ConstructInputData(cAttributeCombinations, apAttributeCombination, cCases, aInputDataFrom))
+   , m_aaInputData(0 == cAttributeCombinations ? nullptr : ConstructInputData(cAttributeCombinations, apAttributeCombination, cCases, aInputDataFrom))
    , m_cCases(cCases)
    , m_cAttributeCombinations(cAttributeCombinations) {
 
    EBM_ASSERT(0 < cCases);
-   EBM_ASSERT(0 < cAttributeCombinations);
 }
 
 DataSetAttributeCombination::~DataSetAttributeCombination() {

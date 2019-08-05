@@ -26,6 +26,8 @@
 
 #include "ebmcore.h"
 
+#define UNUSED(x) (void)(x)
+
 class TestCaseHidden;
 typedef void (* TestFunctionHidden)(TestCaseHidden& testCaseHidden);
 
@@ -694,7 +696,6 @@ public:
    }
 
    void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
-      EbmAttributeCombination attributeCombinations[1];
       FractionalDataType trainingRegressionTargets[1];
       IntegerDataType trainingClassificationTargets[1];
       IntegerDataType trainingData[1];
@@ -710,9 +711,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountClassificationStates)) {
-         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? nullptr : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_learningTypeOrCountClassificationStates, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? &trainingClassificationTargets[0] : &m_trainingClassificationTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? &validationClassificationTargets[0] : &m_validationClassificationTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else if(k_learningTypeRegression == m_learningTypeOrCountClassificationStates) {
-         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? &attributeCombinations[0] : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_attributes.size(), 0 == m_attributes.size() ? nullptr : &m_attributes[0], m_attributeCombinations.size(), 0 == m_attributeCombinations.size() ? nullptr : &m_attributeCombinations[0], 0 == m_attributeCombinationIndexes.size() ? nullptr : &m_attributeCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? &trainingRegressionTargets[0] : &m_trainingRegressionTargets[0], 0 == m_trainingData.size() ? &trainingData[0] : &m_trainingData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? &validationRegressionTargets[0] : &m_validationRegressionTargets[0], 0 == m_validationData.size() ? &validationData[0] : &m_validationData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
       } else {
          exit(1);
       }
@@ -966,6 +967,42 @@ public:
       return interactionScoreReturn;
    }
 };
+
+TEST_CASE("zero AttributeCombination, training, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({});
+   test.AddTrainingCases({ RegressionCase(10, {}) });
+   test.AddValidationCases({ RegressionCase(12, {}) });
+   test.InitializeTraining();
+
+   UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
+   // training isn't legal since we'd need to specify an attributeCombination index
+}
+
+TEST_CASE("zero AttributeCombination, training, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({});
+   test.AddTrainingCases({ ClassificationCase(1, {}) });
+   test.AddValidationCases({ ClassificationCase(1, {}) });
+   test.InitializeTraining();
+
+   UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
+   // training isn't legal since we'd need to specify an attributeCombination index
+}
+
+TEST_CASE("zero AttributeCombination, training, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({});
+   test.AddTrainingCases({ ClassificationCase(2, {}) });
+   test.AddValidationCases({ ClassificationCase(2, {}) });
+   test.InitializeTraining();
+
+   UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
+   // training isn't legal since we'd need to specify an attributeCombination index
+}
 
 TEST_CASE("AttributeCombination with zero attributes, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
