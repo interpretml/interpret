@@ -127,7 +127,7 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    // bRegression is set in our program, so our caller can't pass in invalid data
    EBM_ASSERT(0 <= countAttributes);
    EBM_ASSERT(0 == countAttributes || nullptr != attributes);
-   EBM_ASSERT(bRegression || 2 <= countTargetStates);
+   EBM_ASSERT(bRegression || 1 <= countTargetStates);
    EBM_ASSERT(1 <= countCases);
    EBM_ASSERT(nullptr != targets);
    EBM_ASSERT(nullptr != data);
@@ -291,6 +291,11 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    } else {
       const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
+      if(1 == cTargetStates) {
+         LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out situations where there is only 1 classification target ");
+         *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+         return 0;
+      }
       ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
    EBM_ASSERT(0 <= *interactionScoreReturn);

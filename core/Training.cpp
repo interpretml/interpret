@@ -978,7 +978,7 @@ public:
 
          EBM_ASSERT(nullptr == m_apCurrentModel);
          EBM_ASSERT(nullptr == m_apBestModel);
-         if(0 != m_cAttributeCombinations) {
+         if(1 != m_cTargetStates && 0 != m_cAttributeCombinations) {
             m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
             if(nullptr == m_apCurrentModel) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
@@ -1052,7 +1052,7 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(0 <= countAttributeCombinations);
    EBM_ASSERT(0 == countAttributeCombinations || nullptr != attributeCombinations);
    // attributeCombinationIndexes -> it's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
-   EBM_ASSERT(bRegression || 2 <= countTargetStates);
+   EBM_ASSERT(bRegression || 1 <= countTargetStates);
    EBM_ASSERT(1 <= countTrainingCases);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingData);
@@ -1258,6 +1258,13 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
       ret = TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    } else {
       const size_t cTargetStates = pTmlState->m_cTargetStates;
+      if(1 == cTargetStates) {
+         // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
+         // since we can predit the output with 100% accuracy, our log loss is 0.
+
+         *validationMetricReturn = 0;
+         return 0;
+      }
       ret = CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    }
 
@@ -1278,6 +1285,13 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
+   if(nullptr == pTmlState->m_apCurrentModel) {
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%. If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  Our caller should be able to handle this
+      // null for pTmlState->m_apCurrentModel could happen also if m_cAttributeCombinations was 0 in which case the behavior would be undefined as the caller passed in indexAttributeCombination which can't reference anything legal, so we can just return whatever we like
+      // it could also have failed to allocate, but it would also be undefined behavior to access an object which wasn't fully constructed, so returning nullptr for that is ok too
+      return nullptr;
+   }
+
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iAttributeCombination];
    EBM_ASSERT(0 == pCurrentModel->m_cDimensions || pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
@@ -1295,6 +1309,13 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+
+   if(nullptr == pTmlState->m_apBestModel) {
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%. If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  Our caller should be able to handle this
+      // null for pTmlState->m_apCurrentModel could happen also if m_cAttributeCombinations was 0 in which case the behavior would be undefined as the caller passed in indexAttributeCombination which can't reference anything legal, so we can just return whatever we like
+      // it could also have failed to allocate, but it would also be undefined behavior to access an object which wasn't fully constructed, so returning nullptr for that is ok too
+      return nullptr;
+   }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iAttributeCombination];
    EBM_ASSERT(0 == pBestModel->m_cDimensions || pBestModel->m_bExpanded); // the model should have been expanded at startup

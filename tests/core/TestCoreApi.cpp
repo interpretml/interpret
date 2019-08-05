@@ -762,9 +762,34 @@ public:
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
       FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
+   }
+
+   bool IsCurrentModelNull(const size_t iAttributeCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
+      return nullptr == pModel;
+   }
+
+   bool IsBestModelNull(const size_t iAttributeCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
+      return nullptr == pModel;
    }
 
    void AddInteractionCases(const std::vector<RegressionCase> cases) {
@@ -967,6 +992,34 @@ public:
       return interactionScoreReturn;
    }
 };
+
+TEST_CASE("classification with 1 possible target, training") {
+   TestApi test = TestApi(1);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
+   test.AddValidationCases({ ClassificationCase(0, { 1 }) });
+   test.InitializeTraining();
+
+   CHECK(test.IsCurrentModelNull(0));
+   CHECK(test.IsBestModelNull(0));
+
+   FractionalDataType validationMetric = test.Train(0);
+   CHECK(0 == validationMetric);
+
+   CHECK(test.IsCurrentModelNull(0));
+   CHECK(test.IsBestModelNull(0));
+}
+
+TEST_CASE("classification with 1 possible target, interaction") {
+   TestApi test = TestApi(1);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases({ ClassificationCase(0, { 1 }) });
+   test.InitializeInteraction();
+
+   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   CHECK(0 == validationMetric);
+}
 
 TEST_CASE("zero AttributeCombination, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
