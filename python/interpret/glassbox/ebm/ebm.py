@@ -103,6 +103,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         missing_constant=0,
         unknown_constant=0,
         feature_names=None,
+        density_bins=False,
     ):
         """ Initializes EBM preprocessor.
 
@@ -113,12 +114,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
+            density_bins: Boolean to compute bins according to density if True or equidistant if False. 
         """
         self.schema = schema
         self.cont_n_bins = cont_n_bins
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
         self.feature_names = feature_names
+        self.density_bins = density_bins
 
     def fit(self, X):
         """ Fits transformer to provided instances.
@@ -167,11 +170,15 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 if len(uniq_vals) < self.cont_n_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    bins = self.cont_n_bins
+                    if self.density_bins == False:
+                        bins = self.cont_n_bins
+                    else:
+                        bins = sorted([np.percentile(col_data, q = (i/self.cont_n_bins)*100) for i in list(range(self.cont_n_bins+1))])
 
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
+
                 self.col_bin_edges_[col_idx] = bin_edges
 
                 self.hist_edges_[col_idx] = hist_edges
@@ -691,6 +698,8 @@ class BaseEBM(BaseEstimator):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        density_bins=False,
     ):
 
         # Arguments for explainer
@@ -723,6 +732,9 @@ class BaseEBM(BaseEstimator):
         self.n_jobs = n_jobs
         self.random_state = random_state
 
+        # Arguments for preprocessor
+        self.density_bins = density_bins
+
     def fit(self, X, y):
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types
@@ -735,7 +747,7 @@ class BaseEBM(BaseEstimator):
                 X, feature_names=self.feature_names, feature_types=self.feature_types
             )
 
-        self.preprocessor_ = EBMPreprocessor(schema=self.schema_)
+        self.preprocessor_ = EBMPreprocessor(schema=self.schema_, density_bins=self.density_bins)
         self.preprocessor_.fit(X)
 
         if is_classifier(self):
@@ -1239,6 +1251,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        density_bins=False,
     ):
 
         super(ExplainableBoostingRegressor, self).__init__(
@@ -1266,6 +1280,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
+            # Preprocessor
+            density_bins=density_bins,
         )
 
     def predict(self, X):
