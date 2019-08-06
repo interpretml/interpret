@@ -1005,47 +1005,6 @@ public:
    }
 };
 
-
-
-
-
-//TEST_CASE("classification with 0 possible target states, training") {
-//   // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
-//   TestApi test = TestApi(0);
-//   test.AddAttributes({ Attribute(2) });
-//   test.AddAttributeCombinations({ { 0 } });
-//   test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
-//   test.AddValidationCases({ ClassificationCase(0, { 1 }) });
-//   test.InitializeTraining();
-//
-//   CHECK(test.IsCurrentModelNull(0));
-//   CHECK(test.IsBestModelNull(0));
-//
-//   FractionalDataType validationMetric = test.Train(0);
-//   CHECK(0 == validationMetric);
-//
-//   CHECK(test.IsCurrentModelNull(0));
-//   CHECK(test.IsBestModelNull(0));
-//}
-//
-//TEST_CASE("classification with 0 possible target states, interaction") {
-//   TestApi test = TestApi(1);
-//   test.AddAttributes({ Attribute(2) });
-//   test.AddInteractionCases({ ClassificationCase(0, { 1 }) });
-//   test.InitializeInteraction();
-//
-//   FractionalDataType validationMetric = test.InteractionScore({ 0 });
-//   CHECK(0 == validationMetric);
-//}
-
-
-
-
-
-
-
-
-
 TEST_CASE("Zero training cases, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({ Attribute(2) });
@@ -1225,6 +1184,35 @@ TEST_CASE("Zero interaction cases, interaction, multiclass") {
 
    FractionalDataType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
+}
+
+TEST_CASE("classification with 0 possible target states, training") {
+   // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
+   TestApi test = TestApi(0);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases(std::vector<ClassificationCase> {});
+   test.AddValidationCases(std::vector<ClassificationCase> {});
+   test.InitializeTraining();
+
+   CHECK(test.IsCurrentModelNull(0));
+   CHECK(test.IsBestModelNull(0));
+
+   FractionalDataType validationMetric = test.Train(0);
+   CHECK(0 == validationMetric);
+
+   CHECK(test.IsCurrentModelNull(0));
+   CHECK(test.IsBestModelNull(0));
+}
+
+TEST_CASE("classification with 0 possible target states, interaction") {
+   TestApi test = TestApi(0);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases(std::vector<ClassificationCase> {});
+   test.InitializeInteraction();
+
+   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   CHECK(0 == validationMetric);
 }
 
 TEST_CASE("classification with 1 possible target, training") {

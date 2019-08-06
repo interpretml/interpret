@@ -936,7 +936,7 @@ public:
                      EBM_ASSERT(iAttributeForCombination < m_cAttributes);
                      const AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
                      const size_t cStates = pInputAttribute->m_cStates;
-                     if(UNLIKELY(1 != cStates)) {
+                     if(LIKELY(1 != cStates)) {
                         // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         pAttributeCombinationEntry->m_pAttribute = pInputAttribute;
                         ++pAttributeCombinationEntry;
@@ -993,7 +993,7 @@ public:
 
          EBM_ASSERT(nullptr == m_apCurrentModel);
          EBM_ASSERT(nullptr == m_apBestModel);
-         if(1 != m_cTargetStates && 0 != m_cAttributeCombinations) {
+         if(0 != m_cAttributeCombinations && (m_bRegression || 2 <= m_cTargetStates)) {
             m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
             if(nullptr == m_apCurrentModel) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
@@ -1077,7 +1077,7 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(0 <= countAttributeCombinations);
    EBM_ASSERT(0 == countAttributeCombinations || nullptr != attributeCombinations);
    // attributeCombinationIndexes -> it's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
-   EBM_ASSERT(bRegression || 1 <= countTargetStates);
+   EBM_ASSERT(bRegression || 1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases);
    EBM_ASSERT(0 <= countTrainingCases);
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingData);
@@ -1291,7 +1291,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
       ret = TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    } else {
       const size_t cTargetStates = pTmlState->m_cTargetStates;
-      if(1 == cTargetStates) {
+      if(cTargetStates <= 1) {
          // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
 
