@@ -131,7 +131,7 @@ public:
    }
 
    TML_INLINE void SetTrunkAfterDone() {
-      constexpr static FractionalDataType nan = std::numeric_limits<FractionalDataType>::quiet_NaN();
+      constexpr static FractionalDataType nan = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
       this->m_UNION.afterSplit.nodeSplittingScore = nan;
    }
 

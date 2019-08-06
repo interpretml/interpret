@@ -756,7 +756,7 @@ public:
       , m_apSamplingSets(nullptr)
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
-      , m_bestModelMetric(std::numeric_limits<FractionalDataType>::infinity())
+      , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() })
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_cAttributes(cAttributes)

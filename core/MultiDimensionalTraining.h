@@ -854,7 +854,7 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
    BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pTotalsHigh = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, pBinnedBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pTotalsHigh, aBinnedBucketsEndDebug);
 
-   FractionalDataType bestSplit = -std::numeric_limits<FractionalDataType>::infinity();
+   FractionalDataType bestSplit = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
    size_t iState = 0;
    do {
       *piPoint = iState;
@@ -1093,7 +1093,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       EBM_ASSERT(2 <= cStatesDimension1);
       EBM_ASSERT(2 <= cStatesDimension2);
 
-      FractionalDataType bestSplittingScoreFirst = -std::numeric_limits<FractionalDataType>::infinity();
+      FractionalDataType bestSplittingScoreFirst = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
 
       size_t cutFirst1Best;
       size_t cutFirst1LowBest;
@@ -1457,7 +1457,7 @@ WARNING_POP
 //      const size_t cStatesDimension1 = pAttributeCombination->m_AttributeCombinationEntry[0].m_pAttribute->m_cStates;
 //      const size_t cStatesDimension2 = pAttributeCombination->m_AttributeCombinationEntry[1].m_pAttribute->m_cStates;
 //
-//      FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
+//      FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
 //
 //      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
 //         free(aDynamicBinnedBuckets);
@@ -1819,7 +1819,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
       EBM_ASSERT(1 <= cStatesDimension1); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cStatesDimension2); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
-      FractionalDataType bestSplittingScore = -std::numeric_limits<FractionalDataType>::infinity();
+      FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
 
       LOG(TraceLevelVerbose, "CalculateInteractionScore Starting state sweep loop");
       // note : if cStatesDimension1 can be 1 then we can't use a do loop

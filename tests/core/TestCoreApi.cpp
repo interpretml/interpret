@@ -994,6 +994,24 @@ public:
    }
 };
 
+//TEST_CASE("infinite target training set, training, regression") {
+//   TestApi test = TestApi(k_learningTypeRegression);
+//   test.AddAttributes({ Attribute(2) });
+//   test.AddAttributeCombinations({ { 0 } });
+//   test.AddTrainingCases({ RegressionCase(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() }, { 1 }) });
+//   test.AddValidationCases({ RegressionCase(12, { 1 }) });
+//   test.InitializeTraining();
+//
+//   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+//      FractionalDataType validationMetric = test.Train(0);
+//      CHECK_APPROX(validationMetric, 12);
+//      FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+//      CHECK_APPROX(modelValue, 0);
+//   }
+//}
+
+
+
 TEST_CASE("Zero training cases, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({ Attribute(2) });
@@ -1276,8 +1294,8 @@ TEST_CASE("AttributeCombination with zero attributes, training, regression") {
    test.AddValidationCases({ RegressionCase(12, {}) });
    test.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
          validationMetric = test.Train(iAttributeCombination);
@@ -1306,8 +1324,8 @@ TEST_CASE("AttributeCombination with zero attributes, training, binary") {
    test.AddValidationCases({ ClassificationCase(0, {}) });
    test.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
          validationMetric = test.Train(iAttributeCombination);
@@ -1342,8 +1360,8 @@ TEST_CASE("AttributeCombination with zero attributes, training, multiclass") {
    test.AddValidationCases({ ClassificationCase(0, {}) });
    test.InitializeTraining();
 
-   FractionalDataType validationMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
-   FractionalDataType modelValue = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
          validationMetric = test.Train(iAttributeCombination);
