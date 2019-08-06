@@ -608,13 +608,8 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
                return true;
             }
          }
-         // GetThreadByteBuffer1 is overwritten inside the function above, so we need to obtain it here instead of higher
-         void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSmallChangeToModelAccumulated->GetStackMemorySizeBytes());
-         if(UNLIKELY(nullptr == pThreadBuffer)) {
-            return true;
-         }
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite, pThreadBuffer)) {
+         if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite)) {
             return true;
          }
       }
@@ -663,11 +658,7 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegion = apCurrentModel[iCurrentModel % cAttributeCombinations];
-   void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSegmentedRegion->GetStackMemorySizeBytes());
-   if(UNLIKELY(nullptr == pThreadBuffer)) {
-      return true;
-   }
-   if(pSegmentedRegion->Add(*pSmallChangeToModelAccumulated, pThreadBuffer)) {
+   if(pSegmentedRegion->Add(*pSmallChangeToModelAccumulated)) {
       return true;
    }
 
@@ -1073,14 +1064,13 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   // bRegression is set in our program, so our caller can't pass in invalid data
    // randomSeed can be any value
    EBM_ASSERT(0 <= countAttributes);
    EBM_ASSERT(0 == countAttributes || nullptr != attributes);
    EBM_ASSERT(0 <= countAttributeCombinations);
    EBM_ASSERT(0 == countAttributeCombinations || nullptr != attributeCombinations);
    // attributeCombinationIndexes -> it's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
-   EBM_ASSERT(bRegression || 1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases);
+   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases));
    EBM_ASSERT(0 <= countTrainingCases);
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
    EBM_ASSERT(0 == countTrainingCases || 0 == countAttributes || nullptr != trainingData);
@@ -1225,7 +1215,9 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
       TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
    }
 
-   *pValidationMetricReturn = modelMetric;
+   if(nullptr != pValidationMetricReturn) {
+      *pValidationMetricReturn = modelMetric;
+   }
 
    LOG(TraceLevelVerbose, "Exited TrainingStepPerTargetStates");
    return 0;
@@ -1264,7 +1256,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
-   EBM_ASSERT(nullptr != pTmlState->m_apAttributeCombinations);
+   EBM_ASSERT(nullptr != pTmlState->m_apAttributeCombinations); // this is true because 0 < pTmlState->m_cAttributeCombinations since our caller needs to pass in a valid indexAttributeCombination to this function
    LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered TrainingStep");
 
    EBM_ASSERT(!std::isnan(learningRate));
@@ -1286,7 +1278,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
-   EBM_ASSERT(nullptr != validationMetricReturn);
+   // validationMetricReturn can be nullptr
 
    IntegerDataType ret;
    if(pTmlState->m_bRegression) {
@@ -1297,7 +1289,9 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
          // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
 
-         *validationMetricReturn = 0;
+         if(nullptr != validationMetricReturn) {
+            *validationMetricReturn = 0;
+         }
          return 0;
       }
       ret = CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
@@ -1306,7 +1300,12 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING TrainingStep returned %" IntegerDataTypePrintf, ret);
    }
-   LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep %" FractionalDataTypePrintf, *validationMetricReturn);
+   if(nullptr != validationMetricReturn) {
+      EBM_ASSERT(0 <= *validationMetricReturn); // both log loss and RMSE need to be above zero
+      LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep %" FractionalDataTypePrintf, *validationMetricReturn);
+   } else {
+      LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep");
+   }
    return ret;
 }
 
@@ -1321,9 +1320,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    if(nullptr == pTmlState->m_apCurrentModel) {
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%. If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  Our caller should be able to handle this
-      // null for pTmlState->m_apCurrentModel could happen also if m_cAttributeCombinations was 0 in which case the behavior would be undefined as the caller passed in indexAttributeCombination which can't reference anything legal, so we can just return whatever we like
-      // it could also have failed to allocate, but it would also be undefined behavior to access an object which wasn't fully constructed, so returning nullptr for that is ok too
+      // if pTmlState->m_apCurrentModel is nullptr, then either:
+      //    1) m_cAttributeCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexAttributeCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
@@ -1346,9 +1346,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
    if(nullptr == pTmlState->m_apBestModel) {
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%. If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  Our caller should be able to handle this
-      // null for pTmlState->m_apCurrentModel could happen also if m_cAttributeCombinations was 0 in which case the behavior would be undefined as the caller passed in indexAttributeCombination which can't reference anything legal, so we can just return whatever we like
-      // it could also have failed to allocate, but it would also be undefined behavior to access an object which wasn't fully constructed, so returning nullptr for that is ok too
+      // if pTmlState->m_apBestModel is nullptr, then either:
+      //    1) m_cAttributeCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexAttributeCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 

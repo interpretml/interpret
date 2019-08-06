@@ -124,10 +124,9 @@ public:
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const void * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   // bRegression is set in our program, so our caller can't pass in invalid data
    EBM_ASSERT(0 <= countAttributes);
    EBM_ASSERT(0 == countAttributes || nullptr != attributes);
-   EBM_ASSERT(bRegression || 1 <= countTargetStates || 0 == countTargetStates && 0 == countCases);
+   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countCases));
    EBM_ASSERT(0 <= countCases);
    EBM_ASSERT(0 == countCases || nullptr != targets);
    EBM_ASSERT(0 == countCases || 0 == countAttributes || nullptr != data);
@@ -225,6 +224,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
    EBM_ASSERT(0 <= countAttributesInCombination);
    EBM_ASSERT(0 == countAttributesInCombination || nullptr != attributeIndexes);
+   // interactionScoreReturn can be nullptr
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
       LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
@@ -233,15 +233,18 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
    if(0 == cAttributesInCombination) {
       LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information");
-      *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      if(nullptr != interactionScoreReturn) {
+         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      }
       return 0;
    }
 
    if(nullptr == pEbmInteractionState->m_pDataSet) {
-      // if pEbmInteractionState then we should have a dataset with zero cases, or we were only partly constructed (in which case the behavior is undefined)
-      // if there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
+      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero cases.  If there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
       LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out dataset with zero cases");
-      *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      if(nullptr != interactionScoreReturn) {
+         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      }
       return 0;
    }
 
@@ -261,7 +264,9 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
       if(1 == pAttribute->m_cStates) {
          LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with Attributes with only 1 state since these provide no useful information");
-         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+         if(nullptr != interactionScoreReturn) {
+            *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+         }
          return 0;
       }
       ++pAttributeCombinationIndex;
@@ -301,16 +306,22 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
       if(cTargetStates <= 1) {
          LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out situations where there is only 0 OR 1 classification target ");
-         *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+         if(nullptr != interactionScoreReturn) {
+            *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+         }
          return 0;
       }
       ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
    }
-   EBM_ASSERT(0 <= *interactionScoreReturn);
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
    }
-   LOG_COUNTED(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FractionalDataTypePrintf, *interactionScoreReturn);
+   if(nullptr != interactionScoreReturn) {
+      EBM_ASSERT(0 <= *interactionScoreReturn);
+      LOG_COUNTED(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FractionalDataTypePrintf, *interactionScoreReturn);
+   } else {
+      LOG_COUNTED(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");
+   }
    return ret;
 }
 

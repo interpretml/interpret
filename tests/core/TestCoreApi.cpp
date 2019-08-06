@@ -997,8 +997,56 @@ public:
    }
 };
 
+TEST_CASE("null validationMetricReturn, training, regression") {
+   EbmAttributeCombination combinations[1];
+   combinations->countAttributesInCombination = 0;
 
+   PEbmTraining pEbmTraining = InitializeTrainingRegression(randomSeed, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeTraining(pEbmTraining);
+}
 
+TEST_CASE("null validationMetricReturn, training, binary") {
+   EbmAttributeCombination combinations[1];
+   combinations->countAttributesInCombination = 0;
+
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 2, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeTraining(pEbmTraining);
+}
+
+TEST_CASE("null validationMetricReturn, training, multiclass") {
+   EbmAttributeCombination combinations[1];
+   combinations->countAttributesInCombination = 0;
+
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 3, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeTraining(pEbmTraining);
+}
+
+TEST_CASE("null interactionScoreReturn, interaction, regression") {
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeInteraction(pEbmInteraction);
+}
+
+TEST_CASE("null interactionScoreReturn, interaction, binary") {
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 2, 0, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeInteraction(pEbmInteraction);
+}
+
+TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 3, 0, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   CHECK(0 == ret);
+   FreeInteraction(pEbmInteraction);
+}
 
 TEST_CASE("zero learning rate, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1015,6 +1063,9 @@ TEST_CASE("zero learning rate, training, regression") {
          validationMetric = test.Train(iAttributeCombination, {}, {}, 0);
          CHECK_APPROX(validationMetric, 12);
          modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
       }
    }
@@ -1037,6 +1088,11 @@ TEST_CASE("zero learning rate, training, binary") {
          modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
          modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         CHECK_APPROX(modelValue, 0);
+
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 1);
          CHECK_APPROX(modelValue, 0);
       }
    }
@@ -1061,6 +1117,13 @@ TEST_CASE("zero learning rate, training, multiclass") {
          modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
          CHECK_APPROX(modelValue, 0);
          modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+         CHECK_APPROX(modelValue, 0);
+
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 1);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetBestModelValue(iAttributeCombination, {}, 2);
          CHECK_APPROX(modelValue, 0);
       }
    }

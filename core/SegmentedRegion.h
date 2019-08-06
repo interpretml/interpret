@@ -132,11 +132,6 @@ public:
       m_cDimensions = cDimensions;
    }
 
-   TML_INLINE size_t GetStackMemorySizeBytes() const {
-      EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
-      return sizeof(DimensionInfoStack) * m_cDimensions; // this can't overflow since m_cDimensions is limited in size
-   }
-
    TML_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return &m_aDimensions[iDimension].aDivisions[0];
@@ -498,8 +493,9 @@ public:
 
    // TODO : change this to eliminate pStackMemory and replace it with true on stack memory (we know that there can't be more than 63 dimensions)
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
-   bool Add(const SegmentedRegionCore & rhs, void * pStackMemory) {
-      EBM_ASSERT(nullptr != pStackMemory);
+   bool Add(const SegmentedRegionCore & rhs) {
+      DimensionInfoStack dimensionStack[k_cDimensionsMax];
+
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
       if(0 == m_cDimensions) {
@@ -529,7 +525,7 @@ public:
       const DimensionInfo * pDimensionFirst1 = m_aDimensions;
       const DimensionInfo * pDimensionFirst2 = rhs.m_aDimensions;
 
-      DimensionInfoStack * pDimensionInfoStackFirst = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
+      DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
       const DimensionInfoStack * const pDimensionInfoStackEnd = &pDimensionInfoStackFirst[m_cDimensions];
 
       size_t cValues1 = 1;
@@ -629,7 +625,7 @@ public:
             break;
          }
 
-         DimensionInfoStack * pDimensionInfoStackSecond = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
+         DimensionInfoStack * pDimensionInfoStackSecond = dimensionStack;
          const DimensionInfo * pDimensionSecond1 = aDimension1;
          const DimensionInfo * pDimensionSecond2 = aDimension2;
 
@@ -698,7 +694,7 @@ public:
 
       // now finally do the divisions
 
-      const DimensionInfoStack * pDimensionInfoStackCur = reinterpret_cast<DimensionInfoStack *>(pStackMemory);
+      const DimensionInfoStack * pDimensionInfoStackCur = dimensionStack;
       const DimensionInfo * pDimension1Cur = aDimension1;
       const DimensionInfo * pDimension2Cur = aDimension2;
       size_t iDimension = 0;

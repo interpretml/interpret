@@ -1870,13 +1870,17 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
       }
       LOG(TraceLevelVerbose, "CalculateInteractionScore Done state sweep loop");
 
-      *pInteractionScoreReturn = bestSplittingScore;
+      if(nullptr != pInteractionScoreReturn) {
+         *pInteractionScoreReturn = bestSplittingScore;
+      }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
       LOG(TraceLevelWarning, "WARNING CalculateInteractionScore 2 != cDimensions");
 
       // TODO: handle this better
-      *pInteractionScoreReturn = 0; // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
+      if(nullptr != pInteractionScoreReturn) {
+         *pInteractionScoreReturn = 0; // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
+      }
    }
 
 #ifndef NDEBUG
