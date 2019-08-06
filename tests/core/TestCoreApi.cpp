@@ -733,9 +733,6 @@ public:
       if(m_attributeCombinations.size() <= static_cast<size_t>(indexAttributeCombination)) {
          exit(1);
       }
-      if(learningRate < FractionalDataType { 0 }) {
-         exit(1);
-      }
       if(std::isnan(learningRate)) {
          exit(1);
       }
@@ -999,6 +996,183 @@ public:
       return interactionScoreReturn;
    }
 };
+
+
+
+
+TEST_CASE("zero learning rate, training, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ RegressionCase(10, {}) });
+   test.AddValidationCases({ RegressionCase(12, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, 0);
+         CHECK_APPROX(validationMetric, 12);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+      }
+   }
+}
+
+TEST_CASE("zero learning rate, training, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, 0);
+         CHECK_APPROX(validationMetric, 0.69314718055994529);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         CHECK_APPROX(modelValue, 0);
+      }
+   }
+}
+
+TEST_CASE("zero learning rate, training, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, 0);
+         CHECK_APPROX(validationMetric, 1.0986122886681098);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         CHECK_APPROX(modelValue, 0);
+         modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+         CHECK_APPROX(modelValue, 0);
+      }
+   }
+}
+
+TEST_CASE("negative learning rate, training, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ RegressionCase(10, {}) });
+   test.AddValidationCases({ RegressionCase(12, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, -k_learningRateDefault);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 12.100000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, -0.1000000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 12.20100000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, -0.2010000000000000);
+         }
+      }
+   }
+   CHECK_APPROX(validationMetric, 209593.55637813677);
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
+   CHECK_APPROX(modelValue, -209581.55637813677);
+}
+
+TEST_CASE("negative learning rate, training, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, -k_learningRateDefault);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.70319717972663420);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, 0.020000000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 0.71345019889199235);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, 0.040202013400267564);
+         }
+      }
+   }
+   CHECK(std::isinf(validationMetric));
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
+   CHECK_APPROX(modelValue, 0);
+   modelValue = test.GetCurrentModelValue(0, {}, 1);
+   CHECK_APPROX(modelValue, 16785686302.358746);
+}
+
+TEST_CASE("negative learning rate, training, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({});
+   test.AddAttributeCombinations({ {} });
+   test.AddTrainingCases({ ClassificationCase(0, {}) });
+   test.AddValidationCases({ ClassificationCase(0, {}) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         validationMetric = test.Train(iAttributeCombination, {}, {}, -k_learningRateDefault);
+         if(0 == iAttributeCombination && 0 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.1288361512023379);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, -0.03000000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, 0.01500000000000000);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+            CHECK_APPROX(modelValue, 0.01500000000000000);
+         }
+         if(0 == iAttributeCombination && 1 == iEpoch) {
+            CHECK_APPROX(validationMetric, 1.1602122411839852);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 0);
+            CHECK_APPROX(modelValue, -0.060920557198174352);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 1);
+            CHECK_APPROX(modelValue, 0.030112481019468545);
+            modelValue = test.GetCurrentModelValue(iAttributeCombination, {}, 2);
+            CHECK_APPROX(modelValue, 0.030112481019468545);
+         }
+      }
+   }
+   CHECK(std::isinf(validationMetric));
+   modelValue = test.GetCurrentModelValue(0, {}, 0);
+   CHECK_APPROX(modelValue, -10344932.919067673);
+   modelValue = test.GetCurrentModelValue(0, {}, 1);
+   CHECK_APPROX(modelValue, 19.907994122542746);
+   modelValue = test.GetCurrentModelValue(0, {}, 2);
+   CHECK_APPROX(modelValue, 19.907994122542746);
+}
 
 TEST_CASE("zero countCasesRequiredForSplitParentMin, training, regression") {
    // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
