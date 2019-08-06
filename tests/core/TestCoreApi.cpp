@@ -1071,7 +1071,7 @@ TEST_CASE("Zero validation cases, training, regression") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Train(0);
-      CHECK(std::isnan(validationMetric));
+      CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
       modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
@@ -1097,7 +1097,7 @@ TEST_CASE("Zero validation cases, training, binary") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Train(0);
-      CHECK(std::isnan(validationMetric));
+      CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
       modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
@@ -1127,7 +1127,7 @@ TEST_CASE("Zero validation cases, training, multiclass") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Train(0);
-      CHECK(std::isnan(validationMetric));
+      CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
       if(0 == iEpoch) {

@@ -673,8 +673,11 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
 
    if(nullptr == pValidationSet) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
-      // this feels like a NaN value because the metric isn't infinite, it's fully unknown.
-      *pModelMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+      // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
+      // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
+      // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
+      // us with zero count validation sets
+      *pModelMetric = 0;
    } else {
       // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
       *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
