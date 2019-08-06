@@ -170,14 +170,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 if len(uniq_vals) < self.cont_n_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    if self.binning_strategy == "uniform":
+                    if self.binning_strategy == 'uniform':
                         bins = self.cont_n_bins
-                    else:
+                    elif self.binning_strategy == 'quantile':
                         bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.cont_n_bins + 1)))
+                    else: 
+                        raise ValueError(f"Unknown binning_strategy: '{self.binning_strategy}'.")
+                
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
-
                 self.col_bin_edges_[col_idx] = bin_edges
 
                 self.hist_edges_[col_idx] = hist_edges
