@@ -55,7 +55,6 @@ EXTRAS = {
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
         "nbconvert>=5.4.1",
-        "psutil>=5.6.2"
     ]
 }
 
@@ -118,6 +117,7 @@ setup(
         "ipython>=7.4.0",
         "numpy>=1.15.1",
         "scipy>=1.2.1",
+        "psutil>=5.6.2",
     ],
     extras_require=EXTRAS
 )
