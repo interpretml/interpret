@@ -132,7 +132,7 @@ public:
       return m_aThreadByteBuffer2;
    }
 
-   TML_INLINE size_t GetThreadByteBuffer2Size() {
+   TML_INLINE size_t GetThreadByteBuffer2Size() const {
       return m_cThreadByteBufferCapacity2;
    }
 

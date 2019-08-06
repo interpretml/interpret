@@ -137,7 +137,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    EBM_ASSERT(0 < cAttributeCombinations);
    EBM_ASSERT(nullptr != apAttributeCombination);
    EBM_ASSERT(0 < cCases);
-   EBM_ASSERT(nullptr != aInputDataFrom);
+   // aInputDataFrom can be nullptr EVEN if 0 < cAttributeCombinations && 0 < cCases IF the attributeCombinations are all empty, which makes none of them refer to attributes, so the aInputDataFrom pointer isn't necessary
 
    if(IsMultiplyError(sizeof(void *), cAttributeCombinations)) {
       LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(void *), cAttributeCombinations)");
@@ -184,6 +184,8 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
          const StorageDataTypeCore * const pInputDataToLast = reinterpret_cast<const StorageDataTypeCore *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
          EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
+
+         EBM_ASSERT(nullptr != aInputDataFrom);
 
          const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
          InputDataPointerAndCountStates dimensionInfo[k_cDimensionsMax];
@@ -267,12 +269,11 @@ DataSetAttributeCombination::DataSetAttributeCombination(const bool bAllocateRes
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cCases, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aPredictionScores(bAllocatePredictionScores ? ConstructPredictionScores(cCases, cVectorLength, aPredictionScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cCases, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))
-   , m_aaInputData(ConstructInputData(cAttributeCombinations, apAttributeCombination, cCases, aInputDataFrom))
+   , m_aaInputData(0 == cAttributeCombinations ? nullptr : ConstructInputData(cAttributeCombinations, apAttributeCombination, cCases, aInputDataFrom))
    , m_cCases(cCases)
    , m_cAttributeCombinations(cAttributeCombinations) {
 
    EBM_ASSERT(0 < cCases);
-   EBM_ASSERT(0 < cAttributeCombinations);
 }
 
 DataSetAttributeCombination::~DataSetAttributeCombination() {

@@ -71,7 +71,7 @@ from interpret import show
 ebm_global = ebm.explain_global()
 show(ebm_global)
 ```
-![Global Explanation Image](examples/assets/readme_ebm_global_specific.PNG?raw=true)
+![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
 <br/>
 
@@ -80,7 +80,7 @@ Understand individual predictions
 ebm_local = ebm.explain_local(X_test, y_test)
 show(ebm_local)
 ```
-![Local Explanation Image](examples/assets/readme_ebm_local_specific.PNG?raw=true)
+![Local Explanation Image](examples/python/assets/readme_ebm_local_specific.PNG?raw=true)
 
 <br/>
 
@@ -88,16 +88,16 @@ And if you have multiple models, compare them
 ```python
 show([logistic_regression, decision_tree])
 ```
-![Dashboard Image](examples/assets/readme_dashboard.PNG?raw=true)
+![Dashboard Image](examples/python/assets/readme_dashboard.PNG?raw=true)
 
 <br/>
 
 ## Example Notebooks
 
-- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Classification%20Methods.ipynb)
-- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Regression%20Methods.ipynb)
-- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
-- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
+- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)
+- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Regression%20Methods.ipynb)
+- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
+- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
 
 ## Roadmap
 

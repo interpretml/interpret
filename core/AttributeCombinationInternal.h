@@ -67,6 +67,7 @@ public:
    TML_INLINE static void FreeAttributeCombinations(const size_t cAttributeCombinations, AttributeCombinationCore ** apAttributeCombinations) {
       LOG(TraceLevelInfo, "Entered AttributeCombinationCore::FreeAttributeCombinations");
       if(nullptr != apAttributeCombinations) {
+         EBM_ASSERT(0 < cAttributeCombinations);
          for(size_t i = 0; i < cAttributeCombinations; ++i) {
             AttributeCombinationCore::Free(apAttributeCombinations[i]);
          }

@@ -110,7 +110,7 @@ public:
    }
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void AssertZero(const size_t cTargetStates) {
+   TML_INLINE void AssertZero(const size_t cTargetStates) const {
       UNUSED(cTargetStates);
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 #ifndef NDEBUG

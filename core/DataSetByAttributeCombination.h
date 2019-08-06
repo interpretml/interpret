@@ -30,7 +30,7 @@ public:
    ~DataSetAttributeCombination();
 
    TML_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cAttributeCombinations && nullptr == m_aaInputData;
    }
 
    TML_INLINE FractionalDataType * GetResidualPointer() {

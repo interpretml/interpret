@@ -131,7 +131,7 @@ public:
    }
 
    TML_INLINE void SetTrunkAfterDone() {
-      constexpr static FractionalDataType nan = std::numeric_limits<FractionalDataType>::quiet_NaN();
+      constexpr static FractionalDataType nan = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
       this->m_UNION.afterSplit.nodeSplittingScore = nan;
    }
 
@@ -382,7 +382,9 @@ retry_with_bigger_tree_node_children_array:
 #endif // NDEBUG
    );
 
-   if(PREDICTABLE(1 == cTreeSplitsMax)) {
+   if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cBinnedBuckets))) {
+      assert(2 != cBinnedBuckets || !GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin) && !GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin));
+
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
          LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
          return true;

@@ -72,26 +72,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebmcore_win_x86_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebmcore_win_x64_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebmcore_win_x86</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
-    <IntDir>$(ProjectDir)..\..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
     <TargetName>lib_ebmcore_win_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -123,12 +123,12 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -146,7 +146,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <OmitFramePointers>false</OmitFramePointers>
@@ -167,12 +167,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -192,7 +192,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -217,12 +217,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -242,7 +242,7 @@ EXIT /B 0
       <PreprocessorDefinitions>EBMCORE_EXPORTS;_WINDOWS;_USRDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)inc</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -267,12 +267,12 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\src\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
 )
-robocopy /R:2 /NP "$(ProjectDir)..\..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\..\..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
+robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\staging" "$(TargetName).dll" "$(TargetName).pdb" "$(TargetName).lib"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -282,7 +282,7 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\inc\ebmcore.h" />
+    <ClInclude Include="inc\ebmcore.h" />
     <ClInclude Include="AttributeInternal.h" />
     <ClInclude Include="AttributeCombinationInternal.h" />
     <ClInclude Include="BinnedBucket.h" />

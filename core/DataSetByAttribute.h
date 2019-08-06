@@ -26,7 +26,7 @@ public:
    ~DataSetInternalCore();
 
    TML_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || 0 != m_cAttributes && nullptr == m_aaInputData;
    }
 
    TML_INLINE const FractionalDataType * GetResidualPointer() const {

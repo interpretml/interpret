@@ -41,7 +41,7 @@ struct PredictionStatistics<false> final {
       sumResidualError = other.sumResidualError;
       sumDenominator = other.sumDenominator;
    }
-   TML_INLINE void AssertZero() {
+   TML_INLINE void AssertZero() const {
       EBM_ASSERT(0 == sumResidualError);
       EBM_ASSERT(0 == sumDenominator);
    }
@@ -70,7 +70,7 @@ struct PredictionStatistics<true> final {
    TML_INLINE void Copy(const PredictionStatistics<true> & other) {
       sumResidualError = other.sumResidualError;
    }
-   TML_INLINE void AssertZero() {
+   TML_INLINE void AssertZero() const {
       EBM_ASSERT(0 == sumResidualError);
    }
 };

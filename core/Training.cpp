@@ -37,8 +37,8 @@
 static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
    LOG(TraceLevelInfo, "Entered DeleteSegmentsCore");
 
-   EBM_ASSERT(0 < cAttributeCombinations);
    if(UNLIKELY(nullptr != apSegmentedRegions)) {
+      EBM_ASSERT(0 < cAttributeCombinations);
       SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
       const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const * const ppSegmentedRegionsEnd = &apSegmentedRegions[cAttributeCombinations];
       do {
@@ -590,60 +590,58 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    pSmallChangeToModelAccumulated->SetCountDimensions(cDimensions);
    pSmallChangeToModelAccumulated->Reset();
 
-   pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
+   // if apSamplingSets is null, then we should have zero training cases, or we're being called partially constructed, which is undefined behavior
+   if(nullptr != apSamplingSets) {
+      pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
 
-   for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-      if(0 == pAttributeCombination->m_cAttributes) {
-         if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
-            return true;
+      for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
+         if(0 == pAttributeCombination->m_cAttributes) {
+            if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
+         } else if(1 == pAttributeCombination->m_cAttributes) {
+            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
+         } else {
+            if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
          }
-      } else if(1 == pAttributeCombination->m_cAttributes) {
-         if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
-            return true;
-         }
-      } else {
-         if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, pSmallChangeToModelOverwrite, cTargetStates)) {
+         // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
+         if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite)) {
             return true;
          }
       }
-      // GetThreadByteBuffer1 is overwritten inside the function above, so we need to obtain it here instead of higher
-      void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSmallChangeToModelAccumulated->GetStackMemorySizeBytes());
-      if(UNLIKELY(nullptr == pThreadBuffer)) {
-         return true;
-      }
-      // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
-      if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite, pThreadBuffer)) {
-         return true;
-      }
-   }
-   LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
+      LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
 
-   // we need to divide by the number of sampling sets that we constructed this from.
-   // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
-   if(IsClassification(countCompilerClassificationTargetStates)) {
-#ifdef EXPAND_BINARY_LOGITS
-      constexpr bool bExpandBinaryLogits = true;
-#else // EXPAND_BINARY_LOGITS
-      constexpr bool bExpandBinaryLogits = false;
-#endif // EXPAND_BINARY_LOGITS
+      // we need to divide by the number of sampling sets that we constructed this from.
+      // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
+      if(IsClassification(countCompilerClassificationTargetStates)) {
+   #ifdef EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = true;
+   #else // EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = false;
+   #endif // EXPAND_BINARY_LOGITS
 
-      //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
-      //   EBM_ASSERT(2 <= cTargetStates);
-      //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
-      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
-      //} else {
-      //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
-      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-      //}
+         //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
+         //   EBM_ASSERT(2 <= cTargetStates);
+         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
+         //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
+         //} else {
+         //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
+         //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+         //}
 
-      constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
-      if(bDividing) {
-         pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+         constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
+         if(bDividing) {
+            pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+         } else {
+            pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+         }
       } else {
          pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
       }
-   } else {
-      pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
    }
 
    if(0 != cDimensions) {
@@ -660,16 +658,21 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegion = apCurrentModel[iCurrentModel % cAttributeCombinations];
-   void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSegmentedRegion->GetStackMemorySizeBytes());
-   if(UNLIKELY(nullptr == pThreadBuffer)) {
-      return true;
-   }
-   if(pSegmentedRegion->Add(*pSmallChangeToModelAccumulated, pThreadBuffer)) {
+   if(pSegmentedRegion->Add(*pSmallChangeToModelAccumulated)) {
       return true;
    }
 
-   // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-   *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
+   if(nullptr == pValidationSet) {
+      // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
+      // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
+      // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
+      // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
+      // us with zero count validation sets
+      *pModelMetric = 0;
+   } else {
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+      *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
+   }
 
    LOG(TraceLevelVerbose, "Exited GenerateModelLoop");
    return false;
@@ -737,22 +740,20 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cAttributeCombinations(cAttributeCombinations)
-      , m_apAttributeCombinations(AttributeCombinationCore::AllocateAttributeCombinations(cAttributeCombinations))
+      , m_apAttributeCombinations(0 == cAttributeCombinations ? nullptr : AttributeCombinationCore::AllocateAttributeCombinations(cAttributeCombinations))
       , m_pTrainingSet(nullptr)
       , m_pValidationSet(nullptr)
       , m_cSamplingSets(cSamplingSets)
       , m_apSamplingSets(nullptr)
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
-      , m_bestModelMetric(std::numeric_limits<FractionalDataType>::infinity())
+      , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() })
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_cAttributes(cAttributes)
-      , m_aAttributes(IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      , m_aAttributes(0 == cAttributes || IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
-
-      EBM_ASSERT(0 < cAttributes); // we can't allocate zero byte arrays.  This is checked when we were initially called, but I'm leaving it here again as documentation
    }
    
    ~TmlState() {
@@ -800,13 +801,13 @@ public:
             }
          }
 
-         if(nullptr == m_aAttributes) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_aAttributes");
+         if(0 != m_cAttributes && nullptr == m_aAttributes) {
+            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize 0 != m_cAttributes && nullptr == m_aAttributes");
             return true;
          }
 
-         if(UNLIKELY(nullptr == m_apAttributeCombinations)) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apAttributeCombinations");
+         if(UNLIKELY(0 != m_cAttributeCombinations && nullptr == m_apAttributeCombinations)) {
+            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize 0 != m_cAttributeCombinations && nullptr == m_apAttributeCombinations");
             return true;
          }
 
@@ -821,176 +822,200 @@ public:
          }
 
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize starting attribute processing");
-         EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
-         const EbmAttribute * pAttributeInitialize = aAttributes;
-         const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
-         EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
-         size_t iAttributeInitialize = 0;
-         do {
-            static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
-            static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
-            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
-            AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
+         if(0 != m_cAttributes) {
+            EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
+            const EbmAttribute * pAttributeInitialize = aAttributes;
+            const EbmAttribute * const pAttributeEnd = &aAttributes[m_cAttributes];
+            EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
+            size_t iAttributeInitialize = 0;
+            do {
+               static_assert(AttributeTypeCore::OrdinalCore == static_cast<AttributeTypeCore>(AttributeTypeOrdinal), "AttributeTypeCore::OrdinalCore must have the same value as AttributeTypeOrdinal");
+               static_assert(AttributeTypeCore::NominalCore == static_cast<AttributeTypeCore>(AttributeTypeNominal), "AttributeTypeCore::NominalCore must have the same value as AttributeTypeNominal");
+               EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType || AttributeTypeNominal == pAttributeInitialize->attributeType);
+               AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
-            IntegerDataType countStates = pAttributeInitialize->countStates;
-            EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
-               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
-               return true;
-            }
-            size_t cStates = static_cast<size_t>(countStates);
-            if(1 == cStates) {
-               LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information");
-            }
-
-            EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
-            bool bMissing = 0 != pAttributeInitialize->hasMissing;
-
-            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
-            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
-
-            EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
-            EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
-
-            ++iAttributeInitialize;
-            ++pAttributeInitialize;
-         } while(pAttributeEnd != pAttributeInitialize);
-         LOG(TraceLevelInfo, "EbmTrainingState::Initialize done attribute processing");
-
-         size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
-
-         LOG(TraceLevelInfo, "EbmTrainingState::Initialize starting attribute combination processing");
-         const IntegerDataType * pAttributeCombinationIndex = attributeCombinationIndexes;
-         for(size_t iAttributeCombination = 0; iAttributeCombination < m_cAttributeCombinations; ++iAttributeCombination) {
-            const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
-
-            IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
-            EBM_ASSERT(0 <= countAttributesInCombination);
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
-               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
-               return true;
-            }
-            size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
-            EBM_ASSERT(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
-            size_t cSignificantAttributesInCombination = 0;
-            const IntegerDataType * const pAttributeCombinationIndexEnd = pAttributeCombinationIndex + cAttributesInCombination;
-            if(UNLIKELY(0 == cAttributesInCombination)) {
-               LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information for training");
-            } else {
-               const IntegerDataType * pAttributeCombinationIndexTemp = pAttributeCombinationIndex;
-               do {
-                  const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndexTemp;
-                  EBM_ASSERT(0 <= indexAttributeInterop);
-                  if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
-                     LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
-                     return true;
-                  }
-                  const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-                  EBM_ASSERT(iAttributeForCombination < m_cAttributes);
-                  AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
-                  if(LIKELY(1 != pInputAttribute->m_cStates)) {
-                     // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
-                     ++cSignificantAttributesInCombination;
-                  } else {
-                     LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombination features with a single state since these provide no useful information");
-                  }
-                  ++pAttributeCombinationIndexTemp;
-               } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndexTemp);
-
-               // TODO : we can allow more dimensions, if some of the dimensions have only 1 state
-               if(k_cDimensionsMax < cSignificantAttributesInCombination) {
-                  // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize k_cDimensionsMax < cSignificantAttributesInCombination");
+               IntegerDataType countStates = pAttributeInitialize->countStates;
+               EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+               if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
+                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
                   return true;
                }
-            }
+               size_t cStates = static_cast<size_t>(countStates);
+               if(1 == cStates) {
+                  LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information");
+               }
 
-            AttributeCombinationCore * pAttributeCombination = AttributeCombinationCore::Allocate(cSignificantAttributesInCombination, iAttributeCombination);
-            if(nullptr == pAttributeCombination) {
-               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == pAttributeCombination");
-               return true;
-            }
-            // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
-            m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
+               EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
+               bool bMissing = 0 != pAttributeInitialize->hasMissing;
 
-            if(LIKELY(0 != cSignificantAttributesInCombination)) {
-               size_t cTensorStates = 1;
-               AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
-               do {
-                  const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
-                  EBM_ASSERT(0 <= indexAttributeInterop);
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop))); // this was checked above
-                  const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-                  EBM_ASSERT(iAttributeForCombination < m_cAttributes);
-                  const AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
-                  const size_t cStates = pInputAttribute->m_cStates;
-                  if(UNLIKELY(1 != cStates)) {
-                     // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
-                     pAttributeCombinationEntry->m_pAttribute = pInputAttribute;
-                     ++pAttributeCombinationEntry;
-                     if(IsMultiplyError(cTensorStates, cStates)) {
-                        // if this overflows, we definetly won't be able to allocate it
-                        LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, cStates)");
+               // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
+               new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, attributeTypeCore, bMissing);
+               // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
+
+               EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
+               EBM_ASSERT(AttributeTypeOrdinal == pAttributeInitialize->attributeType); // TODO : implement this, then remove this assert
+
+               ++iAttributeInitialize;
+               ++pAttributeInitialize;
+            } while(pAttributeEnd != pAttributeInitialize);
+         }
+         LOG(TraceLevelInfo, "EbmTrainingState::Initialize done attribute processing");
+
+         LOG(TraceLevelInfo, "EbmTrainingState::Initialize starting attribute combination processing");
+         if(0 != m_cAttributeCombinations) {
+            const IntegerDataType * pAttributeCombinationIndex = attributeCombinationIndexes;
+            size_t iAttributeCombination = 0;
+            do {
+               const EbmAttributeCombination * const pAttributeCombinationInterop = &aAttributeCombinations[iAttributeCombination];
+
+               IntegerDataType countAttributesInCombination = pAttributeCombinationInterop->countAttributesInCombination;
+               EBM_ASSERT(0 <= countAttributesInCombination);
+               if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)) {
+                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countAttributesInCombination)");
+                  return true;
+               }
+               size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
+               EBM_ASSERT(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
+               size_t cSignificantAttributesInCombination = 0;
+               const IntegerDataType * const pAttributeCombinationIndexEnd = pAttributeCombinationIndex + cAttributesInCombination;
+               if(UNLIKELY(0 == cAttributesInCombination)) {
+                  LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information for training");
+               } else {
+                  assert(nullptr != attributeCombinationIndexes);
+                  const IntegerDataType * pAttributeCombinationIndexTemp = pAttributeCombinationIndex;
+                  do {
+                     const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndexTemp;
+                     EBM_ASSERT(0 <= indexAttributeInterop);
+                     if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
+                        LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
                         return true;
                      }
-                     cTensorStates *= cStates;
+                     const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
+                     EBM_ASSERT(iAttributeForCombination < m_cAttributes);
+                     AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
+                     if(LIKELY(1 != pInputAttribute->m_cStates)) {
+                        // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                        ++cSignificantAttributesInCombination;
+                     } else {
+                        LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombination features with a single state since these provide no useful information");
+                     }
+                     ++pAttributeCombinationIndexTemp;
+                  } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndexTemp);
+
+                  // TODO : we can allow more dimensions, if some of the dimensions have only 1 state
+                  if(k_cDimensionsMax < cSignificantAttributesInCombination) {
+                     // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
+                     LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize k_cDimensionsMax < cSignificantAttributesInCombination");
+                     return true;
                   }
-                  ++pAttributeCombinationIndex;
-               } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
-               // if cSignificantAttributesInCombination is zero, don't both initializing pAttributeCombination->m_cItemsPerBitPackDataUnit
-               const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates - 1);
-               pAttributeCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
-            }
+               }
+
+               AttributeCombinationCore * pAttributeCombination = AttributeCombinationCore::Allocate(cSignificantAttributesInCombination, iAttributeCombination);
+               if(nullptr == pAttributeCombination) {
+                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == pAttributeCombination");
+                  return true;
+               }
+               // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
+               m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
+
+               if(LIKELY(0 != cSignificantAttributesInCombination)) {
+                  assert(nullptr != attributeCombinationIndexes);
+                  size_t cTensorStates = 1;
+                  AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
+                  do {
+                     const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
+                     EBM_ASSERT(0 <= indexAttributeInterop);
+                     EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop))); // this was checked above
+                     const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
+                     EBM_ASSERT(iAttributeForCombination < m_cAttributes);
+                     const AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
+                     const size_t cStates = pInputAttribute->m_cStates;
+                     if(LIKELY(1 != cStates)) {
+                        // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                        pAttributeCombinationEntry->m_pAttribute = pInputAttribute;
+                        ++pAttributeCombinationEntry;
+                        if(IsMultiplyError(cTensorStates, cStates)) {
+                           // if this overflows, we definetly won't be able to allocate it
+                           LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, cStates)");
+                           return true;
+                        }
+                        cTensorStates *= cStates;
+                     }
+                     ++pAttributeCombinationIndex;
+                  } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
+                  // if cSignificantAttributesInCombination is zero, don't both initializing pAttributeCombination->m_cItemsPerBitPackDataUnit
+                  const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates - 1);
+                  pAttributeCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
+               }
+               ++iAttributeCombination;
+            } while(iAttributeCombination < m_cAttributeCombinations);
          }
          LOG(TraceLevelInfo, "EbmTrainingState::Initialize finished attribute combination processing");
 
+         size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
+
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pTrainingSet");
-         m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
-         if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
-            return true;
+         if(0 != cTrainingCases) {
+            m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
+            if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
+               return true;
+            }
          }
          LOG(TraceLevelInfo, "Exited DataSetAttributeCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
 
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pValidationSet");
-         m_pValidationSet = new (std::nothrow) DataSetAttributeCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
-         if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
-            return true;
+         if(0 != cValidationCases) {
+            m_pValidationSet = new (std::nothrow) DataSetAttributeCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
+            if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
+               return true;
+            }
          }
          LOG(TraceLevelInfo, "Exited DataSetAttributeCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
 
          RandomStream randomStream(randomSeed);
 
          EBM_ASSERT(nullptr == m_apSamplingSets);
-         m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
-         if(UNLIKELY(nullptr == m_apSamplingSets)) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
-            return true;
+         if(0 != cTrainingCases) {
+            m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
+            if(UNLIKELY(nullptr == m_apSamplingSets)) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
+               return true;
+            }
          }
 
          EBM_ASSERT(nullptr == m_apCurrentModel);
-         m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
-         if(nullptr == m_apCurrentModel) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
-            return true;
-         }
          EBM_ASSERT(nullptr == m_apBestModel);
-         m_apBestModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
-         if(nullptr == m_apBestModel) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apBestModel");
-            return true;
+         if(0 != m_cAttributeCombinations && (m_bRegression || 2 <= m_cTargetStates)) {
+            m_apCurrentModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
+            if(nullptr == m_apCurrentModel) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
+               return true;
+            }
+            m_apBestModel = InitializeSegmentsCore(m_cAttributeCombinations, m_apAttributeCombinations, cVectorLength);
+            if(nullptr == m_apBestModel) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apBestModel");
+               return true;
+            }
          }
 
          if(m_bRegression) {
-            InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
-            InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
+            if(0 != cTrainingCases) {
+               InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
+            }
+            if(0 != cValidationCases) {
+               InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
+            }
          } else {
             if(2 == m_cTargetStates) {
-               InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingCases) {
+                  InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               }
             } else {
-               InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingCases) {
+                  InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               }
             }
          }
          
@@ -1006,29 +1031,31 @@ public:
 
 #ifndef NDEBUG
 void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * const aTargets) {
-   if(0 == cTargetStates) {
-      // regression!
+   if(0 != cCases) {
+      if(0 == cTargetStates) {
+         // regression!
 
-      const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
-      const FractionalDataType * const pTargetEnd = pTarget + cCases;
-      do {
-         const FractionalDataType data = *pTarget;
-         EBM_ASSERT(!std::isnan(data));
-         EBM_ASSERT(!std::isinf(data));
-         ++pTarget;
-      } while(pTargetEnd != pTarget);
-   } else {
-      // classification
+         const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
+         const FractionalDataType * const pTargetEnd = pTarget + cCases;
+         do {
+            const FractionalDataType data = *pTarget;
+            EBM_ASSERT(!std::isnan(data));
+            EBM_ASSERT(!std::isinf(data));
+            ++pTarget;
+         } while(pTargetEnd != pTarget);
+      } else {
+         // classification
 
-      const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
-      const IntegerDataType * const pTargetEnd = pTarget + cCases;
-      do {
-         const IntegerDataType data = *pTarget;
-         EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < cTargetStates);
-         ++pTarget;
-      } while(pTargetEnd != pTarget);
+         const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
+         const IntegerDataType * const pTargetEnd = pTarget + cCases;
+         do {
+            const IntegerDataType data = *pTarget;
+            EBM_ASSERT(0 <= data);
+            EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+            EBM_ASSERT(static_cast<size_t>(data) < cTargetStates);
+            ++pTarget;
+         } while(pTargetEnd != pTarget);
+      }
    }
 }
 #endif // NDEBUG
@@ -1037,21 +1064,20 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countAttributes, const EbmAttribute * attributes, IntegerDataType countAttributeCombinations, const EbmAttributeCombination * attributeCombinations, const IntegerDataType * attributeCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   // bRegression is set in our program, so our caller can't pass in invalid data
    // randomSeed can be any value
-   EBM_ASSERT(1 <= countAttributes);
-   EBM_ASSERT(nullptr != attributes);
-   EBM_ASSERT(1 <= countAttributeCombinations);
-   EBM_ASSERT(nullptr != attributeCombinations);
-   EBM_ASSERT(nullptr != attributeCombinationIndexes);
-   EBM_ASSERT(bRegression || 2 <= countTargetStates);
-   EBM_ASSERT(1 <= countTrainingCases);
-   EBM_ASSERT(nullptr != trainingTargets);
-   EBM_ASSERT(nullptr != trainingData);
+   EBM_ASSERT(0 <= countAttributes);
+   EBM_ASSERT(0 == countAttributes || nullptr != attributes);
+   EBM_ASSERT(0 <= countAttributeCombinations);
+   EBM_ASSERT(0 == countAttributeCombinations || nullptr != attributeCombinations);
+   // attributeCombinationIndexes -> it's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
+   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases));
+   EBM_ASSERT(0 <= countTrainingCases);
+   EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
+   EBM_ASSERT(0 == countTrainingCases || 0 == countAttributes || nullptr != trainingData);
    // trainingPredictionScores can be null
-   EBM_ASSERT(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
-   EBM_ASSERT(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   EBM_ASSERT(nullptr != validationData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
+   EBM_ASSERT(0 == countValidationCases || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 == countValidationCases || 0 == countAttributes || nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
@@ -1161,27 +1187,37 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
       return 1;
    }
 
-   // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
-   if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
-      // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-      pTmlState->m_bestModelMetric = modelMetric;
+   // if the count of validation set is zero, then pTmlState->m_pValidationSet will be nullptr
+   // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
+   // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+   if(nullptr != pTmlState->m_pValidationSet) {
+      // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
+      if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
+         // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
+         pTmlState->m_bestModelMetric = modelMetric;
 
-      // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
-      size_t iModel = 0;
-      size_t iModelEnd = pTmlState->m_cAttributeCombinations;
-      do {
-         //const AttributeCombinationCore * const pAttributeCombinationUpdate = pTmlState->m_apAttributeCombinations[iModel];
-         if(pTmlState->m_apBestModel[iModel]->Copy(*pTmlState->m_apCurrentModel[iModel])) {
-            return 1;
-         }
-         ++iModel;
-      } while(iModel != iModelEnd);
+         // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
+         size_t iModel = 0;
+         size_t iModelEnd = pTmlState->m_cAttributeCombinations;
+         do {
+            //const AttributeCombinationCore * const pAttributeCombinationUpdate = pTmlState->m_apAttributeCombinations[iModel];
+            if(pTmlState->m_apBestModel[iModel]->Copy(*pTmlState->m_apCurrentModel[iModel])) {
+               return 1;
+            }
+            ++iModel;
+         } while(iModel != iModelEnd);
+      }
    }
 
-   // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-   TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+   // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
+   if(nullptr != pTmlState->m_pTrainingSet) {
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+      TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+   }
 
-   *pValidationMetricReturn = modelMetric;
+   if(nullptr != pValidationMetricReturn) {
+      *pValidationMetricReturn = modelMetric;
+   }
 
    LOG(TraceLevelVerbose, "Exited TrainingStepPerTargetStates");
    return 0;
@@ -1220,21 +1256,20 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
 
-   EBM_ASSERT(nullptr != pTmlState->m_apAttributeCombinations);
+   EBM_ASSERT(nullptr != pTmlState->m_apAttributeCombinations); // this is true because 0 < pTmlState->m_cAttributeCombinations since our caller needs to pass in a valid indexAttributeCombination to this function
    LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered TrainingStep");
 
    EBM_ASSERT(!std::isnan(learningRate));
    EBM_ASSERT(!std::isinf(learningRate));
-   EBM_ASSERT(0 < learningRate);
 
-   EBM_ASSERT(1 <= countTreeSplitsMax);
+   EBM_ASSERT(0 <= countTreeSplitsMax);
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countTreeSplitsMax)) {
       // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   EBM_ASSERT(2 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split!
+   EBM_ASSERT(0 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split, but we accept this input from our user
    size_t cCasesRequiredForSplitParentMin = static_cast<size_t>(countCasesRequiredForSplitParentMin);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countCasesRequiredForSplitParentMin)) {
       // we can never exceed a size_t number of cases, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
@@ -1243,20 +1278,34 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
-   EBM_ASSERT(nullptr != validationMetricReturn);
+   // validationMetricReturn can be nullptr
 
    IntegerDataType ret;
    if(pTmlState->m_bRegression) {
       ret = TrainingStepPerTargetStates<k_Regression>(pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    } else {
       const size_t cTargetStates = pTmlState->m_cTargetStates;
+      if(cTargetStates <= 1) {
+         // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
+         // since we can predit the output with 100% accuracy, our log loss is 0.
+
+         if(nullptr != validationMetricReturn) {
+            *validationMetricReturn = 0;
+         }
+         return 0;
+      }
       ret = CompilerRecursiveTrainingStep<2>(cTargetStates, pTmlState, iAttributeCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, validationMetricReturn);
    }
 
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING TrainingStep returned %" IntegerDataTypePrintf, ret);
    }
-   LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep %" FractionalDataTypePrintf, *validationMetricReturn);
+   if(nullptr != validationMetricReturn) {
+      EBM_ASSERT(0 <= *validationMetricReturn); // both log loss and RMSE need to be above zero
+      LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep %" FractionalDataTypePrintf, *validationMetricReturn);
+   } else {
+      LOG_COUNTED(&pTmlState->m_apAttributeCombinations[iAttributeCombination]->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited TrainingStep");
+   }
    return ret;
 }
 
@@ -1269,6 +1318,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+
+   if(nullptr == pTmlState->m_apCurrentModel) {
+      // if pTmlState->m_apCurrentModel is nullptr, then either:
+      //    1) m_cAttributeCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexAttributeCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      return nullptr;
+   }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iAttributeCombination];
    EBM_ASSERT(0 == pCurrentModel->m_cDimensions || pCurrentModel->m_bExpanded); // the model should have been expanded at startup
@@ -1287,6 +1344,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeCombination))); // we wouldn't have allowed the creation of an attribute set larger than size_t
    size_t iAttributeCombination = static_cast<size_t>(indexAttributeCombination);
    EBM_ASSERT(iAttributeCombination < pTmlState->m_cAttributeCombinations);
+
+   if(nullptr == pTmlState->m_apBestModel) {
+      // if pTmlState->m_apBestModel is nullptr, then either:
+      //    1) m_cAttributeCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexAttributeCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      return nullptr;
+   }
 
    SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iAttributeCombination];
    EBM_ASSERT(0 == pBestModel->m_cDimensions || pBestModel->m_bExpanded); // the model should have been expanded at startup
