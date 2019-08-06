@@ -179,6 +179,12 @@ public:
    }
 };
 
+static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
+static constexpr IntegerDataType k_countInnerBagsDefault = IntegerDataType { 0 };
+static constexpr FractionalDataType k_learningRateDefault = FractionalDataType { 0.01 };
+static constexpr IntegerDataType k_countTreeSplitsMaxDefault = IntegerDataType { 4 };
+static constexpr IntegerDataType k_countCasesRequiredForSplitParentMinDefault = IntegerDataType { 2 };
+
 class TestApi {
    enum class Stage {
       Beginning, AttributesAdded, AttributeCombinationsAdded, TrainingAdded, ValidationAdded, InitializedTraining, InteractionAdded, InitializedInteraction
@@ -311,7 +317,7 @@ class TestApi {
 
 public:
 
-   TestApi(const ptrdiff_t learningTypeOrCountClassificationStates, const ptrdiff_t iZeroClassificationLogit = ptrdiff_t { -1 }) :
+   TestApi(const ptrdiff_t learningTypeOrCountClassificationStates, const ptrdiff_t iZeroClassificationLogit = k_iZeroClassificationLogitDefault) :
       m_stage(Stage::Beginning),
       m_learningTypeOrCountClassificationStates(learningTypeOrCountClassificationStates),
       m_iZeroClassificationLogit(iZeroClassificationLogit),
@@ -695,7 +701,7 @@ public:
       m_stage = Stage::ValidationAdded;
    }
 
-   void InitializeTraining(const IntegerDataType countInnerBags = IntegerDataType { 0 }) {
+   void InitializeTraining(const IntegerDataType countInnerBags = k_countInnerBagsDefault) {
       if(Stage::ValidationAdded != m_stage) {
          exit(1);
       }
@@ -717,7 +723,7 @@ public:
       m_stage = Stage::InitializedTraining;
    }
 
-   FractionalDataType Train(const IntegerDataType indexAttributeCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = FractionalDataType { 0.01 }, const IntegerDataType countTreeSplitsMax = IntegerDataType { 4 }, const IntegerDataType countCasesRequiredForSplitParentMin = IntegerDataType { 2 }) {
+   FractionalDataType Train(const IntegerDataType indexAttributeCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = k_learningRateDefault, const IntegerDataType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntegerDataType countCasesRequiredForSplitParentMin = k_countCasesRequiredForSplitParentMinDefault) {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
@@ -993,6 +999,48 @@ public:
       return interactionScoreReturn;
    }
 };
+
+TEST_CASE("zero countCasesRequiredForSplitParentMin, training, regression") {
+   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : add classification binary and multiclass versions of this
+
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({
+      RegressionCase(10, { 0 }),
+      RegressionCase(10, { 1 }),
+      });
+   test.AddValidationCases({ RegressionCase(12, { 1 }) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
+   CHECK_APPROX(validationMetric, 11.900000000000000);
+   FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+   CHECK_APPROX(modelValue, 0.1000000000000000);
+}
+
+
+TEST_CASE("zero countTreeSplitsMax, training, regression") {
+   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : add classification binary and multiclass versions of this
+
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ 
+      RegressionCase(10, { 0 }),
+      RegressionCase(10, { 1 }),
+      });
+   test.AddValidationCases({ RegressionCase(12, { 1 }) });
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, 0);
+   CHECK_APPROX(validationMetric, 11.900000000000000);
+   FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+   CHECK_APPROX(modelValue, 0.1000000000000000);
+}
+
 
 //TEST_CASE("infinite target training set, training, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);

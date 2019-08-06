@@ -1271,14 +1271,14 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    EBM_ASSERT(!std::isinf(learningRate));
    EBM_ASSERT(0 < learningRate);
 
-   EBM_ASSERT(1 <= countTreeSplitsMax);
+   EBM_ASSERT(0 <= countTreeSplitsMax);
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countTreeSplitsMax)) {
       // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   EBM_ASSERT(2 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split!
+   EBM_ASSERT(0 <= countCasesRequiredForSplitParentMin); // if there is 1 case, then it can't be split, but we accept this input from our user
    size_t cCasesRequiredForSplitParentMin = static_cast<size_t>(countCasesRequiredForSplitParentMin);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countCasesRequiredForSplitParentMin)) {
       // we can never exceed a size_t number of cases, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
