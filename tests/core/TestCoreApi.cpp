@@ -1197,6 +1197,36 @@ TEST_CASE("Zero validation cases, training, multiclass") {
    }
 }
 
+TEST_CASE("Zero interaction cases, interaction, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases(std::vector<RegressionCase> {});
+   test.InitializeInteraction();
+
+   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   CHECK(0 == metricReturn);
+}
+
+TEST_CASE("Zero interaction cases, interaction, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases(std::vector<ClassificationCase> {});
+   test.InitializeInteraction();
+
+   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   CHECK(0 == metricReturn);
+}
+
+TEST_CASE("Zero interaction cases, interaction, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({ Attribute(2) });
+   test.AddInteractionCases(std::vector<ClassificationCase> {});
+   test.InitializeInteraction();
+
+   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   CHECK(0 == metricReturn);
+}
+
 TEST_CASE("classification with 1 possible target, training") {
    TestApi test = TestApi(1);
    test.AddAttributes({ Attribute(2) });

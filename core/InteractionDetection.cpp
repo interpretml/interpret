@@ -101,15 +101,15 @@ public:
       LOG(TraceLevelInfo, "InitializeInteraction done attribute processing");
 
       LOG(TraceLevelInfo, "Entered DataSetInternalCore");
-      DataSetInternalCore * pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates);
-      if(nullptr == pDataSet || pDataSet->IsError()) {
-         LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
-         return true;
+      EBM_ASSERT(nullptr == m_pDataSet);
+      if(0 != cCases) {
+         m_pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates);
+         if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
+            LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
+            return true;
+         }
       }
       LOG(TraceLevelInfo, "Exited DataSetInternalCore");
-
-      EBM_ASSERT(nullptr == m_pDataSet);
-      m_pDataSet = pDataSet;
 
       LOG(TraceLevelInfo, "Exited InitializeInteraction");
       return false;
@@ -128,9 +128,9 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    EBM_ASSERT(0 <= countAttributes);
    EBM_ASSERT(0 == countAttributes || nullptr != attributes);
    EBM_ASSERT(bRegression || 1 <= countTargetStates);
-   EBM_ASSERT(1 <= countCases);
-   EBM_ASSERT(nullptr != targets);
-   EBM_ASSERT(nullptr != data);
+   EBM_ASSERT(0 <= countCases);
+   EBM_ASSERT(0 == countCases || nullptr != targets);
+   EBM_ASSERT(0 == countCases || nullptr != data);
    // predictionScores can be null
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
@@ -233,6 +233,14 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
    if(0 == cAttributesInCombination) {
       LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information");
+      *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+      return 0;
+   }
+
+   if(nullptr == pEbmInteractionState->m_pDataSet) {
+      // if pEbmInteractionState then we should have a dataset with zero cases, or we were only partly constructed (in which case the behavior is undefined)
+      // if there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
+      LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out dataset with zero cases");
       *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
       return 0;
    }
