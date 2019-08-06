@@ -130,7 +130,7 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    EBM_ASSERT(bRegression || 1 <= countTargetStates || 0 == countTargetStates && 0 == countCases);
    EBM_ASSERT(0 <= countCases);
    EBM_ASSERT(0 == countCases || nullptr != targets);
-   EBM_ASSERT(0 == countCases || nullptr != data);
+   EBM_ASSERT(0 == countCases || 0 == countAttributes || nullptr != data);
    // predictionScores can be null
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {

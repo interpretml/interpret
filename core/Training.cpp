@@ -1083,11 +1083,11 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(bRegression || 1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases);
    EBM_ASSERT(0 <= countTrainingCases);
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
-   EBM_ASSERT(0 == countTrainingCases || nullptr != trainingData);
+   EBM_ASSERT(0 == countTrainingCases || 0 == countAttributes || nullptr != trainingData);
    // trainingPredictionScores can be null
    EBM_ASSERT(0 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
    EBM_ASSERT(0 == countValidationCases || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   EBM_ASSERT(0 == countValidationCases || nullptr != validationData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 == countValidationCases || 0 == countAttributes || nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
