@@ -590,60 +590,63 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    pSmallChangeToModelAccumulated->SetCountDimensions(cDimensions);
    pSmallChangeToModelAccumulated->Reset();
 
-   pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
+   // if apSamplingSets is null, then we should have zero training cases, or we're being called partially constructed, which is undefined behavior
+   if(nullptr != apSamplingSets) {
+      pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
 
-   for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-      if(0 == pAttributeCombination->m_cAttributes) {
-         if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
+      for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
+         if(0 == pAttributeCombination->m_cAttributes) {
+            if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
+         } else if(1 == pAttributeCombination->m_cAttributes) {
+            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
+         } else {
+            if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, pSmallChangeToModelOverwrite, cTargetStates)) {
+               return true;
+            }
+         }
+         // GetThreadByteBuffer1 is overwritten inside the function above, so we need to obtain it here instead of higher
+         void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSmallChangeToModelAccumulated->GetStackMemorySizeBytes());
+         if(UNLIKELY(nullptr == pThreadBuffer)) {
             return true;
          }
-      } else if(1 == pAttributeCombination->m_cAttributes) {
-         if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
-            return true;
-         }
-      } else {
-         if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, pSmallChangeToModelOverwrite, cTargetStates)) {
+         // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
+         if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite, pThreadBuffer)) {
             return true;
          }
       }
-      // GetThreadByteBuffer1 is overwritten inside the function above, so we need to obtain it here instead of higher
-      void * pThreadBuffer = pCachedThreadResources->GetThreadByteBuffer1(pSmallChangeToModelAccumulated->GetStackMemorySizeBytes());
-      if(UNLIKELY(nullptr == pThreadBuffer)) {
-         return true;
-      }
-      // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
-      if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite, pThreadBuffer)) {
-         return true;
-      }
-   }
-   LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
+      LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
 
-   // we need to divide by the number of sampling sets that we constructed this from.
-   // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
-   if(IsClassification(countCompilerClassificationTargetStates)) {
-#ifdef EXPAND_BINARY_LOGITS
-      constexpr bool bExpandBinaryLogits = true;
-#else // EXPAND_BINARY_LOGITS
-      constexpr bool bExpandBinaryLogits = false;
-#endif // EXPAND_BINARY_LOGITS
+      // we need to divide by the number of sampling sets that we constructed this from.
+      // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
+      if(IsClassification(countCompilerClassificationTargetStates)) {
+   #ifdef EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = true;
+   #else // EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = false;
+   #endif // EXPAND_BINARY_LOGITS
 
-      //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
-      //   EBM_ASSERT(2 <= cTargetStates);
-      //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
-      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
-      //} else {
-      //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
-      //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-      //}
+         //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
+         //   EBM_ASSERT(2 <= cTargetStates);
+         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
+         //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
+         //} else {
+         //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
+         //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+         //}
 
-      constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
-      if(bDividing) {
-         pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+         constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
+         if(bDividing) {
+            pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+         } else {
+            pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
+         }
       } else {
          pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
       }
-   } else {
-      pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
    }
 
    if(0 != cDimensions) {
@@ -952,28 +955,34 @@ public:
          size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
 
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pTrainingSet");
-         m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
-         if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
-            return true;
+         if(0 != cTrainingCases) {
+            m_pTrainingSet = new (std::nothrow) DataSetAttributeCombination(true, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
+            if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
+               return true;
+            }
          }
          LOG(TraceLevelInfo, "Exited DataSetAttributeCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
 
          LOG(TraceLevelInfo, "Entered DataSetAttributeCombination for m_pValidationSet");
-         m_pValidationSet = new (std::nothrow) DataSetAttributeCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
-         if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
-            return true;
+         if(0 != cValidationCases) {
+            m_pValidationSet = new (std::nothrow) DataSetAttributeCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cAttributeCombinations, m_apAttributeCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
+            if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
+               return true;
+            }
          }
          LOG(TraceLevelInfo, "Exited DataSetAttributeCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
 
          RandomStream randomStream(randomSeed);
 
          EBM_ASSERT(nullptr == m_apSamplingSets);
-         m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
-         if(UNLIKELY(nullptr == m_apSamplingSets)) {
-            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
-            return true;
+         if(0 != cTrainingCases) {
+            m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
+            if(UNLIKELY(nullptr == m_apSamplingSets)) {
+               LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
+               return true;
+            }
          }
 
          EBM_ASSERT(nullptr == m_apCurrentModel);
@@ -992,13 +1001,21 @@ public:
          }
 
          if(m_bRegression) {
-            InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
-            InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
+            if(0 != cTrainingCases) {
+               InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
+            }
+            if(0 != cValidationCases) {
+               InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
+            }
          } else {
             if(2 == m_cTargetStates) {
-               InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingCases) {
+                  InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               }
             } else {
-               InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingCases) {
+                  InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               }
             }
          }
          
@@ -1014,29 +1031,31 @@ public:
 
 #ifndef NDEBUG
 void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * const aTargets) {
-   if(0 == cTargetStates) {
-      // regression!
+   if(0 != cCases) {
+      if(0 == cTargetStates) {
+         // regression!
 
-      const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
-      const FractionalDataType * const pTargetEnd = pTarget + cCases;
-      do {
-         const FractionalDataType data = *pTarget;
-         EBM_ASSERT(!std::isnan(data));
-         EBM_ASSERT(!std::isinf(data));
-         ++pTarget;
-      } while(pTargetEnd != pTarget);
-   } else {
-      // classification
+         const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
+         const FractionalDataType * const pTargetEnd = pTarget + cCases;
+         do {
+            const FractionalDataType data = *pTarget;
+            EBM_ASSERT(!std::isnan(data));
+            EBM_ASSERT(!std::isinf(data));
+            ++pTarget;
+         } while(pTargetEnd != pTarget);
+      } else {
+         // classification
 
-      const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
-      const IntegerDataType * const pTargetEnd = pTarget + cCases;
-      do {
-         const IntegerDataType data = *pTarget;
-         EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < cTargetStates);
-         ++pTarget;
-      } while(pTargetEnd != pTarget);
+         const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
+         const IntegerDataType * const pTargetEnd = pTarget + cCases;
+         do {
+            const IntegerDataType data = *pTarget;
+            EBM_ASSERT(0 <= data);
+            EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+            EBM_ASSERT(static_cast<size_t>(data) < cTargetStates);
+            ++pTarget;
+         } while(pTargetEnd != pTarget);
+      }
    }
 }
 #endif // NDEBUG
@@ -1053,9 +1072,9 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(0 == countAttributeCombinations || nullptr != attributeCombinations);
    // attributeCombinationIndexes -> it's legal for attributeCombinationIndexes to be nullptr if there are no attributes indexed by our attributeCombinations.  AttributeCombinations can have zero attributes, so it could be legal for this to be null even if there are attributeCombinations
    EBM_ASSERT(bRegression || 1 <= countTargetStates);
-   EBM_ASSERT(1 <= countTrainingCases);
-   EBM_ASSERT(nullptr != trainingTargets);
-   EBM_ASSERT(nullptr != trainingData);
+   EBM_ASSERT(0 <= countTrainingCases);
+   EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
+   EBM_ASSERT(0 == countTrainingCases || nullptr != trainingData);
    // trainingPredictionScores can be null
    EBM_ASSERT(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
    EBM_ASSERT(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
@@ -1186,8 +1205,11 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
       } while(iModel != iModelEnd);
    }
 
-   // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-   TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+   // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
+   if(nullptr != pTmlState->m_pTrainingSet) {
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+      TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+   }
 
    *pValidationMetricReturn = modelMetric;
 

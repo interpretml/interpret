@@ -993,6 +993,103 @@ public:
    }
 };
 
+
+
+
+
+//TEST_CASE("classification with 0 possible target states, training") {
+//   // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
+//   TestApi test = TestApi(0);
+//   test.AddAttributes({ Attribute(2) });
+//   test.AddAttributeCombinations({ { 0 } });
+//   test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
+//   test.AddValidationCases({ ClassificationCase(0, { 1 }) });
+//   test.InitializeTraining();
+//
+//   CHECK(test.IsCurrentModelNull(0));
+//   CHECK(test.IsBestModelNull(0));
+//
+//   FractionalDataType validationMetric = test.Train(0);
+//   CHECK(0 == validationMetric);
+//
+//   CHECK(test.IsCurrentModelNull(0));
+//   CHECK(test.IsBestModelNull(0));
+//}
+//
+//TEST_CASE("classification with 0 possible target states, interaction") {
+//   TestApi test = TestApi(1);
+//   test.AddAttributes({ Attribute(2) });
+//   test.AddInteractionCases({ ClassificationCase(0, { 1 }) });
+//   test.InitializeInteraction();
+//
+//   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+//   CHECK(0 == validationMetric);
+//}
+
+
+
+
+
+
+
+
+
+TEST_CASE("Zero training cases, training, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases(std::vector<RegressionCase> {});
+   test.AddValidationCases({ RegressionCase(12, { 1 }) });
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK_APPROX(validationMetric, 12);
+      FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
+TEST_CASE("Zero training cases, training, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases(std::vector<ClassificationCase> {});
+   test.AddValidationCases({ ClassificationCase(0, { 1 }) });
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK_APPROX(validationMetric, 0.69314718055994529);
+      FractionalDataType modelValue;
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
+TEST_CASE("Zero training cases, training, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases(std::vector<ClassificationCase> {});
+   test.AddValidationCases({ ClassificationCase(0, { 1 }) });
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK_APPROX(validationMetric, 1.0986122886681098);
+      FractionalDataType modelValue;
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
 TEST_CASE("classification with 1 possible target, training") {
    TestApi test = TestApi(1);
    test.AddAttributes({ Attribute(2) });
