@@ -770,6 +770,18 @@ public:
       return score;
    }
 
+   FractionalDataType GetBestModelValue(const size_t iAttributeCombination, const std::vector<size_t> indexes, const size_t iScore) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
+      FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
+      return score;
+   }
+
    bool IsCurrentModelNull(const size_t iAttributeCombination) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -1086,6 +1098,101 @@ TEST_CASE("Zero training cases, training, multiclass") {
       modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
       CHECK_APPROX(modelValue, 0);
       modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
+TEST_CASE("Zero validation cases, training, regression") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ RegressionCase(10, { 1 }) });
+   test.AddValidationCases(std::vector<RegressionCase> {});
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK(std::isnan(validationMetric));
+      // the current model will continue to update, even though we have no way of evaluating it
+      FractionalDataType modelValue;
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+      if(0 == iEpoch) {
+         CHECK_APPROX(modelValue, 0.1000000000000000);
+      }
+      if(1 == iEpoch) {
+         CHECK_APPROX(modelValue, 0.1990000000000000);
+      }
+      // the best model doesn't update since we don't have any basis to validate any changes
+      modelValue = test.GetBestModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
+TEST_CASE("Zero validation cases, training, binary") {
+   TestApi test = TestApi(2);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
+   test.AddValidationCases(std::vector<ClassificationCase> {});
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK(std::isnan(validationMetric));
+      // the current model will continue to update, even though we have no way of evaluating it
+      FractionalDataType modelValue;
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+      if(0 == iEpoch) {
+         CHECK_APPROX(modelValue, -0.020000000000000000);
+      }
+      if(1 == iEpoch) {
+         CHECK_APPROX(modelValue, -0.039801986733067563);
+      }
+      // the best model doesn't update since we don't have any basis to validate any changes
+      modelValue = test.GetBestModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetBestModelValue(0, { 0 }, 1);
+      CHECK_APPROX(modelValue, 0);
+   }
+}
+
+TEST_CASE("Zero validation cases, training, multiclass") {
+   TestApi test = TestApi(3);
+   test.AddAttributes({ Attribute(2) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
+   test.AddValidationCases(std::vector<ClassificationCase> {});
+   test.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric = test.Train(0);
+      CHECK(std::isnan(validationMetric));
+      // the current model will continue to update, even though we have no way of evaluating it
+      FractionalDataType modelValue;
+      if(0 == iEpoch) {
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+         CHECK_APPROX(modelValue, 0.03000000000000000);
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+         CHECK_APPROX(modelValue, -0.01500000000000000);
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
+         CHECK_APPROX(modelValue, -0.01500000000000000);
+      }
+      if(1 == iEpoch) {
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+         CHECK_APPROX(modelValue, 0.059119949636662006);
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 1);
+         CHECK_APPROX(modelValue, -0.029887518980531450);
+         modelValue = test.GetCurrentModelValue(0, { 0 }, 2);
+         CHECK_APPROX(modelValue, -0.029887518980531450);
+      }
+      // the best model doesn't update since we don't have any basis to validate any changes
+      modelValue = test.GetBestModelValue(0, { 0 }, 0);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetBestModelValue(0, { 0 }, 1);
+      CHECK_APPROX(modelValue, 0);
+      modelValue = test.GetBestModelValue(0, { 0 }, 2);
       CHECK_APPROX(modelValue, 0);
    }
 }

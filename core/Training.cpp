@@ -671,8 +671,14 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
       return true;
    }
 
-   // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-   *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
+   if(nullptr == pValidationSet) {
+      // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
+      // this feels like a NaN value because the metric isn't infinite, it's fully unknown.
+      *pModelMetric = std::numeric_limits<FractionalDataType>::quiet_NaN();
+   } else {
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+      *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
+   }
 
    LOG(TraceLevelVerbose, "Exited GenerateModelLoop");
    return false;
@@ -1076,9 +1082,9 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
    EBM_ASSERT(0 == countTrainingCases || nullptr != trainingData);
    // trainingPredictionScores can be null
-   EBM_ASSERT(1 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
-   EBM_ASSERT(nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   EBM_ASSERT(nullptr != validationData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
+   EBM_ASSERT(0 == countValidationCases || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 == countValidationCases || nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
@@ -1188,21 +1194,26 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
       return 1;
    }
 
-   // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
-   if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
-      // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-      pTmlState->m_bestModelMetric = modelMetric;
+   // if the count of validation set is zero, then pTmlState->m_pValidationSet will be nullptr
+   // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
+   // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+   if(nullptr != pTmlState->m_pValidationSet) {
+      // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
+      if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
+         // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
+         pTmlState->m_bestModelMetric = modelMetric;
 
-      // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
-      size_t iModel = 0;
-      size_t iModelEnd = pTmlState->m_cAttributeCombinations;
-      do {
-         //const AttributeCombinationCore * const pAttributeCombinationUpdate = pTmlState->m_apAttributeCombinations[iModel];
-         if(pTmlState->m_apBestModel[iModel]->Copy(*pTmlState->m_apCurrentModel[iModel])) {
-            return 1;
-         }
-         ++iModel;
-      } while(iModel != iModelEnd);
+         // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
+         size_t iModel = 0;
+         size_t iModelEnd = pTmlState->m_cAttributeCombinations;
+         do {
+            //const AttributeCombinationCore * const pAttributeCombinationUpdate = pTmlState->m_apAttributeCombinations[iModel];
+            if(pTmlState->m_apBestModel[iModel]->Copy(*pTmlState->m_apCurrentModel[iModel])) {
+               return 1;
+            }
+            ++iModel;
+         } while(iModel != iModelEnd);
+      }
    }
 
    // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
