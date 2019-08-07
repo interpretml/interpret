@@ -577,6 +577,11 @@ class NativeEBM:
             n_bins = self.attributes[attr_idx]["n_bins"]
             attr_idxs.append(attr_idx)
             dimensions.append(n_bins)
+
+        # Array returned for multiclass is one higher dimension
+        if self.model_type == "classification" and self.num_classification_states > 2:
+            dimensions.append(self.num_classification_states)
+
         shape = tuple(dimensions)
         return shape
 
