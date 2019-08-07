@@ -343,9 +343,9 @@ class BaseCoreEBM(BaseEstimator):
     def fit(self, X, y):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            self.num_classes_ = len(self.classes_)
+            self.n_classes_ = len(self.classes_)
         else:
-            self.num_classes_ = -1
+            self.n_classes_ = -1
 
         # Split data into train/val
         X_train, X_val, y_train, y_val = train_test_split(
@@ -364,8 +364,8 @@ class BaseCoreEBM(BaseEstimator):
             model_type = "regression"
 
         # For multiclass, need an intercept term per class
-        if self.num_classes_ > 2:
-            self.intercept_ = [0] * self.num_classes_
+        if self.n_classes_ > 2:
+            self.intercept_ = [0] * self.n_classes_
         else:
             self.intercept_ = 0
             
@@ -385,7 +385,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.num_classes_,
+                num_classification_states=self.n_classes_,
                 model_type=model_type,
                 training_scores=None,
                 validation_scores=None,
@@ -488,7 +488,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.num_classes_,
+                num_classification_states=self.n_classes_,
                 model_type=model_type,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
