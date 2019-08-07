@@ -175,7 +175,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     elif self.binning_strategy == 'quantile':
                         bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.cont_n_bins + 1)))
                     else: 
-                        raise ValueError(f"Unknown binning_strategy: '{self.binning_strategy}'.")
+                        raise ValueError("Unknown binning_strategy: '{}'.".format(self.binning_strategy))
                 
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
