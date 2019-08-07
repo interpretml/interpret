@@ -363,7 +363,14 @@ class BaseCoreEBM(BaseEstimator):
         else:
             model_type = "regression"
 
-        self.intercept_ = 0
+        # For multiclass, need an intercept term per class
+        if self.num_classes_ > 2:
+            self.intercept_ = [0] * self.num_classes_
+        else:
+            self.intercept_ = 0
+            
+
+        
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
@@ -732,7 +739,8 @@ class BaseEBM(BaseEstimator):
 
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            if len(self.classes_) > 2:
+            self.n_classes_ = len(self.classes_)
+            if self.n_classes_ > 2:
                 raise RuntimeError("Multiclass currently not supported.")
 
             proto_estimator = CoreEBMClassifier(
@@ -776,7 +784,12 @@ class BaseEBM(BaseEstimator):
             )
 
         # Train base models for main effects, pair detection.
-        self.intercept_ = 0
+
+        # Intercept needs to be a list for multiclass
+        if self.n_classes_ > 2:
+            self.intercept_ = [0] * self.n_classes_
+        else:
+            self.intercept_ = 0
         X_orig = X
         X = self.preprocessor_.transform(X)
         estimators = []
