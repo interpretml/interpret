@@ -85,7 +85,7 @@ class BaseLinear:
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict(X)
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, save_datasets=True):
         """ Provides local explanations for provided instances.
 
         Args:
@@ -146,15 +146,18 @@ class BaseLinear:
                     "intercept": intercept,
                     "perf": perf_list
                 }
-            },
-            {
-                "explanation_type": "evaluation_dataset",
-                "value": {
-                    "dataset_x": X,
-                    "dataset_y": y
+            }]
+        }
+        if save_datasets:
+            internal_obj["mli"].append(
+                {
+                    "explanation_type": "evaluation_dataset",
+                    "value": {
+                        "dataset_x": X,
+                        "dataset_y": y
+                    }
                 }
-            }
-        ]}
+            )
 
         selector = gen_local_selector(X, y, predictions)
 
@@ -266,17 +269,17 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        from ..visual.plot import sort_take, sort_take2, get_sort_indexes, get_explanation_index, \
-            plot_horizontal_bar, plot_horizontal_bar2
+        from ..visual.plot import sort_take, mli_sort_take, get_sort_indexes, get_explanation_index, \
+            plot_horizontal_bar, mli_plot_horizontal_bar
 
         if "mli" in self.data(-1) and self.explanation_type == "global":
             explanation_list = self.data(-1)["mli"]
             explanation_index = get_explanation_index(explanation_list, "global_feature_importance")
             scores = explanation_list[explanation_index]["value"]["scores"]
             sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
-            sorted_scores = sort_take2(scores, sort_indexes, reverse_results=True)
-            sorted_names = sort_take2(self.feature_names, sort_indexes, reverse_results=True)
-            return plot_horizontal_bar2(sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients")
+            sorted_scores = mli_sort_take(scores, sort_indexes, reverse_results=True)
+            sorted_names = mli_sort_take(self.feature_names, sort_indexes, reverse_results=True)
+            return mli_plot_horizontal_bar(sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients")
         else:
             data_dict = self.data(key)
             if data_dict is None:

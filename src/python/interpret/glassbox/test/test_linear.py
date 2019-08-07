@@ -104,11 +104,11 @@ def test_sorting():
     global_viz = global_expl.visualize()
     assert global_viz is not None
 
-    from ...visual.plot import sort_take, sort_take2, get_sort_indexes
+    from ...visual.plot import sort_take, mli_sort_take, get_sort_indexes
     data_dict = sort_take(
                 global_expl.data(), sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
     scores_data = global_expl.data(-1)['mli'][0]['value']['scores']
     sort_indexes = get_sort_indexes(scores_data, sort_fn=lambda x: -abs(x), top_n=15)
-    sorted_scores = sort_take2(scores_data, sort_indexes, reverse_results=True)
+    sorted_scores = mli_sort_take(scores_data, sort_indexes, reverse_results=True)
     assert data_dict['scores'] == sorted_scores

@@ -438,7 +438,7 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     return figure
 
 
-def plot_horizontal_bar2(scores, names, values=None, perf=None, intercept=None, title="", xtitle="", ytitle="", start_zero=False):
+def mli_plot_horizontal_bar(scores, names, values=None, perf=None, intercept=None, title="", xtitle="", ytitle="", start_zero=False):
     if values is not None:
         names = _names_with_values(names, values)
 
@@ -551,7 +551,7 @@ def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
         return np.arange(top_n)
 
 
-def sort_take2(
+def mli_sort_take(
     data, sort_indexes, reverse_results=False
 ):
     if isinstance(data[0], list):
@@ -566,6 +566,7 @@ def sort_take2(
         return [data[i] for i in reversed(sort_indexes)]
     else:
         return [data[i] for i in sort_indexes]
+
 
 def get_explanation_index(explanation_list, explanation_type):
     for i, explanation in enumerate(explanation_list):

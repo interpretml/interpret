@@ -39,8 +39,8 @@ class FeatureValueExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
-        from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar, plot_horizontal_bar2
-        from ..visual.plot import get_sort_indexes, get_explanation_index, sort_take, sort_take2, plot_pairwise_heatmap
+        from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar, mli_plot_horizontal_bar
+        from ..visual.plot import get_sort_indexes, get_explanation_index, sort_take, mli_sort_take, plot_pairwise_heatmap
         data_dict = self.data(key)
         if data_dict is None:  # pragma: no cover
             return None
@@ -61,10 +61,10 @@ class FeatureValueExplanation(ExplanationMixin):
                 scores = local_explanation["scores"]
                 perf = local_explanation["perf"]
                 sort_indexes = get_sort_indexes(scores[key], sort_fn=lambda x: -abs(x), top_n=15)
-                sorted_scores = sort_take2(scores[key], sort_indexes, reverse_results=True)
-                sorted_names = sort_take2(self.feature_names, sort_indexes, reverse_results=True)
+                sorted_scores = mli_sort_take(scores[key], sort_indexes, reverse_results=True)
+                sorted_names = mli_sort_take(self.feature_names, sort_indexes, reverse_results=True)
                 instances = explanation_list[1]["value"]["dataset_x"]
-                return plot_horizontal_bar2(sorted_scores, sorted_names, values=instances[key], perf=perf[key])
+                return mli_plot_horizontal_bar(sorted_scores, sorted_names, values=instances[key], perf=perf[key])
             else:
                 data_dict = sort_take(
                     data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
