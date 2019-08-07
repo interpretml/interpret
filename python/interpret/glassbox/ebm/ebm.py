@@ -740,8 +740,8 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
-            if self.n_classes_ > 2:
-                raise RuntimeError("Multiclass currently not supported.")
+            # if self.n_classes_ > 2:
+            #     raise RuntimeError("Multiclass currently not supported.")
 
             proto_estimator = CoreEBMClassifier(
                 # Data
@@ -871,23 +871,24 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
-        # Mean center graphs
-        scores_gen = EBMUtils.scores_by_attrib_set(
-            X, self.attribute_sets_, self.attribute_set_models_, []
-        )
-        self._attrib_set_model_means_ = []
-
-        # TODO: Clean this up before release.
-        for set_idx, attribute_set, scores in scores_gen:
-            score_mean = np.mean(scores)
-
-            self.attribute_set_models_[set_idx] = (
-                self.attribute_set_models_[set_idx] - score_mean
+         # Mean center graphs - only for binary classification and regression
+        if self.n_classes_ <= 2:
+            scores_gen = EBMUtils.scores_by_attrib_set(
+                X, self.attribute_sets_, self.attribute_set_models_, []
             )
+            self._attrib_set_model_means_ = []
 
-            # Add mean center adjustment back to intercept
-            self.intercept_ = self.intercept_ + score_mean
-            self._attrib_set_model_means_.append(score_mean)
+            # TODO: Clean this up before release.
+            for set_idx, attribute_set, scores in scores_gen:
+                score_mean = np.mean(scores)
+
+                self.attribute_set_models_[set_idx] = (
+                    self.attribute_set_models_[set_idx] - score_mean
+                )
+
+                # Add mean center adjustment back to intercept
+                self.intercept_ = self.intercept_ + score_mean
+                self._attrib_set_model_means_.append(score_mean)
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_attrib_set(
