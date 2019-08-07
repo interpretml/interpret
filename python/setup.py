@@ -43,6 +43,11 @@ EXTRAS = {
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
         "nbconvert>=5.4.1",
+        "selenium>=3.141.0",
+        "pytest-cov>=2.6.1",
+        "flake8>=3.7.7",
+        "jupyter>=1.0.0",
+        "ipywidgets>=7.4.2",
     ]
 }
 
