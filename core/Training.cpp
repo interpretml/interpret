@@ -1080,126 +1080,126 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
 
    LOG(TraceLevelVerbose, "Entered TrainingStepPerTargetStates");
 
-   const size_t cSamplingSetsAfterZero = 0 == pTmlState->m_cSamplingSets ? 1 : pTmlState->m_cSamplingSets;
-
-   const AttributeCombinationCore * const pAttributeCombination = pTmlState->m_apAttributeCombinations[iAttributeCombination];
-
-   FractionalDataType modelMetric;
-   FractionalDataType * pModelMetric = &modelMetric;
-
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelAccumulated = pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   const size_t cSamplingSetsAfterZero = (0 == pTmlState->m_cSamplingSets) ? 1 : pTmlState->m_cSamplingSets;
    CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(countCompilerClassificationTargetStates)>(pTmlState);
-   const SamplingMethod * const * const apSamplingSets = pTmlState->m_apSamplingSets;
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apCurrentModel = pTmlState->m_apCurrentModel;
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwrite = pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   const size_t cAttributeCombinations = pTmlState->m_cAttributeCombinations;
-   DataSetAttributeCombination * const pValidationSet = pTmlState->m_pValidationSet;
-   const size_t cTargetStates = pTmlState->m_cTargetStates;
+   const AttributeCombinationCore * const pAttributeCombination = pTmlState->m_apAttributeCombinations[iAttributeCombination];
+   const size_t cDimensions = pAttributeCombination->m_cAttributes;
 
+   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
+   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
 
-      size_t cDimensions = pAttributeCombination->m_cAttributes;
+   FractionalDataType totalGain = 0;
 
-      pSmallChangeToModelAccumulated->SetCountDimensions(cDimensions);
-      pSmallChangeToModelAccumulated->Reset();
+   // if pTmlState->m_apSamplingSets is null, then we should have zero training cases, or we're being called partially constructed, which is undefined behavior
+   if(nullptr != pTmlState->m_apSamplingSets) {
+      pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDimensions(cDimensions);
 
-      FractionalDataType totalGain = 0;
-
-      // if apSamplingSets is null, then we should have zero training cases, or we're being called partially constructed, which is undefined behavior
-      if(nullptr != apSamplingSets) {
-         pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
-
-         for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-            FractionalDataType gain = 0;
-            if(0 == pAttributeCombination->m_cAttributes) {
-               if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
-                  return 1;
-               }
-            } else if(1 == pAttributeCombination->m_cAttributes) {
-               if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, &gain, cTargetStates)) {
-                  return 1;
-               }
-            } else {
-               if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, pSmallChangeToModelOverwrite, cTargetStates)) {
-                  return 1;
-               }
+      for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
+         FractionalDataType gain = 0;
+         if(0 == pAttributeCombination->m_cAttributes) {
+            if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pTmlState->m_cTargetStates)) {
+               return 1;
             }
-            totalGain += gain;
-            // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
-            if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite)) {
+         } else if(1 == pAttributeCombination->m_cAttributes) {
+            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pTmlState->m_cTargetStates)) {
+               return 1;
+            }
+         } else {
+            if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pAttributeCombination, pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pTmlState->m_cTargetStates)) {
                return 1;
             }
          }
-         totalGain /= static_cast<FractionalDataType>(cSamplingSetsAfterZero);
-         LOG(TraceLevelVerbose, "TrainingStepPerTargetStates done sampling set loop");
-
-         // we need to divide by the number of sampling sets that we constructed this from.
-         // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
-         if(IsClassification(countCompilerClassificationTargetStates)) {
-#ifdef EXPAND_BINARY_LOGITS
-            constexpr bool bExpandBinaryLogits = true;
-#else // EXPAND_BINARY_LOGITS
-            constexpr bool bExpandBinaryLogits = false;
-#endif // EXPAND_BINARY_LOGITS
-
-            //if(0 <= k_iZeroResidual || 2 == cTargetStates && bExpandBinaryLogits) {
-            //   EBM_ASSERT(2 <= cTargetStates);
-            //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
-            //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero * (cTargetStates - 1) / cTargetStates);
-            //} else {
-            //   // TODO : for classification, is our learning rate essentially being inflated as cTargetStates goes up?  If so, maybe we should divide by cTargetStates here to keep learning rates equivalent as possible
-            //   pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-            //}
-
-            constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
-            if(bDividing) {
-               pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero / 2);
-            } else {
-               pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-            }
-         } else {
-            pSmallChangeToModelAccumulated->Multiply(learningRate / cSamplingSetsAfterZero);
-         }
-      }
-
-      if(0 != cDimensions) {
-         // pSmallChangeToModelAccumulated was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
-         size_t acDivisionIntegersEnd[k_cDimensionsMax];
-         size_t iDimension = 0;
-         do {
-            acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
-            ++iDimension;
-         } while(iDimension < cDimensions);
-         if(pSmallChangeToModelAccumulated->Expand(acDivisionIntegersEnd)) {
+         totalGain += gain;
+         // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
+         if(pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Add(*pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
             return 1;
          }
       }
+      totalGain /= static_cast<FractionalDataType>(cSamplingSetsAfterZero);
+      LOG(TraceLevelVerbose, "TrainingStepPerTargetStates done sampling set loop");
 
-      SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegion = apCurrentModel[iAttributeCombination];
-      if(pSegmentedRegion->Add(*pSmallChangeToModelAccumulated)) {
+      // we need to divide by the number of sampling sets that we constructed this from.
+      // We also need to slow down our growth so that the more relevant Attributes get a chance to grow first so we multiply by a user defined learning rate
+      if(IsClassification(countCompilerClassificationTargetStates)) {
+#ifdef EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = true;
+#else // EXPAND_BINARY_LOGITS
+         constexpr bool bExpandBinaryLogits = false;
+#endif // EXPAND_BINARY_LOGITS
+
+         //if(0 <= k_iZeroResidual || 2 == pTmlState->m_cTargetStates && bExpandBinaryLogits) {
+         //   EBM_ASSERT(2 <= pTmlState->m_cTargetStates);
+         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as pTmlState->m_cTargetStates goes up?  If so, maybe we should divide by pTmlState->m_cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
+         //   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero * (pTmlState->m_cTargetStates - 1) / pTmlState->m_cTargetStates);
+         //} else {
+         //   // TODO : for classification, is our learning rate essentially being inflated as pTmlState->m_cTargetStates goes up?  If so, maybe we should divide by pTmlState->m_cTargetStates here to keep learning rates equivalent as possible
+         //   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+         //}
+
+         constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
+         if(bDividing) {
+            pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+         } else {
+            pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+         }
+      } else {
+         pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+      }
+   }
+
+   if(0 != cDimensions) {
+      // pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputAttributeLoop so that we can more efficiently lookup the results by index rather than do a binary search
+      size_t acDivisionIntegersEnd[k_cDimensionsMax];
+      size_t iDimension = 0;
+      do {
+         acDivisionIntegersEnd[iDimension] = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute->m_cStates;
+         ++iDimension;
+      } while(iDimension < cDimensions);
+      if(pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
          return 1;
       }
-
-      if(nullptr == pValidationSet) {
-         // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
-         // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
-         // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
-         // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
-         // us with zero count validation sets
-         *pModelMetric = 0;
-      } else {
-         // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-         *pModelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pValidationSet, pSmallChangeToModelAccumulated, cTargetStates);
-      }
+   }
 
 
 
 
 
 
-   // if the count of validation set is zero, then pTmlState->m_pValidationSet will be nullptr
-   // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
-   // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+
+
+
+
+
+
+
+
+
+   SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegion = pTmlState->m_apCurrentModel[iAttributeCombination];
+   if(pSegmentedRegion->Add(*pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
+      return 1;
+   }
+
+   // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
+   if(nullptr != pTmlState->m_pTrainingSet) {
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+      TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+   }
+
    if(nullptr != pTmlState->m_pValidationSet) {
+      // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
+      // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
+      // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
+      // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
+      // us with zero count validation sets
+
+      // if the count of validation set is zero, then pTmlState->m_pValidationSet will be nullptr
+      // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
+      // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+
+      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
+
+      FractionalDataType modelMetric = ValidationSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pValidationSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
+
       // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
       if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
@@ -1216,16 +1216,10 @@ static IntegerDataType TrainingStepPerTargetStates(TmlState * const pTmlState, c
             ++iModel;
          } while(iModel != iModelEnd);
       }
-   }
 
-   // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
-   if(nullptr != pTmlState->m_pTrainingSet) {
-      // TODO : move the target bits branch inside TrainingSetInputAttributeLoop to here outside instead of the attribute combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do attribute combinations here then we have to keep in instruction cache a whole bunch of options
-      TrainingSetInputAttributeLoop<1, countCompilerClassificationTargetStates>(pAttributeCombination, pTmlState->m_pTrainingSet, pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets, pTmlState->m_cTargetStates);
-   }
-
-   if(nullptr != pValidationMetricReturn) {
-      *pValidationMetricReturn = modelMetric;
+      if(nullptr != pValidationMetricReturn) {
+         *pValidationMetricReturn = modelMetric;
+      }
    }
 
    LOG(TraceLevelVerbose, "Exited TrainingStepPerTargetStates");
