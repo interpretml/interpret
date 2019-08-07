@@ -763,6 +763,7 @@ class BaseEBM(BaseEstimator):
                 random_state=self.random_state,
             )
         else:
+            self.n_classes_ = -1
             proto_estimator = CoreEBMRegressor(
                 # Data
                 col_types=self.preprocessor_.col_types_,
