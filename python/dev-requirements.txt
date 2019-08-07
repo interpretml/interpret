@@ -1,5 +1,5 @@
 # Required dependencies
-.
+. [testing]
 
 # Dev dependencies
 selenium>=3.141.0

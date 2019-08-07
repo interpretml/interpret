@@ -38,18 +38,6 @@ version = re.search(
 ).group(1)
 
 EXTRAS = {
-    "dashboard": [
-        "plotly>=3.8.1",
-        # Service related
-        # NOTE: Dash is pinned so to avoid dependency hell.
-        "dash==0.39.0",
-        "dash-core-components==0.44.0",
-        "dash-cytoscape==0.1.1",
-        "dash-html-components==0.14.0",
-        "dash-renderer==0.20.0",
-        "dash-table-experiments==0.6.0",
-        "gevent>=1.4.0"
-    ],
     "testing": [
         # Testing
         "pytest>=4.3.0",
@@ -109,6 +97,16 @@ setup(
         "lime>=0.1.1.33",
         "shap>=0.28.5",
         "skope-rules>=1.0.0",
+        # Service related
+        # NOTE: Dash is pinned so to avoid dependency hell.
+        "plotly>=3.8.1",
+        "dash==0.39.0",
+        "dash-core-components==0.44.0",
+        "dash-cytoscape==0.1.1",
+        "dash-html-components==0.14.0",
+        "dash-renderer==0.20.0",
+        "dash-table-experiments==0.6.0",
+        "gevent>=1.4.0"
         # Core
         "joblib>=0.12.5",
         "pandas>=0.24.0",
