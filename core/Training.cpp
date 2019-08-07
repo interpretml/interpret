@@ -590,17 +590,20 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
    pSmallChangeToModelAccumulated->SetCountDimensions(cDimensions);
    pSmallChangeToModelAccumulated->Reset();
 
+   FractionalDataType totalGain = 0;
+
    // if apSamplingSets is null, then we should have zero training cases, or we're being called partially constructed, which is undefined behavior
    if(nullptr != apSamplingSets) {
       pSmallChangeToModelOverwrite->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
+         FractionalDataType gain = 0;
          if(0 == pAttributeCombination->m_cAttributes) {
             if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pSmallChangeToModelOverwrite, cTargetStates)) {
                return true;
             }
          } else if(1 == pAttributeCombination->m_cAttributes) {
-            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, cTargetStates)) {
+            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, apSamplingSets[iSamplingSet], pAttributeCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwrite, &gain, cTargetStates)) {
                return true;
             }
          } else {
@@ -608,11 +611,13 @@ static bool GenerateModelLoop(SegmentedRegionCore<ActiveDataType, FractionalData
                return true;
             }
          }
+         totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
          if(pSmallChangeToModelAccumulated->Add(*pSmallChangeToModelOverwrite)) {
             return true;
          }
       }
+      totalGain /= static_cast<FractionalDataType>(cSamplingSetsAfterZero);
       LOG(TraceLevelVerbose, "GenerateModelLoop done sampling set loop");
 
       // we need to divide by the number of sampling sets that we constructed this from.
