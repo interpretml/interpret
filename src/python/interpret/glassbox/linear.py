@@ -121,8 +121,9 @@ class BaseLinear:
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            data_dict["perf"] = perf_dict(y, predictions, i)
-            perf_list.append(perf_dict(y, predictions, i))
+            perf_dict_obj = perf_dict(y, predictions, i)
+            data_dict["perf"] = perf_dict_obj
+            perf_list.append(perf_dict_obj)
 
             # Names/scores
             data_dict["names"] = self.feature_names
