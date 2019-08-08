@@ -143,8 +143,8 @@ class Native:
         ]
         self.lib.InitializeTrainingClassification.restype = ct.c_void_p
 
-        self.lib.TrainingStep.argtypes = [
-            # void * tml
+        self.lib.GenerateModelUpdate.argtypes = [
+            # void * ebmTraining
             ct.c_void_p,
             # int64_t indexAttributeSet
             ct.c_longlong,
@@ -160,10 +160,22 @@ class Native:
             # double * validationWeights
             # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             ct.c_void_p,
+            # double * gainReturn
+            ct.POINTER(ct.c_double),
+        ]
+        self.lib.GenerateModelUpdate.restype = ct.c_void_p
+
+        self.lib.ApplyModelUpdate.argtypes = [
+            # void * ebmTraining
+            ct.c_void_p,
+            # int64_t indexAttributeCombination
+            ct.c_longlong,
+            # double * modelUpdateTensor
+            ct.c_void_p,
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.TrainingStep.restype = ct.c_longlong
+        self.lib.ApplyModelUpdate.restype = ct.c_longlong
 
         self.lib.GetCurrentModel.argtypes = [
             # void * tml
@@ -559,7 +571,8 @@ class NativeEBM:
 
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
-            return_code = this.native.lib.TrainingStep(
+            gain = ct.c_double(0.0)
+            model_update_tensor_pointer = this.native.lib.GenerateModelUpdate(
                 self.model_pointer,
                 attribute_set_index,
                 learning_rate,
@@ -567,10 +580,19 @@ class NativeEBM:
                 min_cases_for_split,
                 training_weights,
                 validation_weights,
-                ct.byref(metric_output),
+                ct.byref(gain)
+            )
+            if model_update_tensor_pointer == 0:  # pragma: no cover
+                raise Exception("GenerateModelUpdate Exception")
+
+            return_code = this.native.lib.ApplyModelUpdate(
+                self.model_pointer,
+                attribute_set_index,
+                model_update_tensor_pointer,
+                ct.byref(metric_output)
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception("TrainingStep Exception")
+                raise Exception("ApplyModelUpdate Exception")
 
         # log.debug("Training step end")
         return metric_output.value
