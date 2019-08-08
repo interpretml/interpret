@@ -32,8 +32,7 @@
 // more than several atoms to store.
 // we can just return an out of memory error if someone requests a set of features that would sum to more than 64 bits
 // we DO need to check for this error condition though, since it's not impossible for someone to request this kind of thing.
-
-
+// any dimensions with only 1 state don't count since you would just be multiplying by 1 for each such dimension
 
 template<bool bRegression>
 class BinnedBucket;
@@ -277,7 +276,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
             // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
          } while(iVector < cVectorLength);
 
-         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+         EBM_ASSERT(!IsClassification(countCompilerClassificationTargetStates) || 2 == cTargetStates && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.0000001 < residualTotalDebug && residualTotalDebug < 0.0000001);
 
          iBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away

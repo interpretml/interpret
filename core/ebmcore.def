@@ -5,6 +5,8 @@ EXPORTS
   SetTraceLevel
   InitializeTrainingRegression
   InitializeTrainingClassification
+  GenerateModelUpdate
+  ApplyModelUpdate
   TrainingStep
   GetCurrentModel
   GetBestModel
