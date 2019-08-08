@@ -23,14 +23,13 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 
 
-@pytest.mark.skip
 @pytest.mark.slow
 def test_ebm_synthetic_multiclass():
     data = synthetic_multiclass()
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, n_estimators=2)
     clf.fit(X, y)
     prob_scores = clf.predict_proba(X)
 
@@ -129,3 +128,5 @@ def test_ebm_adult():
         preserve(global_exp, selector_key)
 
     shutdown_show_server()
+
+

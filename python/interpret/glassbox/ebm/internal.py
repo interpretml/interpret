@@ -382,17 +382,24 @@ class NativeEBM:
         self.num_inner_bags = num_inner_bags
         self.num_classification_states = num_classification_states
 
-        # Set train/val scores to zeros if not passed.
-        self.training_scores = (
-            training_scores
-            if training_scores is not None
-            else np.zeros(X_train.shape[0])
-        )
-        self.validation_scores = (
-            validation_scores
-            if validation_scores is not None
-            else np.zeros(X_val.shape[0])
-        )
+        # # Set train/val scores to zeros if not passed.
+        # if isinstance(intercept, numbers.Number) or len(intercept) == 1:
+        #     score_vector = np.zeros(X.shape[0])
+        #     else:
+        # score_vector = np.zeros((X.shape[0], len(intercept)))
+
+        self.training_scores = training_scores
+        self.validation_scores = validation_scores
+        if self.training_scores is None:
+            if self.num_classification_states > 2:
+                self.training_scores = np.zeros((X_train.shape[0], self.num_classification_states)).reshape(-1)
+            else:
+                self.training_scores = np.zeros(X_train.shape[0])
+        if self.validation_scores is None:
+            if self.num_classification_states > 2:
+                self.validation_scores = np.zeros((X_train.shape[0], self.num_classification_states)).reshape(-1)
+            else:
+                self.validation_scores = np.zeros(X_train.shape[0])
         self.random_state = random_state
 
         # Convert n-dim arrays ready for C.
@@ -601,6 +608,8 @@ class NativeEBM:
         array = make_nd_array(
             array_p, shape, dtype=np.double, order="F", own_data=False
         )
+        print(array.shape)
+        print(array)
         return array.copy()
 
     def get_current_model(self, attribute_set_index):

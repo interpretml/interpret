@@ -434,7 +434,8 @@ class BaseCoreEBM(BaseEstimator):
         )
         log.debug("Main Metric: {0}".format(self.current_metric_))
         for index, attr_set in enumerate(main_attr_sets):
-            self.attribute_set_models_.append(native_ebm.get_best_model(index))
+            attribute_set_model = native_ebm.get_best_model(index)
+            self.attribute_set_models_.append(attribute_set_model)
             self.attribute_sets_.append(attr_set)
 
         self.has_fitted_ = True
