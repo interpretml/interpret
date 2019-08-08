@@ -76,7 +76,7 @@ class ShapKernel(ExplainerMixin):
                 "explanation_type": "local_feature_importance",
                 "value": {
                     "scores": scores_list,
-                    "intercept": intercept,
+                    "intercept": self.shap.expected_value,
                     "perf": perf_list
                 }
             }]
