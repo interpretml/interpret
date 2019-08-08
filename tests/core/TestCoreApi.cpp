@@ -23,6 +23,7 @@
 #include <cmath>
 #include <cstddef>
 #include <assert.h>
+#include <string.h>
 
 #include "ebmcore.h"
 
