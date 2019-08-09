@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.11] - 2019-08-09
+### Added
+- C++ testing framework added.
+- More granular options for training EBM (not public-facing, added for researchers)
+### Fixed
+- Improved POSIX compliance for build scripts.
+- Failure cases handled better for EBM in both Python/native layer.
+- Fixed a bug around dash relating to dependencies.
+- Removed dead code around web server for visualization.
+### Changed
+- For Python setup.py, requirements.txt now used for holding dependencies.
+- Directory structure changed for whole repository, in preparation for R support.
+- Native code further optimized with compiler flags.
+- Consistent scaling for EBM plots across all features.
+- For explanation's data method, behavior will be non-standard at key equals -1.
+- Testing suite for visual interface added via selenium.
+### Experimental (WIP)
+- Extension system for blackbox explainers added. Enables other packages to register into interpret.
+- Data standardization under way, currently for linear, LIME, SHAP where key equals -1 for data method.
+
 ## [v0.1.10] - 2019-07-16
 ### Fixed
 - Fix for duplicated logs.
