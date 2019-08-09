@@ -39,9 +39,8 @@ class FeatureValueExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
-        from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar
-        from ..visual.plot import sort_take, plot_pairwise_heatmap
-
+        from ..visual.plot import plot_line, plot_bar, plot_horizontal_bar, mli_plot_horizontal_bar
+        from ..visual.plot import get_sort_indexes, get_explanation_index, sort_take, mli_sort_take, plot_pairwise_heatmap
         data_dict = self.data(key)
         if data_dict is None:  # pragma: no cover
             return None
@@ -55,10 +54,22 @@ class FeatureValueExplanation(ExplanationMixin):
 
         # Handle local instance graphs
         if self.explanation_type == "local":
-            data_dict = sort_take(
-                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
-            )
-            return plot_horizontal_bar(data_dict)
+            if "mli" in self.data(-1):
+                explanation_list = self.data(-1)["mli"]
+                explanation_index = get_explanation_index(explanation_list, "local_feature_importance")
+                local_explanation = explanation_list[explanation_index]["value"]
+                scores = local_explanation["scores"]
+                perf = local_explanation["perf"]
+                sort_indexes = get_sort_indexes(scores[key], sort_fn=lambda x: -abs(x), top_n=15)
+                sorted_scores = mli_sort_take(scores[key], sort_indexes, reverse_results=True)
+                sorted_names = mli_sort_take(self.feature_names, sort_indexes, reverse_results=True)
+                instances = explanation_list[1]["value"]["dataset_x"]
+                return mli_plot_horizontal_bar(sorted_scores, sorted_names, values=instances[key], perf=perf[key])
+            else:
+                data_dict = sort_take(
+                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+                )
+                return plot_horizontal_bar(data_dict)
 
         # Handle global feature graphs
         feature_type = self.feature_types[key]
