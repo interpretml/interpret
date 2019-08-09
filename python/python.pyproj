@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{ed16326f-19c9-4360-a976-e11e0979b790}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>conftest.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="dev-requirements.txt" />
+    <Content Include="interpret\pytest.ini" />
+    <Content Include="interpret\visual\assets\favicon.ico" />
+    <Content Include="interpret\visual\assets\udash.css" />
+    <Content Include="interpret\visual\assets\udash.js" />
+    <Content Include="requirements.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="conftest.py" />
+    <Compile Include="interpret\api\base.py" />
+    <Compile Include="interpret\api\templates.py" />
+    <Compile Include="interpret\api\test\test_base.py" />
+    <Compile Include="interpret\api\test\__init__.py" />
+    <Compile Include="interpret\api\__init__.py" />
+    <Compile Include="interpret\blackbox\lime.py" />
+    <Compile Include="interpret\blackbox\partialdependence.py" />
+    <Compile Include="interpret\blackbox\sensitivity.py" />
+    <Compile Include="interpret\blackbox\shap.py" />
+    <Compile Include="interpret\blackbox\test\test_sensitivity.py" />
+    <Compile Include="interpret\blackbox\test\__init__.py" />
+    <Compile Include="interpret\blackbox\__init__.py" />
+    <Compile Include="interpret\data\response.py" />
+    <Compile Include="interpret\data\__init__.py" />
+    <Compile Include="interpret\develop.py" />
+    <Compile Include="interpret\ext\blackbox\example_blackbox_explainer_ext.py" />
+    <Compile Include="interpret\ext\blackbox\__init__.py" />
+    <Compile Include="interpret\ext\extension_utils.py" />
+    <Compile Include="interpret\ext\__init__.py" />
+    <Compile Include="interpret\glassbox\decisiontree.py" />
+    <Compile Include="interpret\glassbox\ebm\ebm.py" />
+    <Compile Include="interpret\glassbox\ebm\internal.py" />
+    <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
+    <Compile Include="interpret\glassbox\ebm\test\__init__.py" />
+    <Compile Include="interpret\glassbox\ebm\utils.py" />
+    <Compile Include="interpret\glassbox\ebm\__init__.py" />
+    <Compile Include="interpret\glassbox\linear.py" />
+    <Compile Include="interpret\glassbox\skoperules.py" />
+    <Compile Include="interpret\glassbox\test\test_decisiontree.py" />
+    <Compile Include="interpret\glassbox\test\test_linear.py" />
+    <Compile Include="interpret\glassbox\test\__init__.py" />
+    <Compile Include="interpret\glassbox\__init__.py" />
+    <Compile Include="interpret\perf\curve.py" />
+    <Compile Include="interpret\perf\regression.py" />
+    <Compile Include="interpret\perf\__init__.py" />
+    <Compile Include="interpret\test\test_develop.py" />
+    <Compile Include="interpret\test\test_example_notebooks.py" />
+    <Compile Include="interpret\test\test_explainers.py" />
+    <Compile Include="interpret\test\test_extension_utils.py" />
+    <Compile Include="interpret\test\test_ext_blackbox.py" />
+    <Compile Include="interpret\test\test_interactive.py" />
+    <Compile Include="interpret\test\test_selenium.py" />
+    <Compile Include="interpret\test\utils.py" />
+    <Compile Include="interpret\test\__init__.py" />
+    <Compile Include="interpret\utils\all.py" />
+    <Compile Include="interpret\utils\distributed.py" />
+    <Compile Include="interpret\utils\test\test_utils.py" />
+    <Compile Include="interpret\utils\test\__init__.py" />
+    <Compile Include="interpret\utils\__init__.py" />
+    <Compile Include="interpret\version.py" />
+    <Compile Include="interpret\visual\dashboard.py" />
+    <Compile Include="interpret\visual\interactive.py" />
+    <Compile Include="interpret\visual\plot.py" />
+    <Compile Include="interpret\visual\test\test_dashboard.py" />
+    <Compile Include="interpret\visual\test\__init__.py" />
+    <Compile Include="interpret\visual\udash.py" />
+    <Compile Include="interpret\visual\__init__.py" />
+    <Compile Include="interpret\__init__.py" />
+    <Compile Include="setup.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="interpret" />
+    <Folder Include="interpret\api" />
+    <Folder Include="interpret\api\test" />
+    <Folder Include="interpret\blackbox" />
+    <Folder Include="interpret\blackbox\test" />
+    <Folder Include="interpret\data" />
+    <Folder Include="interpret\ext" />
+    <Folder Include="interpret\ext\blackbox" />
+    <Folder Include="interpret\glassbox" />
+    <Folder Include="interpret\glassbox\ebm" />
+    <Folder Include="interpret\glassbox\ebm\test" />
+    <Folder Include="interpret\glassbox\test" />
+    <Folder Include="interpret\perf" />
+    <Folder Include="interpret\test" />
+    <Folder Include="interpret\utils" />
+    <Folder Include="interpret\utils\test" />
+    <Folder Include="interpret\visual" />
+    <Folder Include="interpret\visual\assets" />
+    <Folder Include="interpret\visual\test" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

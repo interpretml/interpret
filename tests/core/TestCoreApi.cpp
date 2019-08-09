@@ -23,6 +23,7 @@
 #include <cmath>
 #include <cstddef>
 #include <assert.h>
+#include <string.h>
 
 #include "ebmcore.h"
 
@@ -2001,12 +2002,15 @@ TEST_CASE("Test Rehydration, training, multiclass") {
 }
 
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
-   printf("%d - %s\n", traceLevel, message);
+   UNUSED(traceLevel);
+   // don't display the message, but we want to test all our messages, so have them call us here
+   strlen(message); // test that the string memory is accessible
+//   printf("%d - %s\n", traceLevel, message);
 }
 
 int main() {
    SetLogMessageFunction(&LogMessage);
-   SetTraceLevel(TraceLevelOff);
+   SetTraceLevel(TraceLevelVerbose);
 
    bool bPassed = true;
    for(TestCaseHidden& testCaseHidden : g_allTestsHidden) {
