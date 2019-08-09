@@ -85,7 +85,7 @@ class BaseLinear:
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict(X)
 
-    def explain_local(self, X, y=None, name=None, save_datasets=True):
+    def explain_local(self, X, y=None, name=None):
         """ Provides local explanations for provided instances.
 
         Args:
@@ -149,16 +149,15 @@ class BaseLinear:
                 }
             }]
         }
-        if save_datasets:
-            internal_obj["mli"].append(
-                {
-                    "explanation_type": "evaluation_dataset",
-                    "value": {
-                        "dataset_x": X,
-                        "dataset_y": y
-                    }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {
+                    "dataset_x": X,
+                    "dataset_y": y
                 }
-            )
+            }
+        )
 
         selector = gen_local_selector(X, y, predictions)
 

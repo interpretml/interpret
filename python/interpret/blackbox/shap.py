@@ -40,7 +40,7 @@ class ShapKernel(ExplainerMixin):
 
         self.shap = shap.KernelExplainer(self.predict_fn, data, **self.kwargs)
 
-    def explain_local(self, X, y=None, name=None, save_datasets=True):
+    def explain_local(self, X, y=None, name=None):
         if name is None:
             name = gen_name_from_class(self)
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
@@ -81,16 +81,15 @@ class ShapKernel(ExplainerMixin):
                 }
             }]
         }
-        if save_datasets:
-            internal_obj["mli"].append(
-                {
-                    "explanation_type": "evaluation_dataset",
-                    "value": {
-                        "dataset_x": X,
-                        "dataset_y": y
-                    }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {
+                    "dataset_x": X,
+                    "dataset_y": y
                 }
-            )
+            }
+        )
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(
