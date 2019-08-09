@@ -85,7 +85,7 @@ class BaseLinear:
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict(X)
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X, y=None, name=None, save_datasets=True):
         """ Provides local explanations for provided instances.
 
         Args:
@@ -112,13 +112,18 @@ class BaseLinear:
             coef = sk_model_.coef_
 
         data_dicts = []
+        scores_list = []
+        perf_list = []
         for i, instance in enumerate(X):
             scores = list(coef * instance)
+            scores_list.append(scores)
             data_dict = {}
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            data_dict["perf"] = perf_dict(y, predictions, i)
+            perf_dict_obj = perf_dict(y, predictions, i)
+            data_dict["perf"] = perf_dict_obj
+            perf_list.append(perf_dict_obj)
 
             # Names/scores
             data_dict["names"] = self.feature_names
@@ -134,7 +139,26 @@ class BaseLinear:
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
+            {
+                "explanation_type": "local_feature_importance",
+                "value": {
+                    "scores": scores_list,
+                    "intercept": intercept,
+                    "perf": perf_list
+                }
+            }]
+        }
+        if save_datasets:
+            internal_obj["mli"].append(
+                {
+                    "explanation_type": "evaluation_dataset",
+                    "value": {
+                        "dataset_x": X,
+                        "dataset_y": y
+                    }
+                }
+            )
 
         selector = gen_local_selector(X, y, predictions)
 
@@ -201,7 +225,15 @@ class BaseLinear:
 
             specific_data_dicts.append(data_dict)
 
-        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
+        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts, "mli": [
+            {
+                "explanation_type": "global_feature_importance",
+                "value": {
+                    "scores": list(coef),
+                    "intercept": intercept
+                }
+            }
+        ]}
         return LinearExplanation(
             "global",
             internal_obj,
@@ -238,20 +270,30 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        from ..visual.plot import sort_take, plot_horizontal_bar
+        from ..visual.plot import sort_take, mli_sort_take, get_sort_indexes, get_explanation_index, \
+            plot_horizontal_bar, mli_plot_horizontal_bar
 
-        data_dict = self.data(key)
-        if data_dict is None:
-            return None
+        if "mli" in self.data(-1) and self.explanation_type == "global":
+            explanation_list = self.data(-1)["mli"]
+            explanation_index = get_explanation_index(explanation_list, "global_feature_importance")
+            scores = explanation_list[explanation_index]["value"]["scores"]
+            sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
+            sorted_scores = mli_sort_take(scores, sort_indexes, reverse_results=True)
+            sorted_names = mli_sort_take(self.feature_names, sort_indexes, reverse_results=True)
+            return mli_plot_horizontal_bar(sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients")
+        else:
+            data_dict = self.data(key)
+            if data_dict is None:
+                return None
 
-        if self.explanation_type == "global" and key is None:
-            data_dict = sort_take(
-                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
-            )
-            figure = plot_horizontal_bar(
-                data_dict, title="Overall Importance:<br>Coefficients"
-            )
-            return figure
+            if self.explanation_type == "global" and key is None:
+                data_dict = sort_take(
+                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+                )
+                figure = plot_horizontal_bar(
+                    data_dict, title="Overall Importance:<br>Coefficients"
+                )
+                return figure
 
         return super().visualize(key)
 
