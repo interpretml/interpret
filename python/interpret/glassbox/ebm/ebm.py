@@ -741,8 +741,8 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
-            # if self.n_classes_ > 2:
-            #     raise RuntimeError("Multiclass currently not supported.")
+            if self.n_classes_ > 2:
+                raise RuntimeError("Multiclass currently not supported.")
 
             proto_estimator = CoreEBMClassifier(
                 # Data

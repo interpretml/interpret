@@ -30,13 +30,16 @@ def test_ebm_synthetic_multiclass():
     y = data["full"]["y"]
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, n_estimators=2)
-    clf.fit(X, y)
-    prob_scores = clf.predict_proba(X)
+    # Multiclass is not complete, so we throw an exception for now.
+    with pytest.raises(RuntimeError):
+        clf.fit(X, y)
 
-    within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
-    assert within_bounds
-
-    valid_ebm(clf)
+    # prob_scores = clf.predict_proba(X)
+    #
+    # within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
+    # assert within_bounds
+    #
+    # valid_ebm(clf)
 
 
 def test_prefit_ebm():
