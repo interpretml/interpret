@@ -81,12 +81,6 @@ class EBMUtils:
 
         if not np.all(np.isfinite(score_vector)):  # pragma: no cover
             msg = "Non-finite values present in log odds vector."
-            print('*' * 80)
-            for i, attribute_set_model in enumerate(attribute_set_models):
-                print('Feature index: {0}'.format(i))
-                print(attribute_set_model)
-                print(attribute_set_model.shape)
-                print('*' * 80)
             log.error(msg)
             raise Exception(msg)
 

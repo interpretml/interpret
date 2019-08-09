@@ -608,8 +608,6 @@ class NativeEBM:
         array = make_nd_array(
             array_p, shape, dtype=np.double, order="F", own_data=False
         )
-        print(array.shape)
-        print(array)
         return array.copy()
 
     def get_current_model(self, attribute_set_index):
