@@ -1,4 +1,0 @@
-{
-   global: SetLogMessageFunction;SetTraceLevel;InitializeTrainingRegression;InitializeTrainingClassification;TrainingStep;GetCurrentModel;GetBestModel;CancelTraining;FreeTraining;InitializeInteractionRegression;InitializeInteractionClassification;GetInteractionScore;CancelInteraction;FreeInteraction;
-   local: *;
-};
