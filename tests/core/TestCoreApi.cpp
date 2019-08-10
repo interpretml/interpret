@@ -131,7 +131,7 @@ public:
       m_attributeType(attributeType),
       m_hasMissing(hasMissing),
       m_countStates(countStates) {
-      if(countStates <= 0) {
+      if(countStates < 0) {
          exit(1);
       }
    }
@@ -777,6 +777,28 @@ public:
       FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
+   }
+
+   const FractionalDataType * GetCurrentModelRaw(const size_t iAttributeCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
+      return pModel;
+   }
+
+   const FractionalDataType * GetBestModelRaw(const size_t iAttributeCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_attributeCombinations.size() <= iAttributeCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
+      return pModel;
    }
 
    bool IsCurrentModelNull(const size_t iAttributeCombination) const {
@@ -1477,6 +1499,33 @@ TEST_CASE("Zero interaction cases, interaction, multiclass") {
 
    FractionalDataType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
+}
+
+TEST_CASE("features with 0 states, training") {
+   // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(0) });
+   test.AddAttributeCombinations({ { 0 } });
+   test.AddTrainingCases(std::vector<RegressionCase> {});
+   test.AddValidationCases(std::vector<RegressionCase> {});
+   test.InitializeTraining();
+
+   FractionalDataType validationMetric = test.Train(0);
+   CHECK(0 == validationMetric);
+
+   // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
+   test.GetCurrentModelRaw(0);
+   test.GetBestModelRaw(0);
+}
+
+TEST_CASE("features with 0 states, interaction") {
+   TestApi test = TestApi(k_learningTypeRegression);
+   test.AddAttributes({ Attribute(0) });
+   test.AddInteractionCases(std::vector<RegressionCase> {});
+   test.InitializeInteraction();
+
+   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   CHECK(0 == validationMetric);
 }
 
 TEST_CASE("classification with 0 possible target states, training") {

@@ -74,15 +74,16 @@ public:
             AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
             IntegerDataType countStates = pAttributeInitialize->countStates;
-            EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-            if(1 == countStates) {
-               LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
-            }
+            EBM_ASSERT(0 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
             if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
                LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
                return true;
             }
             size_t cStates = static_cast<size_t>(countStates);
+            if(cStates <= 1) {
+               EBM_ASSERT(0 != cStates || 0 == cCases);
+               LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
+            }
 
             EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
             bool bMissing = 0 != pAttributeInitialize->hasMissing;
@@ -262,7 +263,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
       EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
       const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
-      if(1 == pAttribute->m_cStates) {
+      if(pAttribute->m_cStates <= 1) {
          LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with Attributes with only 1 state since these provide no useful information");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
