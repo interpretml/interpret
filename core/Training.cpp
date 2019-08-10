@@ -742,7 +742,7 @@ public:
                size_t cStates = static_cast<size_t>(countStates);
                if(cStates <= 1) {
                   EBM_ASSERT(0 != cStates || 0 == cTrainingCases && 0 == cValidationCases);
-                  LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information");
+                  LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize feature with 0/1 values");
                }
 
                EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
@@ -778,7 +778,7 @@ public:
                size_t cSignificantAttributesInCombination = 0;
                const IntegerDataType * const pAttributeCombinationIndexEnd = pAttributeCombinationIndex + cAttributesInCombination;
                if(UNLIKELY(0 == cAttributesInCombination)) {
-                  LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information for training");
+                  LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize empty attribute combination");
                } else {
                   EBM_ASSERT(nullptr != attributeCombinationIndexes);
                   const IntegerDataType * pAttributeCombinationIndexTemp = pAttributeCombinationIndex;
@@ -796,7 +796,7 @@ public:
                         // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         ++cSignificantAttributesInCombination;
                      } else {
-                        LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombination features with a single state since these provide no useful information");
+                        LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize attribute combination with no useful features");
                      }
                      ++pAttributeCombinationIndexTemp;
                   } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndexTemp);

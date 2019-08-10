@@ -82,7 +82,7 @@ public:
             size_t cStates = static_cast<size_t>(countStates);
             if(cStates <= 1) {
                EBM_ASSERT(0 != cStates || 0 == cCases);
-               LOG(TraceLevelError, "ERROR InitializeInteraction Our higher level caller should filter out features with a single state since these provide no useful information for interactions");
+               LOG(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
             }
 
             EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
@@ -233,7 +233,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    }
    size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
    if(0 == cAttributesInCombination) {
-      LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information");
+      LOG(TraceLevelInfo, "INFO GetInteractionScore empty attribute combination");
       if(nullptr != interactionScoreReturn) {
          *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
       }
@@ -242,7 +242,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
    if(nullptr == pEbmInteractionState->m_pDataSet) {
       // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero cases.  If there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
-      LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out dataset with zero cases");
+      LOG(TraceLevelInfo, "INFO GetInteractionScore zero cases");
       if(nullptr != interactionScoreReturn) {
          *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
       }
@@ -264,7 +264,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
       const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
       if(pAttribute->m_cStates <= 1) {
-         LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out AttributeCombinations with Attributes with only 1 state since these provide no useful information");
+         LOG(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
          }
@@ -306,7 +306,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    } else {
       const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
       if(cTargetStates <= 1) {
-         LOG(TraceLevelError, "ERROR GetInteractionScore Our higher level caller should filter out situations where there is only 0 OR 1 classification target ");
+         LOG(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 states");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
          }
