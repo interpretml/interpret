@@ -42,6 +42,7 @@ public:
 
    TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
       const size_t cBytes = GetAttributeCombinationCountBytes(cAttributes);
+      EBM_ASSERT(0 < cBytes);
       AttributeCombinationCore * const pAttributeCombination = static_cast<AttributeCombinationCore *>(malloc(cBytes));
       if(UNLIKELY(nullptr == pAttributeCombination)) {
          return nullptr;

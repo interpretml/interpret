@@ -4,7 +4,6 @@
 
 #include "PrecompiledHeader.h"
 
-#include <assert.h>
 #include <string.h> // memset
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -735,13 +734,13 @@ public:
                AttributeTypeCore attributeTypeCore = static_cast<AttributeTypeCore>(pAttributeInitialize->attributeType);
 
                IntegerDataType countStates = pAttributeInitialize->countStates;
-               EBM_ASSERT(1 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+               EBM_ASSERT(0 <= countStates); // we can handle 1 == cStates or 0 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the attributes would require a value, even if it was 0
                if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
                   LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
                   return true;
                }
                size_t cStates = static_cast<size_t>(countStates);
-               if(1 == cStates) {
+               if(cStates <= 1) {
                   LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information");
                }
 
@@ -775,13 +774,12 @@ public:
                   return true;
                }
                size_t cAttributesInCombination = static_cast<size_t>(countAttributesInCombination);
-               EBM_ASSERT(cAttributesInCombination <= m_cAttributes); // we don't allow duplicates, so we can't have more attributes in an attribute combination than we have attributes.
                size_t cSignificantAttributesInCombination = 0;
                const IntegerDataType * const pAttributeCombinationIndexEnd = pAttributeCombinationIndex + cAttributesInCombination;
                if(UNLIKELY(0 == cAttributesInCombination)) {
                   LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out AttributeCombinations with zero attributes since these provide no useful information for training");
                } else {
-                  assert(nullptr != attributeCombinationIndexes);
+                  EBM_ASSERT(nullptr != attributeCombinationIndexes);
                   const IntegerDataType * pAttributeCombinationIndexTemp = pAttributeCombinationIndex;
                   do {
                      const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndexTemp;
@@ -793,7 +791,7 @@ public:
                      const size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
                      EBM_ASSERT(iAttributeForCombination < m_cAttributes);
                      AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
-                     if(LIKELY(1 != pInputAttribute->m_cStates)) {
+                     if(LIKELY(1 < pInputAttribute->m_cStates)) {
                         // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         ++cSignificantAttributesInCombination;
                      } else {
@@ -823,7 +821,7 @@ public:
                   // We won't be executing the loop below that would otherwise increment it by the number of attributes in this attribute combination
                   pAttributeCombinationIndex = pAttributeCombinationIndexEnd;
                } else {
-                  assert(nullptr != attributeCombinationIndexes);
+                  EBM_ASSERT(nullptr != attributeCombinationIndexes);
                   size_t cTensorStates = 1;
                   AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
                   do {
@@ -834,7 +832,7 @@ public:
                      EBM_ASSERT(iAttributeForCombination < m_cAttributes);
                      const AttributeInternalCore * const pInputAttribute = &m_aAttributes[iAttributeForCombination];
                      const size_t cStates = pInputAttribute->m_cStates;
-                     if(LIKELY(1 != cStates)) {
+                     if(LIKELY(1 < cStates)) {
                         // if we have only 1 state, then we can eliminate the attribute from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         pAttributeCombinationEntry->m_pAttribute = pInputAttribute;
                         ++pAttributeCombinationEntry;

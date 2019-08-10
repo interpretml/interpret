@@ -5,7 +5,6 @@
 #ifndef DATA_SET_ATTRIBUTE_COMBINATION_H
 #define DATA_SET_ATTRIBUTE_COMBINATION_H
 
-#include <assert.h>
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 

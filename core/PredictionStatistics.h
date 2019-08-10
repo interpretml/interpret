@@ -6,7 +6,6 @@
 #define PREDICTION_STATISTICS_H
 
 #include <type_traits> // std::is_pod
-#include <assert.h>
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE

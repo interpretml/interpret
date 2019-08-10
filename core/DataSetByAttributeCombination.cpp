@@ -4,7 +4,6 @@
 
 #include "PrecompiledHeader.h"
 
-#include <assert.h>
 #include <string.h> // memset
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
