@@ -179,7 +179,6 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
-         ++paInputDataTo;
 
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
          const StorageDataTypeCore * const pInputDataToLast = reinterpret_cast<const StorageDataTypeCore *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
@@ -250,6 +249,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
             goto one_last_loop;
          }
       }
+      ++paInputDataTo;
       ++ppAttributeCombination;
    } while(ppAttributeCombinationEnd != ppAttributeCombination);
 
