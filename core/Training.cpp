@@ -818,7 +818,11 @@ public:
                // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
                m_apAttributeCombinations[iAttributeCombination] = pAttributeCombination;
 
-               if(LIKELY(0 != cSignificantAttributesInCombination)) {
+               if(LIKELY(0 == cSignificantAttributesInCombination)) {
+                  // move our index forward to the next attribute.  
+                  // We won't be executing the loop below that would otherwise increment it by the number of attributes in this attribute combination
+                  pAttributeCombinationIndex = pAttributeCombinationIndexEnd;
+               } else {
                   assert(nullptr != attributeCombinationIndexes);
                   size_t cTensorStates = 1;
                   AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
