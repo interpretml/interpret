@@ -741,6 +741,7 @@ public:
                }
                size_t cStates = static_cast<size_t>(countStates);
                if(cStates <= 1) {
+                  EBM_ASSERT(0 != cStates || 0 == cTrainingCases && 0 == cValidationCases);
                   LOG(TraceLevelError, "ERROR EbmTrainingState::Initialize Our higher level caller should filter out features with a single state since these provide no useful information");
                }
 

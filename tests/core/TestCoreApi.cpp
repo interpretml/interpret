@@ -1536,7 +1536,90 @@ TEST_CASE("classification with 1 possible target, interaction") {
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("zero AttributeCombination, training, regression") {
+TEST_CASE("attributes with 1 state in various positions, training") {
+   TestApi test0 = TestApi(k_learningTypeRegression);
+   test0.AddAttributes({ 
+      Attribute(1),
+      Attribute(2),
+      Attribute(2)
+      });
+   test0.AddAttributeCombinations({ { 0 }, { 1 }, { 2 } });
+   test0.AddTrainingCases({ RegressionCase(10, { 0, 1, 1 }) });
+   test0.AddValidationCases({ RegressionCase(12, { 0, 1, 1 }) });
+   test0.InitializeTraining();
+
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddAttributes({
+      Attribute(2),
+      Attribute(1),
+      Attribute(2)
+      });
+   test1.AddAttributeCombinations({ { 0 }, { 1 }, { 2 } });
+   test1.AddTrainingCases({ RegressionCase(10, { 1, 0, 1 }) });
+   test1.AddValidationCases({ RegressionCase(12, { 1, 0, 1 }) });
+   test1.InitializeTraining();
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddAttributes({
+      Attribute(2),
+      Attribute(2),
+      Attribute(1)
+      });
+   test2.AddAttributeCombinations({ { 0 }, { 1 }, { 2 } });
+   test2.AddTrainingCases({ RegressionCase(10, { 1, 1, 0 }) });
+   test2.AddValidationCases({ RegressionCase(12, { 1, 1, 0 }) });
+   test2.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      FractionalDataType validationMetric00 = test0.Train(0);
+      FractionalDataType validationMetric10 = test1.Train(1);
+      CHECK_APPROX(validationMetric00, validationMetric10);
+      FractionalDataType validationMetric20 = test2.Train(2);
+      CHECK_APPROX(validationMetric00, validationMetric20);
+
+      FractionalDataType validationMetric01 = test0.Train(1);
+      FractionalDataType validationMetric11 = test1.Train(2);
+      CHECK_APPROX(validationMetric01, validationMetric11);
+      FractionalDataType validationMetric21 = test2.Train(0);
+      CHECK_APPROX(validationMetric01, validationMetric21);
+
+      FractionalDataType validationMetric02 = test0.Train(2);
+      FractionalDataType validationMetric12 = test1.Train(0);
+      CHECK_APPROX(validationMetric02, validationMetric12);
+      FractionalDataType validationMetric22 = test2.Train(1);
+      CHECK_APPROX(validationMetric02, validationMetric22);
+
+      FractionalDataType modelValue000 = test0.GetCurrentModelValue(0, { 0 }, 0);
+      FractionalDataType modelValue010 = test0.GetCurrentModelValue(1, { 0 }, 0);
+      FractionalDataType modelValue011 = test0.GetCurrentModelValue(1, { 1 }, 0);
+      FractionalDataType modelValue020 = test0.GetCurrentModelValue(2, { 0 }, 0);
+      FractionalDataType modelValue021 = test0.GetCurrentModelValue(2, { 1 }, 0);
+
+      FractionalDataType modelValue110 = test1.GetCurrentModelValue(1, { 0 }, 0);
+      FractionalDataType modelValue120 = test1.GetCurrentModelValue(2, { 0 }, 0);
+      FractionalDataType modelValue121 = test1.GetCurrentModelValue(2, { 1 }, 0);
+      FractionalDataType modelValue100 = test1.GetCurrentModelValue(0, { 0 }, 0);
+      FractionalDataType modelValue101 = test1.GetCurrentModelValue(0, { 1 }, 0);
+      CHECK_APPROX(modelValue110, modelValue000);
+      CHECK_APPROX(modelValue120, modelValue010);
+      CHECK_APPROX(modelValue121, modelValue011);
+      CHECK_APPROX(modelValue100, modelValue020);
+      CHECK_APPROX(modelValue101, modelValue021);
+
+      FractionalDataType modelValue220 = test2.GetCurrentModelValue(2, { 0 }, 0);
+      FractionalDataType modelValue200 = test2.GetCurrentModelValue(0, { 0 }, 0);
+      FractionalDataType modelValue201 = test2.GetCurrentModelValue(0, { 1 }, 0);
+      FractionalDataType modelValue210 = test2.GetCurrentModelValue(1, { 0 }, 0);
+      FractionalDataType modelValue211 = test2.GetCurrentModelValue(1, { 1 }, 0);
+      CHECK_APPROX(modelValue220, modelValue000);
+      CHECK_APPROX(modelValue200, modelValue010);
+      CHECK_APPROX(modelValue201, modelValue011);
+      CHECK_APPROX(modelValue210, modelValue020);
+      CHECK_APPROX(modelValue211, modelValue021);
+   }
+}
+
+TEST_CASE("zero AttributeCombinations, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddAttributes({});
    test.AddAttributeCombinations({});
@@ -1548,7 +1631,7 @@ TEST_CASE("zero AttributeCombination, training, regression") {
    // training isn't legal since we'd need to specify an attributeCombination index
 }
 
-TEST_CASE("zero AttributeCombination, training, binary") {
+TEST_CASE("zero AttributeCombinations, training, binary") {
    TestApi test = TestApi(2);
    test.AddAttributes({});
    test.AddAttributeCombinations({});
@@ -1560,7 +1643,7 @@ TEST_CASE("zero AttributeCombination, training, binary") {
    // training isn't legal since we'd need to specify an attributeCombination index
 }
 
-TEST_CASE("zero AttributeCombination, training, multiclass") {
+TEST_CASE("zero AttributeCombinations, training, multiclass") {
    TestApi test = TestApi(3);
    test.AddAttributes({});
    test.AddAttributeCombinations({});
@@ -1729,26 +1812,20 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ RegressionCase(12, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination;
-   FractionalDataType modelValueZeroAttributesInCombination;
-   FractionalDataType validationMetricOneState;
-   FractionalDataType modelValueOneState;
-   FractionalDataType validationMetricTwoStates;
-   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
       for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
-         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
-         validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         FractionalDataType modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
          CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
+         FractionalDataType modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
          CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
       }
    }
@@ -1776,33 +1853,27 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination;
-   FractionalDataType modelValueZeroAttributesInCombination;
-   FractionalDataType validationMetricOneState;
-   FractionalDataType modelValueOneState;
-   FractionalDataType validationMetricTwoStates;
-   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
       for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
-         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
-         validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         FractionalDataType modelValueZeroAttributesInCombination0 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueOneState0);
+         FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueTwoStates0);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         FractionalDataType modelValueZeroAttributesInCombination1 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueOneState1);
+         FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueTwoStates1);
       }
    }
 }
@@ -1829,39 +1900,33 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.InitializeTraining();
 
-   FractionalDataType validationMetricZeroAttributesInCombination;
-   FractionalDataType modelValueZeroAttributesInCombination;
-   FractionalDataType validationMetricOneState;
-   FractionalDataType modelValueOneState;
-   FractionalDataType validationMetricTwoStates;
-   FractionalDataType modelValueTwoStates;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
       assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
       for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
-         validationMetricOneState = testOneState.Train(iAttributeCombination);
+         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+         FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
-         validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
          CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         FractionalDataType modelValueZeroAttributesInCombination0 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueOneState0);
+         FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
+         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueTwoStates0);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         FractionalDataType modelValueZeroAttributesInCombination1 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueOneState1);
+         FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
+         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueTwoStates1);
 
-         modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 2);
-         modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
-         modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 2);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         FractionalDataType modelValueZeroAttributesInCombination2 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 2);
+         FractionalDataType modelValueOneState2 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
+         CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueOneState2);
+         FractionalDataType modelValueTwoStates2 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 2);
+         CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueTwoStates2);
       }
    }
 }
