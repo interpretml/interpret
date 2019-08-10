@@ -801,28 +801,6 @@ public:
       return pModel;
    }
 
-   bool IsCurrentModelNull(const size_t iAttributeCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_attributeCombinations.size() <= iAttributeCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
-      return nullptr == pModel;
-   }
-
-   bool IsBestModelNull(const size_t iAttributeCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_attributeCombinations.size() <= iAttributeCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
-      return nullptr == pModel;
-   }
-
    void AddInteractionCases(const std::vector<RegressionCase> cases) {
       if(Stage::AttributesAdded != m_stage) {
          exit(1);
@@ -1280,7 +1258,6 @@ TEST_CASE("zero countCasesRequiredForSplitParentMin, training, regression") {
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
 
-
 TEST_CASE("zero countTreeSplitsMax, training, regression") {
    // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
    // TODO : add classification binary and multiclass versions of this
@@ -1537,14 +1514,14 @@ TEST_CASE("classification with 0 possible target states, training") {
    test.AddValidationCases(std::vector<ClassificationCase> {});
    test.InitializeTraining();
 
-   CHECK(test.IsCurrentModelNull(0));
-   CHECK(test.IsBestModelNull(0));
+   CHECK(nullptr == test.GetCurrentModelRaw(0));
+   CHECK(nullptr == test.GetBestModelRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(test.IsCurrentModelNull(0));
-   CHECK(test.IsBestModelNull(0));
+   CHECK(nullptr == test.GetCurrentModelRaw(0));
+   CHECK(nullptr == test.GetBestModelRaw(0));
 }
 
 TEST_CASE("classification with 0 possible target states, interaction") {
@@ -1565,14 +1542,14 @@ TEST_CASE("classification with 1 possible target, training") {
    test.AddValidationCases({ ClassificationCase(0, { 1 }) });
    test.InitializeTraining();
 
-   CHECK(test.IsCurrentModelNull(0));
-   CHECK(test.IsBestModelNull(0));
+   CHECK(nullptr == test.GetCurrentModelRaw(0));
+   CHECK(nullptr == test.GetBestModelRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(test.IsCurrentModelNull(0));
-   CHECK(test.IsBestModelNull(0));
+   CHECK(nullptr == test.GetCurrentModelRaw(0));
+   CHECK(nullptr == test.GetBestModelRaw(0));
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {
@@ -1976,6 +1953,64 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
          CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueOneState2);
          FractionalDataType modelValueTwoStates2 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 2);
          CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueTwoStates2);
+      }
+   }
+}
+
+TEST_CASE("3 dimensional attributeCombination with one dimension reduced in different ways, training, regression") {
+   TestApi test0 = TestApi(k_learningTypeRegression);
+   test0.AddAttributes({ Attribute(1), Attribute(2), Attribute(2) });
+   test0.AddAttributeCombinations({ { 0, 1, 2 } });
+   test0.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
+   test0.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test0.InitializeTraining();
+
+   TestApi test1 = TestApi(k_learningTypeRegression);
+   test1.AddAttributes({ Attribute(2), Attribute(1), Attribute(2) });
+   test1.AddAttributeCombinations({ { 0, 1, 2 } });
+   test1.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
+   test1.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test1.InitializeTraining();
+
+   TestApi test2 = TestApi(k_learningTypeRegression);
+   test2.AddAttributes({ Attribute(2), Attribute(2), Attribute(1) });
+   test2.AddAttributeCombinations({ { 0, 1, 2 } });
+   test2.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
+   test2.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test2.InitializeTraining();
+
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      assert(test0.GetAttributeCombinationsCount() == test1.GetAttributeCombinationsCount());
+      assert(test0.GetAttributeCombinationsCount() == test2.GetAttributeCombinationsCount());
+      for(size_t iAttributeCombination = 0; iAttributeCombination < test0.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         FractionalDataType validationMetric0 = test0.Train(iAttributeCombination);
+         FractionalDataType validationMetric1 = test1.Train(iAttributeCombination);
+         CHECK_APPROX(validationMetric0, validationMetric1);
+         FractionalDataType validationMetric2 = test2.Train(iAttributeCombination);
+         CHECK_APPROX(validationMetric0, validationMetric2);
+
+         FractionalDataType modelValue01 = test0.GetCurrentModelValue(iAttributeCombination, { 0, 0, 0 }, 0);
+         FractionalDataType modelValue02 = test0.GetCurrentModelValue(iAttributeCombination, { 0, 0, 1 }, 0);
+         FractionalDataType modelValue03 = test0.GetCurrentModelValue(iAttributeCombination, { 0, 1, 0 }, 0);
+         FractionalDataType modelValue04 = test0.GetCurrentModelValue(iAttributeCombination, { 0, 1, 1 }, 0);
+
+         FractionalDataType modelValue11 = test1.GetCurrentModelValue(iAttributeCombination, { 0, 0, 0 }, 0);
+         FractionalDataType modelValue12 = test1.GetCurrentModelValue(iAttributeCombination, { 1, 0, 0 }, 0);
+         FractionalDataType modelValue13 = test1.GetCurrentModelValue(iAttributeCombination, { 0, 0, 1 }, 0);
+         FractionalDataType modelValue14 = test1.GetCurrentModelValue(iAttributeCombination, { 1, 0, 1 }, 0);
+         CHECK_APPROX(modelValue11, modelValue01);
+         CHECK_APPROX(modelValue12, modelValue02);
+         CHECK_APPROX(modelValue13, modelValue03);
+         CHECK_APPROX(modelValue14, modelValue04);
+
+         FractionalDataType modelValue21 = test2.GetCurrentModelValue(iAttributeCombination, { 0, 0, 0 }, 0);
+         FractionalDataType modelValue22 = test2.GetCurrentModelValue(iAttributeCombination, { 0, 1, 0 }, 0);
+         FractionalDataType modelValue23 = test2.GetCurrentModelValue(iAttributeCombination, { 1, 0, 0 }, 0);
+         FractionalDataType modelValue24 = test2.GetCurrentModelValue(iAttributeCombination, { 1, 1, 0 }, 0);
+         CHECK_APPROX(modelValue21, modelValue01);
+         CHECK_APPROX(modelValue22, modelValue02);
+         CHECK_APPROX(modelValue23, modelValue03);
+         CHECK_APPROX(modelValue24, modelValue04);
       }
    }
 }
