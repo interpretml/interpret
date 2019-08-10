@@ -1961,22 +1961,37 @@ TEST_CASE("3 dimensional attributeCombination with one dimension reduced in diff
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddAttributes({ Attribute(1), Attribute(2), Attribute(2) });
    test0.AddAttributeCombinations({ { 0, 1, 2 } });
-   test0.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
-   test0.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test0.AddTrainingCases({ 
+      RegressionCase(9, { 0, 0, 0 }),
+      RegressionCase(10, { 0, 1, 0 }),
+      RegressionCase(11, { 0, 0, 1 }),
+      RegressionCase(12, { 0, 1, 1 }),
+      });
+   test0.AddValidationCases({ RegressionCase(12, { 0, 1, 0 }) });
    test0.InitializeTraining();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddAttributes({ Attribute(2), Attribute(1), Attribute(2) });
    test1.AddAttributeCombinations({ { 0, 1, 2 } });
-   test1.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
-   test1.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test1.AddTrainingCases({
+      RegressionCase(9, { 0, 0, 0 }),
+      RegressionCase(10, { 0, 0, 1 }),
+      RegressionCase(11, { 1, 0, 0 }),
+      RegressionCase(12, { 1, 0, 1 }),
+      });
+   test1.AddValidationCases({ RegressionCase(12, { 0, 0, 1 }) });
    test1.InitializeTraining();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddAttributes({ Attribute(2), Attribute(2), Attribute(1) });
    test2.AddAttributeCombinations({ { 0, 1, 2 } });
-   test2.AddTrainingCases({ RegressionCase(10, { 0, 0, 0 }) });
-   test2.AddValidationCases({ RegressionCase(12, { 0, 0, 0 }) });
+   test2.AddTrainingCases({
+      RegressionCase(9, { 0, 0, 0 }),
+      RegressionCase(10, { 1, 0, 0 }),
+      RegressionCase(11, { 0, 1, 0 }),
+      RegressionCase(12, { 1, 1, 0 }),
+      });
+   test2.AddValidationCases({ RegressionCase(12, { 1, 0, 0 }) });
    test2.InitializeTraining();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
