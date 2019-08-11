@@ -404,12 +404,16 @@ class NativeEBM:
         self.validation_scores = validation_scores
         if self.training_scores is None:
             if self.num_classification_states > 2:
-                self.training_scores = np.zeros((X_train.shape[0], self.num_classification_states)).reshape(-1)
+                self.training_scores = np.zeros(
+                    (X_train.shape[0], self.num_classification_states)
+                ).reshape(-1)
             else:
                 self.training_scores = np.zeros(X_train.shape[0])
         if self.validation_scores is None:
             if self.num_classification_states > 2:
-                self.validation_scores = np.zeros((X_train.shape[0], self.num_classification_states)).reshape(-1)
+                self.validation_scores = np.zeros(
+                    (X_train.shape[0], self.num_classification_states)
+                ).reshape(-1)
             else:
                 self.validation_scores = np.zeros(X_train.shape[0])
         self.random_state = random_state
@@ -580,7 +584,7 @@ class NativeEBM:
                 min_cases_for_split,
                 training_weights,
                 validation_weights,
-                ct.byref(gain)
+                ct.byref(gain),
             )
             if model_update_tensor_pointer == 0:  # pragma: no cover
                 raise Exception("GenerateModelUpdate Exception")
@@ -589,7 +593,7 @@ class NativeEBM:
                 self.model_pointer,
                 attribute_set_index,
                 model_update_tensor_pointer,
-                ct.byref(metric_output)
+                ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
                 raise Exception("ApplyModelUpdate Exception")

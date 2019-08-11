@@ -131,5 +131,3 @@ def test_ebm_adult():
         preserve(global_exp, selector_key)
 
     shutdown_show_server()
-
-

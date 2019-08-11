@@ -22,9 +22,11 @@ def _validate_class_name(proposed_class_name):
     # TODO: Support other languages
     match = re.match(r"[a-zA-Z_][a-zA-Z_0-9]+", proposed_class_name)
     if match is None or match.group(0) != proposed_class_name:
-        raise ValueError("Invalid class name {}. Class names must start with a "
-                         "letter or an underscore and can continue with letters, "
-                         "numbers, and underscores.".format(proposed_class_name))
+        raise ValueError(
+            "Invalid class name {}. Class names must start with a "
+            "letter or an underscore and can continue with letters, "
+            "numbers, and underscores.".format(proposed_class_name)
+        )
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
@@ -42,8 +44,11 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         try:
             extension_class_name = entrypoint.name
             extension_class = entrypoint.load()
-            module_logger.debug("loading entrypoint key {} with name {} with object {}".format(
-                extension_key, extension_class_name, extension_class))
+            module_logger.debug(
+                "loading entrypoint key {} with name {} with object {}".format(
+                    extension_key, extension_class_name, extension_class
+                )
+            )
 
             _validate_class_name(extension_class_name)
 
@@ -51,11 +56,17 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
                 raise ValueError("class {} failed validation.".format(extension_class))
 
             if getattr(current_module, extension_class_name, None) is not None:
-                raise ValueError("class name {} already exists for module {}.".format(
-                                 extension_class_name, current_module.__name__))
+                raise ValueError(
+                    "class name {} already exists for module {}.".format(
+                        extension_class_name, current_module.__name__
+                    )
+                )
 
             setattr(current_module, extension_class_name, extension_class)
 
         except Exception as e:
-            module_logger.warning("Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
-                blackbox_key, entrypoint, e))
+            module_logger.warning(
+                "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
+                    blackbox_key, entrypoint, e
+                )
+            )

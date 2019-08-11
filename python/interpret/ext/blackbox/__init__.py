@@ -22,4 +22,6 @@ def _is_valid_blackbox_explainer(proposed_blackbox_explainer):
 # https://stackoverflow.com/questions/1676835
 current_module = sys.modules[__name__]
 
-load_class_extensions(current_module, BLACKBOX_EXTENSION_KEY, _is_valid_blackbox_explainer)
+load_class_extensions(
+    current_module, BLACKBOX_EXTENSION_KEY, _is_valid_blackbox_explainer
+)

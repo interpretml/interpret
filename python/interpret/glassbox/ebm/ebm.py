@@ -368,9 +368,7 @@ class BaseCoreEBM(BaseEstimator):
             self.intercept_ = [0] * self.n_classes_
         else:
             self.intercept_ = 0
-            
 
-        
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
@@ -873,7 +871,7 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
-         # Mean center graphs - only for binary classification and regression
+        # Mean center graphs - only for binary classification and regression
         if self.n_classes_ <= 2:
             scores_gen = EBMUtils.scores_by_attrib_set(
                 X, self.attribute_sets_, self.attribute_set_models_, []

@@ -69,8 +69,12 @@ def dynamic_system_info():
         system_info = {
             "psutil.virtual_memory": virtual_memory,
             "psutil.swap_memory": swap_memory,
-            "psutil.avg_cpu_percent": None if cpu_percent is None else np.mean(cpu_percent),
-            "psutil.std_cpu_percent": None if cpu_percent is None else np.std(cpu_percent),
+            "psutil.avg_cpu_percent": None
+            if cpu_percent is None
+            else np.mean(cpu_percent),
+            "psutil.std_cpu_percent": None
+            if cpu_percent is None
+            else np.std(cpu_percent),
             "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
         }
     except Exception:  # pragma: no cover

@@ -43,7 +43,7 @@ version = re.search(
 install_requires = []
 with open("./requirements.txt") as f:
     install_requires = f.read().splitlines()
-install_requires = [x for x in install_requires if not x.startswith('#')]
+install_requires = [x for x in install_requires if not x.startswith("#")]
 
 setup(
     name=name,
@@ -93,7 +93,7 @@ setup(
     entry_points={
         "interpret_ext_blackbox": [
             "BlackboxExplainerExample = interpret.ext.blackbox.example_blackbox_explainer_ext:ExampleExplainer"
-            ]
+        ]
     },
     install_requires=install_requires,
 )

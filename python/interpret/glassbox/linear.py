@@ -139,23 +139,24 @@ class BaseLinear:
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
-            {
-                "explanation_type": "local_feature_importance",
-                "value": {
-                    "scores": scores_list,
-                    "intercept": intercept,
-                    "perf": perf_list
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "local_feature_importance",
+                    "value": {
+                        "scores": scores_list,
+                        "intercept": intercept,
+                        "perf": perf_list,
+                    },
                 }
-            }]
+            ],
         }
         internal_obj["mli"].append(
             {
                 "explanation_type": "evaluation_dataset",
-                "value": {
-                    "dataset_x": X,
-                    "dataset_y": y
-                }
+                "value": {"dataset_x": X, "dataset_y": y},
             }
         )
 
@@ -224,15 +225,16 @@ class BaseLinear:
 
             specific_data_dicts.append(data_dict)
 
-        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts, "mli": [
-            {
-                "explanation_type": "global_feature_importance",
-                "value": {
-                    "scores": list(coef),
-                    "intercept": intercept
+        internal_obj = {
+            "overall": overall_data_dict,
+            "specific": specific_data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "global_feature_importance",
+                    "value": {"scores": list(coef), "intercept": intercept},
                 }
-            }
-        ]}
+            ],
+        }
         return LinearExplanation(
             "global",
             internal_obj,
@@ -269,17 +271,29 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        from ..visual.plot import sort_take, mli_sort_take, get_sort_indexes, get_explanation_index, \
-            plot_horizontal_bar, mli_plot_horizontal_bar
+        from ..visual.plot import (
+            sort_take,
+            mli_sort_take,
+            get_sort_indexes,
+            get_explanation_index,
+            plot_horizontal_bar,
+            mli_plot_horizontal_bar,
+        )
 
         if "mli" in self.data(-1) and self.explanation_type == "global":
             explanation_list = self.data(-1)["mli"]
-            explanation_index = get_explanation_index(explanation_list, "global_feature_importance")
+            explanation_index = get_explanation_index(
+                explanation_list, "global_feature_importance"
+            )
             scores = explanation_list[explanation_index]["value"]["scores"]
             sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
             sorted_scores = mli_sort_take(scores, sort_indexes, reverse_results=True)
-            sorted_names = mli_sort_take(self.feature_names, sort_indexes, reverse_results=True)
-            return mli_plot_horizontal_bar(sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients")
+            sorted_names = mli_sort_take(
+                self.feature_names, sort_indexes, reverse_results=True
+            )
+            return mli_plot_horizontal_bar(
+                sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients"
+            )
         else:
             data_dict = self.data(key)
             if data_dict is None:
