@@ -110,6 +110,7 @@ def small_explanations():
 
 
 # TODO: Code duplication, refactor.
+@pytest.mark.xfail
 @pytest.mark.selenium
 def test_show_small_set_selenium(small_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
