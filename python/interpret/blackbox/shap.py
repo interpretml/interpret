@@ -49,12 +49,18 @@ class ShapKernel(ExplainerMixin):
         predictions = self.predict_fn(X)
 
         data_dicts = []
+        scores_list = all_shap_values
+        perf_list = []
         for i, instance in enumerate(X):
             shap_values = all_shap_values[i]
+            perf_dict_obj = perf_dict(y, predictions, i)
+
+            perf_list.append(perf_dict_obj)
+
             data_dict = {
                 "type": "univariate",
                 "names": self.feature_names,
-                "perf": perf_dict(y, predictions, i),
+                "perf": perf_dict_obj,
                 "scores": shap_values,
                 "values": instance,
                 "extra": {
@@ -65,7 +71,26 @@ class ShapKernel(ExplainerMixin):
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "local_feature_importance",
+                    "value": {
+                        "scores": scores_list,
+                        "intercept": self.shap.expected_value,
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(

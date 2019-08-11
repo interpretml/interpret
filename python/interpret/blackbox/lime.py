@@ -57,6 +57,8 @@ class LimeTabular(ExplainerMixin):
         pred_fn = self.predict_fn
 
         data_dicts = []
+        scores_list = []
+        perf_list = []
         for i, instance in enumerate(X):
             lime_explanation = self.lime.explain_instance(
                 instance, pred_fn, **self.explain_kwargs
@@ -72,17 +74,41 @@ class LimeTabular(ExplainerMixin):
                 values.append(instance[feat_idx])
             intercept = lime_explanation.intercept[1]
 
+            perf_dict_obj = perf_dict(y, predictions, i)
+
+            scores_list.append(scores)
+            perf_list.append(perf_dict_obj)
+
             data_dict = {
                 "type": "univariate",
                 "names": names,
-                "perf": perf_dict(y, predictions, i),
+                "perf": perf_dict_obj,
                 "scores": scores,
                 "values": values,
                 "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "local_feature_importance",
+                    "value": {
+                        "scores": scores_list,
+                        "intercept": intercept,
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(

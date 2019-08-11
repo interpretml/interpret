@@ -78,17 +78,35 @@ def small_explanations():
     lr = LogisticRegression()
     lr.fit(data["train"]["X"], data["train"]["y"])
 
-    hist_exp = ClassHistogram().explain_data(data["train"]["X"], data["train"]["y"], name="Histogram")
+    hist_exp = ClassHistogram().explain_data(
+        data["train"]["X"], data["train"]["y"], name="Histogram"
+    )
 
     lr_global_exp = lr.explain_global(name="LR")
-    lr_local_exp = lr.explain_local(data["test"]["X"].head(), data["test"]["y"].head(), name="LR")
-    lr_perf = ROC(lr.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"], name="LR")
+    lr_local_exp = lr.explain_local(
+        data["test"]["X"].head(), data["test"]["y"].head(), name="LR"
+    )
+    lr_perf = ROC(lr.predict_proba).explain_perf(
+        data["test"]["X"], data["test"]["y"], name="LR"
+    )
 
     ebm_global_exp = ebm.explain_global(name="EBM")
-    ebm_local_exp = ebm.explain_local(data["test"]["X"].head(), data["test"]["y"].head(), name="EBM")
-    ebm_perf = ROC(ebm.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"], name="EBM")
+    ebm_local_exp = ebm.explain_local(
+        data["test"]["X"].head(), data["test"]["y"].head(), name="EBM"
+    )
+    ebm_perf = ROC(ebm.predict_proba).explain_perf(
+        data["test"]["X"], data["test"]["y"], name="EBM"
+    )
 
-    return [hist_exp, lr_local_exp, lr_global_exp, lr_perf, ebm_local_exp, ebm_global_exp, ebm_perf]
+    return [
+        hist_exp,
+        lr_local_exp,
+        lr_global_exp,
+        lr_perf,
+        ebm_local_exp,
+        ebm_global_exp,
+        ebm_perf,
+    ]
 
 
 # TODO: Code duplication, refactor.
@@ -142,27 +160,17 @@ def test_show_small_set_selenium(small_explanations, driver):
     )
     first_path = "//label[@for='checkbox0']"
     second_path = "//label[@for='checkbox1']"
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, first_path)
-        )
-    )
+    wait.until(EC.presence_of_element_located((By.XPATH, first_path)))
     # Click on first two items
     first_el = data_tab_el.find_element_by_xpath(first_path)
     first_el.click()
     second_el = data_tab_el.find_element_by_xpath(second_path)
     second_el.click()
     # Expect two specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-1")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-0-1")))
     # Expect overall graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-0")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph-0")))
 
     # Move to perf
     tabs_el = driver.find_element_by_id("tabs")
@@ -189,12 +197,18 @@ def test_show_small_set_selenium(small_explanations, driver):
     # Expect two overall graphs
     wait.until(
         EC.presence_of_element_located(
-            (By.XPATH, "//div[@id='perf-overall-plot-container-0']//div[contains(@id, 'example-overall-graph-')]")
+            (
+                By.XPATH,
+                "//div[@id='perf-overall-plot-container-0']//div[contains(@id, 'example-overall-graph-')]",
+            )
         )
     )
     wait.until(
         EC.presence_of_element_located(
-            (By.XPATH, "//div[@id='perf-overall-plot-container-1']//div[contains(@id, 'example-overall-graph-')]")
+            (
+                By.XPATH,
+                "//div[@id='perf-overall-plot-container-1']//div[contains(@id, 'example-overall-graph-')]",
+            )
         )
     )
 
@@ -230,36 +244,20 @@ def test_show_small_set_selenium(small_explanations, driver):
     )
     first_path = "//label[@for='checkbox0']"
     second_path = "//label[@for='checkbox1']"
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, first_path)
-        )
-    )
+    wait.until(EC.presence_of_element_located((By.XPATH, first_path)))
     # Click on first two items
     first_el = global_tab_el.find_element_by_xpath(first_path)
     first_el.click()
     second_el = global_tab_el.find_element_by_xpath(second_path)
     second_el.click()
     # Expect four specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-2-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-2-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-5-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-5-1")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-2-0")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-2-1")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-5-0")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-5-1")))
     # Expect two overall graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-2")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-5")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph-2")))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph-5")))
 
     # Move to local
     tabs_el = driver.find_element_by_id("tabs")
@@ -299,50 +297,32 @@ def test_show_small_set_selenium(small_explanations, driver):
     # Click on first two items for both panes
     for pane_idx in range(2):
         for item_idx in range(2):
-            item_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(pane_idx + 1, item_idx)
-            wait.until(
-                EC.presence_of_element_located(
-                    (By.XPATH, item_path)
-                )
+            item_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(
+                pane_idx + 1, item_idx
             )
+            wait.until(EC.presence_of_element_located((By.XPATH, item_path)))
             item_el = local_tab_el.find_element_by_xpath(item_path)
             item_el.click()
     # Expect four specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-1-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-1-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-4-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-4-1")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-1-0")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-1-1")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-4-0")))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-4-1")))
     # Expect two overall graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-4")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph-1")))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph-4")))
 
     # Mini page
     driver.get(mini_url)
     driver.find_element_by_class_name("card")
     # Expect overall graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph--1")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
     # Click on specific graph
     dropdown_el = driver.find_element_by_class_name("Select-control")
     dropdown_el.click()
     specific_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'1 : ')]")
     specific_el.click()
     # Expect specific graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-0")
-    ))
+    wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
 
     shutdown_show_server()

@@ -152,7 +152,9 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
 
     # Add density
     if data_dict.get("density", None) is not None:
-        figure = _plot_with_density(data_dict["density"], main_fig, title=title, yrange=yrange)
+        figure = _plot_with_density(
+            data_dict["density"], main_fig, title=title, yrange=yrange
+        )
     else:
         figure = main_fig
 
@@ -367,7 +369,11 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     # Add density
     if data_dict.get("density", None) is not None:
         figure = _plot_with_density(
-            data_dict["density"], main_fig, title=title, is_categorical=True, yrange=yrange
+            data_dict["density"],
+            main_fig,
+            title=title,
+            is_categorical=True,
+            yrange=yrange,
         )
     else:
         figure = main_fig
@@ -438,6 +444,55 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     return figure
 
 
+def mli_plot_horizontal_bar(
+    scores,
+    names,
+    values=None,
+    perf=None,
+    intercept=None,
+    title="",
+    xtitle="",
+    ytitle="",
+    start_zero=False,
+):
+    if values is not None:
+        names = _names_with_values(names, values)
+
+    # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
+    if perf is not None and title == "":
+        title_items = []
+        title_items.append("Predicted {0:.2f}".format(perf["predicted"]))
+        title_items.append("Actual {0:.2f}".format(perf["actual"]))
+        title = " | ".join(title_items)
+
+    color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
+
+    if intercept is not None:
+        scores.append(intercept)
+        names.append("Intercept")
+        color.append(COLORS[2])
+
+    x = scores
+    y = names
+    trace = go.Bar(x=x, y=y, orientation="h", marker=dict(color=color))
+
+    if start_zero:
+        x_range = [0, max(x)]
+    else:
+        max_abs_x = max(np.abs(x))
+        x_range = [-max_abs_x, max_abs_x]
+
+    layout = dict(
+        title=title,
+        yaxis=dict(automargin=True, title=ytitle),
+        xaxis=dict(range=x_range, title=xtitle),
+    )
+
+    figure = go.Figure(data=[trace], layout=layout)
+
+    return figure
+
+
 def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
@@ -478,6 +533,60 @@ def sort_take(
                 data_dict[key] = [data_dict[key][i] for i in sort_indexes]
 
     return data_dict
+
+
+def get_sort_indexes(data, sort_fn=None, top_n=None):
+    if isinstance(data[0], list):
+        return get_sort_indexes_2d(data, sort_fn=sort_fn, top_n=top_n)
+    else:
+        return get_sort_indexes_1d(data, sort_fn=sort_fn, top_n=top_n)
+
+
+def get_sort_indexes_1d(data, sort_fn=None, top_n=None):
+    if top_n is None:
+        top_n = len(data)
+
+    if sort_fn is not None:
+        scored_vals = list(map(sort_fn, data))
+        return np.argsort(scored_vals)[:top_n]
+    else:
+        return np.arange(top_n)
+
+
+def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
+    if top_n is None:
+        top_n = len(data[0])
+
+    if sort_fn is not None:
+        out_list = []
+        for data_instance in data:
+            sorted_vals = list(map(sort_fn, data_instance))
+            out_list.append(np.argsort(sorted_vals)[:top_n])
+        return out_list
+    else:
+        return np.arange(top_n)
+
+
+def mli_sort_take(data, sort_indexes, reverse_results=False):
+    if isinstance(data[0], list):
+        out_list = []
+        for j, data_instance in enumerate(data):
+            if reverse_results:
+                out_list.append([data_instance[i] for i in reversed(sort_indexes[j])])
+            else:
+                out_list.append([data_instance[i] for i in sort_indexes[j]])
+        return out_list
+    if reverse_results:
+        return [data[i] for i in reversed(sort_indexes)]
+    else:
+        return [data[i] for i in sort_indexes]
+
+
+def get_explanation_index(explanation_list, explanation_type):
+    for i, explanation in enumerate(explanation_list):
+        if explanation["explanation_type"] == explanation_type:
+            return i
+    return None
 
 
 def rules_to_html(data_dict, title=""):

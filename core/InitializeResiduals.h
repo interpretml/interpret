@@ -5,7 +5,6 @@
 #ifndef INITIALIZE_RESIDUALS_H
 #define INITIALIZE_RESIDUALS_H
 
-#include <assert.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebmcore.h"

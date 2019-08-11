@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.12] - 2019-08-09
+### Fixed
+- Fixed EBM bug where 2 features with 1 state are included in the dataset.
+- Fixed EBM bug that was causing processing of attributes past an attribute combination with 0 useful attributes to
+ fail.
+
+## [v0.1.11] - 2019-08-09
+### Added
+- C++ testing framework added.
+- More granular options for training EBM (not public-facing, added for researchers)
+### Fixed
+- Improved POSIX compliance for build scripts.
+- Failure cases handled better for EBM in both Python/native layer.
+- Fixed a bug around dash relating to dependencies.
+- Removed dead code around web server for visualization.
+### Changed
+- For Python setup.py, requirements.txt now used for holding dependencies.
+- Directory structure changed for whole repository, in preparation for R support.
+- Native code further optimized with compiler flags.
+- Consistent scaling for EBM plots across all features.
+- For explanation's data method, behavior will be non-standard at key equals -1.
+- Testing suite for visual interface added via selenium.
+### Experimental (WIP)
+- Extension system for blackbox explainers added. Enables other packages to register into interpret.
+- Data standardization under way, currently for linear, LIME, SHAP where key equals -1 for data method.
+
 ## [v0.1.10] - 2019-07-16
 ### Fixed
 - Fix for duplicated logs.
@@ -120,6 +146,8 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.12]: https://github.com/microsoft/interpret/releases/tag/v0.1.12
+[v0.1.11]: https://github.com/microsoft/interpret/releases/tag/v0.1.11
 [v0.1.10]: https://github.com/microsoft/interpret/releases/tag/v0.1.10
 [v0.1.9]: https://github.com/microsoft/interpret/releases/tag/v0.1.9
 [v0.1.8]: https://github.com/microsoft/interpret/releases/tag/v0.1.8

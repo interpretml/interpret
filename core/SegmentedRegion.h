@@ -9,7 +9,6 @@
 // TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
 
 #include <type_traits> // std::is_pod
-#include <assert.h>
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -305,12 +304,6 @@ public:
    }
 #endif // NDEBUG
 
-   TML_INLINE TValues * GetValueDirect(const size_t index) const {
-      EBM_ASSERT(0 == m_cDimensions || m_bExpanded); // this function doesn't make sense unless the underlying data has been expanded
-      EBM_ASSERT(!IsMultiplyError(index, m_cVectorLength)); // we're accessing existing memory, so it can't overflow
-      return &m_aValues[index * m_cVectorLength];
-   }
-
    TML_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -491,7 +484,24 @@ public:
       return false;
    }
 
-   // TODO : change this to eliminate pStackMemory and replace it with true on stack memory (we know that there can't be more than 63 dimensions)
+   TML_INLINE void AddExpanded(const TValues * const aFromValues) {
+      EBM_ASSERT(m_bExpanded);
+      size_t cItems = m_cVectorLength;
+      for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
+         // this can't overflow since we've already allocated them!
+         cItems *= m_aDimensions[iDimension].cDivisions + 1;
+      }
+
+      const TValues * pFromValue = aFromValues;
+      TValues * pToValue = m_aValues;
+      const TValues * const pToValueEnd = m_aValues + cItems;
+      do {
+         *pToValue += *pFromValue;
+         ++pFromValue;
+         ++pToValue;
+      } while(pToValueEnd != pToValue);
+   }
+
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
    bool Add(const SegmentedRegionCore & rhs) {
       DimensionInfoStack dimensionStack[k_cDimensionsMax];

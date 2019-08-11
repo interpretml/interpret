@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		tests\core\test_core_api.sh = tests\core\test_core_api.sh
 	EndProjectSection
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "python", "python\python.pyproj", "{ED16326F-19C9-4360-A976-E11E0979B790}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -49,6 +51,10 @@ Global
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x64.Build.0 = Release|x64
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x86.ActiveCfg = Release|Win32
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B}.Release|x86.Build.0 = Release|Win32
+		{ED16326F-19C9-4360-A976-E11E0979B790}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ED16326F-19C9-4360-A976-E11E0979B790}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ED16326F-19C9-4360-A976-E11E0979B790}.Release|x64.ActiveCfg = Release|Any CPU
+		{ED16326F-19C9-4360-A976-E11E0979B790}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

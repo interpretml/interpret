@@ -3,8 +3,11 @@
 # Distributed under the MIT software license
 # TODO: Test EBMUtils
 
-from scipy.special import expit
+# from scipy.special import expit
+from sklearn.utils.extmath import softmax
+import numbers
 import numpy as np
+
 
 import logging
 
@@ -62,8 +65,12 @@ class EBMUtils:
         if X.ndim == 1:
             X = X.reshape(1, X.shape[0])
 
-        # Foreach column, add log odds per instance
-        score_vector = np.zeros(X.shape[0])
+        # Initialize empty vector for predictions
+        if isinstance(intercept, numbers.Number) or len(intercept) == 1:
+            score_vector = np.zeros(X.shape[0])
+        else:
+            score_vector = np.zeros((X.shape[0], len(intercept)))
+
         score_vector += intercept
 
         scores_gen = EBMUtils.scores_by_attrib_set(
@@ -79,6 +86,32 @@ class EBMUtils:
 
         return score_vector
 
+    # Old method -- TODO: remove once tested
+    # @staticmethod
+    # def decision_function(
+    #     X, attribute_sets, attribute_set_models, intercept, skip_attr_set_idxs=[]
+    # ):
+
+    #     if X.ndim == 1:
+    #         X = X.reshape(1, X.shape[0])
+
+    #     # Foreach column, add log odds per instance
+    #     score_vector = np.zeros(X.shape[0])
+    #     score_vector += intercept
+
+    #     scores_gen = EBMUtils.scores_by_attrib_set(
+    #         X, attribute_sets, attribute_set_models, skip_attr_set_idxs
+    #     )
+    #     for _, _, scores in scores_gen:
+    #         score_vector += scores
+
+    #     if not np.all(np.isfinite(score_vector)):  # pragma: no cover
+    #         msg = "Non-finite values present in log odds vector."
+    #         log.error(msg)
+    #         raise Exception(msg)
+
+    #     return score_vector
+
     @staticmethod
     def classifier_predict_proba(X, estimator, skip_attr_set_idxs=[]):
         log_odds_vector = EBMUtils.decision_function(
@@ -89,10 +122,28 @@ class EBMUtils:
             skip_attr_set_idxs,
         )
 
-        # NOTE: Generalize predict when multiclass is supported.
-        prob = expit(log_odds_vector)
-        scores = np.vstack([1 - prob, prob]).T
-        return scores
+        # Handle binary classification case -- softmax only works with 0s appended
+        if log_odds_vector.ndim == 1:
+            decision_2d = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
+        else:
+            decision_2d = log_odds_vector
+        return softmax(decision_2d)
+
+    # Old method -- TODO: remove once tested
+    # @staticmethod
+    # def classifier_predict_proba(X, estimator, skip_attr_set_idxs=[]):
+    #     log_odds_vector = EBMUtils.decision_function(
+    #         X,
+    #         estimator.attribute_sets_,
+    #         estimator.attribute_set_models_,
+    #         estimator.intercept_,
+    #         skip_attr_set_idxs,
+    #     )
+
+    #     # NOTE: Generalize predict when multiclass is supported.
+    #     prob = expit(log_odds_vector)
+    #     scores = np.vstack([1 - prob, prob]).T
+    #     return scores
 
     @staticmethod
     def classifier_predict(X, estimator, skip_attr_set_idxs=[]):

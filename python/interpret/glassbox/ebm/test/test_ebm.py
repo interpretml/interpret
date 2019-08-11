@@ -23,14 +23,23 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 
 
-def test_no_multiclass_ebm():
+@pytest.mark.slow
+def test_ebm_synthetic_multiclass():
     data = synthetic_multiclass()
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=1)
-    with pytest.raises(RuntimeError, match="Multiclass currently not supported"):
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, n_estimators=2)
+    # Multiclass is not complete, so we throw an exception for now.
+    with pytest.raises(RuntimeError):
         clf.fit(X, y)
+
+    # prob_scores = clf.predict_proba(X)
+    #
+    # within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
+    # assert within_bounds
+    #
+    # valid_ebm(clf)
 
 
 def test_prefit_ebm():

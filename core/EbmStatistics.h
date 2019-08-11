@@ -5,7 +5,6 @@
 #ifndef STATISTICS_H
 #define STATISTICS_H
 
-#include <assert.h>
 #include <cmath> // log, exp, sqrt, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
 #include <stddef.h> // size_t, ptrdiff_t
 

@@ -5,7 +5,6 @@
 #ifndef DATA_SET_INTERNAL_H
 #define DATA_SET_INTERNAL_H
 
-#include <assert.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebmcore.h" // FractionalDataType

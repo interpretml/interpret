@@ -143,8 +143,8 @@ class Native:
         ]
         self.lib.InitializeTrainingClassification.restype = ct.c_void_p
 
-        self.lib.TrainingStep.argtypes = [
-            # void * tml
+        self.lib.GenerateModelUpdate.argtypes = [
+            # void * ebmTraining
             ct.c_void_p,
             # int64_t indexAttributeSet
             ct.c_longlong,
@@ -160,10 +160,22 @@ class Native:
             # double * validationWeights
             # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             ct.c_void_p,
+            # double * gainReturn
+            ct.POINTER(ct.c_double),
+        ]
+        self.lib.GenerateModelUpdate.restype = ct.c_void_p
+
+        self.lib.ApplyModelUpdate.argtypes = [
+            # void * ebmTraining
+            ct.c_void_p,
+            # int64_t indexAttributeCombination
+            ct.c_longlong,
+            # double * modelUpdateTensor
+            ct.c_void_p,
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.TrainingStep.restype = ct.c_longlong
+        self.lib.ApplyModelUpdate.restype = ct.c_longlong
 
         self.lib.GetCurrentModel.argtypes = [
             # void * tml
@@ -382,17 +394,28 @@ class NativeEBM:
         self.num_inner_bags = num_inner_bags
         self.num_classification_states = num_classification_states
 
-        # Set train/val scores to zeros if not passed.
-        self.training_scores = (
-            training_scores
-            if training_scores is not None
-            else np.zeros(X_train.shape[0])
-        )
-        self.validation_scores = (
-            validation_scores
-            if validation_scores is not None
-            else np.zeros(X_val.shape[0])
-        )
+        # # Set train/val scores to zeros if not passed.
+        # if isinstance(intercept, numbers.Number) or len(intercept) == 1:
+        #     score_vector = np.zeros(X.shape[0])
+        #     else:
+        # score_vector = np.zeros((X.shape[0], len(intercept)))
+
+        self.training_scores = training_scores
+        self.validation_scores = validation_scores
+        if self.training_scores is None:
+            if self.num_classification_states > 2:
+                self.training_scores = np.zeros(
+                    (X_train.shape[0], self.num_classification_states)
+                ).reshape(-1)
+            else:
+                self.training_scores = np.zeros(X_train.shape[0])
+        if self.validation_scores is None:
+            if self.num_classification_states > 2:
+                self.validation_scores = np.zeros(
+                    (X_train.shape[0], self.num_classification_states)
+                ).reshape(-1)
+            else:
+                self.validation_scores = np.zeros(X_train.shape[0])
         self.random_state = random_state
 
         # Convert n-dim arrays ready for C.
@@ -552,7 +575,8 @@ class NativeEBM:
 
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
-            return_code = this.native.lib.TrainingStep(
+            gain = ct.c_double(0.0)
+            model_update_tensor_pointer = this.native.lib.GenerateModelUpdate(
                 self.model_pointer,
                 attribute_set_index,
                 learning_rate,
@@ -560,10 +584,19 @@ class NativeEBM:
                 min_cases_for_split,
                 training_weights,
                 validation_weights,
+                ct.byref(gain),
+            )
+            if model_update_tensor_pointer == 0:  # pragma: no cover
+                raise Exception("GenerateModelUpdate Exception")
+
+            return_code = this.native.lib.ApplyModelUpdate(
+                self.model_pointer,
+                attribute_set_index,
+                model_update_tensor_pointer,
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception("TrainingStep Exception")
+                raise Exception("ApplyModelUpdate Exception")
 
         # log.debug("Training step end")
         return metric_output.value
@@ -577,6 +610,11 @@ class NativeEBM:
             n_bins = self.attributes[attr_idx]["n_bins"]
             attr_idxs.append(attr_idx)
             dimensions.append(n_bins)
+
+        # Array returned for multiclass is one higher dimension
+        if self.model_type == "classification" and self.num_classification_states > 2:
+            dimensions.append(self.num_classification_states)
+
         shape = tuple(dimensions)
         return shape
 

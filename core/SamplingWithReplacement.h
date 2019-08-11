@@ -5,7 +5,6 @@
 #ifndef SAMPLING_WITH_REPLACEMENT_H
 #define SAMPLING_WITH_REPLACEMENT_H
 
-#include <assert.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE

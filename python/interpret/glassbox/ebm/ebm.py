@@ -343,9 +343,9 @@ class BaseCoreEBM(BaseEstimator):
     def fit(self, X, y):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            self.num_classes_ = len(self.classes_)
+            self.n_classes_ = len(self.classes_)
         else:
-            self.num_classes_ = -1
+            self.n_classes_ = -1
 
         # Split data into train/val
         X_train, X_val, y_train, y_val = train_test_split(
@@ -363,7 +363,12 @@ class BaseCoreEBM(BaseEstimator):
         else:
             model_type = "regression"
 
-        self.intercept_ = 0
+        # For multiclass, need an intercept term per class
+        if self.n_classes_ > 2:
+            self.intercept_ = [0] * self.n_classes_
+        else:
+            self.intercept_ = 0
+
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
@@ -378,7 +383,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.num_classes_,
+                num_classification_states=self.n_classes_,
                 model_type=model_type,
                 training_scores=None,
                 validation_scores=None,
@@ -427,7 +432,8 @@ class BaseCoreEBM(BaseEstimator):
         )
         log.debug("Main Metric: {0}".format(self.current_metric_))
         for index, attr_set in enumerate(main_attr_sets):
-            self.attribute_set_models_.append(native_ebm.get_best_model(index))
+            attribute_set_model = native_ebm.get_best_model(index)
+            self.attribute_set_models_.append(attribute_set_model)
             self.attribute_sets_.append(attr_set)
 
         self.has_fitted_ = True
@@ -481,7 +487,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.num_classes_,
+                num_classification_states=self.n_classes_,
                 model_type=model_type,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
@@ -732,7 +738,8 @@ class BaseEBM(BaseEstimator):
 
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            if len(self.classes_) > 2:
+            self.n_classes_ = len(self.classes_)
+            if self.n_classes_ > 2:
                 raise RuntimeError("Multiclass currently not supported.")
 
             proto_estimator = CoreEBMClassifier(
@@ -755,6 +762,7 @@ class BaseEBM(BaseEstimator):
                 random_state=self.random_state,
             )
         else:
+            self.n_classes_ = -1
             proto_estimator = CoreEBMRegressor(
                 # Data
                 col_types=self.preprocessor_.col_types_,
@@ -776,7 +784,12 @@ class BaseEBM(BaseEstimator):
             )
 
         # Train base models for main effects, pair detection.
-        self.intercept_ = 0
+
+        # Intercept needs to be a list for multiclass
+        if self.n_classes_ > 2:
+            self.intercept_ = [0] * self.n_classes_
+        else:
+            self.intercept_ = 0
         X_orig = X
         X = self.preprocessor_.transform(X)
         estimators = []
@@ -858,23 +871,24 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
-        # Mean center graphs
-        scores_gen = EBMUtils.scores_by_attrib_set(
-            X, self.attribute_sets_, self.attribute_set_models_, []
-        )
-        self._attrib_set_model_means_ = []
-
-        # TODO: Clean this up before release.
-        for set_idx, attribute_set, scores in scores_gen:
-            score_mean = np.mean(scores)
-
-            self.attribute_set_models_[set_idx] = (
-                self.attribute_set_models_[set_idx] - score_mean
+        # Mean center graphs - only for binary classification and regression
+        if self.n_classes_ <= 2:
+            scores_gen = EBMUtils.scores_by_attrib_set(
+                X, self.attribute_sets_, self.attribute_set_models_, []
             )
+            self._attrib_set_model_means_ = []
 
-            # Add mean center adjustment back to intercept
-            self.intercept_ = self.intercept_ + score_mean
-            self._attrib_set_model_means_.append(score_mean)
+            # TODO: Clean this up before release.
+            for set_idx, attribute_set, scores in scores_gen:
+                score_mean = np.mean(scores)
+
+                self.attribute_set_models_[set_idx] = (
+                    self.attribute_set_models_[set_idx] - score_mean
+                )
+
+                # Add mean center adjustment back to intercept
+                self.intercept_ = self.intercept_ + score_mean
+                self._attrib_set_model_means_.append(score_mean)
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_attrib_set(

@@ -6,7 +6,6 @@
 #define MULTI_DIMENSIONAL_TRAINING_H
 
 #include <type_traits> // std::is_pod
-#include <assert.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE

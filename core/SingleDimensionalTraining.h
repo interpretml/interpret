@@ -6,7 +6,6 @@
 #define TREE_NODE_H
 
 #include <type_traits> // std::is_pod
-#include <assert.h>
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // TML_INLINE
@@ -52,35 +51,35 @@ class TreeNodeData<false> {
 
 public:
 
-   struct BeforeSplit {
+   struct BeforeExaminationForPossibleSplitting {
       const BinnedBucket<false> * pBinnedBucketEntryFirst;
       const BinnedBucket<false> * pBinnedBucketEntryLast;
       size_t cCases;
    };
 
-   struct AfterSplit {
+   struct AfterExaminationForPossibleSplitting {
       TreeNode<false> * pTreeNodeChildren;
-      FractionalDataType nodeSplittingScore; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      FractionalDataType splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
       ActiveDataType divisionValue;
    };
 
    union TreeNodeDataUnion {
       // we can save precious L1 cache space by keeping only what we need
-      BeforeSplit beforeSplit;
-      AfterSplit afterSplit;
+      BeforeExaminationForPossibleSplitting beforeExaminationForPossibleSplitting;
+      AfterExaminationForPossibleSplitting afterExaminationForPossibleSplitting;
 
-      static_assert(std::is_pod<BeforeSplit>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
-      static_assert(std::is_pod<AfterSplit>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
    };
 
    TreeNodeDataUnion m_UNION;
    PredictionStatistics<false> aPredictionStatistics[1];
 
    TML_INLINE size_t GetCases() const {
-      return m_UNION.beforeSplit.cCases;
+      return m_UNION.beforeExaminationForPossibleSplitting.cCases;
    }
    TML_INLINE void SetCases(size_t cCases) {
-      m_UNION.beforeSplit.cCases = cCases;
+      m_UNION.beforeExaminationForPossibleSplitting.cCases = cCases;
    }
 };
 
@@ -89,24 +88,24 @@ class TreeNodeData<true> {
    // regression version of the TreeNodeData
 public:
 
-   struct BeforeSplit {
+   struct BeforeExaminationForPossibleSplitting {
       const BinnedBucket<true> * pBinnedBucketEntryFirst;
       const BinnedBucket<true> * pBinnedBucketEntryLast;
    };
 
-   struct AfterSplit {
+   struct AfterExaminationForPossibleSplitting {
       TreeNode<true> * pTreeNodeChildren;
-      FractionalDataType nodeSplittingScore; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      FractionalDataType splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
       ActiveDataType divisionValue;
    };
 
    union TreeNodeDataUnion {
       // we can save precious L1 cache space by keeping only what we need
-      BeforeSplit beforeSplit;
-      AfterSplit afterSplit;
+      BeforeExaminationForPossibleSplitting beforeExaminationForPossibleSplitting;
+      AfterExaminationForPossibleSplitting afterExaminationForPossibleSplitting;
 
-      static_assert(std::is_pod<BeforeSplit>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
-      static_assert(std::is_pod<AfterSplit>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
    };
 
    TreeNodeDataUnion m_UNION;
@@ -127,24 +126,30 @@ class TreeNode final : public TreeNodeData<bRegression> {
 public:
 
    TML_INLINE bool IsSplittable(size_t cCasesRequiredForSplitParentMin) const {
-      return this->m_UNION.beforeSplit.pBinnedBucketEntryLast != this->m_UNION.beforeSplit.pBinnedBucketEntryFirst && cCasesRequiredForSplitParentMin <= this->GetCases();
+      return this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast != this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst && cCasesRequiredForSplitParentMin <= this->GetCases();
    }
 
-   TML_INLINE void SetTrunkAfterDone() {
-      constexpr static FractionalDataType nan = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-      this->m_UNION.afterSplit.nodeSplittingScore = nan;
+   TML_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
+      EBM_ASSERT(this->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0);
+      return this->m_UNION.afterExaminationForPossibleSplitting.splitGain;
    }
 
-   TML_INLINE void SetLeafAfterDone() {
-      this->m_UNION.afterSplit.nodeSplittingScore = 0;
+   TML_INLINE void SPLIT_THIS_NODE() {
+      this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    }
 
-   TML_INLINE bool IsTrunkAfterDone() const {
-      return std::isnan(this->m_UNION.afterSplit.nodeSplittingScore);
+   TML_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
+      // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
+      // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.afterExaminationForPossibleSplitting.splitGain and the m_UNION.beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+      this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { 0 };
+   }
+
+   TML_INLINE bool WAS_THIS_NODE_SPLIT() const {
+      return std::isnan(this->m_UNION.afterExaminationForPossibleSplitting.splitGain);
    }
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   void SplitTreeNode(CachedTrainingThreadResources<bRegression> * const pCachedThreadResources, TreeNode<bRegression> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cTargetStates
+   void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(CachedTrainingThreadResources<bRegression> * const pCachedThreadResources, TreeNode<bRegression> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -159,129 +164,138 @@ public:
       EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
 
-      const BinnedBucket<bRegression> * pBinnedBucketEntryCur = this->m_UNION.beforeSplit.pBinnedBucketEntryFirst;
-      const BinnedBucket<bRegression> * const pBinnedBucketEntryLast = this->m_UNION.beforeSplit.pBinnedBucketEntryLast;
+      const BinnedBucket<bRegression> * pBinnedBucketEntryCur = this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst;
+      const BinnedBucket<bRegression> * const pBinnedBucketEntryLast = this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast;
 
       TreeNode<bRegression> * const pLeftChild1 = GetLeftTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-      pLeftChild1->m_UNION.beforeSplit.pBinnedBucketEntryFirst = pBinnedBucketEntryCur;
+      pLeftChild1->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = pBinnedBucketEntryCur;
       TreeNode<bRegression> * const pRightChild1 = GetRightTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-      pRightChild1->m_UNION.beforeSplit.pBinnedBucketEntryLast = pBinnedBucketEntryLast;
+      pRightChild1->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = pBinnedBucketEntryLast;
 
-      size_t cCases1 = pBinnedBucketEntryCur->cCasesInBucket;
-      size_t cCases2 = this->GetCases() - cCases1;
+      size_t cCasesLeft = pBinnedBucketEntryCur->cCasesInBucket;
+      size_t cCasesRight = this->GetCases() - cCasesLeft;
 
-      PredictionStatistics<bRegression> * const aSumPredictionStatistics1 = pCachedThreadResources->m_aSumPredictionStatistics1;
-      FractionalDataType * const aSumResidualErrors2 = pCachedThreadResources->m_aSumResidualErrors2;
+      PredictionStatistics<bRegression> * const aSumPredictionStatisticsLeft = pCachedThreadResources->m_aSumPredictionStatistics1;
+      FractionalDataType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
       PredictionStatistics<bRegression> * const aSumPredictionStatisticsBest = pCachedThreadResources->m_aSumPredictionStatisticsBest;
-      FractionalDataType BEST_nodeSplittingScoreChildren = 0;
+      FractionalDataType BEST_nodeSplittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FractionalDataType sumResidualError1 = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
-         const FractionalDataType sumResidualError2 = this->aPredictionStatistics[iVector].sumResidualError - sumResidualError1;
+         const FractionalDataType sumResidualErrorLeft = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
+         const FractionalDataType sumResidualErrorRight = this->aPredictionStatistics[iVector].sumResidualError - sumResidualErrorLeft;
 
-         BEST_nodeSplittingScoreChildren += EbmStatistics::ComputeNodeSplittingScore(sumResidualError1, cCases1) + EbmStatistics::ComputeNodeSplittingScore(sumResidualError2, cCases2);
+         BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cCasesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cCasesRight);
 
-         aSumPredictionStatistics1[iVector].sumResidualError = sumResidualError1;
-         aSumPredictionStatisticsBest[iVector].sumResidualError = sumResidualError1;
-         aSumResidualErrors2[iVector] = sumResidualError2;
+         aSumPredictionStatisticsLeft[iVector].sumResidualError = sumResidualErrorLeft;
+         aSumPredictionStatisticsBest[iVector].sumResidualError = sumResidualErrorLeft;
+         aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
          if(!bRegression) {
             FractionalDataType sumDenominator1 = pBinnedBucketEntryCur->aPredictionStatistics[iVector].GetSumDenominator();
-            aSumPredictionStatistics1[iVector].SetSumDenominator(sumDenominator1);
+            aSumPredictionStatisticsLeft[iVector].SetSumDenominator(sumDenominator1);
             aSumPredictionStatisticsBest[iVector].SetSumDenominator(sumDenominator1);
          }
       }
 
-      EBM_ASSERT(0 <= BEST_nodeSplittingScoreChildren);
+      EBM_ASSERT(0 <= BEST_nodeSplittingScore);
       const BinnedBucket<bRegression> * BEST_pBinnedBucketEntry = pBinnedBucketEntryCur;
-      size_t BEST_cCases1 = cCases1;
+      size_t BEST_cCasesLeft = cCasesLeft;
       for(pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1); pBinnedBucketEntryLast != pBinnedBucketEntryCur; pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1)) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucketEntryCur, aBinnedBucketsEndDebug);
 
          const size_t CHANGE_cCases = pBinnedBucketEntryCur->cCasesInBucket;
-         cCases1 += CHANGE_cCases;
-         cCases2 -= CHANGE_cCases;
+         cCasesLeft += CHANGE_cCases;
+         cCasesRight -= CHANGE_cCases;
 
-         FractionalDataType nodeSplittingScoreChildren = 0;
+         FractionalDataType nodeSplittingScore = 0;
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             if(!bRegression) {
-               aSumPredictionStatistics1[iVector].SetSumDenominator(aSumPredictionStatistics1[iVector].GetSumDenominator() + pBinnedBucketEntryCur->aPredictionStatistics[iVector].GetSumDenominator());
+               aSumPredictionStatisticsLeft[iVector].SetSumDenominator(aSumPredictionStatisticsLeft[iVector].GetSumDenominator() + pBinnedBucketEntryCur->aPredictionStatistics[iVector].GetSumDenominator());
             }
 
             const FractionalDataType CHANGE_sumResidualError = pBinnedBucketEntryCur->aPredictionStatistics[iVector].sumResidualError;
-            const FractionalDataType sumResidualError1 = aSumPredictionStatistics1[iVector].sumResidualError + CHANGE_sumResidualError;
-            const FractionalDataType sumResidualError2 = aSumResidualErrors2[iVector] - CHANGE_sumResidualError;
+            const FractionalDataType sumResidualErrorLeft = aSumPredictionStatisticsLeft[iVector].sumResidualError + CHANGE_sumResidualError;
+            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
 
-            aSumPredictionStatistics1[iVector].sumResidualError = sumResidualError1;
-            aSumResidualErrors2[iVector] = sumResidualError2;
+            aSumPredictionStatisticsLeft[iVector].sumResidualError = sumResidualErrorLeft;
+            aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
-            const FractionalDataType nodeSplittingScoreChildrenOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualError1, cCases1) + EbmStatistics::ComputeNodeSplittingScore(sumResidualError2, cCases2);
-            EBM_ASSERT(0 <= nodeSplittingScoreChildren);
-            nodeSplittingScoreChildren += nodeSplittingScoreChildrenOneVector;
+            const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cCasesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cCasesRight);
+            EBM_ASSERT(0 <= nodeSplittingScore);
+            nodeSplittingScore += nodeSplittingScoreOneVector;
          }
-         EBM_ASSERT(0 <= nodeSplittingScoreChildren);
+         EBM_ASSERT(0 <= nodeSplittingScore);
 
-         if(UNLIKELY(BEST_nodeSplittingScoreChildren < nodeSplittingScoreChildren)) {
+         if(UNLIKELY(BEST_nodeSplittingScore < nodeSplittingScore)) {
             // TODO : randomly choose a node if BEST_entropyTotalChildren == entropyTotalChildren, but if there are 3 choice make sure that each has a 1/3 probability of being selected (same as interview question to select a random line from a file)
-            BEST_nodeSplittingScoreChildren = nodeSplittingScoreChildren;
+            BEST_nodeSplittingScore = nodeSplittingScore;
             BEST_pBinnedBucketEntry = pBinnedBucketEntryCur;
-            BEST_cCases1 = cCases1;
-            memcpy(aSumPredictionStatisticsBest, aSumPredictionStatistics1, sizeof(*aSumPredictionStatisticsBest) * cVectorLength);
+            BEST_cCasesLeft = cCasesLeft;
+            memcpy(aSumPredictionStatisticsBest, aSumPredictionStatisticsLeft, sizeof(*aSumPredictionStatisticsBest) * cVectorLength);
          }
       }
 
       TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
       TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-      pLeftChild->m_UNION.beforeSplit.pBinnedBucketEntryLast = BEST_pBinnedBucketEntry;
-      pLeftChild->SetCases(BEST_cCases1);
+      pLeftChild->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = BEST_pBinnedBucketEntry;
+      pLeftChild->SetCases(BEST_cCasesLeft);
 
       const BinnedBucket<bRegression> * const BEST_pBinnedBucketEntryNext = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, BEST_pBinnedBucketEntry, 1);
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, BEST_pBinnedBucketEntryNext, aBinnedBucketsEndDebug);
 
-      pRightChild->m_UNION.beforeSplit.pBinnedBucketEntryFirst = BEST_pBinnedBucketEntryNext;
+      pRightChild->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = BEST_pBinnedBucketEntryNext;
       size_t cCasesParent = this->GetCases();
-      pRightChild->SetCases(cCasesParent - BEST_cCases1);
+      pRightChild->SetCases(cCasesParent - BEST_cCasesLeft);
 
+      FractionalDataType originalParentScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pLeftChild->aPredictionStatistics[iVector].sumResidualError = aSumPredictionStatisticsBest[iVector].sumResidualError;
          if(!bRegression) {
             pLeftChild->aPredictionStatistics[iVector].SetSumDenominator(aSumPredictionStatisticsBest[iVector].GetSumDenominator());
          }
 
-         pRightChild->aPredictionStatistics[iVector].sumResidualError = this->aPredictionStatistics[iVector].sumResidualError - aSumPredictionStatisticsBest[iVector].sumResidualError;
+         const FractionalDataType sumResidualErrorParent = this->aPredictionStatistics[iVector].sumResidualError;
+         originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cCasesParent);
+
+         pRightChild->aPredictionStatistics[iVector].sumResidualError = sumResidualErrorParent - aSumPredictionStatisticsBest[iVector].sumResidualError;
          if(!bRegression) {
             pRightChild->aPredictionStatistics[iVector].SetSumDenominator(this->aPredictionStatistics[iVector].GetSumDenominator() - aSumPredictionStatisticsBest[iVector].GetSumDenominator());
          }
       }
 
-      FractionalDataType nodeSplittingScoreParent = 0;
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FractionalDataType sumResidualErrorParent = this->aPredictionStatistics[iVector].sumResidualError;
-         nodeSplittingScoreParent += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cCasesParent);
+
+
+      // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.beforeExaminationForPossibleSplitting BEFORE setting anything in m_UNION.afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetCases() needs to be done above these lines because it uses m_UNION.beforeExaminationForPossibleSplitting for classification!
+
+
+
+      this->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren = pTreeNodeChildrenAvailableStorageSpaceCur;
+      FractionalDataType splitGain = originalParentScore - BEST_nodeSplittingScore;
+      if(UNLIKELY(std::isnan(splitGain))) {
+         // it is possible that nodeSplittingScoreParent could reach infinity and BEST_nodeSplittingScore infinity, and the subtraction of those values leads to NaN
+         // if gain became NaN via overlfow, that would be bad since we use NaN to indicate that a node has not been split
+         splitGain = FractionalDataType { 0 };
       }
+      this->m_UNION.afterExaminationForPossibleSplitting.splitGain = splitGain;
+      this->m_UNION.afterExaminationForPossibleSplitting.divisionValue = (BEST_pBinnedBucketEntry->bucketValue + BEST_pBinnedBucketEntryNext->bucketValue) / 2;
 
-      // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.beforeSplit BEFORE setting anything in m_UNION.afterSplit as we do below this comment!  The call above to this->GetCases() needs to be done above these lines because it uses m_UNION.beforeSplit for classification!
-      this->m_UNION.afterSplit.pTreeNodeChildren = pTreeNodeChildrenAvailableStorageSpaceCur;
-      this->m_UNION.afterSplit.nodeSplittingScore = nodeSplittingScoreParent - BEST_nodeSplittingScoreChildren;
-      this->m_UNION.afterSplit.divisionValue = (BEST_pBinnedBucketEntry->bucketValue + BEST_pBinnedBucketEntryNext->bucketValue) / 2;
+      EBM_ASSERT(this->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
-      EBM_ASSERT(this->m_UNION.afterSplit.nodeSplittingScore <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
-
-      LOG(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(this->m_UNION.afterSplit.divisionValue), this->m_UNION.afterSplit.nodeSplittingScore);
+      LOG(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(this->m_UNION.afterExaminationForPossibleSplitting.divisionValue), this->m_UNION.afterExaminationForPossibleSplitting.splitGain);
    }
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
    // TODO: specialize this function for cases where we have hard coded vector lengths so that we don't have to pass in the cVectorLength parameter
    void Flatten(ActiveDataType ** const ppDivisions, FractionalDataType ** const ppValues, const size_t cVectorLength) const {
       // don't log this since we call it recursively.  Log where the root is called
-      if(UNPREDICTABLE(IsTrunkAfterDone())) {
+      if(UNPREDICTABLE(WAS_THIS_NODE_SPLIT())) {
          EBM_ASSERT(!GetTreeNodeSizeOverflow<bRegression>(cVectorLength)); // we're accessing allocated memory
          const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
-         const TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(this->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
          pLeftChild->Flatten(ppDivisions, ppValues, cVectorLength);
-         **ppDivisions = this->m_UNION.afterSplit.divisionValue;
+         **ppDivisions = this->m_UNION.afterExaminationForPossibleSplitting.divisionValue;
          ++(*ppDivisions);
-         const TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(this->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(this->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
          pRightChild->Flatten(ppDivisions, ppValues, cVectorLength);
       } else {
          FractionalDataType * pValuesCur = *ppValues;
@@ -310,7 +324,7 @@ static_assert(std::is_pod<TreeNode<false>>::value, "We want to keep our TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cBinnedBuckets, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucket, const size_t cCasesTotal, const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet
+bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cBinnedBuckets, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucket, const size_t cCasesTotal, const PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -319,10 +333,12 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
 
+   EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cCasesTotal); // filter these out at the start where we can handle this case easily
    EBM_ASSERT(1 <= cBinnedBuckets); // cBinnedBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
-   EBM_ASSERT(0 != cBinnedBuckets);
    if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cBinnedBuckets || 0 == cTreeSplitsMax)) {
+      // there will be no splits at all
+
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
          LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
          return true;
@@ -344,8 +360,11 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
       }
 
       LOG(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
+      *pTotalGain = 0;
       return false;
    }
+
+   // there will be at least one split
 
    if(GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       LOG(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
@@ -369,21 +388,23 @@ retry_with_bigger_tree_node_children_array:
    }
    TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pRootTreeNode = static_cast<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer2());
 
-   pRootTreeNode->m_UNION.beforeSplit.pBinnedBucketEntryFirst = aBinnedBucket;
-   pRootTreeNode->m_UNION.beforeSplit.pBinnedBucketEntryLast = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBucket, cBinnedBuckets - 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRootTreeNode->m_UNION.beforeSplit.pBinnedBucketEntryLast, aBinnedBucketsEndDebug);
+   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = aBinnedBucket;
+   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBucket, cBinnedBuckets - 1);
+   ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast, aBinnedBucketsEndDebug);
    pRootTreeNode->SetCases(cCasesTotal);
 
    memcpy(&pRootTreeNode->aPredictionStatistics[0], aSumPredictionStatistics, cVectorLength * sizeof(*aSumPredictionStatistics)); // copying existing mem
 
-   pRootTreeNode->template SplitTreeNode<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetStates
+   pRootTreeNode->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetStates
 #ifndef NDEBUG
       , aBinnedBucketsEndDebug
 #endif // NDEBUG
    );
 
    if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cBinnedBuckets))) {
-      assert(2 != cBinnedBuckets || !GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin) && !GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin));
+      // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
+
+      EBM_ASSERT(2 != cBinnedBuckets || !GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin) && !GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin));
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
          LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
@@ -391,13 +412,13 @@ retry_with_bigger_tree_node_children_array:
       }
 
       ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
-      pDivisions[0] = pRootTreeNode->m_UNION.afterSplit.divisionValue;
+      pDivisions[0] = pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.divisionValue;
 
       // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
       // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
-      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
-      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
+      const TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
 
       FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       if(IsRegression(countCompilerClassificationTargetStates)) {
@@ -412,8 +433,12 @@ retry_with_bigger_tree_node_children_array:
       }
 
       LOG(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
+      *pTotalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
       return false;
    }
+
+   // it's very very likely that there will be more than 1 split below this point.  The only case where we wouldn't split below is if both our children nodes dont't have enough cases
+   // to split, but that should be very rare
 
    // TODO: there are three types of queues that we should try out -> dyamically picking a stragety is a single predictable if statement, so shouldn't cause a lot of overhead
    //       1) When the data is the smallest(1-5 items), just iterate over all items in our TreeNode buffer looking for the best Node.  Zero the value on any nodes that have been removed from the queue.  For 1 or 2 instructions in the loop WITHOUT a branch we can probably save the pointer to the first TreeNode with data so that we can start from there next time we loop
@@ -421,7 +446,7 @@ retry_with_bigger_tree_node_children_array:
    //       3) The full fleged priority queue below
    size_t cSplits;
    try {
-      std::priority_queue<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *, std::vector<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>, CompareTreeNodeSplittingScore<IsRegression(countCompilerClassificationTargetStates)>> * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit;
+      std::priority_queue<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *, std::vector<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>, CompareTreeNodeSplittingGain<IsRegression(countCompilerClassificationTargetStates)>> * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit;
 
       // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, and we want to ensure that the chunk of memory stays in L1 cache, so we pop all the previous garbage off instead of allocating a new one!
       while(!pBestTreeNodeToSplit->empty()) {
@@ -434,6 +459,8 @@ retry_with_bigger_tree_node_children_array:
       // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
       TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceCur = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesInitialNeededAllocation);
 
+      FractionalDataType totalGain = 0;
+
       goto skip_first_push_pop;
 
       do {
@@ -443,9 +470,11 @@ retry_with_bigger_tree_node_children_array:
 
       skip_first_push_pop:
 
-         pParentTreeNode->SetTrunkAfterDone();
+         // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
+         totalGain += pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         pParentTreeNode->SPLIT_THIS_NODE();
 
-         TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pParentTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pLeftChild = GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pParentTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
          if(pLeftChild->IsSplittable(cCasesRequiredForSplitParentMin)) {
             TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
@@ -455,8 +484,8 @@ retry_with_bigger_tree_node_children_array:
                }
                goto retry_with_bigger_tree_node_children_array;
             }
-            // the act of splitting it implicitly sets SetLeafAfterDone because splitting sets nodeSplittingScore to a non-NaN value
-            pLeftChild->template SplitTreeNode<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
+            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
+            pLeftChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
 #ifndef NDEBUG
                , aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -464,12 +493,12 @@ retry_with_bigger_tree_node_children_array:
             pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
             pBestTreeNodeToSplit->push(pLeftChild);
          } else {
-            // we aren't going to split this TreeNode because we can't.  We need to set the nodeSplittingScore value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
-            // we can't call SetLeafAfterDone before calling SplitTreeNode because SetLeafAfterDone sets m_UNION.afterSplit.nodeSplittingScore and the m_UNION.beforeSplit values are needed if we had decided to call SplitTreeNode
-            pLeftChild->SetLeafAfterDone();
+            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
+            // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.afterExaminationForPossibleSplitting.splitGain and the m_UNION.beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+            pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
 
-         TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pParentTreeNode->m_UNION.afterSplit.pTreeNodeChildren, cBytesPerTreeNode);
+         TreeNode<IsRegression(countCompilerClassificationTargetStates)> * const pRightChild = GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pParentTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
          if(pRightChild->IsSplittable(cCasesRequiredForSplitParentMin)) {
             TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
@@ -479,8 +508,8 @@ retry_with_bigger_tree_node_children_array:
                }
                goto retry_with_bigger_tree_node_children_array;
             }
-            // the act of splitting it implicitly sets SetLeafAfterDone because splitting sets nodeSplittingScore to a non-NaN value
-            pRightChild->template SplitTreeNode<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
+            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
+            pRightChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
 #ifndef NDEBUG
                , aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -488,14 +517,16 @@ retry_with_bigger_tree_node_children_array:
             pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
             pBestTreeNodeToSplit->push(pRightChild);
          } else {
-            // we aren't going to split this TreeNode because we can't.  We need to set the nodeSplittingScore value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
-            // we can't call SetLeafAfterDone before calling SplitTreeNode because SetLeafAfterDone sets m_UNION.afterSplit.nodeSplittingScore and the m_UNION.beforeSplit values are needed if we had decided to call SplitTreeNode
-            pRightChild->SetLeafAfterDone();
+            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
+            // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.afterExaminationForPossibleSplitting.splitGain and the m_UNION.beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+            pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
          ++cSplits;
       } while(cSplits < cTreeSplitsMax && UNLIKELY(!pBestTreeNodeToSplit->empty()));
       // we DON'T need to call SetLeafAfterDone() on any items that remain in the pBestTreeNodeToSplit queue because everything in that queue has set a non-NaN nodeSplittingScore value
 
+      // we might as well dump this value out to our pointer, even if later fail the function below.  If the function is failed, we make no guarantees about what we did with the value pointed to at *pTotalGain
+      *pTotalGain = totalGain;
       EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
       LOG(TraceLevelWarning, "WARNING GrowDecisionTree exception");
@@ -571,7 +602,7 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the attribute first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const AttributeCombinationCore * const pAttributeCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
    EBM_ASSERT(1 == pAttributeCombination->m_cAttributes);
@@ -623,7 +654,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    EBM_ASSERT(1 <= cCasesTotal);
    EBM_ASSERT(1 <= cBinnedBuckets);
 
-   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cBinnedBuckets, aBinnedBuckets, cCasesTotal, aSumPredictionStatistics, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet
+   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cBinnedBuckets, aBinnedBuckets, cCasesTotal, aSumPredictionStatistics, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
 #ifndef NDEBUG
       , aBinnedBucketsEndDebug
 #endif // NDEBUG
