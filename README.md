@@ -4,6 +4,7 @@
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/151/master.svg?style=flat-square)
+![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/151/develop.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2019.svg?style=flat-square)
 
 <br/>
