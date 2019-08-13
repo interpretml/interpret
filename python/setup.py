@@ -38,6 +38,9 @@ version = re.search(
 ).group(1)
 
 EXTRAS = {
+    "extra": [
+        "skope-rules>=1.0.0",
+    ],
     "testing": [
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
