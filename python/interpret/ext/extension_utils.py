@@ -60,7 +60,7 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
 
             setattr(current_module, extension_class_name, extension_class)
 
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             module_logger.warning(
                 "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
                     blackbox_key, entrypoint, e
