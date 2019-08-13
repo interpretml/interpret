@@ -109,9 +109,59 @@ def small_explanations():
     ]
 
 
-# TODO: Code duplication, refactor.
-@pytest.mark.xfail
 @pytest.mark.selenium
+def test_all_explainers_selenium(all_explanations, driver):
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.common.by import By
+
+    from ..glassbox.decisiontree import TreeExplanation
+
+    target_addr = ("127.0.0.1", 7101)
+    set_show_addr(target_addr)
+
+    def goto_mini_url(explanation):
+        mini_url = show_link(explanation)
+        driver.get(mini_url)
+        driver.find_element_by_class_name("card")
+
+    def check_mini_overall_graph():
+        # Expect overall graph
+        wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
+
+    def check_mini_specific_graph(index=0):
+        # Click on specific graph
+        dropdown_el = driver.find_element_by_class_name("Select-control")
+        dropdown_el.click()
+        specific_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'{} : ')]".format(index+1))
+        specific_el.click()
+
+        # Expect specific graph
+        wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
+
+    # Run mini app checks
+    wait = WebDriverWait(driver, TIMEOUT)
+    for explanation in all_explanations:
+        # NOTE: Known bug with decision tree visualization.
+        if isinstance(explanation, TreeExplanation):
+            continue
+        goto_mini_url(explanation)
+        check_mini_overall_graph()
+        if explanation.selector is not None:
+            check_mini_specific_graph(0)
+            check_mini_specific_graph(1)
+
+    # # Run full app checks
+    # for explanation in all_explanations:
+    #     if isinstance(explanation, TreeExplanation):
+    #         continue
+
+    shutdown_show_server()
+
+
+# TODO: Code duplication, refactor.
+@pytest.mark.selenium
+@pytest.mark.skip
 def test_show_small_set_selenium(small_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
