@@ -27,6 +27,10 @@ class FeatureValueExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        # NOTE: When a non-default provider is used, it's represented as ("provider", key).
+        if isinstance(key, tuple) and len(key) == 2:
+            _, key = key
+
         # NOTE: Currently returns full internal object, open to change.
         if key == -1:
             return self._internal_obj
