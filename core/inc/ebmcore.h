@@ -195,27 +195,27 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    const FractionalDataType * validationPriorPredictorScores, 
    IntegerDataType countInnerBags
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelUpdate(
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination, 
    FractionalDataType learningRate, 
    IntegerDataType countTreeSplitsMax, 
-   IntegerDataType countInstancesRequiredForSplitParentMin, 
+   IntegerDataType countInstancesRequiredForParentSplitMin, 
    const FractionalDataType * trainingWeights, 
    const FractionalDataType * validationWeights, 
    FractionalDataType * gainReturn
 );
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelUpdate(
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination, 
-   const FractionalDataType * modelUpdateTensor, 
+   const FractionalDataType * modelUpdateFeatureCombinationTensor, 
    FractionalDataType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModel(
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModel(
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
 );
