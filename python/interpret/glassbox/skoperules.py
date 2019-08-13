@@ -6,7 +6,6 @@ from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
 from ..utils import unify_data
 
-from skrules import SkopeRules as SR
 from copy import deepcopy
 import numpy as np
 import pandas as pd
@@ -104,6 +103,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         Returns:
             Itself.
         """
+        from skrules import SkopeRules as SR
+
         X, y, self.feature_names, self.feature_types = unify_data(
             X, y, self.feature_names, self.feature_types
         )
