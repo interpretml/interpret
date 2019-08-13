@@ -66,27 +66,31 @@ class FeatureValueExplanation(ExplanationMixin):
 
         # Handle local instance graphs
         if self.explanation_type == "local":
-            if "mli" in self.data(-1):
-                explanation_list = self.data(-1)["mli"]
-                explanation_index = get_explanation_index(
-                    explanation_list, "local_feature_importance"
-                )
-                local_explanation = explanation_list[explanation_index]["value"]
-                scores = local_explanation["scores"]
-                perf = local_explanation["perf"]
-                sort_indexes = get_sort_indexes(
-                    scores[key], sort_fn=lambda x: -abs(x), top_n=15
-                )
-                sorted_scores = mli_sort_take(
-                    scores[key], sort_indexes, reverse_results=True
-                )
-                sorted_names = mli_sort_take(
-                    self.feature_names, sort_indexes, reverse_results=True
-                )
-                instances = explanation_list[1]["value"]["dataset_x"]
-                return mli_plot_horizontal_bar(
-                    sorted_scores, sorted_names, values=instances[key], perf=perf[key]
-                )
+            if isinstance(key, tuple) and len(key) == 2:
+                provider, key = key
+                if "mli" == provider and "mli" in self.data(-1):
+                    explanation_list = self.data(-1)["mli"]
+                    explanation_index = get_explanation_index(
+                        explanation_list, "local_feature_importance"
+                    )
+                    local_explanation = explanation_list[explanation_index]["value"]
+                    scores = local_explanation["scores"]
+                    perf = local_explanation["perf"]
+                    sort_indexes = get_sort_indexes(
+                        scores[key], sort_fn=lambda x: -abs(x), top_n=15
+                    )
+                    sorted_scores = mli_sort_take(
+                        scores[key], sort_indexes, reverse_results=True
+                    )
+                    sorted_names = mli_sort_take(
+                        self.feature_names, sort_indexes, reverse_results=True
+                    )
+                    instances = explanation_list[1]["value"]["dataset_x"]
+                    return mli_plot_horizontal_bar(
+                        sorted_scores, sorted_names, values=instances[key], perf=perf[key]
+                    )
+                else:  # pragma: no cover
+                    raise RuntimeError("Visual provider {} not supported".format(provider))
             else:
                 data_dict = sort_take(
                     data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
