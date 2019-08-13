@@ -282,19 +282,29 @@ class LinearExplanation(FeatureValueExplanation):
 
         if isinstance(key, tuple) and len(key) == 2:
             provider, key = key
-            if "mli" == provider and "mli" in self.data(-1) and self.explanation_type == "global":
+            if (
+                "mli" == provider
+                and "mli" in self.data(-1)
+                and self.explanation_type == "global"
+            ):
                 explanation_list = self.data(-1)["mli"]
                 explanation_index = get_explanation_index(
                     explanation_list, "global_feature_importance"
                 )
                 scores = explanation_list[explanation_index]["value"]["scores"]
-                sort_indexes = get_sort_indexes(scores, sort_fn=lambda x: -abs(x), top_n=15)
-                sorted_scores = mli_sort_take(scores, sort_indexes, reverse_results=True)
+                sort_indexes = get_sort_indexes(
+                    scores, sort_fn=lambda x: -abs(x), top_n=15
+                )
+                sorted_scores = mli_sort_take(
+                    scores, sort_indexes, reverse_results=True
+                )
                 sorted_names = mli_sort_take(
                     self.feature_names, sort_indexes, reverse_results=True
                 )
                 return mli_plot_horizontal_bar(
-                    sorted_scores, sorted_names, title="Overall Importance:<br>Coefficients"
+                    sorted_scores,
+                    sorted_names,
+                    title="Overall Importance:<br>Coefficients",
                 )
             else:  # pragma: no cover
                 raise RuntimeError("Visual provider {} not supported".format(provider))

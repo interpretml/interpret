@@ -87,10 +87,15 @@ class FeatureValueExplanation(ExplanationMixin):
                     )
                     instances = explanation_list[1]["value"]["dataset_x"]
                     return mli_plot_horizontal_bar(
-                        sorted_scores, sorted_names, values=instances[key], perf=perf[key]
+                        sorted_scores,
+                        sorted_names,
+                        values=instances[key],
+                        perf=perf[key],
                     )
                 else:  # pragma: no cover
-                    raise RuntimeError("Visual provider {} not supported".format(provider))
+                    raise RuntimeError(
+                        "Visual provider {} not supported".format(provider)
+                    )
             else:
                 data_dict = sort_take(
                     data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True

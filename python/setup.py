@@ -38,9 +38,7 @@ version = re.search(
 ).group(1)
 
 EXTRAS = {
-    "extra": [
-        "skope-rules>=1.0.0",
-    ],
+    "extra": ["skope-rules>=1.0.0"],
     "testing": [
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
@@ -50,7 +48,7 @@ EXTRAS = {
         "flake8>=3.7.7",
         "jupyter>=1.0.0",
         "ipywidgets>=7.4.2",
-    ]
+    ],
 }
 
 # Get install_requires data from requirements.txt

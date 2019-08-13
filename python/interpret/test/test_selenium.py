@@ -133,7 +133,9 @@ def test_all_explainers_selenium(all_explanations, driver):
         # Click on specific graph
         dropdown_el = driver.find_element_by_class_name("Select-control")
         dropdown_el.click()
-        specific_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'{} : ')]".format(index+1))
+        specific_el = dropdown_el.find_element_by_xpath(
+            "//div[contains(text(),'{} : ')]".format(index + 1)
+        )
         specific_el.click()
 
         # Expect specific graph
