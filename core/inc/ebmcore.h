@@ -160,18 +160,96 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
 //       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.  I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmFeature * features, IntegerDataType countFeatureCombinations, const EbmFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTrainingInstances, const FractionalDataType * trainingTargets, const IntegerDataType * trainingBinnedData, const FractionalDataType * trainingPriorPredictorScores, IntegerDataType countValidationInstances, const FractionalDataType * validationTargets, const IntegerDataType * validationBinnedData, const FractionalDataType * validationPriorPredictorScores, IntegerDataType countInnerBags);
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmFeature * features, IntegerDataType countFeatureCombinations, const EbmFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetClasses, IntegerDataType countTrainingInstances, const IntegerDataType * trainingTargets, const IntegerDataType * trainingBinnedData, const FractionalDataType * trainingPriorPredictorScores, IntegerDataType countValidationInstances, const IntegerDataType * validationTargets, const IntegerDataType * validationBinnedData, const FractionalDataType * validationPriorPredictorScores, IntegerDataType countInnerBags);
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countInstancesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * gainReturn);
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, const FractionalDataType * modelUpdateTensor, FractionalDataType * validationMetricReturn);
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModel(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination);
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModel(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination);
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining ebmTraining);
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+   IntegerDataType randomSeed, 
+   IntegerDataType countFeatures, 
+   const EbmFeature * features, 
+   IntegerDataType countFeatureCombinations, 
+   const EbmFeatureCombination * featureCombinations, 
+   const IntegerDataType * featureCombinationIndexes, 
+   IntegerDataType countTrainingInstances, 
+   const FractionalDataType * trainingTargets, 
+   const IntegerDataType * trainingBinnedData, 
+   const FractionalDataType * trainingPriorPredictorScores, 
+   IntegerDataType countValidationInstances, 
+   const FractionalDataType * validationTargets, 
+   const IntegerDataType * validationBinnedData, 
+   const FractionalDataType * validationPriorPredictorScores, 
+   IntegerDataType countInnerBags
+);
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
+   IntegerDataType randomSeed, 
+   IntegerDataType countFeatures, 
+   const EbmFeature * features, 
+   IntegerDataType countFeatureCombinations, 
+   const EbmFeatureCombination * featureCombinations, 
+   const IntegerDataType * featureCombinationIndexes, 
+   IntegerDataType countTargetClasses, 
+   IntegerDataType countTrainingInstances, 
+   const IntegerDataType * trainingTargets, 
+   const IntegerDataType * trainingBinnedData, 
+   const FractionalDataType * trainingPriorPredictorScores, 
+   IntegerDataType countValidationInstances, 
+   const IntegerDataType * validationTargets, 
+   const IntegerDataType * validationBinnedData, 
+   const FractionalDataType * validationPriorPredictorScores, 
+   IntegerDataType countInnerBags
+);
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelUpdate(
+   PEbmTraining ebmTraining, 
+   IntegerDataType indexFeatureCombination, 
+   FractionalDataType learningRate, 
+   IntegerDataType countTreeSplitsMax, 
+   IntegerDataType countInstancesRequiredForSplitParentMin, 
+   const FractionalDataType * trainingWeights, 
+   const FractionalDataType * validationWeights, 
+   FractionalDataType * gainReturn
+);
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelUpdate(
+   PEbmTraining ebmTraining, 
+   IntegerDataType indexFeatureCombination, 
+   const FractionalDataType * modelUpdateTensor, 
+   FractionalDataType * validationMetricReturn
+);
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModel(
+   PEbmTraining ebmTraining, 
+   IntegerDataType indexFeatureCombination
+);
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModel(
+   PEbmTraining ebmTraining, 
+   IntegerDataType indexFeatureCombination
+);
+EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(
+   PEbmTraining ebmTraining
+);
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countFeatures, const EbmFeature * features, IntegerDataType countInstances, const FractionalDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * priorPredictorScores);
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countFeatures, const EbmFeature * features, IntegerDataType countTargetClasses, IntegerDataType countInstances, const IntegerDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * priorPredictorScores);
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countFeaturesInCombination, const IntegerDataType * featureIndexes, FractionalDataType * interactionScoreReturn);
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(PEbmInteraction ebmInteraction);
+
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
+   IntegerDataType countFeatures, 
+   const EbmFeature * features, 
+   IntegerDataType countInstances, 
+   const FractionalDataType * targets, 
+   const IntegerDataType * binnedData, 
+   const FractionalDataType * priorPredictorScores
+);
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
+   IntegerDataType countFeatures, 
+   const EbmFeature * features, 
+   IntegerDataType countTargetClasses, 
+   IntegerDataType countInstances, 
+   const IntegerDataType * targets, 
+   const IntegerDataType * binnedData, 
+   const FractionalDataType * priorPredictorScores
+);
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+   PEbmInteraction ebmInteraction, 
+   IntegerDataType countFeaturesInCombination, 
+   const IntegerDataType * featureIndexes, 
+   FractionalDataType * interactionScoreReturn
+);
+EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(
+   PEbmInteraction ebmInteraction
+);
 
 #ifdef __cplusplus
 }
