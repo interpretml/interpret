@@ -24,6 +24,7 @@ class UDash(dash.Dash):
     def __init__(self, *args, **kwargs):
         self.ctx = kwargs.pop('ctx', None)
         self.ctx_item = kwargs.pop('ctx_item', None)
+        self.options = kwargs.pop('options', None)
         super().__init__(*args, **kwargs)
 
 
@@ -429,7 +430,7 @@ The explanations available are split into tabs, each covering an aspect of the p
     def gen_tab(explanation_type):
         log.debug("Generating tab: {0}".format(explanation_type))
         ctx = app.ctx
-        options = app.config["options"]
+        options = app.options
         data_options = [
             {"label": ctx[i][0].name, "value": i}
             for i in range(len(ctx))
@@ -899,5 +900,5 @@ def generate_app(
     log.debug("POST shared_tables: {0}".format(shared_frames))
 
     app.ctx = new_ctx
-    app.config["options"] = new_options
+    app.options = new_options
     return app
