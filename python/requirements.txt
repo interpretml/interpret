@@ -6,12 +6,12 @@ skope-rules>=1.0.0
 # Service related
 # NOTE: Dash is pinned so to avoid dependency hell.
 plotly>=3.8.1
-dash==1.1.1
-dash-core-components==1.1.1
-dash-cytoscape==0.1.1
-dash-html-components=1.0.0
-dash-renderer==1.0.0
-dash-table-experiments==0.6.0
+dash>=1.0.0,<2.0
+dash-core-components>=1.0.0,<2.0
+dash-cytoscape>=0.1.1,<0.2
+dash-html-components>=1.0.0,<2.0
+dash-renderer>=1.0.0,<2.0
+dash-table-experiments>=0.6.0,<0.7
 gevent>=1.4.0
 # Core
 joblib>=0.12.5
