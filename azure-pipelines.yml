@@ -172,11 +172,10 @@ jobs:
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
-# NOTE: This is removed until it is confirmed this is not needed once skope-rules is removed as a core dep.
-#  - script: |
-#      python -m pip install numpy scipy pyscaffold
-#    workingDirectory: python
-#    displayName: 'Install numpy/scipy/pyscaffold first for mis-specified pip packages.'
+  - script: |
+      python -m pip install numpy scipy
+    workingDirectory: python
+    displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
       mkdir -p ~/.matplotlib
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
