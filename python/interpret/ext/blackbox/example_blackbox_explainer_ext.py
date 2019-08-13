@@ -22,12 +22,7 @@ class ExampleExplainer(ExplainerMixin):
     explainer_type = "blackbox"
 
     def __init__(
-            self,
-            predict_fn,
-            data,
-            sampler=None,
-            feature_names=None,
-            feature_types=None,
+        self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
     ):
         self.predict_fn = predict_fn
         self.data = data

@@ -22,17 +22,21 @@ def _is_valid_blackbox_explainer(proposed_blackbox_explainer):
             return False
 
         for available_explanation in available_explanations:
-            has_explain_method = hasattr(proposed_blackbox_explainer, "explain_" + available_explanation)
+            has_explain_method = hasattr(
+                proposed_blackbox_explainer, "explain_" + available_explanation
+            )
             if not has_explain_method:
                 module_logger.warning(
-                    "Proposed explainer has available explanation {} but has no respective method.".format(available_explanation)
+                    "Proposed explainer has available explanation {} but has no respective method.".format(
+                        available_explanation
+                    )
                 )
                 return False
 
         return True
 
     except Exception as e:
-        module_logger.warning("Validate function threw exception", e)
+        module_logger.warning("Validate function threw exception {}".format(e))
         return False
 
 
