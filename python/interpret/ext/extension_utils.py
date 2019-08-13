@@ -11,11 +11,10 @@ blackbox_key = "interpret_ext_blackbox"
 
 
 def _validate_class_name(proposed_class_name):
-    """
-    Used to validate class names before registration.
+    """ Used to validate class names before registration.
 
-    :param proposed_class_name: The string to name the class
-    :type proposed_class_name: str
+    Attributes:
+        proposed_class_name: The string to name the class.
     """
     # regex for class name came from
     # https://stackoverflow.com/questions/10120295
@@ -30,15 +29,12 @@ def _validate_class_name(proposed_class_name):
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
-    """
-    Load all registered extensions under the `extension_key` namespace in entry_points.
+    """ Load all registered extensions under the `extension_key` namespace in entry_points.
 
-    :param current_module: The module where extension classes should be added.
-    :type current_module: module
-    :param extension_key: The identifier for the entry_points to register within the current_module.
-    :type extension_key: str
-    :param extension_class_validator: A function that checks the class for correctness before it is registered.
-    :type extension_class_validator: function(class) -> bool
+    Attributes:
+        current_module: The module itself where extension classes should be added.
+        extension_key: The identifier as string for the entry_points to register within the current_module.
+        extension_class_validator: A function(class) -> bool, that checks the class for correctness before it is registered.
     """
     for entrypoint in pkg_resources.iter_entry_points(extension_key):
         try:
