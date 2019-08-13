@@ -11,7 +11,7 @@ dash-cytoscape==0.1.1
 dash-html-components==0.14.0
 dash-renderer==0.20.0
 dash-table-experiments==0.6.0
-gevent>=1.4.0
+gevent>=1.3.6
 # Core
 joblib>=0.12.5
 pandas>=0.24.0
