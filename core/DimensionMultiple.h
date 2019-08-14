@@ -21,7 +21,7 @@
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiStart, const size_t * const aiLast, const size_t cTargetStates, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
+void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiStart, const size_t * const aiLast, const size_t cTargetClasses, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -42,15 +42,15 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
       ++iDimensionInitialize;
    } while(iDimensionInitialize < cDimensions);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we've allocated this, so it should fit
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   pRet->template Zero<countCompilerClassificationTargetStates>(cTargetStates);
+   pRet->template Zero<countCompilerClassificationTargetStates>(cTargetClasses);
 
    while(true) {
       const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucket = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, aHistogramBuckets, iBin);
 
-      pRet->template Add<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetStates);
+      pRet->template Add<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetClasses);
 
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
@@ -76,8 +76,8 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison) {
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetClasses, const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison) {
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
@@ -99,7 +99,7 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
    HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison2 = static_cast<HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> *>(malloc(cBytesPerHistogramBucket));
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
-      GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetStates, pComparison2);
+      GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pComparison2);
       EBM_ASSERT(pComparison->cInstancesInBucket == pComparison2->cInstancesInBucket);
       free(pComparison2);
    }
@@ -115,12 +115,12 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //};
 //
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-//void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination) {
+//void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetClasses, const FeatureCombination * const pFeatureCombination) {
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
-//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
+//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
@@ -193,9 +193,9 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //            permuteVectorDestroy >>= 1;
 //         } while(0 != permuteVectorDestroy);
 //         if(bPositive) {
-//            pHistogramBucket->Add(*pTargetHistogramBucket, cTargetStates);
+//            pHistogramBucket->Add(*pTargetHistogramBucket, cTargetClasses);
 //         } else {
-//            pHistogramBucket->Subtract(*pTargetHistogramBucket, cTargetStates);
+//            pHistogramBucket->Subtract(*pTargetHistogramBucket, cTargetClasses);
 //         }
 //      skip_combination:
 //         ++permuteVector;
@@ -210,7 +210,7 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //            aiStart[iDebugDimension] = 0;
 //            aiLast[iDebugDimension] = currentIndexAndCountStates[iDebugDimension].iCur;
 //         }
-//         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
+//         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetClasses, pDebugBucket);
 //         EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
 //
 //         free(aHistogramBucketsDebugCopy);
@@ -244,12 +244,12 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //};
 //
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-//void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination) {
+//void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetClasses, const FeatureCombination * const pFeatureCombination) {
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
-//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates));
+//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
@@ -324,9 +324,9 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //            permuteVectorDestroy >>= 1;
 //         } while(0 != permuteVectorDestroy);
 //         if(bPositive) {
-//            pHistogramBucket->Add(*pTargetHistogramBucket, cTargetStates);
+//            pHistogramBucket->Add(*pTargetHistogramBucket, cTargetClasses);
 //         } else {
-//            pHistogramBucket->Subtract(*pTargetHistogramBucket, cTargetStates);
+//            pHistogramBucket->Subtract(*pTargetHistogramBucket, cTargetClasses);
 //         }
 //      skip_combination:
 //         ++permuteVector;
@@ -343,7 +343,7 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //            aiLast[iDebugDimension] = static_cast<size_t>(currentIndexAndCountStates[iDebugDimension].multipliedIndexCur / multipleTotalDebug);
 //            multipleTotalDebug = currentIndexAndCountStates[iDebugDimension].multipleTotal;
 //         }
-//         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
+//         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetClasses, pDebugBucket);
 //         EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
 //         free(aHistogramBucketsDebugCopy);
 //      }
@@ -384,7 +384,7 @@ struct FastTotalState {
 };
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone
+void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetClasses, const FeatureCombinationCore * const pFeatureCombination, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone
 #ifndef NDEBUG
    , const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -394,7 +394,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
@@ -421,7 +421,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
 #ifndef NDEBUG
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, -1), aHistogramBucketsEndDebug);
          for(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pDimensionalCur = pFastTotalStateInitialize->pDimensionalCur; pBucketAuxiliaryBuildZone != pDimensionalCur; pDimensionalCur = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pDimensionalCur, 1)) {
-            pDimensionalCur->template AssertZero<countCompilerClassificationTargetStates>(cTargetStates);
+            pDimensionalCur->template AssertZero<countCompilerClassificationTargetStates>(cTargetClasses);
          }
 #endif // NDEBUG
 
@@ -447,7 +447,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
       HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pAddPrev = pHistogramBucket;
       for(ptrdiff_t iDimension = cDimensions - 1; 0 <= iDimension ; --iDimension) {
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pAddTo = fastTotalState[iDimension].pDimensionalCur;
-         pAddTo->template Add<countCompilerClassificationTargetStates>(*pAddPrev, cTargetStates);
+         pAddTo->template Add<countCompilerClassificationTargetStates>(*pAddPrev, cTargetClasses);
          pAddPrev = pAddTo;
          pAddTo = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAddTo, 1);
          if(pAddTo == fastTotalState[iDimension].pDimensionalWrap) {
@@ -455,7 +455,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
          }
          fastTotalState[iDimension].pDimensionalCur = pAddTo;
       }
-      pHistogramBucket->template Copy<countCompilerClassificationTargetStates>(*pAddPrev, cTargetStates);
+      pHistogramBucket->template Copy<countCompilerClassificationTargetStates>(*pAddPrev, cTargetClasses);
 
 #ifndef NDEBUG
       if(nullptr != aHistogramBucketsDebugCopy && nullptr != pDebugBucket) {
@@ -465,7 +465,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
             aiStart[iDebugDimension] = 0;
             aiLast[iDebugDimension] = fastTotalState[iDebugDimension].iCur;
          }
-         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
+         GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetClasses, pDebugBucket);
          EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
       }
 #endif // NDEBUG
@@ -523,7 +523,7 @@ struct CurrentIndexAndCountStates {
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination
+void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const size_t cTargetClasses, const FeatureCombinationCore * const pFeatureCombination
 #ifndef NDEBUG
    , const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -535,7 +535,7 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
@@ -633,9 +633,9 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
          } while(LIKELY(0 != permuteVectorDestroy));
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), aHistogramBucketsEndDebug);
          if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-            pHistogramBucket->Add(*GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), cTargetStates);
+            pHistogramBucket->Add(*GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), cTargetClasses);
          } else {
-            pHistogramBucket->Subtract(*GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), cTargetStates);
+            pHistogramBucket->Subtract(*GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), cTargetClasses);
          }
       skip_combination:
          ++permuteVector;
@@ -650,7 +650,7 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
          aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountStates[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
          multipleTotalDebug = currentIndexAndCountStates[iDebugDimension].multipleTotal;
       }
-      GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetStates, pDebugBucket);
+      GetTotalsDebugSlow<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, cTargetClasses, pDebugBucket);
       EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
 #endif // NDEBUG
 
@@ -664,7 +664,7 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
          goto skip_intro;
       }
 
-      pPrevious->Zero(cTargetStates);
+      pPrevious->Zero(cTargetClasses);
       multipliedIndexCur0 = 0;
       pCurrentIndexAndCountStates = &currentIndexAndCountStates[1];
       ptrdiff_t multipleTotal = multipleTotal0;
@@ -697,7 +697,7 @@ struct TotalsDimension {
 };
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet
+void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetClasses, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet
 #ifndef NDEBUG
    , const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -709,7 +709,7 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
    EBM_ASSERT(1 <= cDimensions);
    EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
@@ -738,7 +738,7 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
       const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucket = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-      pRet->template Copy<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetStates);
+      pRet->template Copy<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetClasses);
       return;
    }
 
@@ -783,7 +783,7 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeTCore);
 
-   pRet->template Zero<countCompilerClassificationTargetStates>(cTargetStates);
+   pRet->template Zero<countCompilerClassificationTargetStates>(cTargetClasses);
 
    size_t permuteVector = 0;
    do {
@@ -802,24 +802,24 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->template Subtract<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetStates);
+         pRet->template Subtract<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetClasses);
       } else {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->template Add<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetStates);
+         pRet->template Add<countCompilerClassificationTargetStates>(*pHistogramBucket, cTargetClasses);
       }
       ++permuteVector;
    } while(LIKELY(0 == (permuteVector >> cAllBits)));
 
 #ifndef NDEBUG
    if(nullptr != aHistogramBucketsDebugCopy) {
-      CompareTotalsDebug<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiPoint, directionVector, cTargetStates, pRet);
+      CompareTotalsDebug<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiPoint, directionVector, cTargetClasses, pRet);
    }
 #endif // NDEBUG
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cTargetStates, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
+FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cTargetClasses, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
 #ifndef NDEBUG
    , const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -832,7 +832,7 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(cou
    EBM_ASSERT(iDimensionSweep < pFeatureCombination->m_cFeatures);
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
    EBM_ASSERT(!IsMultiplyError(2, cBytesPerHistogramBucket)); // we're accessing allocated memory
@@ -858,13 +858,13 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(cou
    do {
       *piPoint = iState;
 
-      GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorLow, cTargetStates, pTotalsLow
+      GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorLow, cTargetClasses, pTotalsLow
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
       );
 
-      GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorHigh, cTargetStates, pTotalsHigh
+      GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorHigh, cTargetClasses, pTotalsHigh
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -900,7 +900,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entered TrainMultiDimensional");
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
@@ -927,7 +927,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    }
    const size_t cTotalBuckets =  cTotalBucketsMainSpace + cAuxillaryBuckets;
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       LOG(TraceLevelWarning, "WARNING TrainMultiDimensional GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
       return true;
@@ -952,7 +952,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, 2>::Recursive(cDimensions, aHistogramBuckets, pFeatureCombination, pTrainingSet, cTargetStates
+   RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, 2>::Recursive(cDimensions, aHistogramBuckets, pFeatureCombination, pTrainingSet, cTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -975,7 +975,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
    }
 #endif // NDEBUG
 
-   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, cTargetStates, pFeatureCombination, pAuxiliaryBucketZone
+   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, cTargetClasses, pFeatureCombination, pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1113,7 +1113,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          size_t cutSecond1LowBest;
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowLowBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2LowHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cTargetStates, pTotals2LowLowBest, &cutSecond1LowBest
+         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1123,7 +1123,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          size_t cutSecond1HighBest;
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cTargetStates, pTotals2HighLowBest, &cutSecond1HighBest
+         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1136,10 +1136,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             cutFirst1LowBest = cutSecond1LowBest;
             cutFirst1HighBest = cutSecond1HighBest;
 
-            pTotals1LowLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2LowLowBest, cTargetStates);
-            pTotals1LowHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2LowHighBest, cTargetStates);
-            pTotals1HighLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighLowBest, cTargetStates);
-            pTotals1HighHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighHighBest, cTargetStates);
+            pTotals1LowLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2LowLowBest, cTargetClasses);
+            pTotals1LowHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2LowHighBest, cTargetClasses);
+            pTotals1HighLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighLowBest, cTargetClasses);
+            pTotals1HighHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals2HighHighBest, cTargetClasses);
          }
          ++iState1;
       } while(iState1 < cStatesDimension1 - 1);
@@ -1165,7 +1165,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          size_t cutSecond2LowBest;
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowLowBestInner = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1LowHighBestInner = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cTargetStates, pTotals1LowLowBestInner, &cutSecond2LowBest
+         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1175,7 +1175,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
          size_t cutSecond2HighBest;
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighLowBestInner = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pTotals1HighHighBestInner = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cTargetStates, pTotals1HighLowBestInner, &cutSecond2HighBest
+         splittingScore += SweepMultiDiemensional<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1188,10 +1188,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             cutFirst2LowBest = cutSecond2LowBest;
             cutFirst2HighBest = cutSecond2HighBest;
 
-            pTotals2LowLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1LowLowBestInner, cTargetStates);
-            pTotals2LowHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1LowHighBestInner, cTargetStates);
-            pTotals2HighLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1HighLowBestInner, cTargetStates);
-            pTotals2HighHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1HighHighBestInner, cTargetStates);
+            pTotals2LowLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1LowLowBestInner, cTargetClasses);
+            pTotals2LowHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1LowHighBestInner, cTargetClasses);
+            pTotals2HighLowBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1HighLowBestInner, cTargetClasses);
+            pTotals2HighHighBest->template Copy<countCompilerClassificationTargetStates>(*pTotals1HighHighBestInner, cTargetClasses);
 
             bCutFirst2 = true;
          }
@@ -1441,8 +1441,8 @@ WARNING_POP
 //   BuildFastTotals(aHistogramBuckets, pTargetFeature, pFeatureCombination);
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
-//   const size_t cTargetStates = pTargetFeature->m_cStates;
-//   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+//   const size_t cTargetClasses = pTargetFeature->m_cStates;
+//   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 //
@@ -1496,37 +1496,37 @@ WARNING_POP
 //            aiStart[1] = 0;
 //            aiLast[0] = iState1;
 //            aiLast[1] = iState2;
-//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetStates, pTotalsLowLow);
+//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsLowLow);
 //
 //            aiStart[0] = iState1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cStatesDimension1 - 1;
 //            aiLast[1] = iState2;
-//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetStates, pTotalsHighLow);
+//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = iState2 + 1;
 //            aiLast[0] = iState1;
 //            aiLast[1] = cStatesDimension2 - 1;
-//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetStates, pTotalsLowHigh);
+//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsLowHigh);
 //
 //            aiStart[0] = iState1 + 1;
 //            aiStart[1] = iState2 + 1;
 //            aiLast[0] = cStatesDimension1 - 1;
 //            aiLast[1] = cStatesDimension2 - 1;
-//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetStates, pTotalsHighHigh);
+//            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsHighHigh);
 //
 //            // LOW LOW
-//            pTotalsTarget->Zero(cTargetStates);
-//            pTotalsOther->Zero(cTargetStates);
+//            pTotalsTarget->Zero(cTargetClasses);
+//            pTotalsOther->Zero(cTargetClasses);
 //
 //            // MODIFY HERE
-//            pTotalsTarget->Add(*pTotalsLowLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsLowHigh, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighHigh, cTargetStates);
+//            pTotalsTarget->Add(*pTotalsLowLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cTargetClasses);
 //            
-//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetStates);
+//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1560,16 +1560,16 @@ WARNING_POP
 //
 //
 //            // HIGH LOW
-//            pTotalsTarget->Zero(cTargetStates);
-//            pTotalsOther->Zero(cTargetStates);
+//            pTotalsTarget->Zero(cTargetClasses);
+//            pTotalsOther->Zero(cTargetClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, cTargetStates);
-//            pTotalsTarget->Add(*pTotalsHighLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsLowHigh, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighHigh, cTargetStates);
+//            pTotalsOther->Add(*pTotalsLowLow, cTargetClasses);
+//            pTotalsTarget->Add(*pTotalsHighLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cTargetClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetStates);
+//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1603,16 +1603,16 @@ WARNING_POP
 //
 //
 //            // LOW HIGH
-//            pTotalsTarget->Zero(cTargetStates);
-//            pTotalsOther->Zero(cTargetStates);
+//            pTotalsTarget->Zero(cTargetClasses);
+//            pTotalsOther->Zero(cTargetClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighLow, cTargetStates);
-//            pTotalsTarget->Add(*pTotalsLowHigh, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighHigh, cTargetStates);
+//            pTotalsOther->Add(*pTotalsLowLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cTargetClasses);
+//            pTotalsTarget->Add(*pTotalsLowHigh, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, cTargetClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetStates);
+//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1645,16 +1645,16 @@ WARNING_POP
 //
 //
 //            // HIGH HIGH
-//            pTotalsTarget->Zero(cTargetStates);
-//            pTotalsOther->Zero(cTargetStates);
+//            pTotalsTarget->Zero(cTargetClasses);
+//            pTotalsOther->Zero(cTargetClasses);
 //
 //            // MODIFY HERE
-//            pTotalsOther->Add(*pTotalsLowLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsHighLow, cTargetStates);
-//            pTotalsOther->Add(*pTotalsLowHigh, cTargetStates);
-//            pTotalsTarget->Add(*pTotalsHighHigh, cTargetStates);
+//            pTotalsOther->Add(*pTotalsLowLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, cTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, cTargetClasses);
+//            pTotalsTarget->Add(*pTotalsHighHigh, cTargetClasses);
 //
-//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetStates);
+//            splittingScore = CalculateRegionSplittingScore<countCompilerClassificationTargetStates, countCompilerDimensions>(pTotalsTarget, pTotalsOther, cTargetClasses);
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
@@ -1710,7 +1710,7 @@ WARNING_POP
 
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+bool CalculateInteractionScore(const size_t cTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : we NEVER use the denominator term when calculating interaction scores, but we're calculating it and it's taking precious memory.  We should eliminate the denominator term HERE in our datastructures!!!
 
    LOG(TraceLevelVerbose, "Entered CalculateInteractionScore");
@@ -1747,7 +1747,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       LOG(TraceLevelWarning, "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)");
       return true;
@@ -1776,7 +1776,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    // TODO : we don't seem to use the denmoninator in HistogramBucketVectorEntry, so we could remove that variable for classification
    
    // TODO : use the fancy recursive binner that we use in the training version of this function
-   BinDataSetInteraction<countCompilerClassificationTargetStates>(aHistogramBuckets, pFeatureCombination, pDataSet, cTargetStates
+   BinDataSetInteraction<countCompilerClassificationTargetStates>(aHistogramBuckets, pFeatureCombination, pDataSet, cTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1799,7 +1799,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    }
 #endif // NDEBUG
 
-   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, cTargetStates, pFeatureCombination, pAuxiliaryBucketZone
+   BuildFastTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, cTargetClasses, pFeatureCombination, pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1828,25 +1828,25 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
          for(size_t iState2 = 0; iState2 < cStatesDimension2 - 1; ++iState2) {
             aiStart[1] = iState2;
 
-            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x00, cTargetStates, pTotalsLowLow
+            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x00, cTargetClasses, pTotalsLowLow
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
 
-            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x02, cTargetStates, pTotalsLowHigh
+            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x02, cTargetClasses, pTotalsLowHigh
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
 
-            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x01, cTargetStates, pTotalsHighLow
+            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x01, cTargetClasses, pTotalsHighLow
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
 
-            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x03, cTargetStates, pTotalsHighHigh
+            GetTotals<countCompilerClassificationTargetStates, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x03, cTargetClasses, pTotalsHighHigh
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG

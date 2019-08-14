@@ -220,7 +220,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
                   pDimensionInfo->m_pInputData = pInputData + 1;
 
                   EBM_ASSERT(0 <= inputData);
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+                  EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than inputData and inputData fits into a size_t which we checked earlier
                   EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cStates);
                   EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cStates)); // we check for overflows during FeatureCombination construction, but let's check here again
 

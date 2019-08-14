@@ -22,7 +22,7 @@
 class EbmInteractionState {
 public:
    const bool m_bRegression;
-   const size_t m_cTargetStates;
+   const size_t m_cTargetClasses;
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
@@ -32,9 +32,9 @@ public:
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
 
-   EbmInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cFeatures)
+   EbmInteractionState(const bool bRegression, const size_t cTargetClasses, const size_t cFeatures)
       : m_bRegression(bRegression)
-      , m_cTargetStates(cTargetStates)
+      , m_cTargetClasses(cTargetClasses)
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
       , m_pDataSet(nullptr)
@@ -103,7 +103,7 @@ public:
       LOG(TraceLevelInfo, "Entered DataSetByFeature");
       EBM_ASSERT(nullptr == m_pDataSet);
       if(0 != cInstances) {
-         m_pDataSet = new (std::nothrow) DataSetByFeature(m_bRegression, m_cFeatures, m_aFeatures, cInstances, aBinnedData, aTargets, aPredictorScores, m_cTargetStates);
+         m_pDataSet = new (std::nothrow) DataSetByFeature(m_bRegression, m_cFeatures, m_aFeatures, cInstances, aBinnedData, aTargets, aPredictorScores, m_cTargetClasses);
          if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
             LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;
@@ -123,10 +123,10 @@ public:
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetStates, IntegerDataType countInstances, const void * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+EbmInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetClasses, IntegerDataType countInstances, const void * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
    EBM_ASSERT(0 <= countFeatures);
    EBM_ASSERT(0 == countFeatures || nullptr != features);
-   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countInstances));
+   EBM_ASSERT(bRegression && 0 == countTargetClasses || !bRegression && (1 <= countTargetClasses || 0 == countTargetClasses && 0 == countInstances));
    EBM_ASSERT(0 <= countInstances);
    EBM_ASSERT(0 == countInstances || nullptr != targets);
    EBM_ASSERT(0 == countInstances || 0 == countFeatures || nullptr != binnedData);
@@ -136,8 +136,8 @@ EbmInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
       LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countFeatures)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)");
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countTargetClasses)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countTargetClasses)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntegerDataType>(countInstances)) {
@@ -146,11 +146,11 @@ EbmInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    }
 
    size_t cFeatures = static_cast<size_t>(countFeatures);
-   size_t cTargetStates = static_cast<size_t>(countTargetStates);
+   size_t cTargetClasses = static_cast<size_t>(countTargetClasses);
    size_t cInstances = static_cast<size_t>(countInstances);
 
    LOG(TraceLevelInfo, "Entered EbmInteractionState");
-   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(bRegression, cTargetStates, cFeatures);
+   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(bRegression, cTargetClasses, cFeatures);
    LOG(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
       LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction nullptr == pEbmInteractionState");
@@ -171,9 +171,9 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    return pEbmInteraction;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetStates, IntegerDataType countInstances, const IntegerDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
-   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countFeatures=%" IntegerDataTypePrintf ", features=%p, countTargetStates=%" IntegerDataTypePrintf ", countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countTargetStates, countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countFeatures, features, countTargetStates, countInstances, targets, binnedData, predictorScores));
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetClasses, IntegerDataType countInstances, const IntegerDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countFeatures=%" IntegerDataTypePrintf ", features=%p, countTargetClasses=%" IntegerDataTypePrintf ", countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countTargetClasses, countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countFeatures, features, countTargetClasses, countInstances, targets, binnedData, predictorScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
@@ -183,7 +183,7 @@ static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * 
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetStates, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -303,15 +303,15 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    if(pEbmInteractionState->m_bRegression) {
       ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    } else {
-      const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
-      if(cTargetStates <= 1) {
+      const size_t cTargetClasses = pEbmInteractionState->m_cTargetClasses;
+      if(cTargetClasses <= 1) {
          LOG(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 states");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
          }
          return 0;
       }
-      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
+      ret = CompilerRecursiveGetInteractionScore<2>(cTargetClasses, pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    }
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);

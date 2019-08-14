@@ -14,13 +14,13 @@
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetStates) {
+EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetClasses) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
 
-   const size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
+   const size_t cVectorLength = GetVectorLengthFlatCore(cTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
@@ -41,10 +41,10 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    if(bRegression) {
       InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 0);
    } else {
-      if(2 == cTargetStates) {
+      if(2 == cTargetClasses) {
          InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 2);
       } else {
-         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, cTargetStates);
+         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, cTargetClasses);
       }
    }
 
@@ -95,7 +95,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       do {
          const IntegerDataType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
+         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cStates and cStates fits into a size_t which we checked earlier
          EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cStates);
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
          *pInputDataTo = static_cast<StorageDataTypeCore>(data);
@@ -118,8 +118,8 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetStates)
-   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictorScores, cTargetStates))
+DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetClasses)
+   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictorScores, cTargetClasses))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {

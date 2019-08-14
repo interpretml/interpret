@@ -173,20 +173,20 @@ constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassi
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetStates) {
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetClasses) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) {
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -202,7 +202,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) 
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
 // this macro is legal to use when the template is set to non-classification opterations, but it will return a number that will overflow any memory allocation if anyone tries to use the value
-// this macro can always be used before calling GET_VECTOR_LENGTH if you want to make other section of the code that depend on cTargetStates compile out
+// this macro can always be used before calling GET_VECTOR_LENGTH if you want to make other section of the code that depend on cTargetClasses compile out
 // TODO: use this macro more
 #define GET_COUNT_CLASSIFICATION_TARGET_STATES(MACRO_countCompilerClassificationTargetStates, MACRO_countRuntimeClassificationTargetStates) ((MACRO_countCompilerClassificationTargetStates) < 0 ? std::numeric_limits<size_t>::max() : (0 == (MACRO_countCompilerClassificationTargetStates) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetStates) : static_cast<size_t>(MACRO_countCompilerClassificationTargetStates)))
 

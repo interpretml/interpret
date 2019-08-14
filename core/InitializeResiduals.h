@@ -15,16 +15,16 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
+static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, FractionalDataType * pResidualError, const size_t cTargetClasses) {
    LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
-   // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
+   // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetClasses for some of the addition
    // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 feature and see how it behaves
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != pResidualError);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const size_t cVectoredItems = cVectorLength * cInstances;
@@ -61,21 +61,21 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
-            const IntegerDataType dataOriginal = *pTargetData;
-            EBM_ASSERT(0 <= dataOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
-            const StorageDataTypeCore data = static_cast<StorageDataTypeCore>(dataOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
-            EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
+            const IntegerDataType targetOriginal = *pTargetData;
+            EBM_ASSERT(0 <= targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetClasses)));
+            EBM_ASSERT(target < static_cast<StorageDataTypeCore>(cTargetClasses));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(data);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(target);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(data, iVector, matchValue, nonMatchValue);
-                  EBM_ASSERT(EbmStatistics::ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, data, iVector) == residualError);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(target, iVector, matchValue, nonMatchValue);
+                  EBM_ASSERT(EbmStatistics::ComputeClassificationResidualErrorMulticlass(static_cast<FractionalDataType>(cVectorLength), 0, target, iVector) == residualError);
                   *pResidualError = residualError;
                   ++pResidualError;
                }
@@ -119,16 +119,16 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
-            const IntegerDataType dataOriginal = *pTargetData;
-            EBM_ASSERT(0 <= dataOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(dataOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
-            const StorageDataTypeCore data = static_cast<StorageDataTypeCore>(dataOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetStates)));
-            EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
+            const IntegerDataType targetOriginal = *pTargetData;
+            EBM_ASSERT(0 <= targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetClasses)));
+            EBM_ASSERT(target < static_cast<StorageDataTypeCore>(cTargetClasses));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
                const FractionalDataType predictionScore = *pPredictorScores;
-               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(predictionScore, data);
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(predictionScore, target);
                *pResidualError = residualError;
                ++pPredictorScores;
                ++pResidualError;
@@ -149,7 +149,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FractionalDataType predictionScore = *pPredictorScores - subtract;
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
-                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
+                  const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, target, iVector);
                   *pResidualError = residualError;
                   ++pPredictorScores;
                   ++pResidualError;

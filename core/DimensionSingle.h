@@ -149,7 +149,7 @@ public:
    }
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(CachedTrainingThreadResources<bRegression> * const pCachedThreadResources, TreeNode<bRegression> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cTargetStates
+   void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(CachedTrainingThreadResources<bRegression> * const pCachedThreadResources, TreeNode<bRegression> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -158,7 +158,7 @@ public:
 
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 
-      const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+      const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
       EBM_ASSERT(!GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -324,14 +324,14 @@ static_assert(std::is_pod<TreeNode<false>>::value, "We want to keep our TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cHistogramBuckets, const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
+bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetClasses, const size_t cHistogramBuckets, const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    LOG(TraceLevelVerbose, "Entered GrowDecisionTree");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
 
    EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cInstancesTotal); // filter these out at the start where we can handle this case easily
@@ -395,7 +395,7 @@ retry_with_bigger_tree_node_children_array:
 
    memcpy(&pRootTreeNode->aHistogramBucketVectorEntry[0], aSumHistogramBucketVectorEntry, cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)); // copying existing mem
 
-   pRootTreeNode->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetStates
+   pRootTreeNode->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -485,7 +485,7 @@ retry_with_bigger_tree_node_children_array:
                goto retry_with_bigger_tree_node_children_array;
             }
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
-            pLeftChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
+            pLeftChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetClasses
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -509,7 +509,7 @@ retry_with_bigger_tree_node_children_array:
                goto retry_with_bigger_tree_node_children_array;
             }
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
-            pRightChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
+            pRightChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetClasses
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -563,10 +563,10 @@ retry_with_bigger_tree_node_children_array:
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entered TrainZeroDimensional");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
       LOG(TraceLevelWarning, "WARNING TODO fill this in");
@@ -580,7 +580,7 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
    }
    memset(pHistogramBucket, 0, cBytesPerHistogramBucket);
 
-   BinDataSetTrainingZeroDimensions<countCompilerClassificationTargetStates>(pHistogramBucket, pTrainingSet, cTargetStates);
+   BinDataSetTrainingZeroDimensions<countCompilerClassificationTargetStates>(pHistogramBucket, pTrainingSet, cTargetClasses);
 
    const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry = &pHistogramBucket->aHistogramBucketVectorEntry[0];
    if(IsRegression(countCompilerClassificationTargetStates)) {
@@ -602,13 +602,13 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const size_t cTargetStates) {
+bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
    size_t cTotalBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cStates;
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
       LOG(TraceLevelWarning, "WARNING TODO fill this in");
@@ -633,7 +633,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   BinDataSetTraining<countCompilerClassificationTargetStates, 1>(aHistogramBuckets, pFeatureCombination, pTrainingSet, cTargetStates
+   BinDataSetTraining<countCompilerClassificationTargetStates, 1>(aHistogramBuckets, pFeatureCombination, pTrainingSet, cTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -645,7 +645,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    size_t cHistogramBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cStates;
    EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
    size_t cInstancesTotal;
-   cHistogramBuckets = CompressHistogramBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cHistogramBuckets, aHistogramBuckets, &cInstancesTotal, aSumHistogramBucketVectorEntry, cTargetStates
+   cHistogramBuckets = CompressHistogramBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cHistogramBuckets, aHistogramBuckets, &cInstancesTotal, aSumHistogramBucketVectorEntry, cTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -654,7 +654,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    EBM_ASSERT(1 <= cInstancesTotal);
    EBM_ASSERT(1 <= cHistogramBuckets);
 
-   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cHistogramBuckets, aHistogramBuckets, cInstancesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
+   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetClasses, cHistogramBuckets, aHistogramBuckets, cInstancesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
