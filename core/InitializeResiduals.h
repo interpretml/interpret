@@ -11,14 +11,14 @@
 #include "EbmStatistics.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// a*PredictionScores = logOdds for binary classification
-// a*PredictionScores = logWeights for multiclass classification
-// a*PredictionScores = predictedValue for regression
+// a*PredictorScores = logOdds for binary classification
+// a*PredictorScores = logWeights for multiclass classification
+// a*PredictorScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
+static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
-   // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictionScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
+   // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
    // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 feature and see how it behaves
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargetData);
@@ -31,8 +31,8 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
    EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0]))); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
-   if(nullptr == aPredictionScores) {
-      // TODO: do we really need to handle the case where pPredictionScores is null? In the future, we'll probably initialize our data with the intercept, in which case we'll always have existing predictions
+   if(nullptr == aPredictorScores) {
+      // TODO: do we really need to handle the case where pPredictorScores is null? In the future, we'll probably initialize our data with the intercept, in which case we'll always have existing predictions
       if(IsRegression(countCompilerClassificationTargetStates)) {
          // calling ComputeRegressionResidualError(predictionScore, data) with predictionScore as zero gives just data, so we can memcopy these values
          memcpy(pResidualError, aTargetData, cInstances * sizeof(pResidualError[0]));
@@ -96,18 +96,18 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          } while(pResidualErrorEnd != pResidualError);
       }
    } else {
-      const FractionalDataType * pPredictionScores = aPredictionScores;
+      const FractionalDataType * pPredictorScores = aPredictorScores;
       if(IsRegression(countCompilerClassificationTargetStates)) {
          const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
          do {
             const FractionalDataType data = *pTargetData;
             EBM_ASSERT(!std::isnan(data));
             EBM_ASSERT(!std::isinf(data));
-            const FractionalDataType predictionScore = *pPredictionScores;
+            const FractionalDataType predictionScore = *pPredictorScores;
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(predictionScore, data);
             *pResidualError = residualError;
             ++pTargetData;
-            ++pPredictionScores;
+            ++pPredictorScores;
             ++pResidualError;
          } while(pResidualErrorEnd != pResidualError);
       } else {
@@ -127,31 +127,31 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
             EBM_ASSERT(data < static_cast<StorageDataTypeCore>(cTargetStates));
 
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
-               const FractionalDataType predictionScore = *pPredictionScores;
+               const FractionalDataType predictionScore = *pPredictorScores;
                const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(predictionScore, data);
                *pResidualError = residualError;
-               ++pPredictionScores;
+               ++pPredictorScores;
                ++pResidualError;
             } else {
                FractionalDataType sumExp = 0;
                // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
-               const FractionalDataType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictionScores[k_iZeroClassificationLogitAtInitialize] : 0;
+               const FractionalDataType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictionScores - subtract;
+                  const FractionalDataType predictionScore = *pPredictorScores - subtract;
                   sumExp += std::exp(predictionScore);
-                  ++pPredictionScores;
+                  ++pPredictorScores;
                }
 
                // go back to the start so that we can iterate again
-               pPredictionScores -= cVectorLengthStorage;
+               pPredictorScores -= cVectorLengthStorage;
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictionScores - subtract;
+                  const FractionalDataType predictionScore = *pPredictorScores - subtract;
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorMulticlass(sumExp, predictionScore, data, iVector);
                   *pResidualError = residualError;
-                  ++pPredictionScores;
+                  ++pPredictorScores;
                   ++pResidualError;
                }
                // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter

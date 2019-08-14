@@ -17,7 +17,7 @@
 // TODO: rename this to DataSetByFeatureCombination
 class DataSetByFeatureCombination final {
    FractionalDataType * const m_aResidualErrors;
-   FractionalDataType * const m_aPredictionScores;
+   FractionalDataType * const m_aPredictorScores;
    const StorageDataTypeCore * const m_aTargetData;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cInstances;
@@ -25,11 +25,11 @@ class DataSetByFeatureCombination final {
 
 public:
 
-   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
+   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || nullptr == m_aPredictorScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
    }
 
    EBM_INLINE FractionalDataType * GetResidualPointer() {
@@ -40,13 +40,13 @@ public:
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   EBM_INLINE FractionalDataType * GetPredictionScores() {
-      EBM_ASSERT(nullptr != m_aPredictionScores);
-      return m_aPredictionScores;
+   EBM_INLINE FractionalDataType * GetPredictorScores() {
+      EBM_ASSERT(nullptr != m_aPredictorScores);
+      return m_aPredictorScores;
    }
-   EBM_INLINE const FractionalDataType * GetPredictionScores() const {
-      EBM_ASSERT(nullptr != m_aPredictionScores);
-      return m_aPredictionScores;
+   EBM_INLINE const FractionalDataType * GetPredictorScores() const {
+      EBM_ASSERT(nullptr != m_aPredictorScores);
+      return m_aPredictorScores;
    }
    EBM_INLINE const StorageDataTypeCore * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);

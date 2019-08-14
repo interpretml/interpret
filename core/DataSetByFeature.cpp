@@ -14,7 +14,7 @@
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates) {
+EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -39,12 +39,12 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
    if(bRegression) {
-      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictionScores, aResidualErrors, 0);
+      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 0);
    } else {
       if(2 == cTargetStates) {
-         InitializeResiduals<2>(cInstances, aTargetData, aPredictionScores, aResidualErrors, 2);
+         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 2);
       } else {
-         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
+         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, cTargetStates);
       }
    }
 
@@ -118,8 +118,8 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
-   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictionScores, cTargetStates))
+DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetStates)
+   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictorScores, cTargetStates))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {

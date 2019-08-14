@@ -42,39 +42,39 @@ EBM_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cIns
    return aResidualErrors;
 }
 
-EBM_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cInstances, const size_t cVectorLength, const FractionalDataType * const aPredictionScoresFrom) {
-   LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictionScores");
+EBM_INLINE static FractionalDataType * ConstructPredictorScores(const size_t cInstances, const size_t cVectorLength, const FractionalDataType * const aPredictorScoresFrom) {
+   LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(0 < cVectorLength);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictionScores IsMultiplyError(cInstances, cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(cInstances, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cInstances * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
-   FractionalDataType * const aPredictionScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
-   if(nullptr == aPredictionScoresTo) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictionScores nullptr == aPredictionScoresTo");
+   FractionalDataType * const aPredictorScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
+   if(nullptr == aPredictorScoresTo) {
+      LOG(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
-   if(nullptr == aPredictionScoresFrom) {
-      memset(aPredictionScoresTo, 0, cBytes);
+   if(nullptr == aPredictorScoresFrom) {
+      memset(aPredictorScoresTo, 0, cBytes);
    } else {
-      memcpy(aPredictionScoresTo, aPredictionScoresFrom, cBytes);
+      memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
       constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
       if(bZeroingLogits) {
          // TODO : integrate this subtraction into the copy instead of doing it afterwards
-         FractionalDataType * pScore = aPredictionScoresTo;
+         FractionalDataType * pScore = aPredictorScoresTo;
          const FractionalDataType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
          do {
             FractionalDataType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
@@ -87,8 +87,8 @@ EBM_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cI
       }
    }
 
-   LOG(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructPredictionScores");
-   return aPredictionScoresTo;
+   LOG(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructPredictorScores");
+   return aPredictorScoresTo;
 }
 
 EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cInstances, const IntegerDataType * const aTargets) {
@@ -264,9 +264,9 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength)
+DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength)
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
-   , m_aPredictionScores(bAllocatePredictionScores ? ConstructPredictionScores(cInstances, cVectorLength, aPredictionScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
+   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))
    , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
    , m_cInstances(cInstances)
@@ -281,8 +281,8 @@ DataSetByFeatureCombination::~DataSetByFeatureCombination() {
    if(INVALID_POINTER != m_aResidualErrors) {
       free(m_aResidualErrors);
    }
-   if(INVALID_POINTER != m_aPredictionScores) {
-      free(m_aPredictionScores);
+   if(INVALID_POINTER != m_aPredictorScores) {
+      free(m_aPredictorScores);
    }
    if(INVALID_POINTER != m_aTargetData) {
       free(const_cast<StorageDataTypeCore *>(m_aTargetData));

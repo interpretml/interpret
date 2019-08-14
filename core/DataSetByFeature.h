@@ -21,7 +21,7 @@ class DataSetByFeature final {
 
 public:
 
-   DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
+   DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetStates);
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
