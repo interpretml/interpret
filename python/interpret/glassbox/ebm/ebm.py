@@ -99,7 +99,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         schema=None,
-        cont_n_bins=255,
+        max_n_bins=255,
         missing_constant=0,
         unknown_constant=0,
         feature_names=None,
@@ -110,14 +110,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         Args:
             schema: A dictionary that encapsulates column information,
                     such as type and domain.
-            cont_n_bins: Max number of bins to process numeric features.
+            max_n_bins: Max number of bins to process numeric features.
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
             binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform". 
         """
         self.schema = schema
-        self.cont_n_bins = cont_n_bins
+        self.max_n_bins = max_n_bins
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
         self.feature_names = feature_names
@@ -167,13 +167,13 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
 
                 uniq_vals = set(col_data[~np.isnan(col_data)])
-                if len(uniq_vals) < self.cont_n_bins:
+                if len(uniq_vals) < self.max_n_bins:
                     bins = list(sorted(uniq_vals))
                 else:
                     if self.binning_strategy == 'uniform':
-                        bins = self.cont_n_bins
+                        bins = self.max_n_bins
                     elif self.binning_strategy == 'quantile':
-                        bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.cont_n_bins + 1)))
+                        bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.max_n_bins + 1)))
                     else: 
                         raise ValueError("Unknown binning_strategy: '{}'.".format(self.binning_strategy))
                 
@@ -1174,6 +1174,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        binning_strategy="uniform",
     ):
 
         super(ExplainableBoostingClassifier, self).__init__(
@@ -1201,6 +1203,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
+            # Preprocessor
+            binning_strategy=binning_strategy,
         )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
