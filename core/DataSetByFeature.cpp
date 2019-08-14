@@ -52,13 +52,13 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    return aResidualErrors;
 }
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
    EBM_ASSERT(nullptr != aFeatures);
    EBM_ASSERT(0 < cInstances);
-   EBM_ASSERT(nullptr != aInputDataFrom);
+   EBM_ASSERT(nullptr != aBinnedData);
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)) {
       // we're checking this early instead of checking it inside our loop
@@ -90,7 +90,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pFeature->m_iFeatureData * cInstances];
+      const IntegerDataType * pInputDataFrom = &aBinnedData[pFeature->m_iFeatureData * cInstances];
       const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cInstances];
       do {
          const IntegerDataType data = *pInputDataFrom;
@@ -118,9 +118,9 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
+DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
    : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictionScores, cTargetStates))
-   , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aInputDataFrom))
+   , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {
 
