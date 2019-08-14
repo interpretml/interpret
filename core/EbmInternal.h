@@ -226,7 +226,7 @@ constexpr size_t CountBitsRequiredPositiveMax() {
 constexpr size_t k_cBitsForSizeTCore = CountBitsRequiredPositiveMax<size_t>();
 // it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of states per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
 // TODO : we should check at startup if there are equal to or less than these number of dimensions, otherwise return an error.  I don't think we want to wait until we try allocating the memory to discover that we can't do it
-// TODO : we can restrict the dimensionatlity even more because BinnedBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
+// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
 

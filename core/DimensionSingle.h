@@ -52,8 +52,8 @@ class TreeNodeData<false> {
 public:
 
    struct BeforeExaminationForPossibleSplitting {
-      const BinnedBucket<false> * pBinnedBucketEntryFirst;
-      const BinnedBucket<false> * pBinnedBucketEntryLast;
+      const HistogramBucket<false> * pHistogramBucketEntryFirst;
+      const HistogramBucket<false> * pHistogramBucketEntryLast;
       size_t cCases;
    };
 
@@ -89,8 +89,8 @@ class TreeNodeData<true> {
 public:
 
    struct BeforeExaminationForPossibleSplitting {
-      const BinnedBucket<true> * pBinnedBucketEntryFirst;
-      const BinnedBucket<true> * pBinnedBucketEntryLast;
+      const HistogramBucket<true> * pHistogramBucketEntryFirst;
+      const HistogramBucket<true> * pHistogramBucketEntryLast;
    };
 
    struct AfterExaminationForPossibleSplitting {
@@ -126,7 +126,7 @@ class TreeNode final : public TreeNodeData<bRegression> {
 public:
 
    EBM_INLINE bool IsSplittable(size_t cCasesRequiredForSplitParentMin) const {
-      return this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast != this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst && cCasesRequiredForSplitParentMin <= this->GetCases();
+      return this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast != this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst && cCasesRequiredForSplitParentMin <= this->GetCases();
    }
 
    EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
@@ -151,7 +151,7 @@ public:
    template<ptrdiff_t countCompilerClassificationTargetStates>
    void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(CachedTrainingThreadResources<bRegression> * const pCachedThreadResources, TreeNode<bRegression> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cTargetStates
 #ifndef NDEBUG
-      , const unsigned char * const aBinnedBucketsEndDebug
+      , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
       LOG(TraceLevelVerbose, "Entered SplitTreeNode: this=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(this), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
@@ -161,18 +161,18 @@ public:
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       EBM_ASSERT(!GetTreeNodeSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize<bRegression>(cVectorLength);
-      EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<bRegression>(cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bRegression>(cVectorLength);
 
-      const BinnedBucket<bRegression> * pBinnedBucketEntryCur = this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst;
-      const BinnedBucket<bRegression> * const pBinnedBucketEntryLast = this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast;
+      const HistogramBucket<bRegression> * pHistogramBucketEntryCur = this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst;
+      const HistogramBucket<bRegression> * const pHistogramBucketEntryLast = this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast;
 
       TreeNode<bRegression> * const pLeftChild1 = GetLeftTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-      pLeftChild1->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = pBinnedBucketEntryCur;
+      pLeftChild1->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst = pHistogramBucketEntryCur;
       TreeNode<bRegression> * const pRightChild1 = GetRightTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-      pRightChild1->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = pBinnedBucketEntryLast;
+      pRightChild1->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast = pHistogramBucketEntryLast;
 
-      size_t cCasesLeft = pBinnedBucketEntryCur->cCasesInBucket;
+      size_t cCasesLeft = pHistogramBucketEntryCur->cCasesInBucket;
       size_t cCasesRight = this->GetCases() - cCasesLeft;
 
       HistogramBucketVectorEntry<bRegression> * const aSumHistogramBucketVectorEntryLeft = pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
@@ -180,7 +180,7 @@ public:
       HistogramBucketVectorEntry<bRegression> * const aSumHistogramBucketVectorEntryBest = pCachedThreadResources->m_aSumHistogramBucketVectorEntryBest;
       FractionalDataType BEST_nodeSplittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FractionalDataType sumResidualErrorLeft = pBinnedBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
+         const FractionalDataType sumResidualErrorLeft = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
          const FractionalDataType sumResidualErrorRight = this->aHistogramBucketVectorEntry[iVector].sumResidualError - sumResidualErrorLeft;
 
          BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cCasesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cCasesRight);
@@ -189,29 +189,29 @@ public:
          aSumHistogramBucketVectorEntryBest[iVector].sumResidualError = sumResidualErrorLeft;
          aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
          if(!bRegression) {
-            FractionalDataType sumDenominator1 = pBinnedBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
+            FractionalDataType sumDenominator1 = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
             aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(sumDenominator1);
             aSumHistogramBucketVectorEntryBest[iVector].SetSumDenominator(sumDenominator1);
          }
       }
 
       EBM_ASSERT(0 <= BEST_nodeSplittingScore);
-      const BinnedBucket<bRegression> * BEST_pBinnedBucketEntry = pBinnedBucketEntryCur;
+      const HistogramBucket<bRegression> * BEST_pHistogramBucketEntry = pHistogramBucketEntryCur;
       size_t BEST_cCasesLeft = cCasesLeft;
-      for(pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1); pBinnedBucketEntryLast != pBinnedBucketEntryCur; pBinnedBucketEntryCur = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, pBinnedBucketEntryCur, 1)) {
-         ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucketEntryCur, aBinnedBucketsEndDebug);
+      for(pHistogramBucketEntryCur = GetHistogramBucketByIndex<bRegression>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1); pHistogramBucketEntryLast != pHistogramBucketEntryCur; pHistogramBucketEntryCur = GetHistogramBucketByIndex<bRegression>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1)) {
+         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
-         const size_t CHANGE_cCases = pBinnedBucketEntryCur->cCasesInBucket;
+         const size_t CHANGE_cCases = pHistogramBucketEntryCur->cCasesInBucket;
          cCasesLeft += CHANGE_cCases;
          cCasesRight -= CHANGE_cCases;
 
          FractionalDataType nodeSplittingScore = 0;
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             if(!bRegression) {
-               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + pBinnedBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
             }
 
-            const FractionalDataType CHANGE_sumResidualError = pBinnedBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
+            const FractionalDataType CHANGE_sumResidualError = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
             const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].sumResidualError + CHANGE_sumResidualError;
             const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
 
@@ -228,7 +228,7 @@ public:
          if(UNLIKELY(BEST_nodeSplittingScore < nodeSplittingScore)) {
             // TODO : randomly choose a node if BEST_entropyTotalChildren == entropyTotalChildren, but if there are 3 choice make sure that each has a 1/3 probability of being selected (same as interview question to select a random line from a file)
             BEST_nodeSplittingScore = nodeSplittingScore;
-            BEST_pBinnedBucketEntry = pBinnedBucketEntryCur;
+            BEST_pHistogramBucketEntry = pHistogramBucketEntryCur;
             BEST_cCasesLeft = cCasesLeft;
             memcpy(aSumHistogramBucketVectorEntryBest, aSumHistogramBucketVectorEntryLeft, sizeof(*aSumHistogramBucketVectorEntryBest) * cVectorLength);
          }
@@ -237,13 +237,13 @@ public:
       TreeNode<bRegression> * const pLeftChild = GetLeftTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
       TreeNode<bRegression> * const pRightChild = GetRightTreeNodeChild<bRegression>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-      pLeftChild->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = BEST_pBinnedBucketEntry;
+      pLeftChild->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast = BEST_pHistogramBucketEntry;
       pLeftChild->SetCases(BEST_cCasesLeft);
 
-      const BinnedBucket<bRegression> * const BEST_pBinnedBucketEntryNext = GetBinnedBucketByIndex<bRegression>(cBytesPerBinnedBucket, BEST_pBinnedBucketEntry, 1);
-      ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, BEST_pBinnedBucketEntryNext, aBinnedBucketsEndDebug);
+      const HistogramBucket<bRegression> * const BEST_pHistogramBucketEntryNext = GetHistogramBucketByIndex<bRegression>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
+      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, aHistogramBucketsEndDebug);
 
-      pRightChild->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = BEST_pBinnedBucketEntryNext;
+      pRightChild->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst = BEST_pHistogramBucketEntryNext;
       size_t cCasesParent = this->GetCases();
       pRightChild->SetCases(cCasesParent - BEST_cCasesLeft);
 
@@ -277,7 +277,7 @@ public:
          splitGain = FractionalDataType { 0 };
       }
       this->m_UNION.afterExaminationForPossibleSplitting.splitGain = splitGain;
-      this->m_UNION.afterExaminationForPossibleSplitting.divisionValue = (BEST_pBinnedBucketEntry->bucketValue + BEST_pBinnedBucketEntryNext->bucketValue) / 2;
+      this->m_UNION.afterExaminationForPossibleSplitting.divisionValue = (BEST_pHistogramBucketEntry->bucketValue + BEST_pHistogramBucketEntryNext->bucketValue) / 2;
 
       EBM_ASSERT(this->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
@@ -324,9 +324,9 @@ static_assert(std::is_pod<TreeNode<false>>::value, "We want to keep our TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cBinnedBuckets, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucket, const size_t cCasesTotal, const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
+bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const size_t cTargetStates, const size_t cHistogramBuckets, const HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBucket, const size_t cCasesTotal, const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
 #ifndef NDEBUG
-   , const unsigned char * const aBinnedBucketsEndDebug
+   , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    LOG(TraceLevelVerbose, "Entered GrowDecisionTree");
@@ -335,8 +335,8 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
 
    EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cCasesTotal); // filter these out at the start where we can handle this case easily
-   EBM_ASSERT(1 <= cBinnedBuckets); // cBinnedBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
-   if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cBinnedBuckets || 0 == cTreeSplitsMax)) {
+   EBM_ASSERT(1 <= cHistogramBuckets); // cHistogramBuckets could only be zero if cCasesTotal.  We should filter out that special case at our entry point though!!
+   if(UNLIKELY(cCasesTotal < cCasesRequiredForSplitParentMin || 1 == cHistogramBuckets || 0 == cTreeSplitsMax)) {
       // there will be no splits at all
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
@@ -371,8 +371,8 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsRegression(countCompilerCl
       return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
    }
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
 retry_with_bigger_tree_node_children_array:
    size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
@@ -388,23 +388,23 @@ retry_with_bigger_tree_node_children_array:
    }
    TreeNode<IsRegression(countCompilerClassificationTargetStates)> * pRootTreeNode = static_cast<TreeNode<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer2());
 
-   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst = aBinnedBucket;
-   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBucket, cBinnedBuckets - 1);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast, aBinnedBucketsEndDebug);
+   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst = aHistogramBucket;
+   pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1);
+   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast, aHistogramBucketsEndDebug);
    pRootTreeNode->SetCases(cCasesTotal);
 
    memcpy(&pRootTreeNode->aHistogramBucketVectorEntry[0], aSumHistogramBucketVectorEntry, cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)); // copying existing mem
 
    pRootTreeNode->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, AddBytesTreeNode<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode, cBytesPerTreeNode), cTargetStates
 #ifndef NDEBUG
-      , aBinnedBucketsEndDebug
+      , aHistogramBucketsEndDebug
 #endif // NDEBUG
    );
 
-   if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cBinnedBuckets))) {
+   if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
       // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
-      EBM_ASSERT(2 != cBinnedBuckets || !GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin) && !GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin));
+      EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin) && !GetRightTreeNodeChild<IsRegression(countCompilerClassificationTargetStates)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cCasesRequiredForSplitParentMin));
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
          LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
@@ -487,7 +487,7 @@ retry_with_bigger_tree_node_children_array:
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
             pLeftChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
 #ifndef NDEBUG
-               , aBinnedBucketsEndDebug
+               , aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
             pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
@@ -511,7 +511,7 @@ retry_with_bigger_tree_node_children_array:
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
             pRightChild->template ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<countCompilerClassificationTargetStates>(pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cTargetStates
 #ifndef NDEBUG
-               , aBinnedBucketsEndDebug
+               , aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
             pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
@@ -567,24 +567,24 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
    LOG(TraceLevelVerbose, "Entered TrainZeroDimensional");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
       LOG(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
-   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucket = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesPerBinnedBucket));
-   if(UNLIKELY(nullptr == pBinnedBucket)) {
-      LOG(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pBinnedBucket");
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucket = static_cast<HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket));
+   if(UNLIKELY(nullptr == pHistogramBucket)) {
+      LOG(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pHistogramBucket");
       return true;
    }
-   memset(pBinnedBucket, 0, cBytesPerBinnedBucket);
+   memset(pHistogramBucket, 0, cBytesPerHistogramBucket);
 
-   BinDataSetTrainingZeroDimensions<countCompilerClassificationTargetStates>(pBinnedBucket, pTrainingSet, cTargetStates);
+   BinDataSetTrainingZeroDimensions<countCompilerClassificationTargetStates>(pHistogramBucket, pTrainingSet, cTargetStates);
 
-   const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry = &pBinnedBucket->aHistogramBucketVectorEntry[0];
+   const HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry = &pHistogramBucket->aHistogramBucketVectorEntry[0];
    if(IsRegression(countCompilerClassificationTargetStates)) {
-      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].sumResidualError, pBinnedBucket->cCasesInBucket);
+      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].sumResidualError, pHistogramBucket->cCasesInBucket);
       FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       pValues[0] = smallChangeToModel;
    } else {
@@ -609,54 +609,54 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countComp
    size_t cTotalBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cStates;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   if(GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
       LOG(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
-   const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerBinnedBucket)) {
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
+   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
       LOG(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerBinnedBucket;
-   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = static_cast<BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
-   if(UNLIKELY(nullptr == aBinnedBuckets)) {
-      LOG(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aBinnedBuckets");
+   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+   HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets = static_cast<HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+      LOG(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aHistogramBuckets");
       return true;
    }
    // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
-   memset(aBinnedBuckets, 0, cBytesBuffer);
+   memset(aHistogramBuckets, 0, cBytesBuffer);
 
 #ifndef NDEBUG
-   const unsigned char * const aBinnedBucketsEndDebug = reinterpret_cast<unsigned char *>(aBinnedBuckets) + cBytesBuffer;
+   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   BinDataSetTraining<countCompilerClassificationTargetStates, 1>(aBinnedBuckets, pFeatureCombination, pTrainingSet, cTargetStates
+   BinDataSetTraining<countCompilerClassificationTargetStates, 1>(aHistogramBuckets, pFeatureCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG
-      , aBinnedBucketsEndDebug
+      , aHistogramBucketsEndDebug
 #endif // NDEBUG
    );
 
    HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry = pCachedThreadResources->m_aSumHistogramBucketVectorEntry;
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
-   size_t cBinnedBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cStates;
-   EBM_ASSERT(1 <= cBinnedBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   size_t cHistogramBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cStates;
+   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
    size_t cCasesTotal;
-   cBinnedBuckets = CompressBinnedBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cBinnedBuckets, aBinnedBuckets, &cCasesTotal, aSumHistogramBucketVectorEntry, cTargetStates
+   cHistogramBuckets = CompressHistogramBuckets<countCompilerClassificationTargetStates>(pTrainingSet, cHistogramBuckets, aHistogramBuckets, &cCasesTotal, aSumHistogramBucketVectorEntry, cTargetStates
 #ifndef NDEBUG
-      , aBinnedBucketsEndDebug
+      , aHistogramBucketsEndDebug
 #endif // NDEBUG
    );
 
    EBM_ASSERT(1 <= cCasesTotal);
-   EBM_ASSERT(1 <= cBinnedBuckets);
+   EBM_ASSERT(1 <= cHistogramBuckets);
 
-   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cBinnedBuckets, aBinnedBuckets, cCasesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
+   bool bRet = GrowDecisionTree<countCompilerClassificationTargetStates>(pCachedThreadResources, cTargetStates, cHistogramBuckets, aHistogramBuckets, cCasesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
 #ifndef NDEBUG
-      , aBinnedBucketsEndDebug
+      , aHistogramBucketsEndDebug
 #endif // NDEBUG
    );
 
