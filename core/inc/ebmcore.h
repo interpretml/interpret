@@ -67,11 +67,11 @@ typedef struct {
    IntegerDataType featureType; // enums aren't standardized accross languages, so use IntegerDataType values
    IntegerDataType hasMissing;
    IntegerDataType countBins;
-} EbmFeature;
+} EbmCoreFeature;
 
 typedef struct {
    IntegerDataType countFeaturesInCombination;
-} EbmFeatureCombination;
+} EbmCoreFeatureCombination;
 
 const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
 const signed char TraceLevelError = 1;
@@ -163,9 +163,9 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
    IntegerDataType randomSeed, 
    IntegerDataType countFeatures, 
-   const EbmFeature * features, 
+   const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations, 
-   const EbmFeatureCombination * featureCombinations, 
+   const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes, 
    IntegerDataType countTrainingInstances, 
    const FractionalDataType * trainingTargets, 
@@ -180,9 +180,9 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
    IntegerDataType randomSeed, 
    IntegerDataType countFeatures, 
-   const EbmFeature * features, 
+   const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations, 
-   const EbmFeatureCombination * featureCombinations, 
+   const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes, 
    IntegerDataType countTargetClasses, 
    IntegerDataType countTrainingInstances, 
@@ -211,6 +211,16 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatu
    const FractionalDataType * modelUpdateFeatureCombinationTensor, 
    FractionalDataType * validationMetricReturn
 );
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination,
+   FractionalDataType learningRate,
+   IntegerDataType countTreeSplitsMax,
+   IntegerDataType countInstancesRequiredForParentSplitMin,
+   const FractionalDataType * trainingWeights,
+   const FractionalDataType * validationWeights,
+   FractionalDataType * validationMetricReturn
+);
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
@@ -226,7 +236,7 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(
 
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
    IntegerDataType countFeatures, 
-   const EbmFeature * features, 
+   const EbmCoreFeature * features,
    IntegerDataType countInstances, 
    const FractionalDataType * targets, 
    const IntegerDataType * binnedData, 
@@ -234,7 +244,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
 );
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
    IntegerDataType countFeatures, 
-   const EbmFeature * features, 
+   const EbmCoreFeature * features,
    IntegerDataType countTargetClasses, 
    IntegerDataType countInstances, 
    const IntegerDataType * targets, 

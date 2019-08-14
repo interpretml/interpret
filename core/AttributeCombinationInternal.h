@@ -21,10 +21,10 @@ public:
    size_t m_cItemsPerBitPackDataUnit;
    size_t m_cAttributes;
    size_t m_iInputData;
-   unsigned int m_cLogEnterGenerateModelUpdateMessages;
-   unsigned int m_cLogExitGenerateModelUpdateMessages;
-   unsigned int m_cLogEnterApplyModelUpdateMessages;
-   unsigned int m_cLogExitApplyModelUpdateMessages;
+   unsigned int m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
+   unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
+   unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
+   unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    AttributeCombinationEntry m_AttributeCombinationEntry[1];
 
    TML_INLINE static size_t GetAttributeCombinationCountBytes(const size_t cAttributes) {
@@ -34,10 +34,10 @@ public:
    TML_INLINE void Initialize(const size_t cAttributes, const size_t iAttributeCombination) {
       m_cAttributes = cAttributes;
       m_iInputData = iAttributeCombination;
-      m_cLogEnterGenerateModelUpdateMessages = 2;
-      m_cLogExitGenerateModelUpdateMessages = 2;
-      m_cLogEnterApplyModelUpdateMessages = 2;
-      m_cLogExitApplyModelUpdateMessages = 2;
+      m_cLogEnterGenerateModelFeatureCombinationUpdateMessages = 2;
+      m_cLogExitGenerateModelFeatureCombinationUpdateMessages = 2;
+      m_cLogEnterApplyModelFeatureCombinationUpdateMessages = 2;
+      m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
    }
 
    TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {

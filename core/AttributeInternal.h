@@ -9,22 +9,22 @@
 
 #include "EbmInternal.h" // TML_INLINE
 
-enum class AttributeTypeCore;
+enum class FeatureTypeCore;
 
 // AttributeInternal is a class internal to our library.  Our public interface will not have a "Attribute" POD that we can use for C interop since everything will be a specific type of attribute like OrdinalAttribute (POD)
 class AttributeInternalCore final {
 public:
    const size_t m_cStates;
    const size_t m_iAttributeData;
-   // TODO : implement feature to handle m_attributeType
-   const AttributeTypeCore m_attributeType;
+   // TODO : implement feature to handle m_featureType
+   const FeatureTypeCore m_featureType;
    // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
-   TML_INLINE AttributeInternalCore(const size_t cStates, const size_t iAttributeData, const AttributeTypeCore attributeType, const bool bMissing)
+   TML_INLINE AttributeInternalCore(const size_t cStates, const size_t iAttributeData, const FeatureTypeCore featureType, const bool bMissing)
       : m_cStates(cStates)
       , m_iAttributeData(iAttributeData)
-      , m_attributeType(attributeType)
+      , m_featureType(featureType)
       , m_bMissing(bMissing) {
    }
 };

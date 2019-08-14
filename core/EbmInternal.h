@@ -133,7 +133,7 @@ constexpr TML_INLINE bool IsNumberConvertable(const TFrom number) {
 
 WARNING_POP
 
-enum class AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
+enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetStatesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes

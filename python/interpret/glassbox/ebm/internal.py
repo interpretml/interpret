@@ -20,15 +20,15 @@ this.native = None
 class Native:
     """Layer/Class responsible for native function calls."""
 
-    # enum AttributeType : int64_t
+    # enum FeatureType : int64_t
     # Ordinal = 0
-    AttributeTypeOrdinal = 0
+    FeatureTypeOrdinal = 0
     # Nominal = 1
-    AttributeTypeNominal = 1
+    FeatureTypeNominal = 1
 
     class Attribute(ct.Structure):
         _fields_ = [
-            # AttributeType attributeType;
+            # FeatureType attributeType;
             ("attributeType", ct.c_longlong),
             # int64_t hasMissing;
             ("hasMissing", ct.c_longlong),
@@ -143,7 +143,7 @@ class Native:
         ]
         self.lib.InitializeTrainingClassification.restype = ct.c_void_p
 
-        self.lib.GenerateModelUpdate.argtypes = [
+        self.lib.GenerateModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
             ct.c_void_p,
             # int64_t indexAttributeSet
@@ -163,9 +163,9 @@ class Native:
             # double * gainReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.GenerateModelUpdate.restype = ct.c_void_p
+        self.lib.GenerateModelFeatureCombinationUpdate.restype = ct.c_void_p
 
-        self.lib.ApplyModelUpdate.argtypes = [
+        self.lib.ApplyModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
             ct.c_void_p,
             # int64_t indexAttributeCombination
@@ -175,30 +175,25 @@ class Native:
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.ApplyModelUpdate.restype = ct.c_longlong
+        self.lib.ApplyModelFeatureCombinationUpdate.restype = ct.c_longlong
 
-        self.lib.GetCurrentModel.argtypes = [
+        self.lib.GetCurrentModelFeatureCombination.argtypes = [
             # void * tml
             ct.c_void_p,
             # int64_t indexAttributeSet
             ct.c_longlong,
         ]
-        self.lib.GetCurrentModel.restype = ct.POINTER(ct.c_double)
+        self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
-        self.lib.GetBestModel.argtypes = [
+        self.lib.GetBestModelFeatureCombination.argtypes = [
             # void * tml
             ct.c_void_p,
             # int64_t indexAttributeSet
             ct.c_longlong,
         ]
-        self.lib.GetBestModel.restype = ct.POINTER(ct.c_double)
+        self.lib.GetBestModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.FreeTraining.argtypes = [
-            # void * tml
-            ct.c_void_p
-        ]
-
-        self.lib.CancelTraining.argtypes = [
             # void * tml
             ct.c_void_p
         ]
@@ -240,7 +235,7 @@ class Native:
         self.lib.GetInteractionScore.argtypes = [
             # void * tmlInteraction
             ct.c_void_p,
-            # int64_t countAttributesInCombination
+            # int64_t countFeaturesInCombination
             ct.c_longlong,
             # int64_t * attributeIndexes
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
@@ -250,11 +245,6 @@ class Native:
         self.lib.GetInteractionScore.restype = ct.c_longlong
 
         self.lib.FreeInteraction.argtypes = [
-            # void * tmlInteraction
-            ct.c_void_p
-        ]
-
-        self.lib.CancelInteraction.argtypes = [
             # void * tmlInteraction
             ct.c_void_p
         ]
@@ -446,9 +436,9 @@ class NativeEBM:
         attribute_ar = (this.native.Attribute * len(attributes))()
         for idx, attribute in enumerate(attributes):
             if attribute["type"] == "categorical":
-                attribute_ar[idx].attributeType = this.native.AttributeTypeNominal
+                attribute_ar[idx].attributeType = this.native.FeatureTypeNominal
             else:
-                attribute_ar[idx].attributeType = this.native.AttributeTypeOrdinal
+                attribute_ar[idx].attributeType = this.native.FeatureTypeOrdinal
             attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
             attribute_ar[idx].countStates = attribute["n_bins"]
 
@@ -576,7 +566,7 @@ class NativeEBM:
         metric_output = ct.c_double(0.0)
         for i in range(training_step_episodes):
             gain = ct.c_double(0.0)
-            model_update_tensor_pointer = this.native.lib.GenerateModelUpdate(
+            model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
                 self.model_pointer,
                 attribute_set_index,
                 learning_rate,
@@ -587,16 +577,16 @@ class NativeEBM:
                 ct.byref(gain),
             )
             if model_update_tensor_pointer == 0:  # pragma: no cover
-                raise Exception("GenerateModelUpdate Exception")
+                raise Exception("GenerateModelFeatureCombinationUpdate Exception")
 
-            return_code = this.native.lib.ApplyModelUpdate(
+            return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
                 self.model_pointer,
                 attribute_set_index,
                 model_update_tensor_pointer,
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception("ApplyModelUpdate Exception")
+                raise Exception("ApplyModelFeatureCombinationUpdate Exception")
 
         # log.debug("Training step end")
         return metric_output.value
@@ -628,7 +618,7 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
-        array_p = this.native.lib.GetBestModel(self.model_pointer, attribute_set_index)
+        array_p = this.native.lib.GetBestModelFeatureCombination(self.model_pointer, attribute_set_index)
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
@@ -646,7 +636,7 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
-        array_p = this.native.lib.GetCurrentModel(
+        array_p = this.native.lib.GetCurrentModelFeatureCombination(
             self.model_pointer, attribute_set_index
         )
         shape = self._get_attribute_set_shape(attribute_set_index)
