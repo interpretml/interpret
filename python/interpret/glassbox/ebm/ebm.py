@@ -1067,7 +1067,7 @@ class BaseEBM(BaseEstimator):
                     "scores_range": bounds,
                 }
                 feature_list.append(feature_dict)
-                density_dict.append({})
+                density_list.append({})
 
                 data_dict = {
                     "type": "pairwise",
