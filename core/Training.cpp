@@ -605,8 +605,7 @@ union CachedThreadResourcesUnion {
    }
 };
 
-// TODO: rename this EbmTrainingState
-class TmlState {
+class EbmTrainingState {
 public:
    const bool m_bRegression;
    const size_t m_cTargetStates;
@@ -635,7 +634,7 @@ public:
 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
-   TmlState(const bool bRegression, const size_t cTargetStates, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets)
+   EbmTrainingState(const bool bRegression, const size_t cTargetStates, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets)
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cFeatureCombinations(cFeatureCombinations)
@@ -655,7 +654,7 @@ public:
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
    }
    
-   ~TmlState() {
+   ~EbmTrainingState() {
       LOG(TraceLevelInfo, "Entered ~EbmTrainingState");
 
       if(m_bRegression) {
@@ -966,7 +965,7 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
-TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
+EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
    // randomSeed can be any value
    EBM_ASSERT(0 <= countFeatures);
    EBM_ASSERT(0 == countFeatures || nullptr != features);
@@ -1033,18 +1032,18 @@ TmlState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDat
 #endif // NDEBUG
 
    LOG(TraceLevelInfo, "Entered EbmTrainingState");
-   TmlState * const pTmlState = new (std::nothrow) TmlState(bRegression, cTargetStates, cFeatures, cFeatureCombinations, cInnerBags);
-   LOG(TraceLevelInfo, "Exited EbmTrainingState %p", static_cast<void *>(pTmlState));
-   if(UNLIKELY(nullptr == pTmlState)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore nullptr == pTmlState");
+   EbmTrainingState * const pEbmTrainingState = new (std::nothrow) EbmTrainingState(bRegression, cTargetStates, cFeatures, cFeatureCombinations, cInnerBags);
+   LOG(TraceLevelInfo, "Exited EbmTrainingState %p", static_cast<void *>(pEbmTrainingState));
+   if(UNLIKELY(nullptr == pEbmTrainingState)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore nullptr == pEbmTrainingState");
       return nullptr;
    }
-   if(UNLIKELY(pTmlState->Initialize(randomSeed, features, featureCombinations, featureCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore pTmlState->Initialize");
-      delete pTmlState;
+   if(UNLIKELY(pEbmTrainingState->Initialize(randomSeed, features, featureCombinations, featureCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore pEbmTrainingState->Initialize");
+      delete pEbmTrainingState;
       return nullptr;
    }
-   return pTmlState;
+   return pEbmTrainingState;
 }
 
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
@@ -1062,21 +1061,21 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
 }
 
 template<bool bRegression>
-EBM_INLINE CachedTrainingThreadResources<bRegression> * GetCachedThreadResources(TmlState * pTmlState);
+EBM_INLINE CachedTrainingThreadResources<bRegression> * GetCachedThreadResources(EbmTrainingState * pEbmTrainingState);
 template<>
-EBM_INLINE CachedTrainingThreadResources<false> * GetCachedThreadResources<false>(TmlState * pTmlState) {
-   return &pTmlState->m_cachedThreadResourcesUnion.classification;
+EBM_INLINE CachedTrainingThreadResources<false> * GetCachedThreadResources<false>(EbmTrainingState * pEbmTrainingState) {
+   return &pEbmTrainingState->m_cachedThreadResourcesUnion.classification;
 }
 template<>
-EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(TmlState * pTmlState) {
-   return &pTmlState->m_cachedThreadResourcesUnion.regression;
+EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(EbmTrainingState * pEbmTrainingState) {
+   return &pEbmTrainingState->m_cachedThreadResourcesUnion.regression;
 }
 
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates(TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates(EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetStates function
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
@@ -1087,39 +1086,39 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates
       *pGainReturn = 0; // always set this, even on errors.  We might as well do it here at the top
    }
 
-   const size_t cSamplingSetsAfterZero = (0 == pTmlState->m_cSamplingSets) ? 1 : pTmlState->m_cSamplingSets;
-   CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(countCompilerClassificationTargetStates)>(pTmlState);
-   const FeatureCombination * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
+   const size_t cSamplingSetsAfterZero = (0 == pEbmTrainingState->m_cSamplingSets) ? 1 : pEbmTrainingState->m_cSamplingSets;
+   CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(countCompilerClassificationTargetStates)>(pEbmTrainingState);
+   const FeatureCombination * const pFeatureCombination = pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
-   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
-   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
+   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
+   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
 
-   // if pTmlState->m_apSamplingSets is nullptr, then we should have zero training cases
+   // if pEbmTrainingState->m_apSamplingSets is nullptr, then we should have zero training cases
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
-   EBM_ASSERT(!pTmlState->m_apSamplingSets == !pTmlState->m_pTrainingSet); // m_pTrainingSet and m_apSamplingSets should be the same null-ness in that they should either both be null or both be non-null (although different non-null values)
+   EBM_ASSERT(!pEbmTrainingState->m_apSamplingSets == !pEbmTrainingState->m_pTrainingSet); // m_pTrainingSet and m_apSamplingSets should be the same null-ness in that they should either both be null or both be non-null (although different non-null values)
    FractionalDataType totalGain = 0;
-   if(nullptr != pTmlState->m_apSamplingSets) {
-      pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDimensions(cDimensions);
+   if(nullptr != pEbmTrainingState->m_apSamplingSets) {
+      pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FractionalDataType gain = 0;
          if(0 == pFeatureCombination->m_cFeatures) {
-            if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pTmlState->m_cTargetStates)) {
+            if(TrainZeroDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetStates)) {
                return nullptr;
             }
          } else if(1 == pFeatureCombination->m_cFeatures) {
-            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pTmlState->m_cTargetStates)) {
+            if(TrainSingleDimensional<countCompilerClassificationTargetStates>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cCasesRequiredForSplitParentMin, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmTrainingState->m_cTargetStates)) {
                return nullptr;
             }
          } else {
-            if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, pTmlState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pTmlState->m_cTargetStates)) {
+            if(TrainMultiDimensional<countCompilerClassificationTargetStates, 0>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetStates)) {
                return nullptr;
             }
          }
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Add(*pTmlState->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
+         if(pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Add(*pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
             return nullptr;
          }
       }
@@ -1136,35 +1135,35 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates
          constexpr bool bExpandBinaryLogits = false;
 #endif // EXPAND_BINARY_LOGITS
 
-         //if(0 <= k_iZeroResidual || 2 == pTmlState->m_cTargetStates && bExpandBinaryLogits) {
-         //   EBM_ASSERT(2 <= pTmlState->m_cTargetStates);
-         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as pTmlState->m_cTargetStates goes up?  If so, maybe we should divide by pTmlState->m_cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
-         //   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero * (pTmlState->m_cTargetStates - 1) / pTmlState->m_cTargetStates);
+         //if(0 <= k_iZeroResidual || 2 == pEbmTrainingState->m_cTargetStates && bExpandBinaryLogits) {
+         //   EBM_ASSERT(2 <= pEbmTrainingState->m_cTargetStates);
+         //   // TODO : for classification with residual zeroing, is our learning rate essentially being inflated as pEbmTrainingState->m_cTargetStates goes up?  If so, maybe we should divide by pEbmTrainingState->m_cTargetStates here to keep learning rates as equivalent as possible..  Actually, I think the real solution here is that 
+         //   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero * (pEbmTrainingState->m_cTargetStates - 1) / pEbmTrainingState->m_cTargetStates);
          //} else {
-         //   // TODO : for classification, is our learning rate essentially being inflated as pTmlState->m_cTargetStates goes up?  If so, maybe we should divide by pTmlState->m_cTargetStates here to keep learning rates equivalent as possible
-         //   pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+         //   // TODO : for classification, is our learning rate essentially being inflated as pEbmTrainingState->m_cTargetStates goes up?  If so, maybe we should divide by pEbmTrainingState->m_cTargetStates here to keep learning rates equivalent as possible
+         //   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          //}
 
          constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetStates;
          if(bDividing) {
-            pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero / 2);
+            pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero / 2);
          } else {
-            pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+            pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          }
       } else {
-         pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
+         pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
       }
    }
 
    if(0 != cDimensions) {
-      // pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search
+      // pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
          acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cStates;
          ++iDimension;
       } while(iDimension < cDimensions);
-      if(pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
+      if(pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
          return nullptr;
       }
    }
@@ -1174,46 +1173,46 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates
    }
 
    LOG(TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdatePerTargetStates");
-   return pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->m_aValues;
+   return pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->m_aValues;
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate(const size_t cRuntimeTargetStates, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(iPossibleCompilerOptimizedTargetStates == cRuntimeTargetStates) {
       EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
-      return GenerateModelFeatureCombinationUpdatePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pTmlState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
+      return GenerateModelFeatureCombinationUpdatePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
    } else {
-      return CompilerRecursiveGenerateModelFeatureCombinationUpdate<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pTmlState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
+      return CompilerRecursiveGenerateModelFeatureCombinationUpdate<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
    }
 }
 
 template<>
-EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);
-   return GenerateModelFeatureCombinationUpdatePerTargetStates<k_DynamicClassification>(pTmlState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
+   return GenerateModelFeatureCombinationUpdatePerTargetStates<k_DynamicClassification>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, aTrainingWeights, aValidationWeights, pGainReturn);
 }
 
 // we made this a global because if we had put this variable inside the EbmTrainingState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmTrainingState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessages = 10;
 
-// TODO : we can make GenerateModelFeatureCombinationUpdate callable by multiple threads so that this step could be parallelized before making a decision and applying one of the updates.  Right now we're accessing scratch space in the pTmlState object, but we can move that to a thread resident object.  Do do this, we would need to have our caller allocate our tensor, but that is a manageable operation
+// TODO : we can make GenerateModelFeatureCombinationUpdate callable by multiple threads so that this step could be parallelized before making a decision and applying one of the updates.  Right now we're accessing scratch space in the pEbmTrainingState object, but we can move that to a thread resident object.  Do do this, we would need to have our caller allocate our tensor, but that is a manageable operation
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * gainReturn) {
    LOG_COUNTED(&g_cLogGenerateModelFeatureCombinationUpdateParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GenerateModelFeatureCombinationUpdate parameters: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf ", learningRate=%" FractionalDataTypePrintf ", countTreeSplitsMax=%" IntegerDataTypePrintf ", countCasesRequiredForSplitParentMin=%" IntegerDataTypePrintf ", trainingWeights=%p, validationWeights=%p, gainReturn=%p", static_cast<void *>(ebmTraining), indexFeatureCombination, learningRate, countTreeSplitsMax, countCasesRequiredForSplitParentMin, static_cast<const void *>(trainingWeights), static_cast<const void *>(validationWeights), static_cast<void *>(gainReturn));
 
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
 
    EBM_ASSERT(0 <= indexFeatureCombination);
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pTmlState->m_cFeatureCombinations);
-   EBM_ASSERT(nullptr != pTmlState->m_apFeatureCombinations); // this is true because 0 < pTmlState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
+   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apFeatureCombinations); // this is true because 0 < pEbmTrainingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
 
-   LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdate");
+   LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdate");
 
    EBM_ASSERT(!std::isnan(learningRate));
    EBM_ASSERT(!std::isinf(learningRate));
@@ -1237,10 +1236,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
    // validationMetricReturn can be nullptr
 
    FractionalDataType * aModelUpdateTensor;
-   if(pTmlState->m_bRegression) {
-      aModelUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetStates<k_Regression>(pTmlState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, gainReturn);
+   if(pEbmTrainingState->m_bRegression) {
+      aModelUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetStates<k_Regression>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, gainReturn);
    } else {
-      const size_t cTargetStates = pTmlState->m_cTargetStates;
+      const size_t cTargetStates = pEbmTrainingState->m_cTargetStates;
       if(cTargetStates <= 1) {
          // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1250,14 +1249,14 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
          LOG(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate cTargetStates <= 1");
          return nullptr;
       }
-      aModelUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(cTargetStates, pTmlState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, gainReturn);
+      aModelUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(cTargetStates, pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cCasesRequiredForSplitParentMin, trainingWeights, validationWeights, gainReturn);
    }
 
    if(nullptr != gainReturn) {
       EBM_ASSERT(*gainReturn <= 0.000000001);
-      LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *gainReturn);
+      LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *gainReturn);
    } else {
-      LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate no gain");
+      LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate no gain");
    }
    if(nullptr == aModelUpdateTensor) {
       LOG(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate returned nullptr");
@@ -1269,49 +1268,49 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
+static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    LOG(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdatePerTargetStates");
 
-   EBM_ASSERT(nullptr != pTmlState->m_apCurrentModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pTmlState->m_apBestModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apCurrentModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apBestModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != aModelUpdateTensor); // aModelUpdateTensor is checked for nullptr before calling this function   
 
-   pTmlState->m_apCurrentModel[iFeatureCombination]->AddExpanded(aModelUpdateTensor);
+   pEbmTrainingState->m_apCurrentModel[iFeatureCombination]->AddExpanded(aModelUpdateTensor);
 
-   const FeatureCombination * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination];
 
-   // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
-   if(nullptr != pTmlState->m_pTrainingSet) {
+   // if the count of training cases is zero, then pEbmTrainingState->m_pTrainingSet will be nullptr
+   if(nullptr != pEbmTrainingState->m_pTrainingSet) {
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
-      TrainingSetInputFeatureLoop<1, countCompilerClassificationTargetStates>(pFeatureCombination, pTmlState->m_pTrainingSet, aModelUpdateTensor, pTmlState->m_cTargetStates);
+      TrainingSetInputFeatureLoop<1, countCompilerClassificationTargetStates>(pFeatureCombination, pEbmTrainingState->m_pTrainingSet, aModelUpdateTensor, pEbmTrainingState->m_cTargetStates);
    }
 
    FractionalDataType modelMetric = 0;
-   if(nullptr != pTmlState->m_pValidationSet) {
+   if(nullptr != pEbmTrainingState->m_pValidationSet) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
       // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
       // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
       // us with zero count validation sets
 
-      // if the count of validation set is zero, then pTmlState->m_pValidationSet will be nullptr
+      // if the count of validation set is zero, then pEbmTrainingState->m_pValidationSet will be nullptr
       // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
       // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
 
-      modelMetric = ValidationSetInputFeatureLoop<1, countCompilerClassificationTargetStates>(pFeatureCombination, pTmlState->m_pValidationSet, aModelUpdateTensor, pTmlState->m_cTargetStates);
+      modelMetric = ValidationSetInputFeatureLoop<1, countCompilerClassificationTargetStates>(pFeatureCombination, pEbmTrainingState->m_pValidationSet, aModelUpdateTensor, pEbmTrainingState->m_cTargetStates);
 
       // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
-      if(LIKELY(modelMetric < pTmlState->m_bestModelMetric)) {
+      if(LIKELY(modelMetric < pEbmTrainingState->m_bestModelMetric)) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-         pTmlState->m_bestModelMetric = modelMetric;
+         pEbmTrainingState->m_bestModelMetric = modelMetric;
 
          // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
          size_t iModel = 0;
-         size_t iModelEnd = pTmlState->m_cFeatureCombinations;
+         size_t iModelEnd = pEbmTrainingState->m_cFeatureCombinations;
          do {
-            if(pTmlState->m_apBestModel[iModel]->Copy(*pTmlState->m_apCurrentModel[iModel])) {
+            if(pEbmTrainingState->m_apBestModel[iModel]->Copy(*pEbmTrainingState->m_apCurrentModel[iModel])) {
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = 0; // on error set it to something instead of random bits
                }
@@ -1331,22 +1330,22 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(TmlStat
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate(const size_t cRuntimeTargetStates, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(iPossibleCompilerOptimizedTargetStates == cRuntimeTargetStates) {
       EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
-      return ApplyModelFeatureCombinationUpdatePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pTmlState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
+      return ApplyModelFeatureCombinationUpdatePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmTrainingState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
    } else {
-      return CompilerRecursiveApplyModelFeatureCombinationUpdate<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pTmlState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
+      return CompilerRecursiveApplyModelFeatureCombinationUpdate<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmTrainingState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
    }
 }
 
 template<>
-EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlState * const pTmlState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);
-   return ApplyModelFeatureCombinationUpdatePerTargetStates<k_DynamicClassification>(pTmlState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
+   return ApplyModelFeatureCombinationUpdatePerTargetStates<k_DynamicClassification>(pEbmTrainingState, iFeatureCombination, aModelUpdateTensor, pValidationMetricReturn);
 }
 
 // we made this a global because if we had put this variable inside the EbmTrainingState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmTrainingState object is sent into us
@@ -1356,16 +1355,16 @@ static unsigned int g_cLogApplyModelFeatureCombinationUpdateParametersMessages =
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, const FractionalDataType * modelUpdateTensor, FractionalDataType * validationMetricReturn) {
    LOG_COUNTED(&g_cLogApplyModelFeatureCombinationUpdateParametersMessages, TraceLevelInfo, TraceLevelVerbose, "ApplyModelFeatureCombinationUpdate parameters: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf ", modelUpdateTensor=%p, validationMetricReturn=%p", static_cast<void *>(ebmTraining), indexFeatureCombination, static_cast<const void *>(modelUpdateTensor), static_cast<void *>(validationMetricReturn));
 
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
 
    EBM_ASSERT(0 <= indexFeatureCombination);
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pTmlState->m_cFeatureCombinations);
-   EBM_ASSERT(nullptr != pTmlState->m_apFeatureCombinations); // this is true because 0 < pTmlState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
+   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apFeatureCombinations); // this is true because 0 < pEbmTrainingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
 
-   LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdate");
+   LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdate");
 
    // modelUpdateTensor can be nullptr (then nothing gets updated)
    // validationMetricReturn can be nullptr
@@ -1374,45 +1373,45 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatu
       if(nullptr != validationMetricReturn) {
          *validationMetricReturn = 0;
       }
-      LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate from null modelUpdateTensor");
+      LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate from null modelUpdateTensor");
       return 0;
    }
 
    IntegerDataType ret;
-   if(pTmlState->m_bRegression) {
-      ret = ApplyModelFeatureCombinationUpdatePerTargetStates<k_Regression>(pTmlState, iFeatureCombination, modelUpdateTensor, validationMetricReturn);
+   if(pEbmTrainingState->m_bRegression) {
+      ret = ApplyModelFeatureCombinationUpdatePerTargetStates<k_Regression>(pEbmTrainingState, iFeatureCombination, modelUpdateTensor, validationMetricReturn);
    } else {
-      const size_t cTargetStates = pTmlState->m_cTargetStates;
+      const size_t cTargetStates = pEbmTrainingState->m_cTargetStates;
       if(cTargetStates <= 1) {
          // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
          if(nullptr != validationMetricReturn) {
             *validationMetricReturn = 0;
          }
-         LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate from cTargetStates <= 1");
+         LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate from cTargetStates <= 1");
          return 0;
       }
-      ret = CompilerRecursiveApplyModelFeatureCombinationUpdate<2>(cTargetStates, pTmlState, iFeatureCombination, modelUpdateTensor, validationMetricReturn);
+      ret = CompilerRecursiveApplyModelFeatureCombinationUpdate<2>(cTargetStates, pEbmTrainingState, iFeatureCombination, modelUpdateTensor, validationMetricReturn);
    }
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING ApplyModelFeatureCombinationUpdate returned %" IntegerDataTypePrintf, ret);
    }
    if(nullptr != validationMetricReturn) {
       EBM_ASSERT(0 <= *validationMetricReturn); // both log loss and RMSE need to be above zero
-      LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *validationMetricReturn);
+      LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *validationMetricReturn);
    } else {
-      LOG_COUNTED(&pTmlState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer.");
+      LOG_COUNTED(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer.");
    }
    return ret;
 }
 
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countCasesRequiredForSplitParentMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * validationMetricReturn) {
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
 
-   if(!pTmlState->m_bRegression) {
+   if(!pEbmTrainingState->m_bRegression) {
       // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) and we'll return 1 from this function.  We'd like to return 0 (success) here, so we handle it ourselves
-      const size_t cTargetStates = pTmlState->m_cTargetStates;
+      const size_t cTargetStates = pEbmTrainingState->m_cTargetStates;
       if(cTargetStates <= 1) {
          // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1436,22 +1435,22 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination) {
    LOG(TraceLevelInfo, "Entered GetCurrentModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
 
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
    EBM_ASSERT(0 <= indexFeatureCombination);
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pTmlState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
 
-   if(nullptr == pTmlState->m_apCurrentModel) {
-      // if pTmlState->m_apCurrentModel is nullptr, then either:
+   if(nullptr == pEbmTrainingState->m_apCurrentModel) {
+      // if pEbmTrainingState->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
       // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
-   SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iFeatureCombination];
+   SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pEbmTrainingState->m_apCurrentModel[iFeatureCombination];
    EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
 
@@ -1462,22 +1461,22 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination) {
    LOG(TraceLevelInfo, "Entered GetBestModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
 
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
    EBM_ASSERT(0 <= indexFeatureCombination);
    EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pTmlState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
 
-   if(nullptr == pTmlState->m_apBestModel) {
-      // if pTmlState->m_apBestModel is nullptr, then either:
+   if(nullptr == pEbmTrainingState->m_apBestModel) {
+      // if pEbmTrainingState->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
       // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
-   SegmentedTensor<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iFeatureCombination];
+   SegmentedTensor<ActiveDataType, FractionalDataType> * pBestModel = pEbmTrainingState->m_apBestModel[iFeatureCombination];
    EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pBestModel->GetValuePointer();
 
@@ -1487,8 +1486,8 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
 
 EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining ebmTraining) {
    LOG(TraceLevelInfo, "Entered FreeTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));
-   TmlState * pTmlState = reinterpret_cast<TmlState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pTmlState);
-   delete pTmlState;
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
+   delete pEbmTrainingState;
    LOG(TraceLevelInfo, "Exited FreeTraining");
 }
