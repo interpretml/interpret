@@ -29,7 +29,7 @@ public:
    virtual size_t GetTotalCountInstanceOccurrences() const = 0;
 };
 
-// SamplingWithReplacement this is the more theoretically correct method of sampling, but it has the drawback that we need to keep a count of the number of times each case is selected in the dataset.  Sampling without replacement would require 1 bit per case, so it can be faster.
+// SamplingWithReplacement this is the more theoretically correct method of sampling, but it has the drawback that we need to keep a count of the number of times each instance is selected in the dataset.  Sampling without replacement would require 1 bit per case, so it can be faster.
 class SamplingWithReplacement final : public SamplingMethod {
 public:
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing the raw data in both formats since it is never converted anyways, but this count is!

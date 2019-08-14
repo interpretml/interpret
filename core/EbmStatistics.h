@@ -20,7 +20,7 @@ public:
 
    EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
       // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-      EBM_ASSERT(0 < cInstances); // we purge bins that have case counts of zero, so cInstances should never be zero
+      EBM_ASSERT(0 < cInstances); // we purge bins that have an instance counts of zero, so cInstances should never be zero
       return sumResidualError / cInstances * sumResidualError;
    }
 

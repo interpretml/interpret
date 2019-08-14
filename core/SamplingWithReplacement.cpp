@@ -21,7 +21,7 @@ SamplingWithReplacement::~SamplingWithReplacement() {
 }
 
 size_t SamplingWithReplacement::GetTotalCountInstanceOccurrences() const {
-      // for SamplingWithReplacement (bootstrap sampling), we have the same number of cases as our original dataset
+      // for SamplingWithReplacement (bootstrap sampling), we have the same number of instances as our original dataset
    size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
 #ifndef NDEBUG
    size_t cTotalCountInstanceOccurrencesDebug = 0;
@@ -40,7 +40,7 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
    EBM_ASSERT(nullptr != pOriginDataSet);
 
    const size_t cInstances = pOriginDataSet->GetCountInstances();
-   EBM_ASSERT(0 < cInstances); // if there were no cases, we wouldn't be called
+   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
    if(IsMultiplyError(sizeof(size_t), cInstances)) {
       LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cInstances)");
@@ -84,7 +84,7 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataSet);
    const size_t cInstances = pOriginDataSet->GetCountInstances();
-   EBM_ASSERT(0 < cInstances); // if there were no cases, we wouldn't be called
+   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
    const size_t cBytesData = sizeof(size_t) * cInstances;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));

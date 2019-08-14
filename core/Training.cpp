@@ -1094,7 +1094,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates
    pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
    pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
 
-   // if pEbmTrainingState->m_apSamplingSets is nullptr, then we should have zero training cases
+   // if pEbmTrainingState->m_apSamplingSets is nullptr, then we should have zero training instances
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
    EBM_ASSERT(!pEbmTrainingState->m_apSamplingSets == !pEbmTrainingState->m_pTrainingSet); // m_pTrainingSet and m_apSamplingSets should be the same null-ness in that they should either both be null or both be non-null (although different non-null values)
    FractionalDataType totalGain = 0;
@@ -1224,10 +1224,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   EBM_ASSERT(0 <= countInstancesRequiredForParentSplitMin); // if there is 1 case, then it can't be split, but we accept this input from our user
+   EBM_ASSERT(0 <= countInstancesRequiredForParentSplitMin); // if there is 1 instance, then it can't be split, but we accept this input from our user
    size_t cInstancesRequiredForParentSplitMin = static_cast<size_t>(countInstancesRequiredForParentSplitMin);
    if(!IsNumberConvertable<size_t, IntegerDataType>(countInstancesRequiredForParentSplitMin)) {
-      // we can never exceed a size_t number of cases, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
+      // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate the same results as if we used the true number
       cInstancesRequiredForParentSplitMin = std::numeric_limits<size_t>::max();
    }
 
@@ -1279,7 +1279,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(EbmTrai
 
    const FeatureCombinationCore * const pFeatureCombination = pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination];
 
-   // if the count of training cases is zero, then pEbmTrainingState->m_pTrainingSet will be nullptr
+   // if the count of training instances is zero, then pEbmTrainingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmTrainingState->m_pTrainingSet) {
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
       TrainingSetInputFeatureLoop<1, countCompilerClassificationTargetStates>(pFeatureCombination, pEbmTrainingState->m_pTrainingSet, aModelUpdateTensor, pEbmTrainingState->m_cTargetStates);
@@ -1294,8 +1294,8 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(EbmTrai
       // us with zero count validation sets
 
       // if the count of validation set is zero, then pEbmTrainingState->m_pValidationSet will be nullptr
-      // if the count of training cases is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
-      // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero cases in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
+      // if the count of training instances is zero, don't update the best model (it will stay as all zeros), and we don't need to update our non-existant training set either
+      // C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, but it isn't guaranteed, so let's check for zero instances in the validation set this better way   https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
 
@@ -1446,7 +1446,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
       // if pEbmTrainingState->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
@@ -1472,7 +1472,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
       // if pEbmTrainingState->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetStates was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target cases.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 

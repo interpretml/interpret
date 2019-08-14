@@ -240,7 +240,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    }
 
    if(nullptr == pEbmInteractionState->m_pDataSet) {
-      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero cases.  If there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
+      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero instances.  If there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
       LOG(TraceLevelInfo, "INFO GetInteractionScore zero instances");
       if(nullptr != interactionScoreReturn) {
          *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition

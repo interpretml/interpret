@@ -62,10 +62,10 @@ public:
 
    size_t cInstancesInBucket;
    // TODO : we really want to eliminate this bucketValue at some point.  When doing the mains, if we change our algorithm so that we don't compress the arrays afterwards then we don't need it as the index is == to the bucketValue.
-   // The compresson step is actually really unnessary because we can pre-compress our data when we get it to ensure that there are no missing bin values.  The only way there could be a bin with a case count of zero then
+   // The compresson step is actually really unnessary because we can pre-compress our data when we get it to ensure that there are no missing bin values.  The only way there could be a bin with an instance count of zero then
    // would be if a value is not in a particular sampling set, which should be quite rare.
-   // even if we ended up keeping the bucket value, it may make sense to first build a non-compressed representation which is more compact and can fit into cache better while we stripe in our main case data and then re-organize it to add the bucket afterwards, which we know from each bucket's index
-   // if we remove this bucketValue then it will slightly change our results because cases where there are zeros are ambiguous in terms of choosing a split point.  We should remove this value as late as possible so that we preserve our comparison data sets over a longer
+   // even if we ended up keeping the bucket value, it may make sense to first build a non-compressed representation which is more compact and can fit into cache better while we stripe in our main instance data and then re-organize it to add the bucket afterwards, which we know from each bucket's index
+   // if we remove this bucketValue then it will slightly change our results because buckets where there are zeros are ambiguous in terms of choosing a split point.  We should remove this value as late as possible so that we preserve our comparison data sets over a longer
    // period of time
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
    ActiveDataType bucketValue;
@@ -149,7 +149,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(countCompiler
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
       // taking all the above together, it seems unlikley we'll use a method of separating sets via single pass randomized set splitting.  Even if count is stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
 
-      // TODO : try using a sampling method with non-repeating cases, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
+      // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
       const size_t cOccurences = *pCountOccurrences;
       ++pCountOccurrences;
@@ -226,7 +226,7 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
       // taking all the above together, it seems unlikley we'll use a method of separating sets via single pass randomized set splitting.  Even if count is stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
 
-      // TODO : try using a sampling method with non-repeating cases, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
+      // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
       cItemsRemaining = cItemsPerBitPackDataUnit;
       // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
@@ -368,7 +368,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
       // taking all the above together, it seems unlikley we'll use a method of separating sets via single pass randomized set splitting.  Even if count is stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
 
-      // TODO : try using a sampling method with non-repeating cases, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
+      // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
       // TODO : we can elminate the inner vector loop for regression at least, and also if we add a templated bool for binary class.  Propegate this change to all places that we loop on the vector
 
