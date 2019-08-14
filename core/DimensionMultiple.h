@@ -312,7 +312,7 @@ void CompareTotalsDebug(const HistogramBucket<IsRegression(countCompilerClassifi
 //         pCurrentIndexAndCountBins = &currentIndexAndCountBins[0];
 //         do {
 //            if(0 != (1 & permuteVectorDestroy)) {
-//               // even though our index is multiplied by the total states until this point, we only care about the zero state, and zero multiplied by anything is zero
+//               // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
 //               if(0 == pCurrentIndexAndCountBins->multipliedIndexCur) {
 //                  goto skip_combination;
 //               }
@@ -409,7 +409,7 @@ void BuildFastTotals(HistogramBucket<IsRegression(countCompilerClassificationTar
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
          pFastTotalStateInitialize->iCur = 0;
          pFastTotalStateInitialize->cBins = cBins;
@@ -548,7 +548,7 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
       EBM_ASSERT(1 <= cDimensions);
       do {
          pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
          multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureCombinationEntry->m_pFeature->m_cBins);
          pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
          ++pFeatureCombinationEntry;
@@ -617,7 +617,7 @@ void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsRegression(countCompile
          const CurrentIndexAndCountBins * pCurrentIndexAndCountBinsLoop = &currentIndexAndCountBins[1];
          EBM_ASSERT(0 != permuteVectorDestroy);
          do {
-            // even though our index is multiplied by the total states until this point, we only care about the zero state, and zero multiplied by anything is zero
+            // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
             if(UNLIKELY(0 != ((0 == pCurrentIndexAndCountBinsLoop->multipliedIndexCur ? 1 : 0) & permuteVectorDestroy))) {
                goto skip_combination;
             }
@@ -724,7 +724,7 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
       EBM_ASSERT(1 <= cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
          EBM_ASSERT(*piPointInitialize < cBins);
          EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          size_t addValue = multipleTotalInitialize * (*piPointInitialize);
@@ -759,7 +759,7 @@ void GetTotals(const HistogramBucket<IsRegression(countCompilerClassificationTar
       EBM_ASSERT(0 < cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             EBM_ASSERT(!IsMultiplyError(cBins - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cBins - 1);
@@ -1103,7 +1103,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals1HighLowBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals1HighHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST state sweep loop");
+      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
@@ -1155,7 +1155,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
-      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND state sweep loop");
+      LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
@@ -1723,7 +1723,7 @@ bool CalculateInteractionScore(const size_t cTargetClasses, CachedInteractionThr
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       const size_t cBins = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
-      EBM_ASSERT(2 <= cBins); // situations with 1 state should have been filtered out before this function was called (but still inside the C++)
+      EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
@@ -1815,12 +1815,12 @@ bool CalculateInteractionScore(const size_t cTargetClasses, CachedInteractionThr
 
       const size_t cBinsDimension1 = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cBins;
       const size_t cBinsDimension2 = pFeatureCombination->m_FeatureCombinationEntry[1].m_pFeature->m_cBins;
-      EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
 
-      LOG(TraceLevelVerbose, "CalculateInteractionScore Starting state sweep loop");
+      LOG(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
       // note : if cBinsDimension1 can be 1 then we can't use a do loop
       for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
          aiStart[0] = iBin1;
@@ -1867,7 +1867,7 @@ bool CalculateInteractionScore(const size_t cTargetClasses, CachedInteractionThr
             }
          }
       }
-      LOG(TraceLevelVerbose, "CalculateInteractionScore Done state sweep loop");
+      LOG(TraceLevelVerbose, "CalculateInteractionScore Done bin sweep loop");
 
       if(nullptr != pInteractionScoreReturn) {
          *pInteractionScoreReturn = bestSplittingScore;

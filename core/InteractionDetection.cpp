@@ -73,7 +73,7 @@ public:
             FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
             IntegerDataType countBins = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
             if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
                LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                return true;
@@ -205,7 +205,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRu
 template<>
 EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const size_t cRuntimeTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(cRuntimeTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
+   // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < cRuntimeTargetClasses);
    return GetInteractionScorePerTargetClasses<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
 }
@@ -292,7 +292,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
-      EBM_ASSERT(2 <= pFeature->m_cBins); // we should have filtered out anything with 1 state above
+      EBM_ASSERT(2 <= pFeature->m_cBins); // we should have filtered out anything with 1 bin above
 
       pFeatureCombinationEntry->m_pFeature = pFeature;
       ++pFeatureCombinationEntry;
@@ -305,7 +305,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    } else {
       const size_t cTargetClasses = pEbmInteractionState->m_cTargetClasses;
       if(cTargetClasses <= 1) {
-         LOG(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 states");
+         LOG(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
          }

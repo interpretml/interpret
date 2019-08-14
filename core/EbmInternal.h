@@ -145,7 +145,7 @@ enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 // TODO: increase this up to something like 16.  I have decreased it to 2 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
 // TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing countCompilerClassificationTargetClasses from the main template of SegmentedRegion (using a template on just the Add function would be ok)
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 3;
-static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class state then we would output model files with two values instead of our special case 1");
+static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
 
 // TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
@@ -194,13 +194,13 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
 #define GET_VECTOR_LENGTH(MACRO_countCompilerClassificationTargetClasses, MACRO_countRuntimeClassificationTargetClasses) (k_DynamicClassification == (MACRO_countCompilerClassificationTargetClasses) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetClasses) : GetVectorLengthFlatCore(MACRO_countCompilerClassificationTargetClasses))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
 // this macro is legal to use when the template is set to non-classification opterations, but it will return a number that will overflow any memory allocation if anyone tries to use the value
 // this macro can always be used before calling GET_VECTOR_LENGTH if you want to make other section of the code that depend on cTargetClasses compile out
 // TODO: use this macro more
@@ -209,7 +209,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
@@ -224,7 +224,7 @@ constexpr size_t CountBitsRequiredPositiveMax() {
 }
 
 constexpr size_t k_cBitsForSizeTCore = CountBitsRequiredPositiveMax<size_t>();
-// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of states per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
+// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
 // TODO : we should check at startup if there are equal to or less than these number of dimensions, otherwise return an error.  I don't think we want to wait until we try allocating the memory to discover that we can't do it
 // TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;

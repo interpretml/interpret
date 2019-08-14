@@ -25,13 +25,13 @@
 // the rational is that we need to bin this data, and our binning memory will be N1*N1*...*N(D-1)*N(D)
 // So, even for binary input featuers, we would have 2^64 bins, and that would take more memory than a 64 bit machine can have
 // Similarily, we need a huge amount of memory in order to bin any data with a combined total of more than 64 bits.
-// The worst case I can think of is where we have 3 states, requiring 2 bit each, and we overflowed at 33 dimensions
+// The worst case I can think of is where we have 3 bins, requiring 2 bit each, and we overflowed at 33 dimensions
 // in that bad case, we would have 3^33 bins * 8 bytes minimum per bin = 44472484532444184 bytes, which would take 56 bits to express
 // Nobody is every going to build a machine with more than 64 bits, since you need a non-trivial volume of material assuming bits require
 // more than several atoms to store.
 // we can just return an out of memory error if someone requests a set of features that would sum to more than 64 bits
 // we DO need to check for this error condition though, since it's not impossible for someone to request this kind of thing.
-// any dimensions with only 1 state don't count since you would just be multiplying by 1 for each such dimension
+// any dimensions with only 1 bin don't count since you would just be multiplying by 1 for each such dimension
 
 template<bool bRegression>
 class HistogramBucket;
@@ -416,7 +416,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 ) {
    LOG(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;
