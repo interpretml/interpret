@@ -9,7 +9,7 @@
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureCore.h"
 
 class FeatureCombinationCore final {
 public:

@@ -22,7 +22,7 @@
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
 #include "CachedThreadResources.h"
 // feature includes
-#include "Feature.h"
+#include "FeatureCore.h"
 // FeatureCombination.h depends on FeatureInternal.h
 #include "FeatureCombination.h"
 // dataset depends on features

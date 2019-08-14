@@ -15,7 +15,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramBucketVectorEntry.h"
 #include "CachedThreadResources.h"
-#include "Feature.h"
+#include "FeatureCore.h"
 #include "FeatureCombination.h"
 #include "DataSetByFeatureCombination.h"
 #include "DataSetByFeature.h"

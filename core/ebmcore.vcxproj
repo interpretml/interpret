@@ -283,7 +283,7 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="inc\ebmcore.h" />
-    <ClInclude Include="Feature.h" />
+    <ClInclude Include="FeatureCore.h" />
     <ClInclude Include="FeatureCombination.h" />
     <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="CachedThreadResources.h" />

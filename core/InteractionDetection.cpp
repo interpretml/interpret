@@ -13,7 +13,7 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 // feature includes
-#include "Feature.h"
+#include "FeatureCore.h"
 // dataset depends on features
 #include "DataSetByFeature.h"
 // depends on the above

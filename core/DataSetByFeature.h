@@ -10,7 +10,7 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureCore.h"
 
 // TODO: rename this to DataSetByFeature
 class DataSetByFeature final {

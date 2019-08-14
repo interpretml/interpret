@@ -10,7 +10,7 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureCore.h"
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
