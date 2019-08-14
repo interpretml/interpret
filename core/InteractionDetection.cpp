@@ -17,7 +17,7 @@
 // dataset depends on attributes
 #include "DataSetByFeature.h"
 // depends on the above
-#include "DimensionalMultiple.h"
+#include "DimensionMultiple.h"
 
 // TODO : rename this to EbmInteractionState
 class TmlInteractionState {

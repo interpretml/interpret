@@ -30,8 +30,8 @@
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingWithReplacement.h"
 // TreeNode depends on almost everything
-#include "DimensionalSingle.h"
-#include "DimensionalMultiple.h"
+#include "DimensionSingle.h"
+#include "DimensionMultiple.h"
 
 static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
    LOG(TraceLevelInfo, "Entered DeleteSegmentsCore");
