@@ -12,7 +12,7 @@
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCore.h"
-#include "FeatureCombination.h"
+#include "FeatureCombinationCore.h"
 #include "DataSetByFeatureCombination.h"
 
 #define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))

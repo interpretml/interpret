@@ -16,7 +16,7 @@
 #include "HistogramBucketVectorEntry.h"
 #include "CachedThreadResources.h"
 #include "FeatureCore.h"
-#include "FeatureCombination.h"
+#include "FeatureCombinationCore.h"
 #include "DataSetByFeatureCombination.h"
 #include "DataSetByFeature.h"
 #include "SamplingWithReplacement.h"

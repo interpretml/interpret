@@ -284,7 +284,7 @@ EXIT /B 0
   <ItemGroup>
     <ClInclude Include="inc\ebmcore.h" />
     <ClInclude Include="FeatureCore.h" />
-    <ClInclude Include="FeatureCombination.h" />
+    <ClInclude Include="FeatureCombinationCore.h" />
     <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="CachedThreadResources.h" />
     <ClInclude Include="DataSetByFeature.h" />

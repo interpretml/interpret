@@ -24,7 +24,7 @@
 // feature includes
 #include "FeatureCore.h"
 // FeatureCombination.h depends on FeatureInternal.h
-#include "FeatureCombination.h"
+#include "FeatureCombinationCore.h"
 // dataset depends on features
 #include "DataSetByFeatureCombination.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
