@@ -295,7 +295,7 @@ EXIT /B 0
     <ClInclude Include="Logging.h" />
     <ClInclude Include="DimensionalMultiple.h" />
     <ClInclude Include="PrecompiledHeader.h" />
-    <ClInclude Include="HistogramBucketVector.h" />
+    <ClInclude Include="HistogramBucketVectorEntry.h" />
     <ClInclude Include="RandomStream.h" />
     <ClInclude Include="SamplingWithReplacement.h" />
     <ClInclude Include="SegmentedTensor.h" />

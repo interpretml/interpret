@@ -13,7 +13,7 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "HistogramBucketVector.h"
+#include "HistogramBucketVectorEntry.h"
 #include "CachedThreadResources.h"
 #include "Feature.h"
 #include "FeatureCombination.h"
