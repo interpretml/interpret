@@ -112,6 +112,7 @@ def all_explanations():
 
 
 @pytest.mark.selenium
+@pytest.mark.xfail(strict=False)
 def test_all_explainers_selenium(all_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
