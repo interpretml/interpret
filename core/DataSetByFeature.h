@@ -12,20 +12,20 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
-// TODO: rename this to DataSetByAttribute
+// TODO: rename this to DataSetByFeature
 class DataSetInternalCore final {
    const FractionalDataType * const m_aResidualErrors;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cCases;
-   const size_t m_cAttributes;
+   const size_t m_cFeatures;
 
 public:
 
-   DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
+   DataSetInternalCore(const bool bRegression, const size_t cFeatures, const FeatureInternalCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
    ~DataSetInternalCore();
 
    TML_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || 0 != m_cAttributes && nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || 0 != m_cFeatures && nullptr == m_aaInputData;
    }
 
    TML_INLINE const FractionalDataType * GetResidualPointer() const {
@@ -34,17 +34,17 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const AttributeInternalCore * const pAttribute) const {
-      EBM_ASSERT(nullptr != pAttribute);
-      EBM_ASSERT(pAttribute->m_iAttributeData < m_cAttributes);
+   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureInternalCore * const pFeature) const {
+      EBM_ASSERT(nullptr != pFeature);
+      EBM_ASSERT(pFeature->m_iFeatureData < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pAttribute->m_iAttributeData];
+      return m_aaInputData[pFeature->m_iFeatureData];
    }
    TML_INLINE size_t GetCountCases() const {
       return m_cCases;
    }
-   TML_INLINE size_t GetCountAttributes() const {
-      return m_cAttributes;
+   TML_INLINE size_t GetCountFeatures() const {
+      return m_cFeatures;
    }
 };
 

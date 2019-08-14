@@ -11,14 +11,14 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
-class DataSetAttributeCombination;
+class DataSetFeatureCombination;
 
 // TODO: if/when we decide we want to keep SamplingWithReplacement, we should create a SamplingMethod.h and SamplingMethod.cpp
 class SamplingMethod {
 public:
-   const DataSetAttributeCombination * const m_pOriginDataSet;
+   const DataSetFeatureCombination * const m_pOriginDataSet;
 
-   TML_INLINE SamplingMethod(const DataSetAttributeCombination * const pOriginDataSet)
+   TML_INLINE SamplingMethod(const DataSetFeatureCombination * const pOriginDataSet)
       : m_pOriginDataSet(pOriginDataSet) {
       EBM_ASSERT(nullptr != pOriginDataSet);
    }
@@ -36,7 +36,7 @@ public:
    const size_t * const m_aCountOccurrences;
 
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many SamplingWithReplacement objects will refer to the original one
-   TML_INLINE SamplingWithReplacement(const DataSetAttributeCombination * const pOriginDataSet, const size_t * const aCountOccurrences)
+   TML_INLINE SamplingWithReplacement(const DataSetFeatureCombination * const pOriginDataSet, const size_t * const aCountOccurrences)
       : SamplingMethod(pOriginDataSet)
       , m_aCountOccurrences(aCountOccurrences) {
       EBM_ASSERT(nullptr != aCountOccurrences);
@@ -45,11 +45,11 @@ public:
    virtual ~SamplingWithReplacement() final override;
    virtual size_t GetTotalCountCaseOccurrences() const final override;
 
-   static SamplingWithReplacement * GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet);
-   static SamplingWithReplacement * GenerateFlatSamplingSet(const DataSetAttributeCombination * const pOriginDataSet);
+   static SamplingWithReplacement * GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetFeatureCombination * const pOriginDataSet);
+   static SamplingWithReplacement * GenerateFlatSamplingSet(const DataSetFeatureCombination * const pOriginDataSet);
 
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingMethod ** apSamplingSets);
-   static SamplingMethod ** GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet, const size_t cSamplingSets);
+   static SamplingMethod ** GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetFeatureCombination * const pOriginDataSet, const size_t cSamplingSets);
 };
 
 #endif // SAMPLING_WITH_REPLACEMENT_H

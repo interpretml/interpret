@@ -18,52 +18,52 @@
 #define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))
 
 TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
-   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructResidualErrors");
+   LOG(TraceLevelInfo, "Entered DataSetFeatureCombination::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cCases);
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
-   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructResidualErrors");
+   LOG(TraceLevelInfo, "Exited DataSetFeatureCombination::ConstructResidualErrors");
    return aResidualErrors;
 }
 
 TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cCases, const size_t cVectorLength, const FractionalDataType * const aPredictionScoresFrom) {
-   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructPredictionScores");
+   LOG(TraceLevelInfo, "Entered DataSetFeatureCombination::ConstructPredictionScores");
 
    EBM_ASSERT(0 < cCases);
    EBM_ASSERT(0 < cVectorLength);
 
    if(IsMultiplyError(cCases, cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(cCases, cVectorLength)");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructPredictionScores IsMultiplyError(cCases, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cCases * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructPredictionScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * const aPredictionScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
    if(nullptr == aPredictionScoresTo) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructPredictionScores nullptr == aPredictionScoresTo");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructPredictionScores nullptr == aPredictionScoresTo");
       return nullptr;
    }
 
@@ -87,18 +87,18 @@ TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cC
       }
    }
 
-   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructPredictionScores");
+   LOG(TraceLevelInfo, "Exited DataSetFeatureCombination::ConstructPredictionScores");
    return aPredictionScoresTo;
 }
 
 TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cCases, const IntegerDataType * const aTargets) {
-   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructTargetData");
+   LOG(TraceLevelInfo, "Entered DataSetFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cCases);
    EBM_ASSERT(nullptr != aTargets);
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructTargetData");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructTargetData");
       return nullptr;
    }
    const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cCases;
@@ -121,7 +121,7 @@ TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
 
-   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructTargetData");
+   LOG(TraceLevelInfo, "Exited DataSetFeatureCombination::ConstructTargetData");
    return aTargetData;
 }
 
@@ -130,36 +130,36 @@ struct InputDataPointerAndCountStates {
    size_t m_cStates;
 };
 
-TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
-   LOG(TraceLevelInfo, "Entered DataSetAttributeCombination::ConstructInputData");
+TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+   LOG(TraceLevelInfo, "Entered DataSetFeatureCombination::ConstructInputData");
 
-   EBM_ASSERT(0 < cAttributeCombinations);
-   EBM_ASSERT(nullptr != apAttributeCombination);
+   EBM_ASSERT(0 < cFeatureCombinations);
+   EBM_ASSERT(nullptr != apFeatureCombination);
    EBM_ASSERT(0 < cCases);
-   // aInputDataFrom can be nullptr EVEN if 0 < cAttributeCombinations && 0 < cCases IF the attributeCombinations are all empty, which makes none of them refer to attributes, so the aInputDataFrom pointer isn't necessary
+   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cCases IF the featureCombinations are all empty, which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
-   if(IsMultiplyError(sizeof(void *), cAttributeCombinations)) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(void *), cAttributeCombinations)");
+   if(IsMultiplyError(sizeof(void *), cFeatureCombinations)) {
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructInputData IsMultiplyError(sizeof(void *), cFeatureCombinations)");
       return nullptr;
    }
-   const size_t cBytesMemoryArray = sizeof(void *) * cAttributeCombinations;
+   const size_t cBytesMemoryArray = sizeof(void *) * cFeatureCombinations;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
-      LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData nullptr == aaInputDataTo");
+      LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
    StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
-   const AttributeCombinationCore * const * ppAttributeCombination = apAttributeCombination;
-   const AttributeCombinationCore * const * const ppAttributeCombinationEnd = apAttributeCombination + cAttributeCombinations;
+   const FeatureCombinationCore * const * ppFeatureCombination = apFeatureCombination;
+   const FeatureCombinationCore * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
    do {
-      const AttributeCombinationCore * const pAttributeCombination = *ppAttributeCombination;
-      EBM_ASSERT(nullptr != pAttributeCombination);
-      const size_t cAttributes = pAttributeCombination->m_cAttributes;
-      if(0 == cAttributes) {
+      const FeatureCombinationCore * const pFeatureCombination = *ppFeatureCombination;
+      EBM_ASSERT(nullptr != pFeatureCombination);
+      const size_t cFeatures = pFeatureCombination->m_cFeatures;
+      if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
       } else {
-         const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
+         const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
          EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // if we have 1 item, it can't be larger than the number of bits of storage
@@ -168,13 +168,13 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          const size_t cDataUnits = (cCases - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
 
          if(IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)) {
-            LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)");
+            LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)");
             goto free_all;
          }
          const size_t cBytesData = sizeof(StorageDataTypeCore) * cDataUnits;
          StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cBytesData));
          if(nullptr == pInputDataTo) {
-            LOG(TraceLevelWarning, "WARNING DataSetAttributeCombination::ConstructInputData nullptr == pInputDataTo");
+            LOG(TraceLevelWarning, "WARNING DataSetFeatureCombination::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -185,16 +185,16 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
+         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
          InputDataPointerAndCountStates dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountStates * pDimensionInfo = &dimensionInfo[0];
-         EBM_ASSERT(0 < cAttributes);
-         const InputDataPointerAndCountStates * const pDimensionInfoEnd = &dimensionInfo[cAttributes];
+         EBM_ASSERT(0 < cFeatures);
+         const InputDataPointerAndCountStates * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
-            const AttributeInternalCore * const pAttribute = pAttributeCombinationEntry->m_pAttribute;
-            pDimensionInfo->m_pInputData = &aInputDataFrom[pAttribute->m_iAttributeData * cCases];
-            pDimensionInfo->m_cStates = pAttribute->m_cStates;
-            ++pAttributeCombinationEntry;
+            const FeatureInternalCore * const pFeature = pFeatureCombinationEntry->m_pFeature;
+            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->m_iFeatureData * cCases];
+            pDimensionInfo->m_cStates = pFeature->m_cStates;
+            ++pFeatureCombinationEntry;
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
 
@@ -222,7 +222,7 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
                   EBM_ASSERT(0 <= inputData);
                   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
                   EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cStates);
-                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cStates)); // we check for overflows during AttributeCombination construction, but let's check here again
+                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cStates)); // we check for overflows during FeatureCombination construction, but let's check here again
 
                   tensorIndex += tensorMultiple * static_cast<size_t>(inputData); // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
                   tensorMultiple *= pDimensionInfo->m_cStates;
@@ -249,10 +249,10 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          }
       }
       ++paInputDataTo;
-      ++ppAttributeCombination;
-   } while(ppAttributeCombinationEnd != ppAttributeCombination);
+      ++ppFeatureCombination;
+   } while(ppFeatureCombinationEnd != ppFeatureCombination);
 
-   LOG(TraceLevelInfo, "Exited DataSetAttributeCombination::ConstructInputData");
+   LOG(TraceLevelInfo, "Exited DataSetFeatureCombination::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -264,19 +264,19 @@ free_all:
    return nullptr;
 }
 
-DataSetAttributeCombination::DataSetAttributeCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength)
+DataSetFeatureCombination::DataSetFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength)
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cCases, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aPredictionScores(bAllocatePredictionScores ? ConstructPredictionScores(cCases, cVectorLength, aPredictionScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cCases, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))
-   , m_aaInputData(0 == cAttributeCombinations ? nullptr : ConstructInputData(cAttributeCombinations, apAttributeCombination, cCases, aInputDataFrom))
+   , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cCases, aInputDataFrom))
    , m_cCases(cCases)
-   , m_cAttributeCombinations(cAttributeCombinations) {
+   , m_cFeatureCombinations(cFeatureCombinations) {
 
    EBM_ASSERT(0 < cCases);
 }
 
-DataSetAttributeCombination::~DataSetAttributeCombination() {
-   LOG(TraceLevelInfo, "Entered ~DataSetAttributeCombination");
+DataSetFeatureCombination::~DataSetFeatureCombination() {
+   LOG(TraceLevelInfo, "Entered ~DataSetFeatureCombination");
 
    if(INVALID_POINTER != m_aResidualErrors) {
       free(m_aResidualErrors);
@@ -288,9 +288,9 @@ DataSetAttributeCombination::~DataSetAttributeCombination() {
       free(const_cast<StorageDataTypeCore *>(m_aTargetData));
    }
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(0 < m_cAttributeCombinations);
+      EBM_ASSERT(0 < m_cFeatureCombinations);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;
-      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cAttributeCombinations;
+      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cFeatureCombinations;
       do {
          free(const_cast<StorageDataTypeCore *>(*paInputData));
          ++paInputData;
@@ -298,5 +298,5 @@ DataSetAttributeCombination::~DataSetAttributeCombination() {
       free(const_cast<StorageDataTypeCore **>(m_aaInputData));
    }
 
-   LOG(TraceLevelInfo, "Exited ~DataSetAttributeCombination");
+   LOG(TraceLevelInfo, "Exited ~DataSetFeatureCombination");
 }

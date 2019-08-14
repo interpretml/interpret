@@ -12,9 +12,9 @@
 #include "ebmcore.h"
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
-// attribute includes
+// feature includes
 #include "Feature.h"
-// dataset depends on attributes
+// dataset depends on features
 #include "DataSetByFeature.h"
 // depends on the above
 #include "DimensionMultiple.h"
@@ -25,19 +25,19 @@ public:
    const bool m_bRegression;
    const size_t m_cTargetStates;
 
-   const size_t m_cAttributes;
+   const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   AttributeInternalCore * const m_aAttributes;
+   FeatureInternalCore * const m_aFeatures;
    DataSetInternalCore * m_pDataSet;
 
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
 
-   TmlInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cAttributes)
+   TmlInteractionState(const bool bRegression, const size_t cTargetStates, const size_t cFeatures)
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
-      , m_cAttributes(cAttributes)
-      , m_aAttributes(0 == cAttributes || IsMultiplyError(sizeof(AttributeInternalCore), cAttributes) ? nullptr : static_cast<AttributeInternalCore *>(malloc(sizeof(AttributeInternalCore) * cAttributes)))
+      , m_cFeatures(cFeatures)
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureInternalCore), cFeatures) ? nullptr : static_cast<FeatureInternalCore *>(malloc(sizeof(FeatureInternalCore) * cFeatures)))
       , m_pDataSet(nullptr)
       , m_cLogEnterMessages (1000)
       , m_cLogExitMessages(1000) {
@@ -47,33 +47,33 @@ public:
       LOG(TraceLevelInfo, "Entered ~EbmInteractionState");
 
       delete m_pDataSet;
-      free(m_aAttributes);
+      free(m_aFeatures);
 
       LOG(TraceLevelInfo, "Exited ~EbmInteractionState");
    }
 
-   bool InitializeInteraction(const EbmCoreFeature * const aAttributes, const size_t cCases, const void * const aTargets, const IntegerDataType * const aInputData, const FractionalDataType * const aPredictionScores) {
+   bool InitializeInteraction(const EbmCoreFeature * const aFeatures, const size_t cCases, const void * const aTargets, const IntegerDataType * const aInputData, const FractionalDataType * const aPredictionScores) {
       LOG(TraceLevelInfo, "Entered InitializeInteraction");
 
-      if(0 != m_cAttributes && nullptr == m_aAttributes) {
-         LOG(TraceLevelWarning, "WARNING InitializeInteraction 0 != m_cAttributes && nullptr == m_aAttributes");
+      if(0 != m_cFeatures && nullptr == m_aFeatures) {
+         LOG(TraceLevelWarning, "WARNING InitializeInteraction 0 != m_cFeatures && nullptr == m_aFeatures");
          return true;
       }
 
-      LOG(TraceLevelInfo, "InitializeInteraction starting attribute processing");
-      if(0 != m_cAttributes) {
-         EBM_ASSERT(!IsMultiplyError(m_cAttributes, sizeof(*aAttributes))); // if this overflows then our caller should not have been able to allocate the array
-         const EbmCoreFeature * pAttributeInitialize = aAttributes;
-         const EbmCoreFeature * const pAttributeEnd = &aAttributes[m_cAttributes];
-         EBM_ASSERT(pAttributeInitialize < pAttributeEnd);
-         size_t iAttributeInitialize = 0;
+      LOG(TraceLevelInfo, "InitializeInteraction starting feature processing");
+      if(0 != m_cFeatures) {
+         EBM_ASSERT(!IsMultiplyError(m_cFeatures, sizeof(*aFeatures))); // if this overflows then our caller should not have been able to allocate the array
+         const EbmCoreFeature * pFeatureInitialize = aFeatures;
+         const EbmCoreFeature * const pFeatureEnd = &aFeatures[m_cFeatures];
+         EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
+         size_t iFeatureInitialize = 0;
          do {
             static_assert(FeatureTypeCore::OrdinalCore == static_cast<FeatureTypeCore>(FeatureTypeOrdinal), "FeatureTypeCore::OrdinalCore must have the same value as FeatureTypeOrdinal");
             static_assert(FeatureTypeCore::NominalCore == static_cast<FeatureTypeCore>(FeatureTypeNominal), "FeatureTypeCore::NominalCore must have the same value as FeatureTypeNominal");
-            EBM_ASSERT(FeatureTypeOrdinal == pAttributeInitialize->featureType || FeatureTypeNominal == pAttributeInitialize->featureType);
-            FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pAttributeInitialize->featureType);
+            EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
+            FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
-            IntegerDataType countStates = pAttributeInitialize->countBins;
+            IntegerDataType countStates = pFeatureInitialize->countBins;
             EBM_ASSERT(0 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
             if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
                LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
@@ -85,26 +85,26 @@ public:
                LOG(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
             }
 
-            EBM_ASSERT(0 == pAttributeInitialize->hasMissing || 1 == pAttributeInitialize->hasMissing);
-            bool bMissing = 0 != pAttributeInitialize->hasMissing;
+            EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
+            bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
             // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aAttributes[iAttributeInitialize]) AttributeInternalCore(cStates, iAttributeInitialize, featureTypeCore, bMissing);
+            new (&m_aFeatures[iFeatureInitialize]) FeatureInternalCore(cStates, iFeatureInitialize, featureTypeCore, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
-            EBM_ASSERT(0 == pAttributeInitialize->hasMissing); // TODO : implement this, then remove this assert
-            EBM_ASSERT(FeatureTypeOrdinal == pAttributeInitialize->featureType); // TODO : implement this, then remove this assert
+            EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
+            EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
 
-            ++iAttributeInitialize;
-            ++pAttributeInitialize;
-         } while(pAttributeEnd != pAttributeInitialize);
+            ++iFeatureInitialize;
+            ++pFeatureInitialize;
+         } while(pFeatureEnd != pFeatureInitialize);
       }
-      LOG(TraceLevelInfo, "InitializeInteraction done attribute processing");
+      LOG(TraceLevelInfo, "InitializeInteraction done feature processing");
 
       LOG(TraceLevelInfo, "Entered DataSetInternalCore");
       EBM_ASSERT(nullptr == m_pDataSet);
       if(0 != cCases) {
-         m_pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cAttributes, m_aAttributes, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates);
+         m_pDataSet = new (std::nothrow) DataSetInternalCore(m_bRegression, m_cFeatures, m_aFeatures, cCases, aInputData, aTargets, aPredictionScores, m_cTargetStates);
          if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
             LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;
@@ -124,17 +124,17 @@ public:
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
-TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countAttributes, const EbmCoreFeature * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const void * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   EBM_ASSERT(0 <= countAttributes);
-   EBM_ASSERT(0 == countAttributes || nullptr != attributes);
+TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetStates, IntegerDataType countCases, const void * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
+   EBM_ASSERT(0 <= countFeatures);
+   EBM_ASSERT(0 == countFeatures || nullptr != features);
    EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countCases));
    EBM_ASSERT(0 <= countCases);
    EBM_ASSERT(0 == countCases || nullptr != targets);
-   EBM_ASSERT(0 == countCases || 0 == countAttributes || nullptr != data);
+   EBM_ASSERT(0 == countCases || 0 == countFeatures || nullptr != data);
    // predictionScores can be null
 
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countAttributes)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countAttributes)");
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countFeatures)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countFeatures)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)) {
@@ -146,18 +146,18 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
       return nullptr;
    }
 
-   size_t cAttributes = static_cast<size_t>(countAttributes);
+   size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
    size_t cCases = static_cast<size_t>(countCases);
 
    LOG(TraceLevelInfo, "Entered EbmInteractionState");
-   TmlInteractionState * const pEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cAttributes);
+   TmlInteractionState * const pEbmInteractionState = new (std::nothrow) TmlInteractionState(bRegression, cTargetStates, cFeatures);
    LOG(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
       LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction nullptr == pEbmInteractionState");
       return nullptr;
    }
-   if(UNLIKELY(pEbmInteractionState->InitializeInteraction(attributes, cCases, targets, data, predictionScores))) {
+   if(UNLIKELY(pEbmInteractionState->InitializeInteraction(features, cCases, targets, data, predictionScores))) {
       LOG(TraceLevelWarning, "WARNING AllocateCoreInteraction pEbmInteractionState->InitializeInteraction");
       delete pEbmInteractionState;
       return nullptr;
@@ -165,26 +165,26 @@ TmlInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    return pEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countAttributes, const EbmCoreFeature * attributes, IntegerDataType countCases, const FractionalDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   LOG(TraceLevelInfo, "Entered InitializeInteractionRegression: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(true, countAttributes, attributes, 0, countCases, targets, data, predictionScores));
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countCases, const FractionalDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
+   LOG(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countFeatures, static_cast<const void *>(features), countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(true, countFeatures, features, 0, countCases, targets, data, predictionScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countAttributes, const EbmCoreFeature * attributes, IntegerDataType countTargetStates, IntegerDataType countCases, const IntegerDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
-   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countAttributes=%" IntegerDataTypePrintf ", attributes=%p, countTargetStates=%" IntegerDataTypePrintf ", countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countAttributes, static_cast<const void *>(attributes), countTargetStates, countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countAttributes, attributes, countTargetStates, countCases, targets, data, predictionScores));
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetStates, IntegerDataType countCases, const IntegerDataType * targets, const IntegerDataType * data, const FractionalDataType * predictionScores) {
+   LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countFeatures=%" IntegerDataTypePrintf ", features=%p, countTargetStates=%" IntegerDataTypePrintf ", countCases=%" IntegerDataTypePrintf ", targets=%p, data=%p, predictionScores=%p", countFeatures, static_cast<const void *>(features), countTargetStates, countCases, static_cast<const void *>(targets), static_cast<const void *>(data), static_cast<const void *>(predictionScores));
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countFeatures, features, countTargetStates, countCases, targets, data, predictionScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
+static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetStates, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pAttributeCombination, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetStates, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -193,30 +193,30 @@ static IntegerDataType GetInteractionScorePerTargetStates(TmlInteractionState * 
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
+TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(cRuntimeTargetStates == iPossibleCompilerOptimizedTargetStates) {
       EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
-      return GetInteractionScorePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
+      return GetInteractionScorePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
    } else {
-      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
+      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
    }
 }
 
 template<>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const AttributeCombinationCore * const pAttributeCombination, FractionalDataType * const pInteractionScoreReturn) {
+TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, TmlInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);
-   return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pAttributeCombination, pInteractionScoreReturn);
+   return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
 }
 
 // we made this a global because if we had put this variable inside the TmlInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad TmlInteractionState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countFeaturesInCombination, const IntegerDataType * attributeIndexes, FractionalDataType * interactionScoreReturn) {
-   LOG_COUNTED(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntegerDataTypePrintf ", attributeIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(attributeIndexes), static_cast<void *>(interactionScoreReturn));
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countFeaturesInCombination, const IntegerDataType * featureIndexes, FractionalDataType * interactionScoreReturn) {
+   LOG_COUNTED(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntegerDataTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(featureIndexes), static_cast<void *>(interactionScoreReturn));
 
    EBM_ASSERT(nullptr != ebmInteraction);
    TmlInteractionState * pEbmInteractionState = reinterpret_cast<TmlInteractionState *>(ebmInteraction);
@@ -224,7 +224,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    LOG_COUNTED(&pEbmInteractionState->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
 
    EBM_ASSERT(0 <= countFeaturesInCombination);
-   EBM_ASSERT(0 == countFeaturesInCombination || nullptr != attributeIndexes);
+   EBM_ASSERT(0 == countFeaturesInCombination || nullptr != featureIndexes);
    // interactionScoreReturn can be nullptr
 
    if(!IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)) {
@@ -233,7 +233,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    }
    size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
    if(0 == cFeaturesInCombination) {
-      LOG(TraceLevelInfo, "INFO GetInteractionScore empty attribute combination");
+      LOG(TraceLevelInfo, "INFO GetInteractionScore empty feature combination");
       if(nullptr != interactionScoreReturn) {
          *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
       }
@@ -249,29 +249,29 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       return 0;
    }
 
-   const AttributeInternalCore * const aAttributes = pEbmInteractionState->m_aAttributes;
-   const IntegerDataType * pAttributeCombinationIndex = attributeIndexes;
-   const IntegerDataType * const pAttributeCombinationIndexEnd = attributeIndexes + cFeaturesInCombination;
+   const FeatureInternalCore * const aFeatures = pEbmInteractionState->m_aFeatures;
+   const IntegerDataType * pFeatureCombinationIndex = featureIndexes;
+   const IntegerDataType * const pFeatureCombinationIndexEnd = featureIndexes + cFeaturesInCombination;
 
    do {
-      const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
-      EBM_ASSERT(0 <= indexAttributeInterop);
-      if(!IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)) {
-         LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop)");
+      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
+      EBM_ASSERT(0 <= indexFeatureInterop);
+      if(!IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)) {
+         LOG(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)");
          return 1;
       }
-      size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-      EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
-      const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
-      if(pAttribute->m_cStates <= 1) {
+      size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
+      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
+      const FeatureInternalCore * const pFeature = &aFeatures[iFeatureForCombination];
+      if(pFeature->m_cStates <= 1) {
          LOG(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
          }
          return 0;
       }
-      ++pAttributeCombinationIndex;
-   } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
+      ++pFeatureCombinationIndex;
+   } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
    if(k_cDimensionsMax < cFeaturesInCombination) {
       // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
@@ -279,30 +279,30 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       return 1;
    }
 
-   // put the pAttributeCombination object on the stack. We want to put it into a AttributeCombinationCore object since we want to share code with training, which calls things like building the tensor totals (which is templated to be compiled many times)
-   char AttributeCombinationBuffer[k_cBytesAttributeCombinationMax];
-   AttributeCombinationCore * const pAttributeCombination = reinterpret_cast<AttributeCombinationCore *>(&AttributeCombinationBuffer);
-   pAttributeCombination->Initialize(cFeaturesInCombination, 0);
+   // put the pFeatureCombination object on the stack. We want to put it into a FeatureCombinationCore object since we want to share code with training, which calls things like building the tensor totals (which is templated to be compiled many times)
+   char FeatureCombinationBuffer[k_cBytesFeatureCombinationMax];
+   FeatureCombinationCore * const pFeatureCombination = reinterpret_cast<FeatureCombinationCore *>(&FeatureCombinationBuffer);
+   pFeatureCombination->Initialize(cFeaturesInCombination, 0);
 
-   pAttributeCombinationIndex = attributeIndexes; // restart from the start
-   AttributeCombinationCore::AttributeCombinationEntry * pAttributeCombinationEntry = &pAttributeCombination->m_AttributeCombinationEntry[0];
+   pFeatureCombinationIndex = featureIndexes; // restart from the start
+   FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
    do {
-      const IntegerDataType indexAttributeInterop = *pAttributeCombinationIndex;
-      EBM_ASSERT(0 <= indexAttributeInterop);
-      EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexAttributeInterop))); // we already checked indexAttributeInterop was good above
-      size_t iAttributeForCombination = static_cast<size_t>(indexAttributeInterop);
-      EBM_ASSERT(iAttributeForCombination < pEbmInteractionState->m_cAttributes);
-      const AttributeInternalCore * const pAttribute = &aAttributes[iAttributeForCombination];
-      EBM_ASSERT(2 <= pAttribute->m_cStates); // we should have filtered out anything with 1 state above
+      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
+      EBM_ASSERT(0 <= indexFeatureInterop);
+      EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
+      size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
+      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
+      const FeatureInternalCore * const pFeature = &aFeatures[iFeatureForCombination];
+      EBM_ASSERT(2 <= pFeature->m_cStates); // we should have filtered out anything with 1 state above
 
-      pAttributeCombinationEntry->m_pAttribute = pAttribute;
-      ++pAttributeCombinationEntry;
-      ++pAttributeCombinationIndex;
-   } while(pAttributeCombinationIndexEnd != pAttributeCombinationIndex);
+      pFeatureCombinationEntry->m_pFeature = pFeature;
+      ++pFeatureCombinationEntry;
+      ++pFeatureCombinationIndex;
+   } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
    IntegerDataType ret;
    if(pEbmInteractionState->m_bRegression) {
-      ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    } else {
       const size_t cTargetStates = pEbmInteractionState->m_cTargetStates;
       if(cTargetStates <= 1) {
@@ -312,7 +312,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
          }
          return 0;
       }
-      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pAttributeCombination, interactionScoreReturn);
+      ret = CompilerRecursiveGetInteractionScore<2>(cTargetStates, pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    }
    if(0 != ret) {
       LOG(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);

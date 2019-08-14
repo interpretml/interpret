@@ -14,22 +14,22 @@
 #include "FeatureCombination.h"
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
-// TODO: rename this to DataSetByAttributeCombination
-class DataSetAttributeCombination final {
+// TODO: rename this to DataSetByFeatureCombination
+class DataSetFeatureCombination final {
    FractionalDataType * const m_aResidualErrors;
    FractionalDataType * const m_aPredictionScores;
    const StorageDataTypeCore * const m_aTargetData;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cCases;
-   const size_t m_cAttributeCombinations;
+   const size_t m_cFeatureCombinations;
 
 public:
 
-   DataSetAttributeCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cAttributeCombinations, const AttributeCombinationCore * const * const apAttributeCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
-   ~DataSetAttributeCombination();
+   DataSetFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
+   ~DataSetFeatureCombination();
 
    TML_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cAttributeCombinations && nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
    }
 
    TML_INLINE FractionalDataType * GetResidualPointer() {
@@ -54,17 +54,17 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const AttributeCombinationCore * const pAttributeCombination) const {
-      EBM_ASSERT(nullptr != pAttributeCombination);
-      EBM_ASSERT(pAttributeCombination->m_iInputData < m_cAttributeCombinations);
+   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombinationCore * const pFeatureCombination) const {
+      EBM_ASSERT(nullptr != pFeatureCombination);
+      EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pAttributeCombination->m_iInputData];
+      return m_aaInputData[pFeatureCombination->m_iInputData];
    }
    TML_INLINE size_t GetCountCases() const {
       return m_cCases;
    }
-   TML_INLINE size_t GetCountAttributeCombinations() const {
-      return m_cAttributeCombinations;
+   TML_INLINE size_t GetCountFeatureCombinations() const {
+      return m_cFeatureCombinations;
    }
 };
 

@@ -52,11 +52,11 @@ TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    return aResidualErrors;
 }
 
-TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureInternalCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
    LOG(TraceLevelInfo, "Entered DataSetInternalCore::ConstructInputData");
 
-   EBM_ASSERT(0 < cAttributes);
-   EBM_ASSERT(nullptr != aAttributes);
+   EBM_ASSERT(0 < cFeatures);
+   EBM_ASSERT(nullptr != aFeatures);
    EBM_ASSERT(0 < cCases);
    EBM_ASSERT(nullptr != aInputDataFrom);
 
@@ -67,11 +67,11 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    }
    const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cCases;
 
-   if(IsMultiplyError(sizeof(void *), cAttributes)) {
-      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData IsMultiplyError(sizeof(void *), cAttributes)");
+   if(IsMultiplyError(sizeof(void *), cFeatures)) {
+      LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData IsMultiplyError(sizeof(void *), cFeatures)");
       return nullptr;
    }
-   const size_t cBytesMemoryArray = sizeof(void *) * cAttributes;
+   const size_t cBytesMemoryArray = sizeof(void *) * cFeatures;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
       LOG(TraceLevelWarning, "WARNING DataSetInternalCore::ConstructInputData nullptr == aaInputDataTo");
@@ -79,8 +79,8 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    }
 
    StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
-   const AttributeInternalCore * pAttribute = aAttributes;
-   const AttributeInternalCore * const pAttributeEnd = aAttributes + cAttributes;
+   const FeatureInternalCore * pFeature = aFeatures;
+   const FeatureInternalCore * const pFeatureEnd = aFeatures + cFeatures;
    do {
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
       if(nullptr == pInputDataTo) {
@@ -90,21 +90,21 @@ TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pAttribute->m_iAttributeData * cCases];
+      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pFeature->m_iFeatureData * cCases];
       const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cCases];
       do {
          const IntegerDataType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
          EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cTargetStates and cTargetStates fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < pAttribute->m_cStates);
+         EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cStates);
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
          *pInputDataTo = static_cast<StorageDataTypeCore>(data);
          ++pInputDataTo;
          ++pInputDataFrom;
       } while(pInputDataFromEnd != pInputDataFrom);
 
-      ++pAttribute;
-   } while(pAttributeEnd != pAttribute);
+      ++pFeature;
+   } while(pFeatureEnd != pFeature);
 
    LOG(TraceLevelInfo, "Exited DataSetInternalCore::ConstructInputData");
    return aaInputDataTo;
@@ -118,11 +118,11 @@ free_all:
    return nullptr;
 }
 
-DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cAttributes, const AttributeInternalCore * const aAttributes, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
+DataSetInternalCore::DataSetInternalCore(const bool bRegression, const size_t cFeatures, const FeatureInternalCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
    : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates))
-   , m_aaInputData(0 == cAttributes ? nullptr : ConstructInputData(cAttributes, aAttributes, cCases, aInputDataFrom))
+   , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cCases, aInputDataFrom))
    , m_cCases(cCases)
-   , m_cAttributes(cAttributes) {
+   , m_cFeatures(cFeatures) {
 
    EBM_ASSERT(0 < cCases);
 }
@@ -133,9 +133,9 @@ DataSetInternalCore::~DataSetInternalCore() {
    FractionalDataType * aResidualErrors = const_cast<FractionalDataType *>(m_aResidualErrors);
    free(aResidualErrors);
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(1 <= m_cAttributes);
+      EBM_ASSERT(1 <= m_cFeatures);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;
-      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cAttributes;
+      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cFeatures;
       do {
          EBM_ASSERT(nullptr != *paInputData);
          free(const_cast<StorageDataTypeCore *>(*paInputData));

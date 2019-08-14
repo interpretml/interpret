@@ -191,18 +191,18 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
-void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
 ) {
    LOG(TraceLevelVerbose, "Entered BinDataSetTraining");
 
-   EBM_ASSERT(cCompilerDimensions == pAttributeCombination->m_cAttributes);
+   EBM_ASSERT(cCompilerDimensions == pFeatureCombination->m_cFeatures);
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   const size_t cItemsPerBitPackDataUnit = pAttributeCombination->m_cItemsPerBitPackDataUnit;
+   const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
    EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -213,7 +213,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
-   const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pAttributeCombination);
+   const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pFeatureCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
    const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
@@ -302,7 +302,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDime
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -310,13 +310,13 @@ public:
       EBM_ASSERT(cRuntimeDimensions < k_cDimensionsMax);
       static_assert(cCompilerDimensions < k_cDimensionsMax, "cCompilerDimensions must be less than or equal to k_cDimensionsMax.  This line only handles the less than part, but we handle the equals in a partial specialization template.");
       if(cCompilerDimensions == cRuntimeDimensions) {
-         BinDataSetTraining<countCompilerClassificationTargetStates, cCompilerDimensions>(aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
+         BinDataSetTraining<countCompilerClassificationTargetStates, cCompilerDimensions>(aBinnedBuckets, pFeatureCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG
             , aBinnedBucketsEndDebug
 #endif // NDEBUG
          );
       } else {
-         RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, 1 + cCompilerDimensions>::Recursive(cRuntimeDimensions, aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
+         RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, 1 + cCompilerDimensions>::Recursive(cRuntimeDimensions, aBinnedBuckets, pFeatureCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG
             , aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -329,14 +329,14 @@ template<ptrdiff_t countCompilerClassificationTargetStates>
 class RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
    ) {
       UNUSED(cRuntimeDimensions);
       EBM_ASSERT(k_cDimensionsMax == cRuntimeDimensions);
-      BinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax>(aBinnedBuckets, pAttributeCombination, pTrainingSet, cTargetStates
+      BinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax>(aBinnedBuckets, pFeatureCombination, pTrainingSet, cTargetStates
 #ifndef NDEBUG
          , aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -344,9 +344,9 @@ public:
    }
 };
 
-// TODO: make the number of dimensions (pAttributeCombination->m_cAttributes) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
+// TODO: make the number of dimensions (pFeatureCombination->m_cFeatures) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
-void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const AttributeCombinationCore * const pAttributeCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
+void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const DataSetInternalCore * const pDataSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -360,8 +360,8 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountCases();
 
-   size_t cAttributes = pAttributeCombination->m_cAttributes;
-   EBM_ASSERT(1 <= cAttributes); // for interactions, we just return 0 for interactions with zero attributes
+   size_t cFeatures = pFeatureCombination->m_cFeatures;
+   EBM_ASSERT(1 <= cFeatures); // for interactions, we just return 0 for interactions with zero features
    for(size_t iCase = 0; pResidualErrorEnd != pResidualError; ++iCase) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -376,9 +376,9 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
       size_t iBucket = 0;
       size_t iDimension = 0;
       do {
-         const AttributeInternalCore * const pInputAttribute = pAttributeCombination->m_AttributeCombinationEntry[iDimension].m_pAttribute;
-         const size_t cStates = pInputAttribute->m_cStates;
-         const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputAttribute);
+         const FeatureInternalCore * const pInputFeature = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature;
+         const size_t cStates = pInputFeature->m_cStates;
+         const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
          pInputData += iCase;
          StorageDataTypeCore data = *pInputData;
          EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
@@ -387,7 +387,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
          iBucket += cBuckets * iState;
          cBuckets *= cStates;
          ++iDimension;
-      } while(iDimension < cAttributes);
+      } while(iDimension < cFeatures);
  
       BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBinnedBucketEntry = GetBinnedBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerBinnedBucket, aBinnedBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucketEntry, aBinnedBucketsEndDebug);

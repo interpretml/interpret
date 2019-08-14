@@ -11,93 +11,93 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
-class AttributeCombinationCore final {
+class FeatureCombinationCore final {
 public:
 
-   struct AttributeCombinationEntry {
-      const AttributeInternalCore * m_pAttribute;
+   struct FeatureCombinationEntry {
+      const FeatureInternalCore * m_pFeature;
    };
 
    size_t m_cItemsPerBitPackDataUnit;
-   size_t m_cAttributes;
+   size_t m_cFeatures;
    size_t m_iInputData;
    unsigned int m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
-   AttributeCombinationEntry m_AttributeCombinationEntry[1];
+   FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
-   TML_INLINE static size_t GetAttributeCombinationCountBytes(const size_t cAttributes) {
-      return sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationCore::AttributeCombinationEntry) + sizeof(AttributeCombinationCore::AttributeCombinationEntry) * cAttributes;
+   TML_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
+      return sizeof(FeatureCombinationCore) - sizeof(FeatureCombinationCore::FeatureCombinationEntry) + sizeof(FeatureCombinationCore::FeatureCombinationEntry) * cFeatures;
    }
 
-   TML_INLINE void Initialize(const size_t cAttributes, const size_t iAttributeCombination) {
-      m_cAttributes = cAttributes;
-      m_iInputData = iAttributeCombination;
+   TML_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
+      m_cFeatures = cFeatures;
+      m_iInputData = iFeatureCombination;
       m_cLogEnterGenerateModelFeatureCombinationUpdateMessages = 2;
       m_cLogExitGenerateModelFeatureCombinationUpdateMessages = 2;
       m_cLogEnterApplyModelFeatureCombinationUpdateMessages = 2;
       m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
    }
 
-   TML_INLINE static AttributeCombinationCore * Allocate(const size_t cAttributes, const size_t iAttributeCombination) {
-      const size_t cBytes = GetAttributeCombinationCountBytes(cAttributes);
+   TML_INLINE static FeatureCombinationCore * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
+      const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
       EBM_ASSERT(0 < cBytes);
-      AttributeCombinationCore * const pAttributeCombination = static_cast<AttributeCombinationCore *>(malloc(cBytes));
-      if(UNLIKELY(nullptr == pAttributeCombination)) {
+      FeatureCombinationCore * const pFeatureCombination = static_cast<FeatureCombinationCore *>(malloc(cBytes));
+      if(UNLIKELY(nullptr == pFeatureCombination)) {
          return nullptr;
       }
-      pAttributeCombination->Initialize(cAttributes, iAttributeCombination);
-      return pAttributeCombination;
+      pFeatureCombination->Initialize(cFeatures, iFeatureCombination);
+      return pFeatureCombination;
    }
 
-   TML_INLINE static void Free(AttributeCombinationCore * const pAttributeCombination) {
-      free(pAttributeCombination);
+   TML_INLINE static void Free(FeatureCombinationCore * const pFeatureCombination) {
+      free(pFeatureCombination);
    }
 
-   TML_INLINE static AttributeCombinationCore ** AllocateAttributeCombinations(const size_t cAttributeCombinations) {
-      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::AllocateAttributeCombinations");
+   TML_INLINE static FeatureCombinationCore ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
+      LOG(TraceLevelInfo, "Entered FeatureCombinationCore::AllocateFeatureCombinations");
 
-      EBM_ASSERT(0 < cAttributeCombinations);
-      AttributeCombinationCore ** const apAttributeCombinations = new (std::nothrow) AttributeCombinationCore * [cAttributeCombinations];
-      if(LIKELY(nullptr != apAttributeCombinations)) {
+      EBM_ASSERT(0 < cFeatureCombinations);
+      FeatureCombinationCore ** const apFeatureCombinations = new (std::nothrow) FeatureCombinationCore * [cFeatureCombinations];
+      if(LIKELY(nullptr != apFeatureCombinations)) {
          // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
-         EBM_ASSERT(!IsMultiplyError(sizeof(*apAttributeCombinations), cAttributeCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
-         memset(apAttributeCombinations, 0, sizeof(*apAttributeCombinations) * cAttributeCombinations);
+         EBM_ASSERT(!IsMultiplyError(sizeof(*apFeatureCombinations), cFeatureCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
+         memset(apFeatureCombinations, 0, sizeof(*apFeatureCombinations) * cFeatureCombinations);
       }
-      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::AllocateAttributeCombinations");
-      return apAttributeCombinations;
+      LOG(TraceLevelInfo, "Exited FeatureCombinationCore::AllocateFeatureCombinations");
+      return apFeatureCombinations;
    }
 
-   TML_INLINE static void FreeAttributeCombinations(const size_t cAttributeCombinations, AttributeCombinationCore ** apAttributeCombinations) {
-      LOG(TraceLevelInfo, "Entered AttributeCombinationCore::FreeAttributeCombinations");
-      if(nullptr != apAttributeCombinations) {
-         EBM_ASSERT(0 < cAttributeCombinations);
-         for(size_t i = 0; i < cAttributeCombinations; ++i) {
-            AttributeCombinationCore::Free(apAttributeCombinations[i]);
+   TML_INLINE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombinationCore ** apFeatureCombinations) {
+      LOG(TraceLevelInfo, "Entered FeatureCombinationCore::FreeFeatureCombinations");
+      if(nullptr != apFeatureCombinations) {
+         EBM_ASSERT(0 < cFeatureCombinations);
+         for(size_t i = 0; i < cFeatureCombinations; ++i) {
+            FeatureCombinationCore::Free(apFeatureCombinations[i]);
          }
-         delete[] apAttributeCombinations;
+         delete[] apFeatureCombinations;
       }
-      LOG(TraceLevelInfo, "Exited AttributeCombinationCore::FreeAttributeCombinations");
+      LOG(TraceLevelInfo, "Exited FeatureCombinationCore::FreeFeatureCombinations");
    }
 };
-static_assert(std::is_pod<AttributeCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
+static_assert(std::is_pod<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
 
-// these need to be declared AFTER the class above since the size of AttributeCombinationCore isn't set until the class has been completely declared, and constexpr needs the size before constexpr
-constexpr size_t GetAttributeCombinationCountBytesConst(const size_t cAttributes) {
-   return sizeof(AttributeCombinationCore) - sizeof(AttributeCombinationCore::AttributeCombinationEntry) + sizeof(AttributeCombinationCore::AttributeCombinationEntry) * cAttributes;
+// these need to be declared AFTER the class above since the size of FeatureCombinationCore isn't set until the class has been completely declared, and constexpr needs the size before constexpr
+constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {
+   return sizeof(FeatureCombinationCore) - sizeof(FeatureCombinationCore::FeatureCombinationEntry) + sizeof(FeatureCombinationCore::FeatureCombinationEntry) * cFeatures;
 }
-constexpr size_t k_cBytesAttributeCombinationMax = GetAttributeCombinationCountBytesConst(k_cDimensionsMax);
+constexpr size_t k_cBytesFeatureCombinationMax = GetFeatureCombinationCountBytesConst(k_cDimensionsMax);
 
 #ifndef NDEBUG
-class AttributeCombinationCheck final {
+class FeatureCombinationCheck final {
 public:
-   AttributeCombinationCheck() {
-      // we need two separate functions for determining the maximum size of AttributeCombinationCore, so let's check that they match at runtime
-      EBM_ASSERT(k_cBytesAttributeCombinationMax == AttributeCombinationCore::GetAttributeCombinationCountBytes(k_cDimensionsMax));
+   FeatureCombinationCheck() {
+      // we need two separate functions for determining the maximum size of FeatureCombinationCore, so let's check that they match at runtime
+      EBM_ASSERT(k_cBytesFeatureCombinationMax == FeatureCombinationCore::GetFeatureCombinationCountBytes(k_cDimensionsMax));
    }
 };
-static AttributeCombinationCheck DEBUG_AttributeCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
+static FeatureCombinationCheck DEBUG_FeatureCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
 #endif // NDEBUG
 
 #endif // ATTRIBUTE_COMBINATION_H
