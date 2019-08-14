@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebmcore.h" // FractionalDataType
-#include "EbmInternal.h" // AttributeTypeCore
+#include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "AttributeInternal.h"
 #include "DataSetByAttribute.h"

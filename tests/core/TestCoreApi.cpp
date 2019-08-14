@@ -118,16 +118,16 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountClassificati
 }
 
 constexpr IntegerDataType randomSeed = 42;
-enum class AttributeType : IntegerDataType { Ordinal = AttributeTypeOrdinal, Nominal = AttributeTypeNominal };
+enum class FeatureType : IntegerDataType { Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal };
 
 class Attribute final {
 public:
 
-   const AttributeType m_attributeType;
+   const FeatureType m_attributeType;
    const bool m_hasMissing;
    const IntegerDataType m_countStates;
 
-   Attribute(const IntegerDataType countStates, const AttributeType attributeType = AttributeType::Ordinal, const bool hasMissing = false) :
+   Attribute(const IntegerDataType countStates, const FeatureType attributeType = FeatureType::Ordinal, const bool hasMissing = false) :
       m_attributeType(attributeType),
       m_hasMissing(hasMissing),
       m_countStates(countStates) {
@@ -195,8 +195,8 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountClassificationStates;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<EbmAttribute> m_attributes;
-   std::vector<EbmAttributeCombination> m_attributeCombinations;
+   std::vector<EbmCoreFeature> m_attributes;
+   std::vector<EbmCoreFeatureCombination> m_attributeCombinations;
    std::vector<IntegerDataType> m_attributeCombinationIndexes;
 
    std::vector<std::vector<size_t>> m_countStatesByAttributeCombination;
@@ -357,10 +357,10 @@ public:
       }
 
       for(const Attribute oneAttribute : attributes) {
-         EbmAttribute attribute;
-         attribute.attributeType = static_cast<IntegerDataType>(oneAttribute.m_attributeType);
+         EbmCoreFeature attribute;
+         attribute.featureType = static_cast<IntegerDataType>(oneAttribute.m_attributeType);
          attribute.hasMissing = oneAttribute.m_hasMissing ? IntegerDataType { 1 } : IntegerDataType { 0 };
-         attribute.countStates = oneAttribute.m_countStates;
+         attribute.countBins = oneAttribute.m_countStates;
          m_attributes.push_back(attribute);
       }
 
@@ -373,8 +373,8 @@ public:
       }
 
       for(const std::vector<size_t> oneAttributeCombination : attributeCombinations) {
-         EbmAttributeCombination attributeCombination;
-         attributeCombination.countAttributesInCombination = oneAttributeCombination.size();
+         EbmCoreFeatureCombination attributeCombination;
+         attributeCombination.countFeaturesInCombination = oneAttributeCombination.size();
          m_attributeCombinations.push_back(attributeCombination);
          std::vector<size_t> countStates;
          for(const size_t oneIndex : oneAttributeCombination) {
@@ -382,7 +382,7 @@ public:
                exit(1);
             }
             m_attributeCombinationIndexes.push_back(oneIndex);
-            countStates.push_back(static_cast<size_t>(m_attributes[oneIndex].countStates));
+            countStates.push_back(static_cast<size_t>(m_attributes[oneIndex].countBins));
          }
          m_countStatesByAttributeCombination.push_back(countStates);
       }
@@ -430,13 +430,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_trainingData.push_back(data);
@@ -530,13 +530,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_trainingData.push_back(data);
@@ -586,13 +586,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_validationData.push_back(data);
@@ -686,13 +686,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_validationData.push_back(data);
@@ -762,7 +762,7 @@ public:
       if(m_attributeCombinations.size() <= iAttributeCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
+      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
    }
@@ -774,30 +774,30 @@ public:
       if(m_attributeCombinations.size() <= iAttributeCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
+      FractionalDataType * pModel = GetBestModelFeatureCombination(m_pEbmTraining, iAttributeCombination);
       FractionalDataType score = GetScore(iAttributeCombination, pModel, indexes, iScore);
       return score;
    }
 
-   const FractionalDataType * GetCurrentModelRaw(const size_t iAttributeCombination) const {
+   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iAttributeCombination) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
       if(m_attributeCombinations.size() <= iAttributeCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetCurrentModel(m_pEbmTraining, iAttributeCombination);
+      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iAttributeCombination);
       return pModel;
    }
 
-   const FractionalDataType * GetBestModelRaw(const size_t iAttributeCombination) const {
+   const FractionalDataType * GetBestModelFeatureCombinationRaw(const size_t iAttributeCombination) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
       }
       if(m_attributeCombinations.size() <= iAttributeCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetBestModel(m_pEbmTraining, iAttributeCombination);
+      FractionalDataType * pModel = GetBestModelFeatureCombination(m_pEbmTraining, iAttributeCombination);
       return pModel;
    }
 
@@ -841,13 +841,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_interactionData.push_back(data);
@@ -941,13 +941,13 @@ public:
             }
          }
          for(size_t iAttribute = 0; iAttribute < cAttributes; ++iAttribute) {
-            const EbmAttribute attribute = m_attributes[iAttribute];
+            const EbmCoreFeature attribute = m_attributes[iAttribute];
             for(size_t iCase = 0; iCase < cCases; ++iCase) {
                const IntegerDataType data = cases[iCase].m_data[iAttribute];
                if(data < 0) {
                   exit(1);
                }
-               if(attribute.countStates <= data) {
+               if(attribute.countBins <= data) {
                   exit(1);
                }
                m_interactionData.push_back(data);
@@ -999,8 +999,8 @@ public:
 };
 
 TEST_CASE("null validationMetricReturn, training, regression") {
-   EbmAttributeCombination combinations[1];
-   combinations->countAttributesInCombination = 0;
+   EbmCoreFeatureCombination combinations[1];
+   combinations->countFeaturesInCombination = 0;
 
    PEbmTraining pEbmTraining = InitializeTrainingRegression(randomSeed, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
@@ -1009,8 +1009,8 @@ TEST_CASE("null validationMetricReturn, training, regression") {
 }
 
 TEST_CASE("null validationMetricReturn, training, binary") {
-   EbmAttributeCombination combinations[1];
-   combinations->countAttributesInCombination = 0;
+   EbmCoreFeatureCombination combinations[1];
+   combinations->countFeaturesInCombination = 0;
 
    PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 2, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
@@ -1019,8 +1019,8 @@ TEST_CASE("null validationMetricReturn, training, binary") {
 }
 
 TEST_CASE("null validationMetricReturn, training, multiclass") {
-   EbmAttributeCombination combinations[1];
-   combinations->countAttributesInCombination = 0;
+   EbmCoreFeatureCombination combinations[1];
+   combinations->countFeaturesInCombination = 0;
 
    PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 3, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countCasesRequiredForSplitParentMinDefault, nullptr, nullptr, nullptr);
@@ -1491,8 +1491,8 @@ TEST_CASE("features with 0 states, training") {
    CHECK(0 == validationMetric);
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
-   test.GetCurrentModelRaw(0);
-   test.GetBestModelRaw(0);
+   test.GetCurrentModelFeatureCombinationRaw(0);
+   test.GetBestModelFeatureCombinationRaw(0);
 }
 
 TEST_CASE("features with 0 states, interaction") {
@@ -1514,14 +1514,14 @@ TEST_CASE("classification with 0 possible target states, training") {
    test.AddValidationCases(std::vector<ClassificationCase> {});
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelRaw(0));
-   CHECK(nullptr == test.GetBestModelRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelRaw(0));
-   CHECK(nullptr == test.GetBestModelRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 0 possible target states, interaction") {
@@ -1542,14 +1542,14 @@ TEST_CASE("classification with 1 possible target, training") {
    test.AddValidationCases({ ClassificationCase(0, { 1 }) });
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelRaw(0));
-   CHECK(nullptr == test.GetBestModelRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelRaw(0));
-   CHECK(nullptr == test.GetBestModelRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {
@@ -1817,12 +1817,12 @@ TEST_CASE("AttributeCombination with zero attributes, interaction, multiclass") 
 }
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, regression") {
-   TestApi testZeroAttributesInCombination = TestApi(k_learningTypeRegression);
-   testZeroAttributesInCombination.AddAttributes({});
-   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ RegressionCase(10, {}) });
-   testZeroAttributesInCombination.AddValidationCases({ RegressionCase(12, {}) });
-   testZeroAttributesInCombination.InitializeTraining();
+   TestApi testZeroFeaturesInCombination = TestApi(k_learningTypeRegression);
+   testZeroFeaturesInCombination.AddAttributes({});
+   testZeroFeaturesInCombination.AddAttributeCombinations({ {} });
+   testZeroFeaturesInCombination.AddTrainingCases({ RegressionCase(10, {}) });
+   testZeroFeaturesInCombination.AddValidationCases({ RegressionCase(12, {}) });
+   testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddAttributes({ Attribute(1) });
@@ -1839,31 +1839,31 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.InitializeTraining();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
-      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroFeaturesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iAttributeCombination);
          FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
          FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroAttributesInCombination = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueZeroFeaturesInCombination = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
          FractionalDataType modelValueOneState = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueOneState);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueOneState);
          FractionalDataType modelValueTwoStates = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination, modelValueTwoStates);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueTwoStates);
       }
    }
 }
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, binary") {
-   TestApi testZeroAttributesInCombination = TestApi(2);
-   testZeroAttributesInCombination.AddAttributes({});
-   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
-   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
-   testZeroAttributesInCombination.InitializeTraining();
+   TestApi testZeroFeaturesInCombination = TestApi(2);
+   testZeroFeaturesInCombination.AddAttributes({});
+   testZeroFeaturesInCombination.AddAttributeCombinations({ {} });
+   testZeroFeaturesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
+   testZeroFeaturesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
+   testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(2);
    testOneState.AddAttributes({ Attribute(1) });
@@ -1880,37 +1880,37 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.InitializeTraining();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
-      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroFeaturesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iAttributeCombination);
          FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
          FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroAttributesInCombination0 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
          FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueOneState0);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
          FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueTwoStates0);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
 
-         FractionalDataType modelValueZeroAttributesInCombination1 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         FractionalDataType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
          FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueOneState1);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
          FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueTwoStates1);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
       }
    }
 }
 
 TEST_CASE("AttributeCombination with one attribute with one or two states is the exact same as zero AttributeCombinations, training, multiclass") {
-   TestApi testZeroAttributesInCombination = TestApi(3);
-   testZeroAttributesInCombination.AddAttributes({});
-   testZeroAttributesInCombination.AddAttributeCombinations({ {} });
-   testZeroAttributesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
-   testZeroAttributesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
-   testZeroAttributesInCombination.InitializeTraining();
+   TestApi testZeroFeaturesInCombination = TestApi(3);
+   testZeroFeaturesInCombination.AddAttributes({});
+   testZeroFeaturesInCombination.AddAttributeCombinations({ {} });
+   testZeroFeaturesInCombination.AddTrainingCases({ ClassificationCase(0, {}) });
+   testZeroFeaturesInCombination.AddValidationCases({ ClassificationCase(0, {}) });
+   testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddAttributes({ Attribute(1) });
@@ -1927,32 +1927,32 @@ TEST_CASE("AttributeCombination with one attribute with one or two states is the
    testTwoStates.InitializeTraining();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
-      assert(testZeroAttributesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
-      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroAttributesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
-         FractionalDataType validationMetricZeroAttributesInCombination = testZeroAttributesInCombination.Train(iAttributeCombination);
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testOneState.GetAttributeCombinationsCount());
+      assert(testZeroFeaturesInCombination.GetAttributeCombinationsCount() == testTwoStates.GetAttributeCombinationsCount());
+      for(size_t iAttributeCombination = 0; iAttributeCombination < testZeroFeaturesInCombination.GetAttributeCombinationsCount(); ++iAttributeCombination) {
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iAttributeCombination);
          FractionalDataType validationMetricOneState = testOneState.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricOneState);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
          FractionalDataType validationMetricTwoStates = testTwoStates.Train(iAttributeCombination);
-         CHECK_APPROX(validationMetricZeroAttributesInCombination, validationMetricTwoStates);
+         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroAttributesInCombination0 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
+         FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 0);
          FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueOneState0);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
          FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroAttributesInCombination0, modelValueTwoStates0);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
 
-         FractionalDataType modelValueZeroAttributesInCombination1 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
+         FractionalDataType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 1);
          FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueOneState1);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
          FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroAttributesInCombination1, modelValueTwoStates1);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
 
-         FractionalDataType modelValueZeroAttributesInCombination2 = testZeroAttributesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 2);
+         FractionalDataType modelValueZeroFeaturesInCombination2 = testZeroFeaturesInCombination.GetCurrentModelValue(iAttributeCombination, {}, 2);
          FractionalDataType modelValueOneState2 = testOneState.GetCurrentModelValue(iAttributeCombination, { 0 }, 2);
-         CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueOneState2);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueOneState2);
          FractionalDataType modelValueTwoStates2 = testTwoStates.GetCurrentModelValue(iAttributeCombination, { 1 }, 2);
-         CHECK_APPROX(modelValueZeroAttributesInCombination2, modelValueTwoStates2);
+         CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueTwoStates2);
       }
    }
 }
