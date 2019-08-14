@@ -16,7 +16,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
-// we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedRegions right now for different types
+// we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedTensors right now for different types
 // but they could all be shared into one class that get morphed.  We're currently getting some type safety that we wouldn't though otherwise, so hold off on this change until we can performance check
 // I think we'll find that using size_t as TDivisions is as performant or better than using anything else, so it may be a moot point, in which case leave it as hard coded types and just make all TDivisions size_t, even for mains
 // for pairs and triplicates, we already know that the dimensionality aspect requires us to have common division types since we don't want char/short SegmentedRegion classes and all the combinatorial options that would allow
@@ -54,7 +54,7 @@ public:
    size_t m_cDimensions;
    TValues * m_aValues;
    bool m_bExpanded;
-   // TODO : I lean towards leaving this alone since pointers to SegmentedRegions instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
+   // TODO : I lean towards leaving this alone since pointers to SegmentedTensors instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
    DimensionInfo m_aDimensions[1];
 
    EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
@@ -404,7 +404,7 @@ public:
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedRegions
+         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValuesEnd == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -629,7 +629,7 @@ public:
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedRegions
+         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValuesEnd == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -725,7 +725,7 @@ public:
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedRegions have zero divisions
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedTensors have zero divisions
             EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur);
             EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur);
             EBM_ASSERT(p1Cur <= pTopCur);

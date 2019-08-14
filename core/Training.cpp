@@ -33,18 +33,18 @@
 #include "DimensionSingle.h"
 #include "DimensionMultiple.h"
 
-static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
+static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedTensors) {
    LOG(TraceLevelInfo, "Entered DeleteSegmentedTensors");
 
-   if(UNLIKELY(nullptr != apSegmentedRegions)) {
+   if(UNLIKELY(nullptr != apSegmentedTensors)) {
       EBM_ASSERT(0 < cFeatureCombinations);
-      SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
-      const SegmentedTensor<ActiveDataType, FractionalDataType> * const * const ppSegmentedRegionsEnd = &apSegmentedRegions[cFeatureCombinations];
+      SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedTensors = apSegmentedTensors;
+      const SegmentedTensor<ActiveDataType, FractionalDataType> * const * const ppSegmentedTensorsEnd = &apSegmentedTensors[cFeatureCombinations];
       do {
-         SegmentedTensor<ActiveDataType, FractionalDataType>::Free(*ppSegmentedRegions);
-         ++ppSegmentedRegions;
-      } while(ppSegmentedRegionsEnd != ppSegmentedRegions);
-      delete[] apSegmentedRegions;
+         SegmentedTensor<ActiveDataType, FractionalDataType>::Free(*ppSegmentedTensors);
+         ++ppSegmentedTensors;
+      } while(ppSegmentedTensorsEnd != ppSegmentedTensors);
+      delete[] apSegmentedTensors;
    }
    LOG(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
@@ -56,26 +56,26 @@ static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmente
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedRegions = new (std::nothrow) SegmentedTensor<ActiveDataType, FractionalDataType> *[cFeatureCombinations];
-   if(UNLIKELY(nullptr == apSegmentedRegions)) {
-      LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedRegions");
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedTensors = new (std::nothrow) SegmentedTensor<ActiveDataType, FractionalDataType> *[cFeatureCombinations];
+   if(UNLIKELY(nullptr == apSegmentedTensors)) {
+      LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
       return nullptr;
    }
-   memset(apSegmentedRegions, 0, sizeof(*apSegmentedRegions) * cFeatureCombinations); // this needs to be done immediately after allocation otherwise we might attempt to free random garbage on an error
+   memset(apSegmentedTensors, 0, sizeof(*apSegmentedTensors) * cFeatureCombinations); // this needs to be done immediately after allocation otherwise we might attempt to free random garbage on an error
 
-   SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedTensors = apSegmentedTensors;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
       const FeatureCombinationCore * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
-      SegmentedTensor<ActiveDataType, FractionalDataType> * const pSegmentedRegions = SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
-      if(UNLIKELY(nullptr == pSegmentedRegions)) {
-         LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedRegions");
-         DeleteSegmentedTensors(cFeatureCombinations, apSegmentedRegions);
+      SegmentedTensor<ActiveDataType, FractionalDataType> * const pSegmentedTensors = SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
+      if(UNLIKELY(nullptr == pSegmentedTensors)) {
+         LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
+         DeleteSegmentedTensors(cFeatureCombinations, apSegmentedTensors);
          return nullptr;
       }
 
       if(0 == pFeatureCombination->m_cFeatures) {
          // if there are zero dimensions, then we have a tensor with 1 item, and we're already expanded
-         pSegmentedRegions->m_bExpanded = true;
+         pSegmentedTensors->m_bExpanded = true;
       } else {
          // if our segmented region has no dimensions, then it's already a fully expanded with 1 bin
 
@@ -90,19 +90,19 @@ static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmente
             ++iDimension;
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
-         if(pSegmentedRegions->Expand(acDivisionIntegersEnd)) {
-            LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedRegions->Expand(acDivisionIntegersEnd)");
-            DeleteSegmentedTensors(cFeatureCombinations, apSegmentedRegions);
+         if(pSegmentedTensors->Expand(acDivisionIntegersEnd)) {
+            LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedTensors->Expand(acDivisionIntegersEnd)");
+            DeleteSegmentedTensors(cFeatureCombinations, apSegmentedTensors);
             return nullptr;
          }
       }
 
-      *ppSegmentedRegions = pSegmentedRegions;
-      ++ppSegmentedRegions;
+      *ppSegmentedTensors = pSegmentedTensors;
+      ++ppSegmentedTensors;
    }
 
    LOG(TraceLevelInfo, "Exited InitializeSegmentedTensors");
-   return apSegmentedRegions;
+   return apSegmentedTensors;
 }
 
 // a*PredictionScores = logOdds for binary classification
@@ -1306,7 +1306,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(EbmTrai
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pEbmTrainingState->m_bestModelMetric = modelMetric;
 
-         // TODO : in the future don't copy over all SegmentedRegions.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
+         // TODO : in the future don't copy over all SegmentedTensors.  We only need to copy the ones that changed, which we can detect if we use a linked list and array lookup for the same data structure
          size_t iModel = 0;
          size_t iModelEnd = pEbmTrainingState->m_cFeatureCombinations;
          do {
