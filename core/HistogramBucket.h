@@ -382,11 +382,11 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
          const size_t cBins = pInputFeature->m_cBins;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
          pInputData += iInstance;
-         StorageDataTypeCore data = *pInputData;
-         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
-         size_t iState = static_cast<size_t>(data);
-         EBM_ASSERT(iState < cBins);
-         iBucket += cBuckets * iState;
+         StorageDataTypeCore iBinOriginal = *pInputData;
+         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(iBinOriginal)));
+         size_t iBin = static_cast<size_t>(iBinOriginal);
+         EBM_ASSERT(iBin < cBins);
+         iBucket += cBuckets * iBin;
          cBuckets *= cBins;
          ++iDimension;
       } while(iDimension < cFeatures);

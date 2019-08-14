@@ -838,8 +838,8 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(cou
    EBM_ASSERT(!IsMultiplyError(2, cBytesPerHistogramBucket)); // we're accessing allocated memory
    const size_t cBytesPerTwoHistogramBuckets = cBytesPerHistogramBucket << 1;
 
-   size_t * const piPoint = &aiPoint[iDimensionSweep];
-   *piPoint = 0;
+   size_t * const piBin = &aiPoint[iDimensionSweep];
+   *piBin = 0;
    size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
    const size_t cBins = pFeatureCombination->m_FeatureCombinationEntry[iDimensionSweep].m_pFeature->m_cBins;
@@ -854,9 +854,9 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(cou
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
    FractionalDataType bestSplit = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
-   size_t iState = 0;
+   size_t iBin = 0;
    do {
-      *piPoint = iState;
+      *piBin = iBin;
 
       GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorLow, cTargetClasses, pTotalsLow
 #ifndef NDEBUG
@@ -881,14 +881,14 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsRegression(cou
 
       if(bestSplit < splittingScore) {
          bestSplit = splittingScore;
-         iBestCut = iState;
+         iBestCut = iBin;
 
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
          memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets);
       }
-      ++iState;
-   } while(iState < cBins - 1);
+      ++iBin;
+   } while(iBin < cBins - 1);
    *piBestCut = iBestCut;
    return bestSplit;
 }
@@ -1104,9 +1104,9 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals1HighHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST state sweep loop");
-      size_t iState1 = 0;
+      size_t iBin1 = 0;
       do {
-         aiStart[0] = iState1;
+         aiStart[0] = iBin1;
 
          splittingScore = 0;
 
@@ -1132,7 +1132,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(bestSplittingScoreFirst < splittingScore) {
             bestSplittingScoreFirst = splittingScore;
-            cutFirst1Best = iState1;
+            cutFirst1Best = iBin1;
             cutFirst1LowBest = cutSecond1LowBest;
             cutFirst1HighBest = cutSecond1HighBest;
 
@@ -1141,8 +1141,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
             pTotals1HighLowBest->template Copy<countCompilerClassificationTargetClasses>(*pTotals2HighLowBest, cTargetClasses);
             pTotals1HighHighBest->template Copy<countCompilerClassificationTargetClasses>(*pTotals2HighHighBest, cTargetClasses);
          }
-         ++iState1;
-      } while(iState1 < cBinsDimension1 - 1);
+         ++iBin1;
+      } while(iBin1 < cBinsDimension1 - 1);
 
       bool bCutFirst2 = false;
 
@@ -1156,9 +1156,9 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
       HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
       LOG(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND state sweep loop");
-      size_t iState2 = 0;
+      size_t iBin2 = 0;
       do {
-         aiStart[1] = iState2;
+         aiStart[1] = iBin2;
 
          splittingScore = 0;
 
@@ -1184,7 +1184,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
          if(bestSplittingScoreFirst < splittingScore) {
             bestSplittingScoreFirst = splittingScore;
-            cutFirst2Best = iState2;
+            cutFirst2Best = iBin2;
             cutFirst2LowBest = cutSecond2LowBest;
             cutFirst2HighBest = cutSecond2HighBest;
 
@@ -1195,8 +1195,8 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             bCutFirst2 = true;
          }
-         ++iState2;
-      } while(iState2 < cBinsDimension2 - 1);
+         ++iBin2;
+      } while(iBin2 < cBinsDimension2 - 1);
       LOG(TraceLevelVerbose, "TrainMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
@@ -1480,8 +1480,8 @@ WARNING_POP
 //         return true;
 //      }
 //
-//      for(size_t iState1 = 0; iState1 < cBinsDimension1 - 1; ++iState1) {
-//         for(size_t iState2 = 0; iState2 < cBinsDimension2 - 1; ++iState2) {
+//      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
+//         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
 //            FractionalDataType splittingScore;
 //
 //            HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
@@ -1494,24 +1494,24 @@ WARNING_POP
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = 0;
-//            aiLast[0] = iState1;
-//            aiLast[1] = iState2;
+//            aiLast[0] = iBin1;
+//            aiLast[1] = iBin2;
 //            GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsLowLow);
 //
-//            aiStart[0] = iState1 + 1;
+//            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cBinsDimension1 - 1;
-//            aiLast[1] = iState2;
+//            aiLast[1] = iBin2;
 //            GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
-//            aiStart[1] = iState2 + 1;
-//            aiLast[0] = iState1;
+//            aiStart[1] = iBin2 + 1;
+//            aiLast[0] = iBin1;
 //            aiLast[1] = cBinsDimension2 - 1;
 //            GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsLowHigh);
 //
-//            aiStart[0] = iState1 + 1;
-//            aiStart[1] = iState2 + 1;
+//            aiStart[0] = iBin1 + 1;
+//            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = cBinsDimension2 - 1;
 //            GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, cTargetClasses, pTotalsHighHigh);
@@ -1530,8 +1530,8 @@ WARNING_POP
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iState1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iState2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FractionalDataType predictionTarget;
@@ -1573,8 +1573,8 @@ WARNING_POP
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iState1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iState2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FractionalDataType predictionTarget;
@@ -1616,8 +1616,8 @@ WARNING_POP
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iState1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iState2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FractionalDataType predictionTarget;
@@ -1658,8 +1658,8 @@ WARNING_POP
 //            if(bestSplittingScore < splittingScore) {
 //               bestSplittingScore = splittingScore;
 //
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iState1;
-//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iState2;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //                  FractionalDataType predictionTarget;
@@ -1822,11 +1822,11 @@ bool CalculateInteractionScore(const size_t cTargetClasses, CachedInteractionThr
 
       LOG(TraceLevelVerbose, "CalculateInteractionScore Starting state sweep loop");
       // note : if cBinsDimension1 can be 1 then we can't use a do loop
-      for(size_t iState1 = 0; iState1 < cBinsDimension1 - 1; ++iState1) {
-         aiStart[0] = iState1;
+      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
+         aiStart[0] = iBin1;
          // note : if cBinsDimension2 can be 1 then we can't use a do loop
-         for(size_t iState2 = 0; iState2 < cBinsDimension2 - 1; ++iState2) {
-            aiStart[1] = iState2;
+         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
+            aiStart[1] = iBin2;
 
             GetTotals<countCompilerClassificationTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x00, cTargetClasses, pTotalsLowLow
 #ifndef NDEBUG
