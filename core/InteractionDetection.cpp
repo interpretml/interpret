@@ -178,12 +178,12 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    return pEbmInteraction;
 }
 
-template<ptrdiff_t countCompilerClassificationTargetStates>
-static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+template<ptrdiff_t countCompilerClassificationTargetClasses>
+static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetStates, 0>(pEbmInteractionState->m_cTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<countCompilerClassificationTargetClasses, 0>(pEbmInteractionState->m_cTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -191,23 +191,23 @@ static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * 
    return 0;
 }
 
-template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
-   EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
-   if(cRuntimeTargetStates == iPossibleCompilerOptimizedTargetStates) {
-      EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
-      return GetInteractionScorePerTargetStates<iPossibleCompilerOptimizedTargetStates>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+template<ptrdiff_t iPossibleCompilerOptimizedTargetClasses>
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+   EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetClasses));
+   if(cRuntimeTargetClasses == iPossibleCompilerOptimizedTargetClasses) {
+      EBM_ASSERT(cRuntimeTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+      return GetInteractionScorePerTargetClasses<iPossibleCompilerOptimizedTargetClasses>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
    } else {
-      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetStates + 1>(cRuntimeTargetStates, pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+      return CompilerRecursiveGetInteractionScore<iPossibleCompilerOptimizedTargetClasses + 1>(cRuntimeTargetClasses, pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
    }
 }
 
 template<>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
-   UNUSED(cRuntimeTargetStates);
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const size_t cRuntimeTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+   UNUSED(cRuntimeTargetClasses);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
-   EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);
-   return GetInteractionScorePerTargetStates<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+   EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < cRuntimeTargetClasses);
+   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
 }
 
 // we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmInteractionState object is sent into us
@@ -301,7 +301,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
    IntegerDataType ret;
    if(pEbmInteractionState->m_bRegression) {
-      ret = GetInteractionScorePerTargetStates<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
+      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    } else {
       const size_t cTargetClasses = pEbmInteractionState->m_cTargetClasses;
       if(cTargetClasses <= 1) {

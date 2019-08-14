@@ -135,7 +135,7 @@ WARNING_POP
 
 enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetStatesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
 // 200 => 2.65%
 // 32  => 3.28%
@@ -143,9 +143,9 @@ enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 // 8   => 5.34%
 // 4   => 8.31%
 // TODO: increase this up to something like 16.  I have decreased it to 2 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
-// TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing countCompilerClassificationTargetStates from the main template of SegmentedRegion (using a template on just the Add function would be ok)
-constexpr ptrdiff_t k_cCompilerOptimizedTargetStatesMax = 3;
-static_assert(2 <= k_cCompilerOptimizedTargetStatesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class state then we would output model files with two values instead of our special case 1");
+// TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing countCompilerClassificationTargetClasses from the main template of SegmentedRegion (using a template on just the Add function would be ok)
+constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 3;
+static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class state then we would output model files with two values instead of our special case 1");
 
 // TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
@@ -155,26 +155,26 @@ typedef size_t StorageDataTypeCore;
 // we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
 typedef ptrdiff_t ActiveDataType;
 
-// TODO : rename cCompilerClassificationTargetStates -> compilerLearningTypeOrCountClassificationStates (see the testing program for how this would look)
+// TODO : rename cCompilerClassificationTargetClasses -> compilerLearningTypeOrCountClassificationStates (see the testing program for how this would look)
 
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
-constexpr EBM_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetStates) {
-   return k_Regression == cCompilerClassificationTargetStates;
+constexpr EBM_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetClasses) {
+   return k_Regression == cCompilerClassificationTargetClasses;
 }
-constexpr EBM_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
-   return 0 <= cCompilerClassificationTargetStates;
+constexpr EBM_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetClasses) {
+   return 0 <= cCompilerClassificationTargetClasses;
 }
-constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetClasses) {
 #ifdef EXPAND_BINARY_LOGITS
    return false;
 #else // EXPAND_BINARY_LOGITS
-   return 2 == cCompilerClassificationTargetStates;
+   return 2 == cCompilerClassificationTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
 
 constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetClasses) {
-   // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+   // this will work for anything except if countCompilerClassificationTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
@@ -182,7 +182,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetClass
 #endif // EXPAND_BINARY_LOGITS
 }
 constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses) {
-   // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+   // this will work for anything except if countCompilerClassificationTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
@@ -195,7 +195,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cStates inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_countCompilerClassificationTargetStates, MACRO_countRuntimeClassificationTargetStates) (k_DynamicClassification == (MACRO_countCompilerClassificationTargetStates) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetStates) : GetVectorLengthFlatCore(MACRO_countCompilerClassificationTargetStates))
+#define GET_VECTOR_LENGTH(MACRO_countCompilerClassificationTargetClasses, MACRO_countRuntimeClassificationTargetClasses) (k_DynamicClassification == (MACRO_countCompilerClassificationTargetClasses) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetClasses) : GetVectorLengthFlatCore(MACRO_countCompilerClassificationTargetClasses))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
@@ -204,7 +204,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // this macro is legal to use when the template is set to non-classification opterations, but it will return a number that will overflow any memory allocation if anyone tries to use the value
 // this macro can always be used before calling GET_VECTOR_LENGTH if you want to make other section of the code that depend on cTargetClasses compile out
 // TODO: use this macro more
-#define GET_COUNT_CLASSIFICATION_TARGET_STATES(MACRO_countCompilerClassificationTargetStates, MACRO_countRuntimeClassificationTargetStates) ((MACRO_countCompilerClassificationTargetStates) < 0 ? std::numeric_limits<size_t>::max() : (0 == (MACRO_countCompilerClassificationTargetStates) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetStates) : static_cast<size_t>(MACRO_countCompilerClassificationTargetStates)))
+#define GET_COUNT_CLASSIFICATION_TARGET_STATES(MACRO_countCompilerClassificationTargetClasses, MACRO_countRuntimeClassificationTargetClasses) ((MACRO_countCompilerClassificationTargetClasses) < 0 ? std::numeric_limits<size_t>::max() : (0 == (MACRO_countCompilerClassificationTargetClasses) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetClasses) : static_cast<size_t>(MACRO_countCompilerClassificationTargetClasses)))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
