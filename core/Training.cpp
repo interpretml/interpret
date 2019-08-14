@@ -113,12 +113,12 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    LOG(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   const size_t cCases = pTrainingSet->GetCountCases();
-   EBM_ASSERT(0 < cCases);
+   const size_t cInstances = pTrainingSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
 
    if(0 == pFeatureCombination->m_cFeatures) {
       FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
-      const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
+      const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
       if(IsRegression(countCompilerClassificationTargetStates)) {
          const FractionalDataType smallChangeToPrediction = aModelUpdateTensor[0];
          while(pResidualErrorEnd != pResidualError) {
@@ -198,7 +198,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pFeatureCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
+   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
    if(IsRegression(countCompilerClassificationTargetStates)) {
       size_t cItemsRemaining;
@@ -356,13 +356,13 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
    LOG(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-   const size_t cCases = pValidationSet->GetCountCases();
-   EBM_ASSERT(0 < cCases);
+   const size_t cInstances = pValidationSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
 
    if(0 == pFeatureCombination->m_cFeatures) {
       if(IsRegression(countCompilerClassificationTargetStates)) {
          FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
-         const FractionalDataType * const pResidualErrorEnd = pResidualError + cCases;
+         const FractionalDataType * const pResidualErrorEnd = pResidualError + cInstances;
 
          const FractionalDataType smallChangeToPrediction = aModelUpdateTensor[0];
 
@@ -375,7 +375,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             ++pResidualError;
          }
 
-         rootMeanSquareError /= pValidationSet->GetCountCases();
+         rootMeanSquareError /= pValidationSet->GetCountInstances();
          LOG(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
          return sqrt(rootMeanSquareError);
       } else {
@@ -383,7 +383,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          FractionalDataType * pValidationPredictionScores = pValidationSet->GetPredictionScores();
          const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
-         const FractionalDataType * const pValidationPredictionEnd = pValidationPredictionScores + cVectorLength * cCases;
+         const FractionalDataType * const pValidationPredictionEnd = pValidationPredictionScores + cVectorLength * cInstances;
 
          FractionalDataType sumLogLoss = 0;
          if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
@@ -393,7 +393,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
                *pValidationPredictionScores = validationPredictionScores;
-               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossBinaryclass(validationPredictionScores, targetData);
                ++pValidationPredictionScores;
                ++pTargetData;
             }
@@ -417,7 +417,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                   ++iVector;
                } while(iVector < cVectorLength);
                // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
-               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
                ++pTargetData;
             }
          }
@@ -434,7 +434,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
    if(IsRegression(countCompilerClassificationTargetStates)) {
       FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
+      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
       FractionalDataType rootMeanSquareError = 0;
       size_t cItemsRemaining;
@@ -471,7 +471,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
       }
       EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
-      rootMeanSquareError /= pValidationSet->GetCountCases();
+      rootMeanSquareError /= pValidationSet->GetCountInstances();
       LOG(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
       return sqrt(rootMeanSquareError);
    } else {
@@ -481,7 +481,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
       size_t cItemsRemaining;
 
-      const FractionalDataType * const pValidationPredictionScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pValidationPredictionScores + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
+      const FractionalDataType * const pValidationPredictionScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pValidationPredictionScores + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
       FractionalDataType sumLogLoss = 0;
       while(pValidationPredictionScores < pValidationPredictionScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
@@ -503,7 +503,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                // this will apply a small fix to our existing ValidationPredictionScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictionScores = *pValidationPredictionScores + smallChangeToPredictionScores;
                *pValidationPredictionScores = validationPredictionScores;
-               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossBinaryclass(validationPredictionScores, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossBinaryclass(validationPredictionScores, targetData);
                ++pValidationPredictionScores;
             } else {
                FractionalDataType sumExp = 0;
@@ -522,7 +522,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                   ++iVector;
                } while(iVector < cVectorLength);
                // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
-               sumLogLoss += EbmStatistics::ComputeClassificationSingleCaseLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
+               sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(sumExp, pValidationPredictionScores - cVectorLength, targetData);
             }
             ++pTargetData;
 
@@ -684,7 +684,7 @@ public:
       LOG(TraceLevelInfo, "Exited ~EbmTrainingState");
    }
 
-   bool Initialize(const IntegerDataType randomSeed, const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingCases, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationCases, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
+   bool Initialize(const IntegerDataType randomSeed, const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingData, const FractionalDataType * const aTrainingPredictionScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationData, const FractionalDataType * const aValidationPredictionScores) {
       LOG(TraceLevelInfo, "Entered EbmTrainingState::Initialize");
       try {
          if(m_bRegression) {
@@ -740,7 +740,7 @@ public:
                }
                size_t cStates = static_cast<size_t>(countStates);
                if(cStates <= 1) {
-                  EBM_ASSERT(0 != cStates || 0 == cTrainingCases && 0 == cValidationCases);
+                  EBM_ASSERT(0 != cStates || 0 == cTrainingInstances && 0 == cValidationInstances);
                   LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize feature with 0/1 values");
                }
 
@@ -857,8 +857,8 @@ public:
          size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
 
          LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
-         if(0 != cTrainingCases) {
-            m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
+         if(0 != cTrainingInstances) {
+            m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingInstances, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
             if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
                return true;
@@ -867,8 +867,8 @@ public:
          LOG(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
 
          LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
-         if(0 != cValidationCases) {
-            m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
+         if(0 != cValidationInstances) {
+            m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cValidationInstances, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
             if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
                return true;
@@ -879,7 +879,7 @@ public:
          RandomStream randomStream(randomSeed);
 
          EBM_ASSERT(nullptr == m_apSamplingSets);
-         if(0 != cTrainingCases) {
+         if(0 != cTrainingInstances) {
             m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
             if(UNLIKELY(nullptr == m_apSamplingSets)) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apSamplingSets");
@@ -903,20 +903,20 @@ public:
          }
 
          if(m_bRegression) {
-            if(0 != cTrainingCases) {
-               InitializeResiduals<k_Regression>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
+            if(0 != cTrainingInstances) {
+               InitializeResiduals<k_Regression>(cTrainingInstances, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), 0);
             }
-            if(0 != cValidationCases) {
-               InitializeResiduals<k_Regression>(cValidationCases, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
+            if(0 != cValidationInstances) {
+               InitializeResiduals<k_Regression>(cValidationInstances, aValidationTargets, aValidationPredictionScores, m_pValidationSet->GetResidualPointer(), 0);
             }
          } else {
             if(2 == m_cTargetStates) {
-               if(0 != cTrainingCases) {
-                  InitializeResiduals<2>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingInstances) {
+                  InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
                }
             } else {
-               if(0 != cTrainingCases) {
-                  InitializeResiduals<k_DynamicClassification>(cTrainingCases, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
+               if(0 != cTrainingInstances) {
+                  InitializeResiduals<k_DynamicClassification>(cTrainingInstances, aTrainingTargets, aTrainingPredictionScores, m_pTrainingSet->GetResidualPointer(), m_cTargetStates);
                }
             }
          }
@@ -932,13 +932,13 @@ public:
 };
 
 #ifndef NDEBUG
-void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * const aTargets) {
-   if(0 != cCases) {
+void CheckTargets(const size_t cTargetStates, const size_t cInstances, const void * const aTargets) {
+   if(0 != cInstances) {
       if(0 == cTargetStates) {
          // regression!
 
          const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
-         const FractionalDataType * const pTargetEnd = pTarget + cCases;
+         const FractionalDataType * const pTargetEnd = pTarget + cInstances;
          do {
             const FractionalDataType data = *pTarget;
             EBM_ASSERT(!std::isnan(data));
@@ -949,7 +949,7 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
          // classification
 
          const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
-         const IntegerDataType * const pTargetEnd = pTarget + cCases;
+         const IntegerDataType * const pTargetEnd = pTarget + cInstances;
          do {
             const IntegerDataType data = *pTarget;
             EBM_ASSERT(0 <= data);
@@ -965,21 +965,21 @@ void CheckTargets(const size_t cTargetStates, const size_t cCases, const void * 
 // a*PredictionScores = logOdds for binary classification
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
-EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
+EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingInstances, const void * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationInstances, const void * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
    // randomSeed can be any value
    EBM_ASSERT(0 <= countFeatures);
    EBM_ASSERT(0 == countFeatures || nullptr != features);
    EBM_ASSERT(0 <= countFeatureCombinations);
    EBM_ASSERT(0 == countFeatureCombinations || nullptr != featureCombinations);
    // featureCombinationIndexes -> it's legal for featureCombinationIndexes to be nullptr if there are no features indexed by our featureCombinations.  FeatureCombinations can have zero features, so it could be legal for this to be null even if there are featureCombinations
-   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingCases && 0 == countValidationCases));
-   EBM_ASSERT(0 <= countTrainingCases);
-   EBM_ASSERT(0 == countTrainingCases || nullptr != trainingTargets);
-   EBM_ASSERT(0 == countTrainingCases || 0 == countFeatures || nullptr != trainingData);
+   EBM_ASSERT(bRegression && 0 == countTargetStates || !bRegression && (1 <= countTargetStates || 0 == countTargetStates && 0 == countTrainingInstances && 0 == countValidationInstances));
+   EBM_ASSERT(0 <= countTrainingInstances);
+   EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingTargets);
+   EBM_ASSERT(0 == countTrainingInstances || 0 == countFeatures || nullptr != trainingData);
    // trainingPredictionScores can be null
-   EBM_ASSERT(0 <= countValidationCases); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
-   EBM_ASSERT(0 == countValidationCases || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   EBM_ASSERT(0 == countValidationCases || 0 == countFeatures || nullptr != validationData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 <= countValidationInstances); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
+   EBM_ASSERT(0 == countValidationInstances || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 == countValidationInstances || 0 == countFeatures || nullptr != validationData); // TODO: change this to make it possible to have no validation set
    // validationPredictionScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
@@ -995,12 +995,12 @@ EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, In
       LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTargetStates)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTrainingCases)");
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countTrainingInstances)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countTrainingInstances)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countValidationCases)");
+   if(!IsNumberConvertable<size_t, IntegerDataType>(countValidationInstances)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntegerDataType>(countValidationInstances)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntegerDataType>(countInnerBags)) {
@@ -1011,24 +1011,24 @@ EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, In
    size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cFeatureCombinations = static_cast<size_t>(countFeatureCombinations);
    size_t cTargetStates = static_cast<size_t>(countTargetStates);
-   size_t cTrainingCases = static_cast<size_t>(countTrainingCases);
-   size_t cValidationCases = static_cast<size_t>(countValidationCases);
+   size_t cTrainingInstances = static_cast<size_t>(countTrainingInstances);
+   size_t cValidationInstances = static_cast<size_t>(countValidationInstances);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
 
-   if(IsMultiplyError(cVectorLength, cTrainingCases)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cTrainingCases)");
+   if(IsMultiplyError(cVectorLength, cTrainingInstances)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cTrainingInstances)");
       return nullptr;
    }
-   if(IsMultiplyError(cVectorLength, cValidationCases)) {
-      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cValidationCases)");
+   if(IsMultiplyError(cVectorLength, cValidationInstances)) {
+      LOG(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cValidationInstances)");
       return nullptr;
    }
 
 #ifndef NDEBUG
-   CheckTargets(cTargetStates, cTrainingCases, trainingTargets);
-   CheckTargets(cTargetStates, cValidationCases, validationTargets);
+   CheckTargets(cTargetStates, cTrainingInstances, trainingTargets);
+   CheckTargets(cTargetStates, cValidationInstances, validationTargets);
 #endif // NDEBUG
 
    LOG(TraceLevelInfo, "Entered EbmTrainingState");
@@ -1038,7 +1038,7 @@ EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, In
       LOG(TraceLevelWarning, "WARNING AllocateCore nullptr == pEbmTrainingState");
       return nullptr;
    }
-   if(UNLIKELY(pEbmTrainingState->Initialize(randomSeed, features, featureCombinations, featureCombinationIndexes, cTrainingCases, trainingTargets, trainingData, trainingPredictionScores, cValidationCases, validationTargets, validationData, validationPredictionScores))) {
+   if(UNLIKELY(pEbmTrainingState->Initialize(randomSeed, features, featureCombinations, featureCombinationIndexes, cTrainingInstances, trainingTargets, trainingData, trainingPredictionScores, cValidationInstances, validationTargets, validationData, validationPredictionScores))) {
       LOG(TraceLevelWarning, "WARNING AllocateCore pEbmTrainingState->Initialize");
       delete pEbmTrainingState;
       return nullptr;
@@ -1046,16 +1046,16 @@ EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, In
    return pEbmTrainingState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTrainingCases, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   LOG(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingCases=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationCases=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingCases, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationCases, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
-   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, 0, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTrainingInstances, const FractionalDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationInstances, const FractionalDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
+   LOG(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
+   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, 0, countTrainingInstances, trainingTargets, trainingData, trainingPredictionScores, countValidationInstances, validationTargets, validationData, validationPredictionScores, countInnerBags));
    LOG(TraceLevelInfo, "Exited InitializeTrainingRegression %p", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingCases, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationCases, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
-   LOG(TraceLevelInfo, "Entered InitializeTrainingClassification: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTargetStates=%" IntegerDataTypePrintf ", countTrainingCases=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationCases=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTargetStates, countTrainingCases, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationCases, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
-   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, countTargetStates, countTrainingCases, trainingTargets, trainingData, trainingPredictionScores, countValidationCases, validationTargets, validationData, validationPredictionScores, countInnerBags));
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetStates, IntegerDataType countTrainingInstances, const IntegerDataType * trainingTargets, const IntegerDataType * trainingData, const FractionalDataType * trainingPredictionScores, IntegerDataType countValidationInstances, const IntegerDataType * validationTargets, const IntegerDataType * validationData, const FractionalDataType * validationPredictionScores, IntegerDataType countInnerBags) {
+   LOG(TraceLevelInfo, "Entered InitializeTrainingClassification: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTargetStates=%" IntegerDataTypePrintf ", countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingData=%p, trainingPredictionScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationData=%p, validationPredictionScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTargetStates, countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingData), static_cast<const void *>(trainingPredictionScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationData), static_cast<const void *>(validationPredictionScores), countInnerBags);
+   PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, countTargetStates, countTrainingInstances, trainingTargets, trainingData, trainingPredictionScores, countValidationInstances, validationTargets, validationData, validationPredictionScores, countInnerBags));
    LOG(TraceLevelInfo, "Exited InitializeTrainingClassification %p", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }

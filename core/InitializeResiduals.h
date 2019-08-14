@@ -15,19 +15,19 @@
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static void InitializeResiduals(const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
+static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictionScores, FractionalDataType * pResidualError, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictionScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or cTargetStates for some of the addition
    // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 feature and see how it behaves
-   EBM_ASSERT(0 < cCases);
+   EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != pResidualError);
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(0 < cVectorLength);
-   EBM_ASSERT(!IsMultiplyError(cVectorLength, cCases)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
-   const size_t cVectoredItems = cVectorLength * cCases;
+   EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
+   const size_t cVectoredItems = cVectorLength * cInstances;
    EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0]))); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
@@ -35,7 +35,7 @@ static void InitializeResiduals(const size_t cCases, const void * const aTargetD
       // TODO: do we really need to handle the case where pPredictionScores is null? In the future, we'll probably initialize our data with the intercept, in which case we'll always have existing predictions
       if(IsRegression(countCompilerClassificationTargetStates)) {
          // calling ComputeRegressionResidualError(predictionScore, data) with predictionScore as zero gives just data, so we can memcopy these values
-         memcpy(pResidualError, aTargetData, cCases * sizeof(pResidualError[0]));
+         memcpy(pResidualError, aTargetData, cInstances * sizeof(pResidualError[0]));
 #ifndef NDEBUG
          const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
          do {

@@ -20,12 +20,12 @@ class DataSetByFeatureCombination final {
    FractionalDataType * const m_aPredictionScores;
    const StorageDataTypeCore * const m_aTargetData;
    const StorageDataTypeCore * const * const m_aaInputData;
-   const size_t m_cCases;
+   const size_t m_cInstances;
    const size_t m_cFeatureCombinations;
 
 public:
 
-   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
+   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
@@ -60,8 +60,8 @@ public:
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeatureCombination->m_iInputData];
    }
-   EBM_INLINE size_t GetCountCases() const {
-      return m_cCases;
+   EBM_INLINE size_t GetCountInstances() const {
+      return m_cInstances;
    }
    EBM_INLINE size_t GetCountFeatureCombinations() const {
       return m_cFeatureCombinations;

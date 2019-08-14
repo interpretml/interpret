@@ -26,7 +26,7 @@ public:
    virtual ~SamplingMethod() {
    }
 
-   virtual size_t GetTotalCountCaseOccurrences() const = 0;
+   virtual size_t GetTotalCountInstanceOccurrences() const = 0;
 };
 
 // SamplingWithReplacement this is the more theoretically correct method of sampling, but it has the drawback that we need to keep a count of the number of times each case is selected in the dataset.  Sampling without replacement would require 1 bit per case, so it can be faster.
@@ -43,7 +43,7 @@ public:
    }
 
    virtual ~SamplingWithReplacement() final override;
-   virtual size_t GetTotalCountCaseOccurrences() const final override;
+   virtual size_t GetTotalCountInstanceOccurrences() const final override;
 
    static SamplingWithReplacement * GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet);
    static SamplingWithReplacement * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);

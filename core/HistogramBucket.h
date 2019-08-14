@@ -60,7 +60,7 @@ template<bool bRegression>
 class HistogramBucket final {
 public:
 
-   size_t cCasesInBucket;
+   size_t cInstancesInBucket;
    // TODO : we really want to eliminate this bucketValue at some point.  When doing the mains, if we change our algorithm so that we don't compress the arrays afterwards then we don't need it as the index is == to the bucketValue.
    // The compresson step is actually really unnessary because we can pre-compress our data when we get it to ensure that there are no missing bin values.  The only way there could be a bin with a case count of zero then
    // would be if a value is not in a particular sampling set, which should be quite rare.
@@ -74,7 +74,7 @@ public:
    template<ptrdiff_t countCompilerClassificationTargetStates>
    EBM_INLINE void Add(const HistogramBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
-      cCasesInBucket += other.cCasesInBucket;
+      cInstancesInBucket += other.cInstancesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].Add(other.aHistogramBucketVectorEntry[iVector]);
@@ -83,7 +83,7 @@ public:
    template<ptrdiff_t countCompilerClassificationTargetStates>
    EBM_INLINE void Subtract(const HistogramBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
-      cCasesInBucket -= other.cCasesInBucket;
+      cInstancesInBucket -= other.cInstancesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].Subtract(other.aHistogramBucketVectorEntry[iVector]);
@@ -113,7 +113,7 @@ public:
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 #ifndef NDEBUG
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
-      EBM_ASSERT(0 == cCasesInBucket);
+      EBM_ASSERT(0 == cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].AssertZero();
       }
@@ -133,14 +133,14 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(countCompiler
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
 
-   const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
-   EBM_ASSERT(0 < cCases);
+   const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
-   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
+   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
    HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
    while(pResidualErrorEnd != pResidualError) {
@@ -153,7 +153,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(countCompiler
 
       const size_t cOccurences = *pCountOccurrences;
       ++pCountOccurrences;
-      pHistogramBucketEntry->cCasesInBucket += cOccurences;
+      pHistogramBucketEntry->cInstancesInBucket += cOccurences;
       const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
 
 #ifndef NDEBUG
@@ -208,15 +208,15 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
-   const size_t cCases = pTrainingSet->m_pOriginDataSet->GetCountCases();
-   EBM_ASSERT(0 < cCases);
+   const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
    const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pFeatureCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cCases) - cItemsPerBitPackDataUnit);
+   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
    size_t cItemsRemaining;
 
@@ -243,7 +243,7 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
-         pHistogramBucketEntry->cCasesInBucket += cOccurences;
+         pHistogramBucketEntry->cInstancesInBucket += cOccurences;
          const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
          HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
          size_t iVector = 0;
@@ -358,11 +358,11 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
 
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
-   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountCases();
+   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
 
    size_t cFeatures = pFeatureCombination->m_cFeatures;
    EBM_ASSERT(1 <= cFeatures); // for interactions, we just return 0 for interactions with zero features
-   for(size_t iCase = 0; pResidualErrorEnd != pResidualError; ++iCase) {
+   for(size_t iInstance = 0; pResidualErrorEnd != pResidualError; ++iInstance) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
@@ -379,7 +379,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
          const FeatureCore * const pInputFeature = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature;
          const size_t cStates = pInputFeature->m_cStates;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
-         pInputData += iCase;
+         pInputData += iInstance;
          StorageDataTypeCore data = *pInputData;
          EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
          size_t iState = static_cast<size_t>(data);
@@ -391,7 +391,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
  
       HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pHistogramBucketEntry = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetStates)>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
-      pHistogramBucketEntry->cCasesInBucket += 1;
+      pHistogramBucketEntry->cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].sumResidualError += *pResidualError;
          if(IsClassification(countCompilerClassificationTargetStates)) {
@@ -407,7 +407,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
 template<ptrdiff_t countCompilerClassificationTargetStates>
-size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const size_t cHistogramBuckets, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, size_t * const pcCasesTotal, HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTargetStates
+size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const size_t cHistogramBuckets, HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * const aHistogramBuckets, size_t * const pcInstancesTotal, HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -417,7 +417,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
-   size_t cCasesTotalDebug = 0;
+   size_t cInstancesTotalDebug = 0;
 #endif // NDEBUG
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -434,14 +434,14 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    ActiveDataType iBucket = 0;
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-      if(UNLIKELY(0 == pCopyFrom->cCasesInBucket)) {
+      if(UNLIKELY(0 == pCopyFrom->cInstancesInBucket)) {
          HistogramBucket<IsRegression(countCompilerClassificationTargetStates)> * pCopyTo = pCopyFrom;
          goto skip_first_check;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-            if(LIKELY(0 != pCopyFrom->cCasesInBucket)) {
+            if(LIKELY(0 != pCopyFrom->cInstancesInBucket)) {
 #ifndef NDEBUG
-               cCasesTotalDebug += pCopyFrom->cCasesInBucket;
+               cInstancesTotalDebug += pCopyFrom->cInstancesInBucket;
 #endif // NDEBUG
                ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyTo, aHistogramBucketsEndDebug);
                memcpy(pCopyTo, pCopyFrom, cBytesPerHistogramBucket);
@@ -462,7 +462,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
          break;
       }
 #ifndef NDEBUG
-      cCasesTotalDebug += pCopyFrom->cCasesInBucket;
+      cInstancesTotalDebug += pCopyFrom->cInstancesInBucket;
 #endif // NDEBUG
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aSumHistogramBucketVectorEntry[iVector].Add(pCopyFrom->aHistogramBucketVectorEntry[iVector]);
@@ -476,10 +476,10 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
    size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;
 
-   const size_t cCasesTotal = pTrainingSet->GetTotalCountCaseOccurrences();
-   EBM_ASSERT(cCasesTotal == cCasesTotalDebug);
+   const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
+   EBM_ASSERT(cInstancesTotal == cInstancesTotalDebug);
 
-   *pcCasesTotal = cCasesTotal;
+   *pcInstancesTotal = cInstancesTotal;
 
    LOG(TraceLevelVerbose, "Exited CompressHistogramBuckets");
    return cFinalItems;

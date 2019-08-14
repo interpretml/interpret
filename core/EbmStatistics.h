@@ -18,10 +18,10 @@ class EbmStatistics final {
 
 public:
 
-   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cCases) {
-      // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-      EBM_ASSERT(0 < cCases); // we purge bins that have case counts of zero, so cCases should never be zero
-      return sumResidualError / cCases * sumResidualError;
+   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
+      // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
+      EBM_ASSERT(0 < cInstances); // we purge bins that have case counts of zero, so cInstances should never be zero
+      return sumResidualError / cInstances * sumResidualError;
    }
 
    WARNING_PUSH
@@ -36,11 +36,11 @@ public:
    }
    WARNING_POP
 
-   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cCases) {
+   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cInstances) {
       // TODO: check again if we can ever have a zero here
-      // TODO: after we eliminate bin compression, we should be checking to see if cCases is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-      EBM_ASSERT(0 != cCases);
-      return sumResidualError / cCases;
+      // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
+      EBM_ASSERT(0 != cInstances);
+      return sumResidualError / cInstances;
    }
 
    EBM_INLINE static FractionalDataType ComputeRegressionResidualError(const FractionalDataType predictionScore, const FractionalDataType actualValue) {
@@ -102,7 +102,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeClassificationSingleCaseLogLossBinaryclass(const FractionalDataType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossBinaryclass(const FractionalDataType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
       // TODO: also try log1p and I guess (exp1p?) for accuracy and performance
@@ -112,7 +112,7 @@ public:
       return std::log(1 + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction)); // log & exp will return the same type that it is given, either float or double
    }
 
-   EBM_INLINE static FractionalDataType ComputeClassificationSingleCaseLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
       // TODO: is there any way to avoid doing the negation below, like changing sumExp or what we store in memory?
       return -std::log(std::exp(aValidationLogWeight[binnedActualValue]) / sumExp);
    }

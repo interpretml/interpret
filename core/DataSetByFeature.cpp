@@ -14,21 +14,21 @@
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates) {
+EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
-   EBM_ASSERT(1 <= cCases);
+   EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
 
    const size_t cVectorLength = GetVectorLengthFlatCore(cTargetStates);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(IsMultiplyError(cCases, cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cCases, cVectorLength)");
+   if(IsMultiplyError(cInstances, cVectorLength)) {
+      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
       return nullptr;
    }
 
-   const size_t cElements = cCases * cVectorLength;
+   const size_t cElements = cInstances * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
       LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
@@ -39,12 +39,12 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
    if(bRegression) {
-      InitializeResiduals<k_Regression>(cCases, aTargetData, aPredictionScores, aResidualErrors, 0);
+      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictionScores, aResidualErrors, 0);
    } else {
       if(2 == cTargetStates) {
-         InitializeResiduals<2>(cCases, aTargetData, aPredictionScores, aResidualErrors, 2);
+         InitializeResiduals<2>(cInstances, aTargetData, aPredictionScores, aResidualErrors, 2);
       } else {
-         InitializeResiduals<k_DynamicClassification>(cCases, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
+         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictionScores, aResidualErrors, cTargetStates);
       }
    }
 
@@ -52,20 +52,20 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    return aResidualErrors;
 }
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
    EBM_ASSERT(nullptr != aFeatures);
-   EBM_ASSERT(0 < cCases);
+   EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aInputDataFrom);
 
-   if(IsMultiplyError(sizeof(StorageDataTypeCore), cCases)) {
+   if(IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)) {
       // we're checking this early instead of checking it inside our loop
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cCases)");
+      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)");
       return nullptr;
    }
-   const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cCases;
+   const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cInstances;
 
    if(IsMultiplyError(sizeof(void *), cFeatures)) {
       LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(void *), cFeatures)");
@@ -90,8 +90,8 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pFeature->m_iFeatureData * cCases];
-      const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cCases];
+      const IntegerDataType * pInputDataFrom = &aInputDataFrom[pFeature->m_iFeatureData * cInstances];
+      const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cInstances];
       do {
          const IntegerDataType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
@@ -118,13 +118,13 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
-   : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates))
-   , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cCases, aInputDataFrom))
-   , m_cCases(cCases)
+DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
+   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictionScores, cTargetStates))
+   , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aInputDataFrom))
+   , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {
 
-   EBM_ASSERT(0 < cCases);
+   EBM_ASSERT(0 < cInstances);
 }
 
 DataSetByFeature::~DataSetByFeature() {

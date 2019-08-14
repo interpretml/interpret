@@ -16,12 +16,12 @@
 class DataSetByFeature final {
    const FractionalDataType * const m_aResidualErrors;
    const StorageDataTypeCore * const * const m_aaInputData;
-   const size_t m_cCases;
+   const size_t m_cInstances;
    const size_t m_cFeatures;
 
 public:
 
-   DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
+   DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
@@ -40,8 +40,8 @@ public:
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeature->m_iFeatureData];
    }
-   EBM_INLINE size_t GetCountCases() const {
-      return m_cCases;
+   EBM_INLINE size_t GetCountInstances() const {
+      return m_cInstances;
    }
    EBM_INLINE size_t GetCountFeatures() const {
       return m_cFeatures;
