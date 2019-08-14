@@ -377,15 +377,15 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
       size_t iDimension = 0;
       do {
          const FeatureCore * const pInputFeature = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature;
-         const size_t cStates = pInputFeature->m_cStates;
+         const size_t cBins = pInputFeature->m_cBins;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
          pInputData += iInstance;
          StorageDataTypeCore data = *pInputData;
          EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
          size_t iState = static_cast<size_t>(data);
-         EBM_ASSERT(iState < cStates);
+         EBM_ASSERT(iState < cBins);
          iBucket += cBuckets * iState;
-         cBuckets *= cStates;
+         cBuckets *= cBins;
          ++iDimension;
       } while(iDimension < cFeatures);
  
@@ -414,7 +414,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 ) {
    LOG(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;

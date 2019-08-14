@@ -13,15 +13,15 @@ enum class FeatureTypeCore;
 
 class FeatureCore final {
 public:
-   const size_t m_cStates;
+   const size_t m_cBins;
    const size_t m_iFeatureData;
    // TODO : implement feature to handle m_featureType
    const FeatureTypeCore m_featureType;
    // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
-   EBM_INLINE FeatureCore(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
-      : m_cStates(cStates)
+   EBM_INLINE FeatureCore(const size_t cBins, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
+      : m_cBins(cBins)
       , m_iFeatureData(iFeatureData)
       , m_featureType(featureType)
       , m_bMissing(bMissing) {

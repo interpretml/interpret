@@ -95,8 +95,8 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       do {
          const IntegerDataType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cStates and cStates fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cStates);
+         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cBins and cBins fits into a size_t which we checked earlier
+         EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cBins);
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
          *pInputDataTo = static_cast<StorageDataTypeCore>(data);
          ++pInputDataTo;

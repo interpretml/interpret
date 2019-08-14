@@ -125,13 +125,13 @@ public:
 
    const FeatureType m_featureType;
    const bool m_hasMissing;
-   const IntegerDataType m_countStates;
+   const IntegerDataType m_countBins;
 
-   FeatureTest(const IntegerDataType countStates, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
+   FeatureTest(const IntegerDataType countBins, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
       m_featureType(featureType),
       m_hasMissing(hasMissing),
-      m_countStates(countStates) {
-      if(countStates < 0) {
+      m_countBins(countBins) {
+      if(countBins < 0) {
          exit(1);
       }
    }
@@ -199,7 +199,7 @@ class TestApi {
    std::vector<EbmCoreFeatureCombination> m_featureCombinations;
    std::vector<IntegerDataType> m_featureCombinationIndexes;
 
-   std::vector<std::vector<size_t>> m_countStatesByFeatureCombination;
+   std::vector<std::vector<size_t>> m_countBinsByFeatureCombination;
 
    std::vector<FractionalDataType> m_trainingRegressionTargets;
    std::vector<IntegerDataType> m_trainingClassificationTargets;
@@ -229,23 +229,23 @@ class TestApi {
       }
       const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountClassificationStates);
 
-      if(m_countStatesByFeatureCombination.size() <= iFeatureCombination) {
+      if(m_countBinsByFeatureCombination.size() <= iFeatureCombination) {
          exit(1);
       }
-      const std::vector<size_t> countStates = m_countStatesByFeatureCombination[iFeatureCombination];
+      const std::vector<size_t> countBins = m_countBinsByFeatureCombination[iFeatureCombination];
 
       const size_t cDimensions = indexes.size();
-      if(cDimensions != countStates.size()) {
+      if(cDimensions != countBins.size()) {
          exit(1);
       }
       size_t iValue = 0;
       size_t multiple = cVectorLength;
       for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-         if(countStates[iDimension] <= indexes[iDimension]) {
+         if(countBins[iDimension] <= indexes[iDimension]) {
             exit(1);
          }
          iValue += indexes[iDimension] * multiple;
-         multiple *= countStates[iDimension];
+         multiple *= countBins[iDimension];
       }
       return &pModel[iValue];
    }
@@ -360,7 +360,7 @@ public:
          EbmCoreFeature feature;
          feature.featureType = static_cast<IntegerDataType>(oneFeature.m_featureType);
          feature.hasMissing = oneFeature.m_hasMissing ? IntegerDataType { 1 } : IntegerDataType { 0 };
-         feature.countBins = oneFeature.m_countStates;
+         feature.countBins = oneFeature.m_countBins;
          m_features.push_back(feature);
       }
 
@@ -376,15 +376,15 @@ public:
          EbmCoreFeatureCombination featureCombination;
          featureCombination.countFeaturesInCombination = oneFeatureCombination.size();
          m_featureCombinations.push_back(featureCombination);
-         std::vector<size_t> countStates;
+         std::vector<size_t> countBins;
          for(const size_t oneIndex : oneFeatureCombination) {
             if(m_features.size() <= oneIndex) {
                exit(1);
             }
             m_featureCombinationIndexes.push_back(oneIndex);
-            countStates.push_back(static_cast<size_t>(m_features[oneIndex].countBins));
+            countBins.push_back(static_cast<size_t>(m_features[oneIndex].countBins));
          }
-         m_countStatesByFeatureCombination.push_back(countStates);
+         m_countBinsByFeatureCombination.push_back(countBins);
       }
 
       m_stage = Stage::FeatureCombinationsAdded;

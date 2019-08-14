@@ -72,15 +72,15 @@ public:
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
             FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
-            IntegerDataType countStates = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countStates); // we can handle 1 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
-               LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
+            IntegerDataType countBins = pFeatureInitialize->countBins;
+            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+            if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
+               LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                return true;
             }
-            size_t cStates = static_cast<size_t>(countStates);
-            if(cStates <= 1) {
-               EBM_ASSERT(0 != cStates || 0 == cInstances);
+            size_t cBins = static_cast<size_t>(countBins);
+            if(cBins <= 1) {
+               EBM_ASSERT(0 != cBins || 0 == cInstances);
                LOG(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
             }
 
@@ -88,7 +88,7 @@ public:
             bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
             // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cStates, iFeatureInitialize, featureTypeCore, bMissing);
+            new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -262,7 +262,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
-      if(pFeature->m_cStates <= 1) {
+      if(pFeature->m_cBins <= 1) {
          LOG(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
             *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
@@ -292,7 +292,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
-      EBM_ASSERT(2 <= pFeature->m_cStates); // we should have filtered out anything with 1 state above
+      EBM_ASSERT(2 <= pFeature->m_cBins); // we should have filtered out anything with 1 state above
 
       pFeatureCombinationEntry->m_pFeature = pFeature;
       ++pFeatureCombinationEntry;

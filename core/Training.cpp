@@ -86,7 +86,7 @@ static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmente
          size_t acDivisionIntegersEnd[k_cDimensionsMax];
          size_t iDimension = 0;
          do {
-            acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cStates;
+            acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
             ++iDimension;
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
@@ -335,10 +335,10 @@ static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFe
    } else if(cTargetClasses <= 1 << 16) {
       TrainingSetTargetFeatureLoop<cInputBits, 16, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(static_cast<uint64_t>(cTargetClasses) <= uint64_t { 1 } << 32) {
-      // if this is a 32 bit system, then m_cStates can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cStates will be promoted to a 64 bit number for the above comparison
+      // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
-      // TODO : perhaps we should change m_cStates into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
+      // TODO : perhaps we should change m_cBins into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
       TrainingSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
@@ -564,10 +564,10 @@ static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombination
    } else if(cTargetClasses <= 1 << 16) {
       return ValidationSetTargetFeatureLoop<cInputBits, 16, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(static_cast<uint64_t>(cTargetClasses) <= uint64_t { 1 } << 32) {
-      // if this is a 32 bit system, then m_cStates can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cStates will be promoted to a 64 bit number for the above comparison
+      // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
-      // TODO : perhaps we should change m_cStates into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
+      // TODO : perhaps we should change m_cBins into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
       return ValidationSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
@@ -732,15 +732,15 @@ public:
                EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
                FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
-               IntegerDataType countStates = pFeatureInitialize->countBins;
-               EBM_ASSERT(0 <= countStates); // we can handle 1 == cStates or 0 == cStates even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
-               if(!IsNumberConvertable<size_t, IntegerDataType>(countStates)) {
-                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countStates)");
+               IntegerDataType countBins = pFeatureInitialize->countBins;
+               EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
+               if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
+                  LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                   return true;
                }
-               size_t cStates = static_cast<size_t>(countStates);
-               if(cStates <= 1) {
-                  EBM_ASSERT(0 != cStates || 0 == cTrainingInstances && 0 == cValidationInstances);
+               size_t cBins = static_cast<size_t>(countBins);
+               if(cBins <= 1) {
+                  EBM_ASSERT(0 != cBins || 0 == cTrainingInstances && 0 == cValidationInstances);
                   LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize feature with 0/1 values");
                }
 
@@ -748,7 +748,7 @@ public:
                bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
                // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-               new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cStates, iFeatureInitialize, featureTypeCore, bMissing);
+               new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
                // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
                EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -791,7 +791,7 @@ public:
                      const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                      EBM_ASSERT(iFeatureForCombination < m_cFeatures);
                      FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-                     if(LIKELY(1 < pInputFeature->m_cStates)) {
+                     if(LIKELY(1 < pInputFeature->m_cBins)) {
                         // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         ++cSignificantFeaturesInCombination;
                      } else {
@@ -831,17 +831,17 @@ public:
                      const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                      EBM_ASSERT(iFeatureForCombination < m_cFeatures);
                      const FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-                     const size_t cStates = pInputFeature->m_cStates;
-                     if(LIKELY(1 < cStates)) {
+                     const size_t cBins = pInputFeature->m_cBins;
+                     if(LIKELY(1 < cBins)) {
                         // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         pFeatureCombinationEntry->m_pFeature = pInputFeature;
                         ++pFeatureCombinationEntry;
-                        if(IsMultiplyError(cTensorStates, cStates)) {
+                        if(IsMultiplyError(cTensorStates, cBins)) {
                            // if this overflows, we definetly won't be able to allocate it
-                           LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, cStates)");
+                           LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, cBins)");
                            return true;
                         }
-                        cTensorStates *= cStates;
+                        cTensorStates *= cBins;
                      }
                      ++pFeatureCombinationIndex;
                   } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
@@ -1160,7 +1160,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cStates;
+         acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {

@@ -125,9 +125,9 @@ EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
    return aTargetData;
 }
 
-struct InputDataPointerAndCountStates {
+struct InputDataPointerAndCountBins {
    const IntegerDataType * m_pInputData;
-   size_t m_cStates;
+   size_t m_cBins;
 };
 
 EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom) {
@@ -186,14 +186,14 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          EBM_ASSERT(nullptr != aInputDataFrom);
 
          const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
-         InputDataPointerAndCountStates dimensionInfo[k_cDimensionsMax];
-         InputDataPointerAndCountStates * pDimensionInfo = &dimensionInfo[0];
+         InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
+         InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);
-         const InputDataPointerAndCountStates * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
+         const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
             const FeatureCore * const pFeature = pFeatureCombinationEntry->m_pFeature;
             pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->m_iFeatureData * cInstances];
-            pDimensionInfo->m_cStates = pFeature->m_cStates;
+            pDimensionInfo->m_cBins = pFeature->m_cBins;
             ++pFeatureCombinationEntry;
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
@@ -221,11 +221,11 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
                   EBM_ASSERT(0 <= inputData);
                   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than inputData and inputData fits into a size_t which we checked earlier
-                  EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cStates);
-                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cStates)); // we check for overflows during FeatureCombination construction, but let's check here again
+                  EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cBins);
+                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins)); // we check for overflows during FeatureCombination construction, but let's check here again
 
                   tensorIndex += tensorMultiple * static_cast<size_t>(inputData); // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                  tensorMultiple *= pDimensionInfo->m_cStates;
+                  tensorMultiple *= pDimensionInfo->m_cBins;
 
                   ++pDimensionInfo;
                } while(pDimensionInfoEnd != pDimensionInfo);
