@@ -191,7 +191,7 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDimensions>
-void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -302,7 +302,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDime
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -329,7 +329,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates>
 class RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -346,7 +346,7 @@ public:
 
 // TODO: make the number of dimensions (pFeatureCombination->m_cFeatures) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t countCompilerClassificationTargetStates>
-void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const DataSetByFeature * const pDataSet, const size_t cTargetStates
+void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const DataSetByFeature * const pDataSet, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -376,7 +376,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
       size_t iBucket = 0;
       size_t iDimension = 0;
       do {
-         const Feature * const pInputFeature = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature;
+         const FeatureCore * const pInputFeature = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature;
          const size_t cStates = pInputFeature->m_cStates;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
          pInputData += iCase;

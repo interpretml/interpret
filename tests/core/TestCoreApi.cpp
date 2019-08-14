@@ -120,14 +120,14 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountClassificati
 constexpr IntegerDataType randomSeed = 42;
 enum class FeatureType : IntegerDataType { Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal };
 
-class Feature final {
+class FeatureTest final {
 public:
 
    const FeatureType m_featureType;
    const bool m_hasMissing;
    const IntegerDataType m_countStates;
 
-   Feature(const IntegerDataType countStates, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
+   FeatureTest(const IntegerDataType countStates, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
       m_featureType(featureType),
       m_hasMissing(hasMissing),
       m_countStates(countStates) {
@@ -351,12 +351,12 @@ public:
       return m_featureCombinations.size();
    }
 
-   void AddFeatures(const std::vector<Feature> features) {
+   void AddFeatures(const std::vector<FeatureTest> features) {
       if(Stage::Beginning != m_stage) {
          exit(1);
       }
 
-      for(const Feature oneFeature : features) {
+      for(const FeatureTest oneFeature : features) {
          EbmCoreFeature feature;
          feature.featureType = static_cast<IntegerDataType>(oneFeature.m_featureType);
          feature.hasMissing = oneFeature.m_hasMissing ? IntegerDataType { 1 } : IntegerDataType { 0 };
@@ -1243,7 +1243,7 @@ TEST_CASE("zero countCasesRequiredForSplitParentMin, training, regression") {
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({
       RegressionCase(10, { 0 }),
@@ -1263,7 +1263,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({ 
       RegressionCase(10, { 0 }),
@@ -1299,7 +1299,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
 
 TEST_CASE("Zero training cases, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases(std::vector<RegressionCase> {});
    test.AddValidationCases({ RegressionCase(12, { 1 }) });
@@ -1315,7 +1315,7 @@ TEST_CASE("Zero training cases, training, regression") {
 
 TEST_CASE("Zero training cases, training, binary") {
    TestApi test = TestApi(2);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases(std::vector<ClassificationCase> {});
    test.AddValidationCases({ ClassificationCase(0, { 1 }) });
@@ -1334,7 +1334,7 @@ TEST_CASE("Zero training cases, training, binary") {
 
 TEST_CASE("Zero training cases, training, multiclass") {
    TestApi test = TestApi(3);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases(std::vector<ClassificationCase> {});
    test.AddValidationCases({ ClassificationCase(0, { 1 }) });
@@ -1355,7 +1355,7 @@ TEST_CASE("Zero training cases, training, multiclass") {
 
 TEST_CASE("Zero validation cases, training, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({ RegressionCase(10, { 1 }) });
    test.AddValidationCases(std::vector<RegressionCase> {});
@@ -1381,7 +1381,7 @@ TEST_CASE("Zero validation cases, training, regression") {
 
 TEST_CASE("Zero validation cases, training, binary") {
    TestApi test = TestApi(2);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
    test.AddValidationCases(std::vector<ClassificationCase> {});
@@ -1411,7 +1411,7 @@ TEST_CASE("Zero validation cases, training, binary") {
 
 TEST_CASE("Zero validation cases, training, multiclass") {
    TestApi test = TestApi(3);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
    test.AddValidationCases(std::vector<ClassificationCase> {});
@@ -1450,7 +1450,7 @@ TEST_CASE("Zero validation cases, training, multiclass") {
 
 TEST_CASE("Zero interaction cases, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionCases(std::vector<RegressionCase> {});
    test.InitializeInteraction();
 
@@ -1460,7 +1460,7 @@ TEST_CASE("Zero interaction cases, interaction, regression") {
 
 TEST_CASE("Zero interaction cases, interaction, binary") {
    TestApi test = TestApi(2);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionCases(std::vector<ClassificationCase> {});
    test.InitializeInteraction();
 
@@ -1470,7 +1470,7 @@ TEST_CASE("Zero interaction cases, interaction, binary") {
 
 TEST_CASE("Zero interaction cases, interaction, multiclass") {
    TestApi test = TestApi(3);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionCases(std::vector<ClassificationCase> {});
    test.InitializeInteraction();
 
@@ -1481,7 +1481,7 @@ TEST_CASE("Zero interaction cases, interaction, multiclass") {
 TEST_CASE("features with 0 states, training") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(0) });
+   test.AddFeatures({ FeatureTest(0) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases(std::vector<RegressionCase> {});
    test.AddValidationCases(std::vector<RegressionCase> {});
@@ -1497,7 +1497,7 @@ TEST_CASE("features with 0 states, training") {
 
 TEST_CASE("features with 0 states, interaction") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(0) });
+   test.AddFeatures({ FeatureTest(0) });
    test.AddInteractionCases(std::vector<RegressionCase> {});
    test.InitializeInteraction();
 
@@ -1508,7 +1508,7 @@ TEST_CASE("features with 0 states, interaction") {
 TEST_CASE("classification with 0 possible target states, training") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(0);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases(std::vector<ClassificationCase> {});
    test.AddValidationCases(std::vector<ClassificationCase> {});
@@ -1526,7 +1526,7 @@ TEST_CASE("classification with 0 possible target states, training") {
 
 TEST_CASE("classification with 0 possible target states, interaction") {
    TestApi test = TestApi(0);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionCases(std::vector<ClassificationCase> {});
    test.InitializeInteraction();
 
@@ -1536,7 +1536,7 @@ TEST_CASE("classification with 0 possible target states, interaction") {
 
 TEST_CASE("classification with 1 possible target, training") {
    TestApi test = TestApi(1);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingCases({ ClassificationCase(0, { 1 }) });
    test.AddValidationCases({ ClassificationCase(0, { 1 }) });
@@ -1554,7 +1554,7 @@ TEST_CASE("classification with 1 possible target, training") {
 
 TEST_CASE("classification with 1 possible target, interaction") {
    TestApi test = TestApi(1);
-   test.AddFeatures({ Feature(2) });
+   test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionCases({ ClassificationCase(0, { 1 }) });
    test.InitializeInteraction();
 
@@ -1565,9 +1565,9 @@ TEST_CASE("classification with 1 possible target, interaction") {
 TEST_CASE("features with 1 state in various positions, training") {
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ 
-      Feature(1),
-      Feature(2),
-      Feature(2)
+      FeatureTest(1),
+      FeatureTest(2),
+      FeatureTest(2)
       });
    test0.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test0.AddTrainingCases({ RegressionCase(10, { 0, 1, 1 }) });
@@ -1576,9 +1576,9 @@ TEST_CASE("features with 1 state in various positions, training") {
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({
-      Feature(2),
-      Feature(1),
-      Feature(2)
+      FeatureTest(2),
+      FeatureTest(1),
+      FeatureTest(2)
       });
    test1.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test1.AddTrainingCases({ RegressionCase(10, { 1, 0, 1 }) });
@@ -1587,9 +1587,9 @@ TEST_CASE("features with 1 state in various positions, training") {
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({
-      Feature(2),
-      Feature(2),
-      Feature(1)
+      FeatureTest(2),
+      FeatureTest(2),
+      FeatureTest(1)
       });
    test2.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test2.AddTrainingCases({ RegressionCase(10, { 1, 1, 0 }) });
@@ -1825,14 +1825,14 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
-   testOneState.AddFeatures({ Feature(1) });
+   testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingCases({ RegressionCase(10, { 0 }) });
    testOneState.AddValidationCases({ RegressionCase(12, { 0 }) });
    testOneState.InitializeTraining();
 
    TestApi testTwoStates = TestApi(k_learningTypeRegression);
-   testTwoStates.AddFeatures({ Feature(2) });
+   testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingCases({ RegressionCase(10, { 1 }) });
    testTwoStates.AddValidationCases({ RegressionCase(12, { 1 }) });
@@ -1866,14 +1866,14 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(2);
-   testOneState.AddFeatures({ Feature(1) });
+   testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingCases({ ClassificationCase(0, { 0 }) });
    testOneState.AddValidationCases({ ClassificationCase(0, { 0 }) });
    testOneState.InitializeTraining();
 
    TestApi testTwoStates = TestApi(2);
-   testTwoStates.AddFeatures({ Feature(2) });
+   testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
@@ -1913,14 +1913,14 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    testZeroFeaturesInCombination.InitializeTraining();
 
    TestApi testOneState = TestApi(3);
-   testOneState.AddFeatures({ Feature(1) });
+   testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingCases({ ClassificationCase(0, { 0 }) });
    testOneState.AddValidationCases({ ClassificationCase(0, { 0 }) });
    testOneState.InitializeTraining();
 
    TestApi testTwoStates = TestApi(3);
-   testTwoStates.AddFeatures({ Feature(2) });
+   testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingCases({ ClassificationCase(0, { 1 }) });
    testTwoStates.AddValidationCases({ ClassificationCase(0, { 1 }) });
@@ -1959,7 +1959,7 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
 
 TEST_CASE("3 dimensional featureCombination with one dimension reduced in different ways, training, regression") {
    TestApi test0 = TestApi(k_learningTypeRegression);
-   test0.AddFeatures({ Feature(1), Feature(2), Feature(2) });
+   test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
    test0.AddFeatureCombinations({ { 0, 1, 2 } });
    test0.AddTrainingCases({ 
       RegressionCase(9, { 0, 0, 0 }),
@@ -1971,7 +1971,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
    test0.InitializeTraining();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
-   test1.AddFeatures({ Feature(2), Feature(1), Feature(2) });
+   test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
    test1.AddFeatureCombinations({ { 0, 1, 2 } });
    test1.AddTrainingCases({
       RegressionCase(9, { 0, 0, 0 }),
@@ -1983,7 +1983,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
    test1.InitializeTraining();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
-   test2.AddFeatures({ Feature(2), Feature(2), Feature(1) });
+   test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
    test2.AddFeatureCombinations({ { 0, 1, 2 } });
    test2.AddTrainingCases({
       RegressionCase(9, { 0, 0, 0 }),
@@ -2032,7 +2032,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
 
 TEST_CASE("FeatureCombination with one feature with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
-   test.AddFeatures({ Feature(1) });
+   test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionCases({ RegressionCase(10, { 0 }) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({ 0 });
@@ -2041,7 +2041,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, regr
 
 TEST_CASE("FeatureCombination with one feature with one state, interaction, Binary") {
    TestApi test = TestApi(2);
-   test.AddFeatures({ Feature(1) });
+   test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({ 0 });
@@ -2050,7 +2050,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, Bina
 
 TEST_CASE("FeatureCombination with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
-   test.AddFeatures({ Feature(1) });
+   test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionCases({ ClassificationCase(0, { 0 }) });
    test.InitializeInteraction();
    FractionalDataType metricReturn = test.InteractionScore({0});

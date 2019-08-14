@@ -602,7 +602,7 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsRegression(countCompil
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t countCompilerClassificationTargetStates>
-bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombination * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const size_t cTargetStates) {
+bool TrainSingleDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cCasesRequiredForSplitParentMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);

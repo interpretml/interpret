@@ -130,7 +130,7 @@ struct InputDataPointerAndCountStates {
    size_t m_cStates;
 };
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureCombinations);
@@ -150,10 +150,10 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    }
 
    StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
-   const FeatureCombination * const * ppFeatureCombination = apFeatureCombination;
-   const FeatureCombination * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
+   const FeatureCombinationCore * const * ppFeatureCombination = apFeatureCombination;
+   const FeatureCombinationCore * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
    do {
-      const FeatureCombination * const pFeatureCombination = *ppFeatureCombination;
+      const FeatureCombinationCore * const pFeatureCombination = *ppFeatureCombination;
       EBM_ASSERT(nullptr != pFeatureCombination);
       const size_t cFeatures = pFeatureCombination->m_cFeatures;
       if(0 == cFeatures) {
@@ -185,13 +185,13 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
          InputDataPointerAndCountStates dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountStates * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);
          const InputDataPointerAndCountStates * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
-            const Feature * const pFeature = pFeatureCombinationEntry->m_pFeature;
+            const FeatureCore * const pFeature = pFeatureCombinationEntry->m_pFeature;
             pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->m_iFeatureData * cCases];
             pDimensionInfo->m_cStates = pFeature->m_cStates;
             ++pFeatureCombinationEntry;
@@ -264,7 +264,7 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength)
+DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength)
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cCases, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aPredictionScores(bAllocatePredictionScores ? ConstructPredictionScores(cCases, cVectorLength, aPredictionScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
    , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cCases, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))

@@ -26,7 +26,7 @@ public:
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   Feature * const m_aFeatures;
+   FeatureCore * const m_aFeatures;
    DataSetByFeature * m_pDataSet;
 
    unsigned int m_cLogEnterMessages;
@@ -36,7 +36,7 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cFeatures(cFeatures)
-      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
       , m_pDataSet(nullptr)
       , m_cLogEnterMessages (1000)
       , m_cLogExitMessages(1000) {
@@ -88,7 +88,7 @@ public:
             bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
             // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aFeatures[iFeatureInitialize]) Feature(cStates, iFeatureInitialize, featureTypeCore, bMissing);
+            new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cStates, iFeatureInitialize, featureTypeCore, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -179,7 +179,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates>
-static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
@@ -192,7 +192,7 @@ static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * 
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(cRuntimeTargetStates == iPossibleCompilerOptimizedTargetStates) {
       EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
@@ -203,7 +203,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRu
 }
 
 template<>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);
@@ -248,7 +248,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       return 0;
    }
 
-   const Feature * const aFeatures = pEbmInteractionState->m_aFeatures;
+   const FeatureCore * const aFeatures = pEbmInteractionState->m_aFeatures;
    const IntegerDataType * pFeatureCombinationIndex = featureIndexes;
    const IntegerDataType * const pFeatureCombinationIndexEnd = featureIndexes + cFeaturesInCombination;
 
@@ -261,7 +261,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
       }
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
-      const Feature * const pFeature = &aFeatures[iFeatureForCombination];
+      const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
       if(pFeature->m_cStates <= 1) {
          LOG(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
@@ -280,18 +280,18 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
 
    // put the pFeatureCombination object on the stack. We want to put it into a FeatureCombination object since we want to share code with training, which calls things like building the tensor totals (which is templated to be compiled many times)
    char FeatureCombinationBuffer[k_cBytesFeatureCombinationMax];
-   FeatureCombination * const pFeatureCombination = reinterpret_cast<FeatureCombination *>(&FeatureCombinationBuffer);
+   FeatureCombinationCore * const pFeatureCombination = reinterpret_cast<FeatureCombinationCore *>(&FeatureCombinationBuffer);
    pFeatureCombination->Initialize(cFeaturesInCombination, 0);
 
    pFeatureCombinationIndex = featureIndexes; // restart from the start
-   FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+   FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
    do {
       const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);
       EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
-      const Feature * const pFeature = &aFeatures[iFeatureForCombination];
+      const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
       EBM_ASSERT(2 <= pFeature->m_cStates); // we should have filtered out anything with 1 state above
 
       pFeatureCombinationEntry->m_pFeature = pFeature;

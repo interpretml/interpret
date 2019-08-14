@@ -21,7 +21,7 @@ class DataSetByFeature final {
 
 public:
 
-   DataSetByFeature(const bool bRegression, const size_t cFeatures, const Feature * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
+   DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
@@ -34,7 +34,7 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const Feature * const pFeature) const {
+   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCore * const pFeature) const {
       EBM_ASSERT(nullptr != pFeature);
       EBM_ASSERT(pFeature->m_iFeatureData < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);

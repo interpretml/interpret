@@ -52,7 +52,7 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    return aResidualErrors;
 }
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const Feature * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
@@ -79,8 +79,8 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    }
 
    StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
-   const Feature * pFeature = aFeatures;
-   const Feature * const pFeatureEnd = aFeatures + cFeatures;
+   const FeatureCore * pFeature = aFeatures;
+   const FeatureCore * const pFeatureEnd = aFeatures + cFeatures;
    do {
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
       if(nullptr == pInputDataTo) {
@@ -118,7 +118,7 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const Feature * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
+DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates)
    : m_aResidualErrors(ConstructResidualErrors(bRegression, cCases, aTargetData, aPredictionScores, cTargetStates))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cCases, aInputDataFrom))
    , m_cCases(cCases)

@@ -11,8 +11,7 @@
 
 enum class FeatureTypeCore;
 
-// FeatureInternal is a class internal to our library.  Our public interface will not have a "Feature" POD that we can use for C interop since everything will be a specific type of feature like OrdinalFeature (POD)
-class Feature final {
+class FeatureCore final {
 public:
    const size_t m_cStates;
    const size_t m_iFeatureData;
@@ -21,7 +20,7 @@ public:
    // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
-   EBM_INLINE Feature(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
+   EBM_INLINE FeatureCore(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
       : m_cStates(cStates)
       , m_iFeatureData(iFeatureData)
       , m_featureType(featureType)

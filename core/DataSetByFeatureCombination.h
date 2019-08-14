@@ -25,7 +25,7 @@ class DataSetByFeatureCombination final {
 
 public:
 
-   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
+   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
@@ -54,7 +54,7 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombination * const pFeatureCombination) const {
+   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombinationCore * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
       EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);
