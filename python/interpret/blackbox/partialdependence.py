@@ -79,7 +79,7 @@ class PartialDependence(ExplainerMixin):
             X_mut[:, col_idx] = grid_point
             ice_lines[:, idx] = predict_fn(X_mut)
         mean = np.mean(ice_lines, axis=0)
-        # std = np.std(ice_lines, axis=0)
+        std = np.std(ice_lines, axis=0)
 
         ice_lines = ice_lines[
             np.random.choice(ice_lines.shape[0], num_ice_samples, replace=False), :
@@ -92,8 +92,8 @@ class PartialDependence(ExplainerMixin):
             "values": X[:, col_idx],
             "density": {"names": values, "scores": counts},
             # NOTE: We can take either bounds or background values, picked one.
-            # 'upper_bounds': mean + std * std_coef,
-            # 'lower_bounds': mean - std * std_coef,
+            "upper_bounds": mean + std * std_coef,
+            "lower_bounds": mean - std * std_coef,
             "background_scores": ice_lines,
         }
 
@@ -102,6 +102,8 @@ class PartialDependence(ExplainerMixin):
             name = gen_name_from_class(self)
 
         data_dicts = []
+        feature_list = []
+        density_list = []
         for col_idx, feature in enumerate(self.feature_names):
             feature_type = self.feature_types[col_idx]
             pdp = PartialDependence._gen_pdp(
@@ -112,9 +114,30 @@ class PartialDependence(ExplainerMixin):
                 num_points=self.num_points,
                 std_coef=self.std_coef,
             )
+            feature_dict = {
+                "feature_values": pdp["values"],
+                "scores": pdp["scores"],
+                "upper_bounds": pdp["upper_bounds"],
+                "lower_bounds": pdp["lower_bounds"]
+            }
+            feature_list.append(feature_dict)
+            density_list.append(pdp["density"])
             data_dicts.append(pdp)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
+            {
+                "explanation_type": "pdp",
+                "value": {
+                    "feature_list": feature_list
+                }
+            },
+            {
+                "explanation_type": "density",
+                "value": {
+                    "density": density_list
+                }
+            }
+        ]}
 
         selector = gen_global_selector(
             self.data, self.feature_names, self.feature_types, None

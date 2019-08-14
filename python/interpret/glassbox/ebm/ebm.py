@@ -1004,6 +1004,8 @@ class BaseEBM(BaseEstimator):
 
         # Add per feature graph
         data_dicts = []
+        feature_list = []
+        density_list = []
         for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
             model_graph = self.attribute_set_models_[attribute_set_index]
 
@@ -1016,21 +1018,37 @@ class BaseEBM(BaseEstimator):
                 # bin_counts = self.preprocessor_.get_bin_counts(
                 #     attribute_indexes[0]
                 # )
+                scores = list(model_graph)
+                upper_bounds = list(model_graph + errors)
+                lower_bounds = list(model_graph - errors)
+                density_dict = {
+                    "names": self.preprocessor_.get_hist_edges(
+                        attribute_indexes[0]
+                    ),
+                    "scores": self.preprocessor_.get_hist_counts(
+                        attribute_indexes[0]
+                    ),
+                }
+
+                feature_dict = {
+                    "type": "univariate",
+                    "names": bin_labels,
+                    "scores": scores,
+                    "scores_range": bounds,
+                    "upper_bounds": upper_bounds,
+                    "lower_bounds": lower_bounds,
+                }
+                feature_list.append(feature_dict)
+                density_list.append(density_dict)
+
                 data_dict = {
                     "type": "univariate",
                     "names": bin_labels,
-                    "scores": list(model_graph),
+                    "scores": scores,
                     "scores_range": bounds,
-                    "upper_bounds": list(model_graph + errors),
-                    "lower_bounds": list(model_graph - errors),
-                    "density": {
-                        "names": self.preprocessor_.get_hist_edges(
-                            attribute_indexes[0]
-                        ),
-                        "scores": self.preprocessor_.get_hist_counts(
-                            attribute_indexes[0]
-                        ),
-                    },
+                    "upper_bounds": upper_bounds,
+                    "lower_bounds": lower_bounds,
+                    "density": density_dict,
                 }
                 data_dicts.append(data_dict)
             elif len(attribute_indexes) == 2:
@@ -1040,6 +1058,17 @@ class BaseEBM(BaseEstimator):
                 bin_labels_right = self.preprocessor_.get_bin_labels(
                     attribute_indexes[1]
                 )
+
+                feature_dict = {
+                    "type": "pairwise",
+                    "left_names": bin_labels_left,
+                    "right_names": bin_labels_right,
+                    "scores": model_graph,
+                    "scores_range": bounds,
+                }
+                feature_list.append(feature_dict)
+                density_dict.append({})
+
                 data_dict = {
                     "type": "pairwise",
                     "left_names": bin_labels_left,
@@ -1056,7 +1085,20 @@ class BaseEBM(BaseEstimator):
             "names": self.feature_names,
             "scores": self.mean_abs_scores_,
         }
-        internal_obj = {"overall": overall_dict, "specific": data_dicts}
+        internal_obj = {"overall": overall_dict, "specific": data_dicts, "mli": [
+            {
+                "explanation_type": "ebm_global",
+                "value": {
+                    "feature_list": feature_list
+                }
+            },
+            {
+                "explanation_type": "density",
+                "value": {
+                    "density": density_list
+                }
+            }
+        ]}
 
         return EBMExplanation(
             "global",
@@ -1112,12 +1154,31 @@ class BaseEBM(BaseEstimator):
         else:
             scores = EBMUtils.regressor_predict(instances, self)
 
+        perf_list = []
         for row_idx in range(n_rows):
-            data_dicts[row_idx]["perf"] = perf_dict(y, scores, row_idx)
+            perf = perf_dict(y, scores, row_idx)
+            perf_list.append(perf)
+            data_dicts[row_idx]["perf"] = perf
 
         selector = gen_local_selector(instances, y, scores)
 
-        internal_obj = {"overall": None, "specific": data_dicts}
+        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
+                {
+                    "explanation_type": "ebm_local",
+                    "value": {
+                        "scores": self.attribute_set_models_,
+                        "intercept": self.intercept_,
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
 
         return EBMExplanation(
             "local",
