@@ -12,7 +12,7 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
@@ -57,7 +57,7 @@ public:
    // TODO : I lean towards leaving this alone since pointers to SegmentedRegions instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
    DimensionInfo m_aDimensions[1];
 
-   TML_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+   EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
       EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
@@ -116,7 +116,7 @@ public:
       return pSegmentedRegion;
    }
 
-   TML_INLINE static void Free(SegmentedTensor * const pSegmentedRegion) {
+   EBM_INLINE static void Free(SegmentedTensor * const pSegmentedRegion) {
       if(UNLIKELY(nullptr != pSegmentedRegion)) {
          free(pSegmentedRegion->m_aValues);
          for(size_t iDimension = 0; iDimension < pSegmentedRegion->m_cDimensionsMax; ++iDimension) {
@@ -126,21 +126,21 @@ public:
       }
    }
 
-   TML_INLINE void SetCountDimensions(const size_t cDimensions) {
+   EBM_INLINE void SetCountDimensions(const size_t cDimensions) {
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
 
-   TML_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
+   EBM_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return &m_aDimensions[iDimension].aDivisions[0];
    }
 
-   TML_INLINE TValues * GetValuePointer() {
+   EBM_INLINE TValues * GetValuePointer() {
       return &m_aValues[0];
    }
 
-   TML_INLINE void Reset() {
+   EBM_INLINE void Reset() {
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          m_aDimensions[iDimension].cDivisions = 0;
       }
@@ -150,7 +150,7 @@ public:
       m_bExpanded = false;
    }
 
-   TML_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
+   EBM_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
       EBM_ASSERT(iDimension < m_cDimensions);
       DimensionInfo * const pDimension = &m_aDimensions[iDimension];
       EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -183,7 +183,7 @@ public:
       return false;
    }
 
-   TML_INLINE bool EnsureValueCapacity(const size_t cValues) {
+   EBM_INLINE bool EnsureValueCapacity(const size_t cValues) {
       if(UNLIKELY(m_cValueCapacity < cValues)) {
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -212,7 +212,7 @@ public:
       return false;
    }
 
-   TML_INLINE bool Copy(const SegmentedTensor & rhs) {
+   EBM_INLINE bool Copy(const SegmentedTensor & rhs) {
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
       size_t cValues = m_cVectorLength;
@@ -239,7 +239,7 @@ public:
    }
 
 #ifndef NDEBUG
-   TML_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+   EBM_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
       if(0 == m_cDimensions) {
          return &m_aValues[0]; // there are no dimensions, and only 1 value
       }
@@ -304,7 +304,7 @@ public:
    }
 #endif // NDEBUG
 
-   TML_INLINE void Multiply(const TValues v) {
+   EBM_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          EBM_ASSERT(!IsMultiplyError(cValues, m_aDimensions[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
@@ -484,7 +484,7 @@ public:
       return false;
    }
 
-   TML_INLINE void AddExpanded(const TValues * const aFromValues) {
+   EBM_INLINE void AddExpanded(const TValues * const aFromValues) {
       EBM_ASSERT(m_bExpanded);
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {

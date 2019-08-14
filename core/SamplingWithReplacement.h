@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
@@ -18,7 +18,7 @@ class SamplingMethod {
 public:
    const DataSetByFeatureCombination * const m_pOriginDataSet;
 
-   TML_INLINE SamplingMethod(const DataSetByFeatureCombination * const pOriginDataSet)
+   EBM_INLINE SamplingMethod(const DataSetByFeatureCombination * const pOriginDataSet)
       : m_pOriginDataSet(pOriginDataSet) {
       EBM_ASSERT(nullptr != pOriginDataSet);
    }
@@ -36,7 +36,7 @@ public:
    const size_t * const m_aCountOccurrences;
 
    // we take owernship of the aCounts array.  We do not take ownership of the pOriginDataSet since many SamplingWithReplacement objects will refer to the original one
-   TML_INLINE SamplingWithReplacement(const DataSetByFeatureCombination * const pOriginDataSet, const size_t * const aCountOccurrences)
+   EBM_INLINE SamplingWithReplacement(const DataSetByFeatureCombination * const pOriginDataSet, const size_t * const aCountOccurrences)
       : SamplingMethod(pOriginDataSet)
       , m_aCountOccurrences(aCountOccurrences) {
       EBM_ASSERT(nullptr != aCountOccurrences);

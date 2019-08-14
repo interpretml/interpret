@@ -192,7 +192,7 @@ static IntegerDataType GetInteractionScorePerTargetStates(EbmInteractionState * 
 }
 
 template<ptrdiff_t iPossibleCompilerOptimizedTargetStates>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    EBM_ASSERT(IsClassification(iPossibleCompilerOptimizedTargetStates));
    if(cRuntimeTargetStates == iPossibleCompilerOptimizedTargetStates) {
       EBM_ASSERT(cRuntimeTargetStates <= k_cCompilerOptimizedTargetStatesMax);
@@ -203,7 +203,7 @@ TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const size_t cRu
 }
 
 template<>
-TML_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetStatesMax + 1>(const size_t cRuntimeTargetStates, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(cRuntimeTargetStates);
    // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetStatesMax < cRuntimeTargetStates);

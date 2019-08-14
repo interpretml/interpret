@@ -11,7 +11,7 @@
 #include <cmath> // abs
 
 #include "ebmcore.h" // FractionalDataType
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramBucketVectorEntry.h"
 #include "CachedThreadResources.h"
@@ -37,19 +37,19 @@ template<bool bRegression>
 class BinnedBucket;
 
 template<bool bRegression>
-TML_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
+EBM_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
    return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
 }
 template<bool bRegression>
-TML_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
+EBM_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
    return sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-TML_INLINE BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
+EBM_INLINE BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
    return reinterpret_cast<BinnedBucket<bRegression> *>(reinterpret_cast<char *>(aBinnedBuckets) + index * static_cast<ptrdiff_t>(cBytesPerBinnedBucket));
 }
 template<bool bRegression>
-TML_INLINE const BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, const BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
+EBM_INLINE const BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, const BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
    return reinterpret_cast<const BinnedBucket<bRegression> *>(reinterpret_cast<const char *>(aBinnedBuckets) + index * static_cast<ptrdiff_t>(cBytesPerBinnedBucket));
 }
 
@@ -72,7 +72,7 @@ public:
    PredictionStatistics<bRegression> aPredictionStatistics[1];
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void Add(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
+   EBM_INLINE void Add(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       cCasesInBucket += other.cCasesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -81,7 +81,7 @@ public:
       }
    }
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void Subtract(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
+   EBM_INLINE void Subtract(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       cCasesInBucket -= other.cCasesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -90,7 +90,7 @@ public:
       }
    }
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void Copy(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
+   EBM_INLINE void Copy(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -99,7 +99,7 @@ public:
    }
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void Zero(const size_t cTargetStates) {
+   EBM_INLINE void Zero(const size_t cTargetStates) {
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
@@ -108,7 +108,7 @@ public:
    }
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
-   TML_INLINE void AssertZero(const size_t cTargetStates) const {
+   EBM_INLINE void AssertZero(const size_t cTargetStates) const {
       UNUSED(cTargetStates);
       static_assert(IsRegression(countCompilerClassificationTargetStates) == bRegression, "regression types must match");
 #ifndef NDEBUG
@@ -302,7 +302,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates, size_t cCompilerDime
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -329,7 +329,7 @@ template<ptrdiff_t countCompilerClassificationTargetStates>
 class RecursiveBinDataSetTraining<countCompilerClassificationTargetStates, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   TML_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetStates
 #ifndef NDEBUG
       , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG

@@ -57,7 +57,7 @@
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
 
-#define TML_INLINE inline __attribute__((always_inline))
+#define EBM_INLINE inline __attribute__((always_inline))
 
 // TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are not aliased
 // EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program (the memory wasn't reached previously)
@@ -73,7 +73,7 @@
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
-#define TML_INLINE __forceinline
+#define EBM_INLINE __forceinline
 
 #else // compiler type
 #error compiler not recognized
@@ -83,7 +83,7 @@ WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
-constexpr TML_INLINE bool IsNumberConvertable(const TFrom number) {
+constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    // TODO: this function won't work for some floats and doubles.  For example, if you had just a bit more than the maximum integer in a double, it might round down properly, but this function will say that it won't.
 
    // the general rules of conversion are as follows:
@@ -159,13 +159,13 @@ typedef ptrdiff_t ActiveDataType;
 
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
-constexpr TML_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr EBM_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetStates) {
    return k_Regression == cCompilerClassificationTargetStates;
 }
-constexpr TML_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr EBM_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
    return 0 <= cCompilerClassificationTargetStates;
 }
-constexpr TML_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
 #ifdef EXPAND_BINARY_LOGITS
    return false;
 #else // EXPAND_BINARY_LOGITS
@@ -173,7 +173,7 @@ constexpr TML_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassi
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetStates) {
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
@@ -181,7 +181,7 @@ constexpr TML_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetState
    return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) {
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) {
    // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
@@ -233,13 +233,13 @@ static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit f
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataTypeCore>();
 constexpr size_t k_cCountItemsBitPackedMax = k_cBitsForStorageType; // if each item is a bit, then the number of items will equal the number of bits
 
-constexpr TML_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
-constexpr TML_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
+constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
-constexpr TML_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
+constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
@@ -249,7 +249,7 @@ WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 // TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
 // TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
-constexpr TML_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
+constexpr EBM_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -261,7 +261,7 @@ constexpr TML_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) 
 }
 WARNING_POP
 
-constexpr TML_INLINE bool IsAddError(const size_t num1, const size_t num2) {
+constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }

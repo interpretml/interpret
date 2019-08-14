@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 
 enum class FeatureTypeCore;
 
@@ -21,7 +21,7 @@ public:
    // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
-   TML_INLINE Feature(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
+   EBM_INLINE Feature(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
       : m_cStates(cStates)
       , m_iFeatureData(iFeatureData)
       , m_featureType(featureType)

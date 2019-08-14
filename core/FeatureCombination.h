@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
@@ -27,11 +27,11 @@ public:
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
-   TML_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
+   EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
       return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
    }
 
-   TML_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
+   EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
       m_cFeatures = cFeatures;
       m_iInputData = iFeatureCombination;
       m_cLogEnterGenerateModelFeatureCombinationUpdateMessages = 2;
@@ -40,7 +40,7 @@ public:
       m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
    }
 
-   TML_INLINE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
+   EBM_INLINE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
       const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
       EBM_ASSERT(0 < cBytes);
       FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(malloc(cBytes));
@@ -51,11 +51,11 @@ public:
       return pFeatureCombination;
    }
 
-   TML_INLINE static void Free(FeatureCombination * const pFeatureCombination) {
+   EBM_INLINE static void Free(FeatureCombination * const pFeatureCombination) {
       free(pFeatureCombination);
    }
 
-   TML_INLINE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
+   EBM_INLINE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
       LOG(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
 
       EBM_ASSERT(0 < cFeatureCombinations);
@@ -69,7 +69,7 @@ public:
       return apFeatureCombinations;
    }
 
-   TML_INLINE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
+   EBM_INLINE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
       LOG(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
       if(nullptr != apFeatureCombinations) {
          EBM_ASSERT(0 < cFeatureCombinations);

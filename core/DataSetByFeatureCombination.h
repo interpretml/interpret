@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebmcore.h" // FractionalDataType
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCombination.h"
 
@@ -28,42 +28,42 @@ public:
    DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
-   TML_INLINE bool IsError() const {
+   EBM_INLINE bool IsError() const {
       return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
    }
 
-   TML_INLINE FractionalDataType * GetResidualPointer() {
+   EBM_INLINE FractionalDataType * GetResidualPointer() {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   TML_INLINE const FractionalDataType * GetResidualPointer() const {
+   EBM_INLINE const FractionalDataType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   TML_INLINE FractionalDataType * GetPredictionScores() {
+   EBM_INLINE FractionalDataType * GetPredictionScores() {
       EBM_ASSERT(nullptr != m_aPredictionScores);
       return m_aPredictionScores;
    }
-   TML_INLINE const FractionalDataType * GetPredictionScores() const {
+   EBM_INLINE const FractionalDataType * GetPredictionScores() const {
       EBM_ASSERT(nullptr != m_aPredictionScores);
       return m_aPredictionScores;
    }
-   TML_INLINE const StorageDataTypeCore * GetTargetDataPointer() const {
+   EBM_INLINE const StorageDataTypeCore * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombination * const pFeatureCombination) const {
+   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombination * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
       EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeatureCombination->m_iInputData];
    }
-   TML_INLINE size_t GetCountCases() const {
+   EBM_INLINE size_t GetCountCases() const {
       return m_cCases;
    }
-   TML_INLINE size_t GetCountFeatureCombinations() const {
+   EBM_INLINE size_t GetCountFeatureCombinations() const {
       return m_cFeatureCombinations;
    }
 };

@@ -8,7 +8,7 @@
 #include <type_traits> // std::is_pod
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatistics.h"

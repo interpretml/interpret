@@ -17,7 +17,7 @@
 
 #define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))
 
-TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
+EBM_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCases, const size_t cVectorLength) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cCases);
@@ -42,7 +42,7 @@ TML_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cCas
    return aResidualErrors;
 }
 
-TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cCases, const size_t cVectorLength, const FractionalDataType * const aPredictionScoresFrom) {
+EBM_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cCases, const size_t cVectorLength, const FractionalDataType * const aPredictionScoresFrom) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictionScores");
 
    EBM_ASSERT(0 < cCases);
@@ -91,7 +91,7 @@ TML_INLINE static FractionalDataType * ConstructPredictionScores(const size_t cC
    return aPredictionScoresTo;
 }
 
-TML_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cCases, const IntegerDataType * const aTargets) {
+EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cCases, const IntegerDataType * const aTargets) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cCases);
@@ -130,7 +130,7 @@ struct InputDataPointerAndCountStates {
    size_t m_cStates;
 };
 
-TML_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureCombinations);

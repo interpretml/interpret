@@ -8,7 +8,7 @@
 #include <type_traits> // std::is_pod
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatistics.h"
@@ -21,24 +21,24 @@ template<bool bRegression>
 class TreeNode;
 
 template<bool bRegression>
-TML_INLINE size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
+EBM_INLINE size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
    return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
 }
 template<bool bRegression>
-TML_INLINE size_t GetTreeNodeSize(size_t cVectorLength) {
+EBM_INLINE size_t GetTreeNodeSize(size_t cVectorLength) {
    return sizeof(TreeNode<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-TML_INLINE TreeNode<bRegression> * AddBytesTreeNode(TreeNode<bRegression> * pTreeNode, size_t countBytesAdd) {
+EBM_INLINE TreeNode<bRegression> * AddBytesTreeNode(TreeNode<bRegression> * pTreeNode, size_t countBytesAdd) {
    return reinterpret_cast<TreeNode<bRegression> *>(reinterpret_cast<char *>(pTreeNode) + countBytesAdd);
 }
 template<bool bRegression>
-TML_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
+EBM_INLINE TreeNode<bRegression> * GetLeftTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    UNUSED(countBytesTreeNode);
    return pTreeNodeChildren;
 }
 template<bool bRegression>
-TML_INLINE TreeNode<bRegression> * GetRightTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
+EBM_INLINE TreeNode<bRegression> * GetRightTreeNodeChild(TreeNode<bRegression> * pTreeNodeChildren, size_t countBytesTreeNode) {
    return AddBytesTreeNode<bRegression>(pTreeNodeChildren, countBytesTreeNode);
 }
 
@@ -75,10 +75,10 @@ public:
    TreeNodeDataUnion m_UNION;
    PredictionStatistics<false> aPredictionStatistics[1];
 
-   TML_INLINE size_t GetCases() const {
+   EBM_INLINE size_t GetCases() const {
       return m_UNION.beforeExaminationForPossibleSplitting.cCases;
    }
-   TML_INLINE void SetCases(size_t cCases) {
+   EBM_INLINE void SetCases(size_t cCases) {
       m_UNION.beforeExaminationForPossibleSplitting.cCases = cCases;
    }
 };
@@ -113,10 +113,10 @@ public:
    size_t m_cCases;
    PredictionStatistics<true> aPredictionStatistics[1];
 
-   TML_INLINE size_t GetCases() const {
+   EBM_INLINE size_t GetCases() const {
       return m_cCases;
    }
-   TML_INLINE void SetCases(size_t cCases) {
+   EBM_INLINE void SetCases(size_t cCases) {
       m_cCases = cCases;
    }
 };
@@ -125,26 +125,26 @@ template<bool bRegression>
 class TreeNode final : public TreeNodeData<bRegression> {
 public:
 
-   TML_INLINE bool IsSplittable(size_t cCasesRequiredForSplitParentMin) const {
+   EBM_INLINE bool IsSplittable(size_t cCasesRequiredForSplitParentMin) const {
       return this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryLast != this->m_UNION.beforeExaminationForPossibleSplitting.pBinnedBucketEntryFirst && cCasesRequiredForSplitParentMin <= this->GetCases();
    }
 
-   TML_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
+   EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
       EBM_ASSERT(this->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0);
       return this->m_UNION.afterExaminationForPossibleSplitting.splitGain;
    }
 
-   TML_INLINE void SPLIT_THIS_NODE() {
+   EBM_INLINE void SPLIT_THIS_NODE() {
       this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    }
 
-   TML_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
+   EBM_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
       // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.afterExaminationForPossibleSplitting.splitGain and the m_UNION.beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
       this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { 0 };
    }
 
-   TML_INLINE bool WAS_THIS_NODE_SPLIT() const {
+   EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
       return std::isnan(this->m_UNION.afterExaminationForPossibleSplitting.splitGain);
    }
 
