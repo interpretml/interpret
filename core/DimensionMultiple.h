@@ -597,14 +597,14 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
       pBinnedBucket->cCasesInBucket = cCasesInBucket;
       pPrevious->cCasesInBucket = cCasesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FractionalDataType sumResidualError = pBinnedBucket->aPredictionStatistics[iVector].sumResidualError + pPrevious->aPredictionStatistics[iVector].sumResidualError;
-         pBinnedBucket->aPredictionStatistics[iVector].sumResidualError = sumResidualError;
-         pPrevious->aPredictionStatistics[iVector].sumResidualError = sumResidualError;
+         const FractionalDataType sumResidualError = pBinnedBucket->aHistogramBucketVectorEntry[iVector].sumResidualError + pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError;
+         pBinnedBucket->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
+         pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
 
          if(IsClassification(countCompilerClassificationTargetStates)) {
-            const FractionalDataType sumDenominator = pBinnedBucket->aPredictionStatistics[iVector].GetSumDenominator() + pPrevious->aPredictionStatistics[iVector].GetSumDenominator();
-            pBinnedBucket->aPredictionStatistics[iVector].SetSumDenominator(sumDenominator);
-            pPrevious->aPredictionStatistics[iVector].SetSumDenominator(sumDenominator);
+            const FractionalDataType sumDenominator = pBinnedBucket->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + pPrevious->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
+            pBinnedBucket->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
+            pPrevious->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
          }
       }
 
@@ -872,9 +872,9 @@ FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countC
 
       FractionalDataType splittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
+         splittingScore += 0 == pTotalsLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLow->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsLow->cCasesInBucket);
          EBM_ASSERT(0 <= splittingScore);
-         splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
+         splittingScore += 0 == pTotalsHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHigh->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsHigh->cCasesInBucket);
          EBM_ASSERT(0 <= splittingScore);
       }
       EBM_ASSERT(0 <= splittingScore);
@@ -1270,17 +1270,17 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             if(IsRegression(countCompilerClassificationTargetStates)) {
                // regression
-               predictionLowLow = 0 == pTotals2LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->cCasesInBucket);
-               predictionLowHigh = 0 == pTotals2LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->cCasesInBucket);
-               predictionHighLow = 0 == pTotals2HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->cCasesInBucket);
-               predictionHighHigh = 0 == pTotals2HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->cCasesInBucket);
+               predictionLowLow = 0 == pTotals2LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2LowLowBest->cCasesInBucket);
+               predictionLowHigh = 0 == pTotals2LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2LowHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2LowHighBest->cCasesInBucket);
+               predictionHighLow = 0 == pTotals2HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2HighLowBest->cCasesInBucket);
+               predictionHighHigh = 0 == pTotals2HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals2HighHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2HighHighBest->cCasesInBucket);
             } else {
                // classification
                EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
-               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals2HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2LowLowBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2LowHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2LowHighBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2HighLowBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals2HighHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals2HighHighBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
             }
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1376,17 +1376,17 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 
             if(IsRegression(countCompilerClassificationTargetStates)) {
                // regression
-               predictionLowLow = 0 == pTotals1LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->cCasesInBucket);
-               predictionLowHigh = 0 == pTotals1LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->cCasesInBucket);
-               predictionHighLow = 0 == pTotals1HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->cCasesInBucket);
-               predictionHighHigh = 0 == pTotals1HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->cCasesInBucket);
+               predictionLowLow = 0 == pTotals1LowLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1LowLowBest->cCasesInBucket);
+               predictionLowHigh = 0 == pTotals1LowHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1LowHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1LowHighBest->cCasesInBucket);
+               predictionHighLow = 0 == pTotals1HighLowBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1HighLowBest->cCasesInBucket);
+               predictionHighHigh = 0 == pTotals1HighHighBest->cCasesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pTotals1HighHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1HighHighBest->cCasesInBucket);
             } else {
                EBM_ASSERT(IsClassification(countCompilerClassificationTargetStates));
                // classification
-               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1LowHighBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighLowBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighLowBest->aPredictionStatistics[iVector].GetSumDenominator());
-               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighHighBest->aPredictionStatistics[iVector].sumResidualError, pTotals1HighHighBest->aPredictionStatistics[iVector].GetSumDenominator());
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1LowLowBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1LowHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1LowHighBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighLowBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1HighLowBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotals1HighHighBest->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotals1HighHighBest->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
             }
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -1539,13 +1539,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(countCompilerClassificationTargetStates)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
-//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
+//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
+//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1582,13 +1582,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(countCompilerClassificationTargetStates)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
-//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
+//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
+//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1625,13 +1625,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(countCompilerClassificationTargetStates)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
-//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
+//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
+//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1667,13 +1667,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(countCompilerClassificationTargetStates)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
-//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
+//                     predictionTarget = 0 == pTotalsTarget->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->cCasesInBucket);
+//                     predictionOther = 0 == pTotalsOther->cCasesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->cCasesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(countCompilerClassificationTargetStates));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aPredictionStatistics[iVector].sumResidualError, pTotalsTarget->aPredictionStatistics[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aPredictionStatistics[iVector].sumResidualError, pTotalsOther->aPredictionStatistics[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsTarget->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsTarget->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pTotalsOther->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsOther->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -1773,7 +1773,7 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
    const unsigned char * const aBinnedBucketsEndDebug = reinterpret_cast<unsigned char *>(aBinnedBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   // TODO : we don't seem to use the denmoninator in PredictionStatistics, so we could remove that variable for classification
+   // TODO : we don't seem to use the denmoninator in HistogramBucketVectorEntry, so we could remove that variable for classification
    
    // TODO : use the fancy recursive binner that we use in the training version of this function
    BinDataSetInteraction<countCompilerClassificationTargetStates>(aBinnedBuckets, pFeatureCombination, pDataSet, cTargetStates
@@ -1854,10 +1854,10 @@ bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThre
 
             FractionalDataType splittingScore = 0;
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               splittingScore += 0 == pTotalsLowLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowLow->aPredictionStatistics[iVector].sumResidualError, pTotalsLowLow->cCasesInBucket);
-               splittingScore += 0 == pTotalsLowHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsLowHigh->cCasesInBucket);
-               splittingScore += 0 == pTotalsHighLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighLow->aPredictionStatistics[iVector].sumResidualError, pTotalsHighLow->cCasesInBucket);
-               splittingScore += 0 == pTotalsHighHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighHigh->aPredictionStatistics[iVector].sumResidualError, pTotalsHighHigh->cCasesInBucket);
+               splittingScore += 0 == pTotalsLowLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowLow->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsLowLow->cCasesInBucket);
+               splittingScore += 0 == pTotalsLowHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsLowHigh->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsLowHigh->cCasesInBucket);
+               splittingScore += 0 == pTotalsHighLow->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighLow->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsHighLow->cCasesInBucket);
+               splittingScore += 0 == pTotalsHighHigh->cCasesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(pTotalsHighHigh->aHistogramBucketVectorEntry[iVector].sumResidualError, pTotalsHighHigh->cCasesInBucket);
                EBM_ASSERT(0 <= splittingScore);
             }
             EBM_ASSERT(0 <= splittingScore);

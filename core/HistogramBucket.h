@@ -38,11 +38,11 @@ class BinnedBucket;
 
 template<bool bRegression>
 EBM_INLINE bool GetBinnedBucketSizeOverflow(const size_t cVectorLength) {
-   return IsMultiplyError(sizeof(PredictionStatistics<bRegression>), cVectorLength) ? true : IsAddError(sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>), sizeof(PredictionStatistics<bRegression>) * cVectorLength) ? true : false;
+   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bRegression>), cVectorLength) ? true : IsAddError(sizeof(BinnedBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>), sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength) ? true : false;
 }
 template<bool bRegression>
 EBM_INLINE size_t GetBinnedBucketSize(const size_t cVectorLength) {
-   return sizeof(BinnedBucket<bRegression>) - sizeof(PredictionStatistics<bRegression>) + sizeof(PredictionStatistics<bRegression>) * cVectorLength;
+   return sizeof(BinnedBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>) + sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
 EBM_INLINE BinnedBucket<bRegression> * GetBinnedBucketByIndex(const size_t cBytesPerBinnedBucket, BinnedBucket<bRegression> * const aBinnedBuckets, const ptrdiff_t index) {
@@ -69,7 +69,7 @@ public:
    // period of time
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
    ActiveDataType bucketValue;
-   PredictionStatistics<bRegression> aPredictionStatistics[1];
+   HistogramBucketVectorEntry<bRegression> aHistogramBucketVectorEntry[1];
 
    template<ptrdiff_t countCompilerClassificationTargetStates>
    EBM_INLINE void Add(const BinnedBucket<bRegression> & other, const size_t cTargetStates) {
@@ -77,7 +77,7 @@ public:
       cCasesInBucket += other.cCasesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         aPredictionStatistics[iVector].Add(other.aPredictionStatistics[iVector]);
+         aHistogramBucketVectorEntry[iVector].Add(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
    template<ptrdiff_t countCompilerClassificationTargetStates>
@@ -86,7 +86,7 @@ public:
       cCasesInBucket -= other.cCasesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         aPredictionStatistics[iVector].Subtract(other.aPredictionStatistics[iVector]);
+         aHistogramBucketVectorEntry[iVector].Subtract(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
    template<ptrdiff_t countCompilerClassificationTargetStates>
@@ -115,7 +115,7 @@ public:
       const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
       EBM_ASSERT(0 == cCasesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         aPredictionStatistics[iVector].AssertZero();
+         aHistogramBucketVectorEntry[iVector].AssertZero();
       }
 #endif // NDEBUG
    }
@@ -142,7 +142,7 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
    // this shouldn't overflow since we're accessing existing memory
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cCases;
 
-   PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const pPredictionStatistics = &pBinnedBucketEntry->aPredictionStatistics[0];
+   HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const pHistogramBucketVectorEntry = &pBinnedBucketEntry->aHistogramBucketVectorEntry[0];
    while(pResidualErrorEnd != pResidualError) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -171,11 +171,11 @@ void BinDataSetTrainingZeroDimensions(BinnedBucket<IsRegression(countCompilerCla
 #ifndef NDEBUG
          residualTotalDebug += residualError;
 #endif // NDEBUG
-         pPredictionStatistics[iVector].sumResidualError += cFloatOccurences * residualError;
+         pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
          if(IsClassification(countCompilerClassificationTargetStates)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
             const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-            pPredictionStatistics[iVector].SetSumDenominator(pPredictionStatistics[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
+            pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
          }
          ++pResidualError;
          ++iVector;
@@ -245,7 +245,7 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
          ++pCountOccurrences;
          pBinnedBucketEntry->cCasesInBucket += cOccurences;
          const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
-         PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * pPredictionStatistics = &pBinnedBucketEntry->aPredictionStatistics[0];
+         HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * pHistogramBucketVectorEntry = &pBinnedBucketEntry->aHistogramBucketVectorEntry[0];
          size_t iVector = 0;
 
 #ifndef NDEBUG
@@ -262,11 +262,11 @@ void BinDataSetTraining(BinnedBucket<IsRegression(countCompilerClassificationTar
 #ifndef NDEBUG
             residualTotalDebug += residualError;
 #endif // NDEBUG
-            pPredictionStatistics[iVector].sumResidualError += cFloatOccurences * residualError;
+            pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
             if(IsClassification(countCompilerClassificationTargetStates)) {
                // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-               pPredictionStatistics[iVector].SetSumDenominator(pPredictionStatistics[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
+               pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
             }
             ++pResidualError;
             ++iVector;
@@ -393,11 +393,11 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
       ASSERT_BINNED_BUCKET_OK(cBytesPerBinnedBucket, pBinnedBucketEntry, aBinnedBucketsEndDebug);
       pBinnedBucketEntry->cCasesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pBinnedBucketEntry->aPredictionStatistics[iVector].sumResidualError += *pResidualError;
+         pBinnedBucketEntry->aHistogramBucketVectorEntry[iVector].sumResidualError += *pResidualError;
          if(IsClassification(countCompilerClassificationTargetStates)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
             FractionalDataType absResidualError = std::abs(*pResidualError); // abs will return the same type that it is given, either float or double
-            pBinnedBucketEntry->aPredictionStatistics[iVector].SetSumDenominator(pBinnedBucketEntry->aPredictionStatistics[iVector].GetSumDenominator() + absResidualError * (1 - absResidualError));
+            pBinnedBucketEntry->aHistogramBucketVectorEntry[iVector].SetSumDenominator(pBinnedBucketEntry->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + absResidualError * (1 - absResidualError));
          }
          ++pResidualError;
       }
@@ -407,7 +407,7 @@ void BinDataSetInteraction(BinnedBucket<IsRegression(countCompilerClassification
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
 template<ptrdiff_t countCompilerClassificationTargetStates>
-size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const size_t cBinnedBuckets, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, size_t * const pcCasesTotal, PredictionStatistics<IsRegression(countCompilerClassificationTargetStates)> * const aSumPredictionStatistics, const size_t cTargetStates
+size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const size_t cBinnedBuckets, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, size_t * const pcCasesTotal, HistogramBucketVectorEntry<IsRegression(countCompilerClassificationTargetStates)> * const aSumHistogramBucketVectorEntry, const size_t cTargetStates
 #ifndef NDEBUG
    , const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -447,7 +447,7 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
                memcpy(pCopyTo, pCopyFrom, cBytesPerBinnedBucket);
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  aSumPredictionStatistics[iVector].Add(pCopyFrom->aPredictionStatistics[iVector]);
+                  aSumHistogramBucketVectorEntry[iVector].Add(pCopyFrom->aHistogramBucketVectorEntry[iVector]);
                }
 
                pCopyTo->bucketValue = static_cast<ActiveDataType>(iBucket);
@@ -465,7 +465,7 @@ size_t CompressBinnedBuckets(const SamplingMethod * const pTrainingSet, const si
       cCasesTotalDebug += pCopyFrom->cCasesInBucket;
 #endif // NDEBUG
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         aSumPredictionStatistics[iVector].Add(pCopyFrom->aPredictionStatistics[iVector]);
+         aSumHistogramBucketVectorEntry[iVector].Add(pCopyFrom->aHistogramBucketVectorEntry[iVector]);
       }
 
       pCopyFrom->bucketValue = static_cast<ActiveDataType>(iBucket);
