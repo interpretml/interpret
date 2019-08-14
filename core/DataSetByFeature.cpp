@@ -10,8 +10,8 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "AttributeInternal.h"
-#include "DataSetByAttribute.h"
+#include "Feature.h"
+#include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
 TML_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cCases, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates) {

@@ -17,21 +17,21 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "InitializeResiduals.h"
 #include "RandomStream.h"
-#include "SegmentedRegion.h"
+#include "SegmentedTensor.h"
 #include "EbmStatistics.h"
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
 #include "CachedThreadResources.h"
 // attribute includes
-#include "AttributeInternal.h"
+#include "Feature.h"
 // AttributeCombination.h depends on AttributeInternal.h
-#include "AttributeCombinationInternal.h"
+#include "FeatureCombination.h"
 // dataset depends on attributes
-#include "DataSetByAttributeCombination.h"
+#include "DataSetByFeatureCombination.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingWithReplacement.h"
 // TreeNode depends on almost everything
-#include "SingleDimensionalTraining.h"
-#include "MultiDimensionalTraining.h"
+#include "DimensionalSingle.h"
+#include "DimensionalMultiple.h"
 
 static void DeleteSegmentsCore(const size_t cAttributeCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
    LOG(TraceLevelInfo, "Entered DeleteSegmentsCore");

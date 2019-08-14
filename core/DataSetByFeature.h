@@ -10,7 +10,7 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "AttributeInternal.h"
+#include "Feature.h"
 
 // TODO: rename this to DataSetByAttribute
 class DataSetInternalCore final {

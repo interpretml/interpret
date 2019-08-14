@@ -11,7 +11,7 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "AttributeCombinationInternal.h"
+#include "FeatureCombination.h"
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
 // TODO: rename this to DataSetByAttributeCombination

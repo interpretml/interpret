@@ -13,11 +13,11 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 // attribute includes
-#include "AttributeInternal.h"
+#include "Feature.h"
 // dataset depends on attributes
-#include "DataSetByAttribute.h"
+#include "DataSetByFeature.h"
 // depends on the above
-#include "MultiDimensionalTraining.h"
+#include "DimensionalMultiple.h"
 
 // TODO : rename this to EbmInteractionState
 class TmlInteractionState {

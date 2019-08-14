@@ -11,9 +11,9 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "AttributeInternal.h"
-#include "AttributeCombinationInternal.h"
-#include "DataSetByAttributeCombination.h"
+#include "Feature.h"
+#include "FeatureCombination.h"
+#include "DataSetByFeatureCombination.h"
 
 #define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))
 

@@ -10,12 +10,12 @@
 
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "SegmentedRegion.h"
+#include "SegmentedTensor.h"
 #include "EbmStatistics.h"
 #include "CachedThreadResources.h"
-#include "AttributeInternal.h"
+#include "Feature.h"
 #include "SamplingWithReplacement.h"
-#include "BinnedBucket.h"
+#include "HistogramBucket.h"
 
 template<bool bRegression>
 class TreeNode;

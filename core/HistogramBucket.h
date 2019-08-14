@@ -13,12 +13,12 @@
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "PredictionStatistics.h"
+#include "HistogramBucketVector.h"
 #include "CachedThreadResources.h"
-#include "AttributeInternal.h"
-#include "AttributeCombinationInternal.h"
-#include "DataSetByAttributeCombination.h"
-#include "DataSetByAttribute.h"
+#include "Feature.h"
+#include "FeatureCombination.h"
+#include "DataSetByFeatureCombination.h"
+#include "DataSetByFeature.h"
 #include "SamplingWithReplacement.h"
 
 // we don't need to handle multi-dimensional inputs with more than 64 bits total

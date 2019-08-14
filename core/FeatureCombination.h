@@ -9,7 +9,7 @@
 
 #include "EbmInternal.h" // TML_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "AttributeInternal.h"
+#include "Feature.h"
 
 class AttributeCombinationCore final {
 public:
