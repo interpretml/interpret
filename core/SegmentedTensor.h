@@ -21,7 +21,7 @@
 // I think we'll find that using size_t as TDivisions is as performant or better than using anything else, so it may be a moot point, in which case leave it as hard coded types and just make all TDivisions size_t, even for mains
 // for pairs and triplicates, we already know that the dimensionality aspect requires us to have common division types since we don't want char/short SegmentedRegion classes and all the combinatorial options that would allow
 template<typename TDivisions, typename TValues>
-class SegmentedRegionCore final {
+class SegmentedTensor final {
    struct DimensionInfoStack {
       const TDivisions * pDivision1;
       const TDivisions * pDivision2;
@@ -57,7 +57,7 @@ public:
    // TODO : I lean towards leaving this alone since pointers to SegmentedRegions instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
    DimensionInfo m_aDimensions[1];
 
-   TML_INLINE static SegmentedRegionCore * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+   TML_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
       EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
 
@@ -73,8 +73,8 @@ public:
       const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
 
       // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-      const size_t cBytesSegmentedRegion = sizeof(SegmentedRegionCore) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-      SegmentedRegionCore * const pSegmentedRegion = static_cast<SegmentedRegionCore *>(malloc(cBytesSegmentedRegion));
+      const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+      SegmentedTensor * const pSegmentedRegion = static_cast<SegmentedTensor *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
          LOG(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
@@ -116,7 +116,7 @@ public:
       return pSegmentedRegion;
    }
 
-   TML_INLINE static void Free(SegmentedRegionCore * const pSegmentedRegion) {
+   TML_INLINE static void Free(SegmentedTensor * const pSegmentedRegion) {
       if(UNLIKELY(nullptr != pSegmentedRegion)) {
          free(pSegmentedRegion->m_aValues);
          for(size_t iDimension = 0; iDimension < pSegmentedRegion->m_cDimensionsMax; ++iDimension) {
@@ -212,7 +212,7 @@ public:
       return false;
    }
 
-   TML_INLINE bool Copy(const SegmentedRegionCore & rhs) {
+   TML_INLINE bool Copy(const SegmentedTensor & rhs) {
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
       size_t cValues = m_cVectorLength;
@@ -503,7 +503,7 @@ public:
    }
 
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
-   bool Add(const SegmentedRegionCore & rhs) {
+   bool Add(const SegmentedTensor & rhs) {
       DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
@@ -764,7 +764,7 @@ public:
    }
 
 #ifndef NDEBUG
-   bool IsEqual(const SegmentedRegionCore & rhs) const {
+   bool IsEqual(const SegmentedTensor & rhs) const {
       if(m_cDimensions != rhs.m_cDimensions) {
          return false;
       }
@@ -815,6 +815,6 @@ public:
    static_assert(std::is_pod<TValues>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
 // SegmentedRegion must be a POD, which it will be if both our D and V types are PODs and SegmentedRegion<char, char> is a POD
-static_assert(std::is_pod<SegmentedRegionCore<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(std::is_pod<SegmentedTensor<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_REGION_H

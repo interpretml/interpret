@@ -33,43 +33,43 @@
 #include "DimensionSingle.h"
 #include "DimensionMultiple.h"
 
-static void DeleteSegmentsCore(const size_t cFeatureCombinations, SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
-   LOG(TraceLevelInfo, "Entered DeleteSegmentsCore");
+static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedRegions) {
+   LOG(TraceLevelInfo, "Entered DeleteSegmentedTensors");
 
    if(UNLIKELY(nullptr != apSegmentedRegions)) {
       EBM_ASSERT(0 < cFeatureCombinations);
-      SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
-      const SegmentedRegionCore<ActiveDataType, FractionalDataType> * const * const ppSegmentedRegionsEnd = &apSegmentedRegions[cFeatureCombinations];
+      SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
+      const SegmentedTensor<ActiveDataType, FractionalDataType> * const * const ppSegmentedRegionsEnd = &apSegmentedRegions[cFeatureCombinations];
       do {
-         SegmentedRegionCore<ActiveDataType, FractionalDataType>::Free(*ppSegmentedRegions);
+         SegmentedTensor<ActiveDataType, FractionalDataType>::Free(*ppSegmentedRegions);
          ++ppSegmentedRegions;
       } while(ppSegmentedRegionsEnd != ppSegmentedRegions);
       delete[] apSegmentedRegions;
    }
-   LOG(TraceLevelInfo, "Exited DeleteSegmentsCore");
+   LOG(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
 
-static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegmentsCore(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombinations, const size_t cVectorLength) {
-   LOG(TraceLevelInfo, "Entered InitializeSegmentsCore");
+static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombinations, const size_t cVectorLength) {
+   LOG(TraceLevelInfo, "Entered InitializeSegmentedTensors");
 
    EBM_ASSERT(0 < cFeatureCombinations);
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** const apSegmentedRegions = new (std::nothrow) SegmentedRegionCore<ActiveDataType, FractionalDataType> *[cFeatureCombinations];
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedRegions = new (std::nothrow) SegmentedTensor<ActiveDataType, FractionalDataType> *[cFeatureCombinations];
    if(UNLIKELY(nullptr == apSegmentedRegions)) {
-      LOG(TraceLevelWarning, "WARNING InitializeSegmentsCore nullptr == apSegmentedRegions");
+      LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedRegions");
       return nullptr;
    }
    memset(apSegmentedRegions, 0, sizeof(*apSegmentedRegions) * cFeatureCombinations); // this needs to be done immediately after allocation otherwise we might attempt to free random garbage on an error
 
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** ppSegmentedRegions = apSegmentedRegions;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
-      const FeatureCombinationCore * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
-      SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSegmentedRegions = SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
+      const FeatureCombination * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
+      SegmentedTensor<ActiveDataType, FractionalDataType> * const pSegmentedRegions = SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedRegions)) {
-         LOG(TraceLevelWarning, "WARNING InitializeSegmentsCore nullptr == pSegmentedRegions");
-         DeleteSegmentsCore(cFeatureCombinations, apSegmentedRegions);
+         LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedRegions");
+         DeleteSegmentedTensors(cFeatureCombinations, apSegmentedRegions);
          return nullptr;
       }
 
@@ -91,8 +91,8 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
          if(pSegmentedRegions->Expand(acDivisionIntegersEnd)) {
-            LOG(TraceLevelWarning, "WARNING InitializeSegmentsCore pSegmentedRegions->Expand(acDivisionIntegersEnd)");
-            DeleteSegmentsCore(cFeatureCombinations, apSegmentedRegions);
+            LOG(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedRegions->Expand(acDivisionIntegersEnd)");
+            DeleteSegmentedTensors(cFeatureCombinations, apSegmentedRegions);
             return nullptr;
          }
       }
@@ -101,7 +101,7 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
       ++ppSegmentedRegions;
    }
 
-   LOG(TraceLevelInfo, "Exited InitializeSegmentsCore");
+   LOG(TraceLevelInfo, "Exited InitializeSegmentedTensors");
    return apSegmentedRegions;
 }
 
@@ -109,7 +109,7 @@ static SegmentedRegionCore<ActiveDataType, FractionalDataType> ** InitializeSegm
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
+static void TrainingSetTargetFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -323,7 +323,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetStates>
-static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
+static void TrainingSetInputFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
    if(cTargetStates <= 1 << 1) {
       TrainingSetTargetFeatureLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pFeatureCombination, pTrainingSet, aModelUpdateTensor, cTargetStates);
    } else if(cTargetStates <= 1 << 2) {
@@ -352,7 +352,7 @@ static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFe
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetStates>
-static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetFeatureCombination * const pValidationSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
+static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
@@ -552,7 +552,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 // a*PredictionScores = logWeights for multiclass classification
 // a*PredictionScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetStates>
-static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetFeatureCombination * const pValidationSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
+static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FractionalDataType * const aModelUpdateTensor, const size_t cTargetStates) {
    if(cTargetStates <= 1 << 1) {
       return ValidationSetTargetFeatureLoop<cInputBits, 1, countCompilerClassificationTargetStates>(pFeatureCombination, pValidationSet, aModelUpdateTensor, cTargetStates);
    } else if(cTargetStates <= 1 << 2) {
@@ -612,26 +612,26 @@ public:
    const size_t m_cTargetStates;
 
    const size_t m_cFeatureCombinations;
-   FeatureCombinationCore ** const m_apFeatureCombinations;
+   FeatureCombination ** const m_apFeatureCombinations;
 
    // TODO : can we internalize these so that they are not pointers and are therefore subsumed into our class
-   DataSetFeatureCombination * m_pTrainingSet;
-   DataSetFeatureCombination * m_pValidationSet;
+   DataSetByFeatureCombination * m_pTrainingSet;
+   DataSetByFeatureCombination * m_pValidationSet;
 
    const size_t m_cSamplingSets;
 
    SamplingMethod ** m_apSamplingSets;
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** m_apCurrentModel;
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> ** m_apBestModel;
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** m_apCurrentModel;
+   SegmentedTensor<ActiveDataType, FractionalDataType> ** m_apBestModel;
 
    FractionalDataType m_bestModelMetric;
 
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   SegmentedTensor<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   SegmentedTensor<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   FeatureInternalCore * const m_aFeatures;
+   Feature * const m_aFeatures;
 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
@@ -639,7 +639,7 @@ public:
       : m_bRegression(bRegression)
       , m_cTargetStates(cTargetStates)
       , m_cFeatureCombinations(cFeatureCombinations)
-      , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombinationCore::AllocateFeatureCombinations(cFeatureCombinations))
+      , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombination::AllocateFeatureCombinations(cFeatureCombinations))
       , m_pTrainingSet(nullptr)
       , m_pValidationSet(nullptr)
       , m_cSamplingSets(cSamplingSets)
@@ -647,10 +647,10 @@ public:
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
       , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() })
-      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
-      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedRegionCore<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
+      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
+      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(cTargetStates)))
       , m_cFeatures(cFeatures)
-      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureInternalCore), cFeatures) ? nullptr : static_cast<FeatureInternalCore *>(malloc(sizeof(FeatureInternalCore) * cFeatures)))
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(bRegression, GetVectorLengthFlatCore(cTargetStates)) {
    }
@@ -673,14 +673,14 @@ public:
       delete m_pTrainingSet;
       delete m_pValidationSet;
 
-      FeatureCombinationCore::FreeFeatureCombinations(m_cFeatureCombinations, m_apFeatureCombinations);
+      FeatureCombination::FreeFeatureCombinations(m_cFeatureCombinations, m_apFeatureCombinations);
 
       free(m_aFeatures);
 
-      DeleteSegmentsCore(m_cFeatureCombinations, m_apCurrentModel);
-      DeleteSegmentsCore(m_cFeatureCombinations, m_apBestModel);
-      SegmentedRegionCore<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      SegmentedRegionCore<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      DeleteSegmentedTensors(m_cFeatureCombinations, m_apCurrentModel);
+      DeleteSegmentedTensors(m_cFeatureCombinations, m_apBestModel);
+      SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
       LOG(TraceLevelInfo, "Exited ~EbmTrainingState");
    }
@@ -749,7 +749,7 @@ public:
                bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
                // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-               new (&m_aFeatures[iFeatureInitialize]) FeatureInternalCore(cStates, iFeatureInitialize, featureTypeCore, bMissing);
+               new (&m_aFeatures[iFeatureInitialize]) Feature(cStates, iFeatureInitialize, featureTypeCore, bMissing);
                // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
                EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -791,7 +791,7 @@ public:
                      }
                      const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                      EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-                     FeatureInternalCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+                     Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                      if(LIKELY(1 < pInputFeature->m_cStates)) {
                         // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         ++cSignificantFeaturesInCombination;
@@ -809,7 +809,7 @@ public:
                   }
                }
 
-               FeatureCombinationCore * pFeatureCombination = FeatureCombinationCore::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
+               FeatureCombination * pFeatureCombination = FeatureCombination::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
                if(nullptr == pFeatureCombination) {
                   LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == pFeatureCombination");
                   return true;
@@ -824,14 +824,14 @@ public:
                } else {
                   EBM_ASSERT(nullptr != featureCombinationIndexes);
                   size_t cTensorStates = 1;
-                  FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+                  FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
                   do {
                      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
                      EBM_ASSERT(0 <= indexFeatureInterop);
                      EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // this was checked above
                      const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                      EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-                     const FeatureInternalCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+                     const Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                      const size_t cStates = pInputFeature->m_cStates;
                      if(LIKELY(1 < cStates)) {
                         // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
@@ -857,25 +857,25 @@ public:
 
          size_t cVectorLength = GetVectorLengthFlatCore(m_cTargetStates);
 
-         LOG(TraceLevelInfo, "Entered DataSetFeatureCombination for m_pTrainingSet");
+         LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
          if(0 != cTrainingCases) {
-            m_pTrainingSet = new (std::nothrow) DataSetFeatureCombination(true, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
+            m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingCases, aTrainingData, aTrainingTargets, aTrainingPredictionScores, cVectorLength);
             if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
                return true;
             }
          }
-         LOG(TraceLevelInfo, "Exited DataSetFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
+         LOG(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
 
-         LOG(TraceLevelInfo, "Entered DataSetFeatureCombination for m_pValidationSet");
+         LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
          if(0 != cValidationCases) {
-            m_pValidationSet = new (std::nothrow) DataSetFeatureCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
+            m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(m_bRegression, !m_bRegression, !m_bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cValidationCases, aValidationData, aValidationTargets, aValidationPredictionScores, cVectorLength);
             if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
                return true;
             }
          }
-         LOG(TraceLevelInfo, "Exited DataSetFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
+         LOG(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
 
          RandomStream randomStream(randomSeed);
 
@@ -891,12 +891,12 @@ public:
          EBM_ASSERT(nullptr == m_apCurrentModel);
          EBM_ASSERT(nullptr == m_apBestModel);
          if(0 != m_cFeatureCombinations && (m_bRegression || 2 <= m_cTargetStates)) {
-            m_apCurrentModel = InitializeSegmentsCore(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
+            m_apCurrentModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
             if(nullptr == m_apCurrentModel) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
                return true;
             }
-            m_apBestModel = InitializeSegmentsCore(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
+            m_apBestModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
             if(nullptr == m_apBestModel) {
                LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apBestModel");
                return true;
@@ -1089,7 +1089,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetStates
 
    const size_t cSamplingSetsAfterZero = (0 == pTmlState->m_cSamplingSets) ? 1 : pTmlState->m_cSamplingSets;
    CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(countCompilerClassificationTargetStates)>(pTmlState);
-   const FeatureCombinationCore * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
    pTmlState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
@@ -1278,7 +1278,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetStates(TmlStat
 
    pTmlState->m_apCurrentModel[iFeatureCombination]->AddExpanded(aModelUpdateTensor);
 
-   const FeatureCombinationCore * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pTmlState->m_apFeatureCombinations[iFeatureCombination];
 
    // if the count of training cases is zero, then pTmlState->m_pTrainingSet will be nullptr
    if(nullptr != pTmlState->m_pTrainingSet) {
@@ -1451,7 +1451,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
       return nullptr;
    }
 
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iFeatureCombination];
+   SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pTmlState->m_apCurrentModel[iFeatureCombination];
    EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
 
@@ -1477,7 +1477,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
       return nullptr;
    }
 
-   SegmentedRegionCore<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iFeatureCombination];
+   SegmentedTensor<ActiveDataType, FractionalDataType> * pBestModel = pTmlState->m_apBestModel[iFeatureCombination];
    EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pBestModel->GetValuePointer();
 

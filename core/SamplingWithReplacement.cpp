@@ -33,7 +33,7 @@ size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
    return cTotalCountCaseOccurrences;
 }
 
-SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetFeatureCombination * const pOriginDataSet) {
+SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet) {
    LOG(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
@@ -78,7 +78,7 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
    return pRet;
 }
 
-SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetFeatureCombination * const pOriginDataSet) {
+SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet) {
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
@@ -119,7 +119,7 @@ void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, Sampl
    LOG(TraceLevelInfo, "Exited SamplingWithReplacement::FreeSamplingSets");
 }
 
-SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetFeatureCombination * const pOriginDataSet, const size_t cSamplingSets) {
+SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet, const size_t cSamplingSets) {
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);

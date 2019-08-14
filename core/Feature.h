@@ -12,7 +12,7 @@
 enum class FeatureTypeCore;
 
 // FeatureInternal is a class internal to our library.  Our public interface will not have a "Feature" POD that we can use for C interop since everything will be a specific type of feature like OrdinalFeature (POD)
-class FeatureInternalCore final {
+class Feature final {
 public:
    const size_t m_cStates;
    const size_t m_iFeatureData;
@@ -21,7 +21,7 @@ public:
    // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
-   TML_INLINE FeatureInternalCore(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
+   TML_INLINE Feature(const size_t cStates, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
       : m_cStates(cStates)
       , m_iFeatureData(iFeatureData)
       , m_featureType(featureType)

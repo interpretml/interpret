@@ -13,7 +13,7 @@
 #include "Feature.h"
 
 // TODO: rename this to DataSetByFeature
-class DataSetInternalCore final {
+class DataSetByFeature final {
    const FractionalDataType * const m_aResidualErrors;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cCases;
@@ -21,8 +21,8 @@ class DataSetInternalCore final {
 
 public:
 
-   DataSetInternalCore(const bool bRegression, const size_t cFeatures, const FeatureInternalCore * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
-   ~DataSetInternalCore();
+   DataSetByFeature(const bool bRegression, const size_t cFeatures, const Feature * const aFeatures, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictionScores, const size_t cTargetStates);
+   ~DataSetByFeature();
 
    TML_INLINE bool IsError() const {
       return nullptr == m_aResidualErrors || 0 != m_cFeatures && nullptr == m_aaInputData;
@@ -34,7 +34,7 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureInternalCore * const pFeature) const {
+   TML_INLINE const StorageDataTypeCore * GetDataPointer(const Feature * const pFeature) const {
       EBM_ASSERT(nullptr != pFeature);
       EBM_ASSERT(pFeature->m_iFeatureData < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);

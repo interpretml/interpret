@@ -15,7 +15,7 @@
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
 // TODO: rename this to DataSetByFeatureCombination
-class DataSetFeatureCombination final {
+class DataSetByFeatureCombination final {
    FractionalDataType * const m_aResidualErrors;
    FractionalDataType * const m_aPredictionScores;
    const StorageDataTypeCore * const m_aTargetData;
@@ -25,8 +25,8 @@ class DataSetFeatureCombination final {
 
 public:
 
-   DataSetFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
-   ~DataSetFeatureCombination();
+   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictionScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cCases, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictionScoresFrom, const size_t cVectorLength);
+   ~DataSetByFeatureCombination();
 
    TML_INLINE bool IsError() const {
       return nullptr == m_aResidualErrors || nullptr == m_aPredictionScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
@@ -54,7 +54,7 @@ public:
    }
    // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
    // TODO: rename this to GetInputDataPointer
-   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombinationCore * const pFeatureCombination) const {
+   TML_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombination * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
       EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);

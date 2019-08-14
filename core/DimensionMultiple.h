@@ -21,7 +21,7 @@
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiStart, const size_t * const aiLast, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
+void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiStart, const size_t * const aiLast, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -76,7 +76,7 @@ void GetTotalsDebugSlow(const BinnedBucket<IsRegression(countCompilerClassificat
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison) {
+void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pComparison) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetStates, cTargetStates);
    EBM_ASSERT(!GetBinnedBucketSizeOverflow<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerBinnedBucket = GetBinnedBucketSize<IsRegression(countCompilerClassificationTargetStates)>(cVectorLength);
@@ -115,7 +115,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //};
 //
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-//void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination) {
+//void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination) {
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
@@ -147,7 +147,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //   CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
 //   const CurrentIndexAndCountStates * const pCurrentIndexAndCountStatesEnd = &currentIndexAndCountStates[cDimensions];
-//   const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
 //   for(CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates; pCurrentIndexAndCountStatesEnd != pCurrentIndexAndCountStatesInitialize; ++pCurrentIndexAndCountStatesInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountStatesInitialize->iCur = 0;
 //      EBM_ASSERT(2 <= pFeatureCombinationEntry->m_pFeature->m_cStates);
@@ -244,7 +244,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //};
 //
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-//void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination) {
+//void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination) {
 //   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
@@ -276,7 +276,7 @@ void CompareTotalsDebug(const BinnedBucket<IsRegression(countCompilerClassificat
 //
 //   CurrentIndexAndCountStates currentIndexAndCountStates[k_cDimensionsMax];
 //   const CurrentIndexAndCountStates * const pCurrentIndexAndCountStatesEnd = &currentIndexAndCountStates[cDimensions];
-//   const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   for(CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates; pCurrentIndexAndCountStatesEnd != pCurrentIndexAndCountStatesInitialize; ++pCurrentIndexAndCountStatesInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountStatesInitialize->multipliedIndexCur = 0;
@@ -384,7 +384,7 @@ struct FastTotalState {
 };
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone
+void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * pBucketAuxiliaryBuildZone
 #ifndef NDEBUG
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -402,7 +402,7 @@ void BuildFastTotals(BinnedBucket<IsRegression(countCompilerClassificationTarget
    const FastTotalState<IsRegression(countCompilerClassificationTargetStates)> * const pFastTotalStateEnd = &fastTotalState[cDimensions];
    {
       FastTotalState<IsRegression(countCompilerClassificationTargetStates)> * pFastTotalStateInitialize = fastTotalState;
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
       size_t multiply = 1;
       EBM_ASSERT(0 < cDimensions);
       do {
@@ -523,7 +523,7 @@ struct CurrentIndexAndCountStates {
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombinationCore * const pFeatureCombination
+void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const size_t cTargetStates, const FeatureCombination * const pFeatureCombination
 #ifndef NDEBUG
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -544,7 +544,7 @@ void BuildFastTotalsZeroMemoryIncrease(BinnedBucket<IsRegression(countCompilerCl
    ptrdiff_t multipleTotalInitialize = -1;
    {
       CurrentIndexAndCountStates * pCurrentIndexAndCountStatesInitialize = currentIndexAndCountStates;
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
       EBM_ASSERT(1 <= cDimensions);
       do {
          pCurrentIndexAndCountStatesInitialize->multipliedIndexCur = 0;
@@ -697,7 +697,7 @@ struct TotalsDimension {
 };
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet
+void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pRet
 #ifndef NDEBUG
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -715,8 +715,8 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
-   const FeatureCombinationCore::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombination->m_FeatureCombinationEntry[cDimensions];
+   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+   const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombination->m_FeatureCombinationEntry[cDimensions];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
@@ -819,7 +819,7 @@ void GetTotals(const BinnedBucket<IsRegression(countCompilerClassificationTarget
 }
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucketBestAndTemp, size_t * const piBestCut
+FractionalDataType SweepMultiDiemensional(const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets, const FeatureCombination * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cTargetStates, BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const pBinnedBucketBestAndTemp, size_t * const piBestCut
 #ifndef NDEBUG
    , const BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBucketsDebugCopy, const unsigned char * const aBinnedBucketsEndDebug
 #endif // NDEBUG
@@ -900,7 +900,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedRegionCore<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
+bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cTargetStates) {
    LOG(TraceLevelVerbose, "Entered TrainMultiDimensional");
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
@@ -1432,7 +1432,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsRegression(countCompi
 WARNING_POP
 
 //template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-//bool TrainMultiDimensionalPaulAlgorithm(CachedThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//bool TrainMultiDimensionalPaulAlgorithm(CachedThreadResources<IsRegression(countCompilerClassificationTargetStates)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
 //   BinnedBucket<IsRegression(countCompilerClassificationTargetStates)> * const aBinnedBuckets = BinDataSet<countCompilerClassificationTargetStates>(pCachedThreadResources, pFeatureCombination, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aBinnedBuckets)) {
 //      return true;
@@ -1710,7 +1710,7 @@ WARNING_POP
 
 
 template<ptrdiff_t countCompilerClassificationTargetStates, size_t countCompilerDimensions>
-bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetInternalCore * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+bool CalculateInteractionScore(const size_t cTargetStates, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombination * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : we NEVER use the denominator term when calculating interaction scores, but we're calculating it and it's taking precious memory.  We should eliminate the denominator term HERE in our datastructures!!!
 
    LOG(TraceLevelVerbose, "Entered CalculateInteractionScore");
