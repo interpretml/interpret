@@ -208,17 +208,17 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_regression:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             *pResidualError = residualError;
             ++pResidualError;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -246,13 +246,13 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_classification:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
             StorageDataTypeCore targetData = *pTargetData;
 
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
             if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
@@ -300,7 +300,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             pTrainingPredictorScores += cVectorLength;
             ++pTargetData;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -444,18 +444,18 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_regression:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             rootMeanSquareError += residualError * residualError;
             *pResidualError = residualError;
             ++pResidualError;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -490,13 +490,13 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_classification:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
             StorageDataTypeCore targetData = *pTargetData;
 
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
             if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
@@ -526,7 +526,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             }
             ++pTargetData;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);

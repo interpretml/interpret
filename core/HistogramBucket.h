@@ -45,12 +45,14 @@ EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
    return sizeof(HistogramBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>) + sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-EBM_INLINE HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t index) {
-   return reinterpret_cast<HistogramBucket<bRegression> *>(reinterpret_cast<char *>(aHistogramBuckets) + index * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+EBM_INLINE HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<HistogramBucket<bRegression> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
 template<bool bRegression>
-EBM_INLINE const HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t index) {
-   return reinterpret_cast<const HistogramBucket<bRegression> *>(reinterpret_cast<const char *>(aHistogramBuckets) + index * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+EBM_INLINE const HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<const HistogramBucket<bRegression> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
@@ -233,12 +235,12 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
       // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
    one_last_loop:;
       // we store the already multiplied dimensional value in *pInputData
-      size_t iBinCombined = static_cast<size_t>(*pInputData);
+      size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
       ++pInputData;
       do {
-         const size_t iBin = maskBits & iBinCombined;
+         const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-         HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBin);
+         HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          const size_t cOccurences = *pCountOccurrences;
@@ -277,7 +279,7 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
 
          EBM_ASSERT(!IsClassification(countCompilerClassificationTargetClasses) || 2 == cTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.0000001 < residualTotalDebug && residualTotalDebug < 0.0000001);
 
-         iBinCombined >>= cBitsPerItemMax;
+         iTensorBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
          --cItemsRemaining;
       } while(0 != cItemsRemaining);

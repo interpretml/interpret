@@ -26,7 +26,7 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
-   size_t iBin = 0;
+   size_t iTensorBin = 0;
    size_t valueMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
    do {
@@ -35,7 +35,7 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
       EBM_ASSERT(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize)); // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
-      iBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
+      iTensorBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
       EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
       valueMultipleInitialize *= cBins;
       aiDimensions[iDimensionInitialize] = aiStart[iDimensionInitialize];
@@ -48,7 +48,7 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
    pRet->template Zero<countCompilerClassificationTargetClasses>(cTargetClasses);
 
    while(true) {
-      const HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iBin);
+      const HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsRegression(countCompilerClassificationTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
       pRet->template Add<countCompilerClassificationTargetClasses>(*pHistogramBucket, cTargetClasses);
 
@@ -57,7 +57,7 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
          EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         iBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
+         iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
          const size_t cBins = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -70,7 +70,7 @@ void GetTotalsDebugSlow(const HistogramBucket<IsRegression(countCompilerClassifi
          }
       }
       ++aiDimensions[iDimension];
-      iBin += valueMultipleLoop;
+      iTensorBin += valueMultipleLoop;
    }
 }
 
