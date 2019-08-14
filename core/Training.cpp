@@ -137,9 +137,9 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                StorageDataTypeCore targetData = *pTargetData;
                // TODO : because there is only one bin for a zero feature feature combination, we can move the fetch of smallChangeToPredictorScores outside of our loop so that the code doesn't have this dereference each loop
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-               const FractionalDataType trainingPredictionScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
-               *pTrainingPredictorScores = trainingPredictionScore;
-               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
+               const FractionalDataType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
+               *pTrainingPredictorScores = trainingPredictorScore;
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictorScore, targetData);
                *pResidualError = residualError;
                ++pResidualError;
                ++pTrainingPredictorScores;
@@ -257,9 +257,9 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             if(IsBinaryClassification(countCompilerClassificationTargetStates)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
-               const FractionalDataType trainingPredictionScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
-               *pTrainingPredictorScores = trainingPredictionScore;
-               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictionScore, targetData);
+               const FractionalDataType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
+               *pTrainingPredictorScores = trainingPredictorScore;
+               const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(trainingPredictorScore, targetData);
                *pResidualError = residualError;
                ++pResidualError;
             } else {

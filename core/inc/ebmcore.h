@@ -170,11 +170,11 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    IntegerDataType countTrainingInstances, 
    const FractionalDataType * trainingTargets, 
    const IntegerDataType * trainingBinnedData, 
-   const FractionalDataType * trainingPriorPredictorScores, 
+   const FractionalDataType * trainingPredictorScores, 
    IntegerDataType countValidationInstances, 
    const FractionalDataType * validationTargets, 
    const IntegerDataType * validationBinnedData, 
-   const FractionalDataType * validationPriorPredictorScores, 
+   const FractionalDataType * validationPredictorScores, 
    IntegerDataType countInnerBags
 );
 EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
@@ -188,11 +188,11 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    IntegerDataType countTrainingInstances, 
    const IntegerDataType * trainingTargets, 
    const IntegerDataType * trainingBinnedData, 
-   const FractionalDataType * trainingPriorPredictorScores, 
+   const FractionalDataType * trainingPredictorScores, 
    IntegerDataType countValidationInstances, 
    const IntegerDataType * validationTargets, 
    const IntegerDataType * validationBinnedData, 
-   const FractionalDataType * validationPriorPredictorScores, 
+   const FractionalDataType * validationPredictorScores, 
    IntegerDataType countInnerBags
 );
 EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
@@ -240,7 +240,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    IntegerDataType countInstances, 
    const FractionalDataType * targets, 
    const IntegerDataType * binnedData, 
-   const FractionalDataType * priorPredictorScores
+   const FractionalDataType * predictorScores
 );
 EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
    IntegerDataType countFeatures, 
@@ -249,7 +249,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    IntegerDataType countInstances, 
    const IntegerDataType * targets, 
    const IntegerDataType * binnedData, 
-   const FractionalDataType * priorPredictorScores
+   const FractionalDataType * predictorScores
 );
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction, 

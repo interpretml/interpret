@@ -92,7 +92,7 @@ class Native:
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * trainingPriorPredictorScores
+            # double * trainingPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countValidationInstances
             ct.c_longlong,
@@ -100,7 +100,7 @@ class Native:
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * validationPriorPredictorScores
+            # double * validationPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
@@ -128,7 +128,7 @@ class Native:
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * trainingPriorPredictorScores
+            # double * trainingPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countValidationInstances
             ct.c_longlong,
@@ -136,7 +136,7 @@ class Native:
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * validationPriorPredictorScores
+            # double * validationPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
@@ -211,7 +211,7 @@ class Native:
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * priorPredictorScores
+            # double * predictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
@@ -227,7 +227,7 @@ class Native:
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * priorPredictorScores
+            # double * predictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
