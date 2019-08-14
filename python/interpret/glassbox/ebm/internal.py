@@ -26,20 +26,20 @@ class Native:
     # Nominal = 1
     FeatureTypeNominal = 1
 
-    class Attribute(ct.Structure):
+    class EbmCoreFeature(ct.Structure):
         _fields_ = [
-            # FeatureType attributeType;
-            ("attributeType", ct.c_longlong),
+            # FeatureType featureType;
+            ("featureType", ct.c_longlong),
             # int64_t hasMissing;
             ("hasMissing", ct.c_longlong),
-            # int64_t countStates;
-            ("countStates", ct.c_longlong),
+            # int64_t countBins;
+            ("countBins", ct.c_longlong),
         ]
 
-    class AttributeSet(ct.Structure):
+    class EbmCoreFeatureCombination(ct.Structure):
         _fields_ = [
-            # int64_t countAttributes;
-            ("countAttributes", ct.c_longlong)
+            # int64_t countFeaturesInCombination;
+            ("countFeaturesInCombination", ct.c_longlong)
         ]
 
     LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
@@ -66,7 +66,7 @@ class Native:
     def harden_function_signatures(self):
         """ Adds types to function signatures. """
         self.lib.SetLogMessageFunction.argtypes = [
-            # void (* fn)(signed char traceLevel, const char * message)
+            # void (* fn)(signed char traceLevel, const char * message) logMessageFunction
             self.LogFuncType
         ]
         self.lib.SetTraceLevel.argtypes = [
@@ -76,31 +76,31 @@ class Native:
         self.lib.InitializeTrainingRegression.argtypes = [
             # int64_t randomSeed
             ct.c_longlong,
-            # int64_t countAttributes
+            # int64_t countFeatures
             ct.c_longlong,
-            # Attribute * attributes
-            ct.POINTER(self.Attribute),
-            # int64_t countAttributeSets
+            # EbmCoreFeature * features
+            ct.POINTER(self.EbmCoreFeature),
+            # int64_t countFeatureCombinations
             ct.c_longlong,
-            # AttributeSet * attributeSets
-            ct.POINTER(self.AttributeSet),
-            # int64_t * attributeSetIndexes
+            # EbmCoreFeatureCombination * featureCombinations
+            ct.POINTER(self.EbmCoreFeatureCombination),
+            # int64_t * featureCombinationIndexes
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t countTrainingCases
+            # int64_t countTrainingInstances
             ct.c_longlong,
             # double * trainingTargets
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * trainingData
+            # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * trainingPredictionScores
+            # double * trainingPriorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t countValidationCases
+            # int64_t countValidationInstances
             ct.c_longlong,
             # double * validationTargets
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * validationData
+            # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * validationPredictionScores
+            # double * validationPriorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
@@ -110,33 +110,33 @@ class Native:
         self.lib.InitializeTrainingClassification.argtypes = [
             # int64_t randomSeed
             ct.c_longlong,
-            # int64_t countAttributes
+            # int64_t countFeatures
             ct.c_longlong,
-            # Attribute * attributes
-            ct.POINTER(self.Attribute),
-            # int64_t countAttributeSets
+            # EbmCoreFeature * features
+            ct.POINTER(self.EbmCoreFeature),
+            # int64_t countFeatureCombinations
             ct.c_longlong,
-            # AttributeSet2 * attributeSets
-            ct.POINTER(self.AttributeSet),
-            # int64_t * attributeSetIndexes
+            # EbmCoreFeatureCombination * featureCombinations
+            ct.POINTER(self.EbmCoreFeatureCombination),
+            # int64_t * featureCombinationIndexes
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t countTargetStates
+            # int64_t countTargetClasses
             ct.c_longlong,
-            # int64_t countTrainingCases
+            # int64_t countTrainingInstances
             ct.c_longlong,
             # int64_t * trainingTargets
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * trainingData
+            # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * trainingPredictionScores
+            # double * trainingPriorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t countValidationCases
+            # int64_t countValidationInstances
             ct.c_longlong,
             # int64_t * validationTargets
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * validationData
+            # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * validationPredictionScores
+            # double * validationPriorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
@@ -146,13 +146,13 @@ class Native:
         self.lib.GenerateModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
             ct.c_void_p,
-            # int64_t indexAttributeSet
+            # int64_t indexFeatureCombination
             ct.c_longlong,
             # double learningRate
             ct.c_double,
             # int64_t countTreeSplitsMax
             ct.c_longlong,
-            # int64_t countCasesRequiredForSplitParentMin
+            # int64_t countInstancesRequiredForParentSplitMin
             ct.c_longlong,
             # double * trainingWeights
             # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
@@ -168,9 +168,9 @@ class Native:
         self.lib.ApplyModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
             ct.c_void_p,
-            # int64_t indexAttributeCombination
+            # int64_t indexFeatureCombination
             ct.c_longlong,
-            # double * modelUpdateTensor
+            # double * modelFeatureCombinationUpdateTensor
             ct.c_void_p,
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
@@ -178,66 +178,66 @@ class Native:
         self.lib.ApplyModelFeatureCombinationUpdate.restype = ct.c_longlong
 
         self.lib.GetCurrentModelFeatureCombination.argtypes = [
-            # void * tml
+            # void * ebmTraining
             ct.c_void_p,
-            # int64_t indexAttributeSet
+            # int64_t indexFeatureCombination
             ct.c_longlong,
         ]
         self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.GetBestModelFeatureCombination.argtypes = [
-            # void * tml
+            # void * ebmTraining
             ct.c_void_p,
-            # int64_t indexAttributeSet
+            # int64_t indexFeatureCombination
             ct.c_longlong,
         ]
         self.lib.GetBestModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.FreeTraining.argtypes = [
-            # void * tml
+            # void * ebmTraining
             ct.c_void_p
         ]
 
         self.lib.InitializeInteractionClassification.argtypes = [
-            # int64_t countAttributes
+            # int64_t countFeatures
             ct.c_longlong,
-            # Attribute * attributes
-            ct.POINTER(self.Attribute),
-            # int64_t countTargetStates
+            # EbmCoreFeature * features
+            ct.POINTER(self.EbmCoreFeature),
+            # int64_t countTargetClasses
             ct.c_longlong,
-            # int64_t countCases
+            # int64_t countInstances
             ct.c_longlong,
             # int64_t * targets
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * data
+            # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * predictionScores
+            # double * priorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
         self.lib.InitializeInteractionRegression.argtypes = [
-            # int64_t countAttributes
+            # int64_t countFeatures
             ct.c_longlong,
-            # Attribute * attributes
-            ct.POINTER(self.Attribute),
-            # int64_t countCases
+            # EbmCoreFeature * features
+            ct.POINTER(self.EbmCoreFeature),
+            # int64_t countInstances
             ct.c_longlong,
             # double * targets
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
-            # int64_t * data
+            # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * predictionScores
+            # double * priorPredictorScores
             ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
         self.lib.GetInteractionScore.argtypes = [
-            # void * tmlInteraction
+            # void * ebmInteraction
             ct.c_void_p,
             # int64_t countFeaturesInCombination
             ct.c_longlong,
-            # int64_t * attributeIndexes
+            # int64_t * featureIndexes
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
@@ -245,7 +245,7 @@ class Native:
         self.lib.GetInteractionScore.restype = ct.c_longlong
 
         self.lib.FreeInteraction.argtypes = [
-            # void * tmlInteraction
+            # void * ebmInteraction
             ct.c_void_p
         ]
 
@@ -433,19 +433,19 @@ class NativeEBM:
 
     def _convert_attribute_info_to_c(self, attributes, attribute_sets):
         # Create C form of attributes
-        attribute_ar = (this.native.Attribute * len(attributes))()
+        attribute_ar = (this.native.EbmCoreFeature * len(attributes))()
         for idx, attribute in enumerate(attributes):
             if attribute["type"] == "categorical":
-                attribute_ar[idx].attributeType = this.native.FeatureTypeNominal
+                attribute_ar[idx].featureType = this.native.FeatureTypeNominal
             else:
-                attribute_ar[idx].attributeType = this.native.FeatureTypeOrdinal
+                attribute_ar[idx].featureType = this.native.FeatureTypeOrdinal
             attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
-            attribute_ar[idx].countStates = attribute["n_bins"]
+            attribute_ar[idx].countBins = attribute["n_bins"]
 
         attribute_set_indexes = []
-        attribute_sets_ar = (this.native.AttributeSet * len(attribute_sets))()
+        attribute_sets_ar = (this.native.EbmCoreFeatureCombination * len(attribute_sets))()
         for idx, attribute_set in enumerate(attribute_sets):
-            attribute_sets_ar[idx].countAttributes = attribute_set["n_attributes"]
+            attribute_sets_ar[idx].countFeaturesInCombination = attribute_set["n_attributes"]
 
             for attr_idx in attribute_set["attributes"]:
                 attribute_set_indexes.append(attr_idx)

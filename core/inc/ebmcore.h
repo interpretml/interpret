@@ -208,7 +208,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination, 
-   const FractionalDataType * modelUpdateFeatureCombinationTensor, 
+   const FractionalDataType * modelFeatureCombinationUpdateTensor,
    FractionalDataType * validationMetricReturn
 );
 EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
