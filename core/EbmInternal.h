@@ -193,7 +193,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) (k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? static_cast<size_t>(MACRO_runtimeLearningTypeOrCountTargetClasses) : GetVectorLengthFlatCore(MACRO_compilerLearningTypeOrCountTargetClasses))
+#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeCountTargetClasses) (k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? static_cast<size_t>(MACRO_runtimeCountTargetClasses) : GetVectorLengthFlatCore(MACRO_compilerLearningTypeOrCountTargetClasses))
 
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
