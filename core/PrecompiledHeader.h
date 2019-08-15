@@ -3,7 +3,7 @@
 // Author: Paul Koch <code@koch.ninja>
 
 #include <type_traits> // std::is_pod
-#include <inttypes.h> // any of the fixed size types like int32_t
+#include <inttypes.h> // any of the fixed size types like int64_t
 #include <vector>
 #include <map>
 #include <random>

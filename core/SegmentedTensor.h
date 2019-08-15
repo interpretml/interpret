@@ -59,7 +59,7 @@ public:
 
    EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
-      EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
+      EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
       if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
          LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");

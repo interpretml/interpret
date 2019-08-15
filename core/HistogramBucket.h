@@ -25,13 +25,13 @@
 // the rational is that we need to bin this data, and our binning memory will be N1*N1*...*N(D-1)*N(D)
 // So, even for binary input featuers, we would have 2^64 bins, and that would take more memory than a 64 bit machine can have
 // Similarily, we need a huge amount of memory in order to bin any data with a combined total of more than 64 bits.
-// The worst case I can think of is where we have 3 states, requiring 2 bit each, and we overflowed at 33 dimensions
+// The worst case I can think of is where we have 3 bins, requiring 2 bit each, and we overflowed at 33 dimensions
 // in that bad case, we would have 3^33 bins * 8 bytes minimum per bin = 44472484532444184 bytes, which would take 56 bits to express
 // Nobody is every going to build a machine with more than 64 bits, since you need a non-trivial volume of material assuming bits require
 // more than several atoms to store.
 // we can just return an out of memory error if someone requests a set of features that would sum to more than 64 bits
 // we DO need to check for this error condition though, since it's not impossible for someone to request this kind of thing.
-// any dimensions with only 1 state don't count since you would just be multiplying by 1 for each such dimension
+// any dimensions with only 1 bin don't count since you would just be multiplying by 1 for each such dimension
 
 template<bool bRegression>
 class HistogramBucket;
@@ -45,12 +45,14 @@ EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
    return sizeof(HistogramBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>) + sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength;
 }
 template<bool bRegression>
-EBM_INLINE HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t index) {
-   return reinterpret_cast<HistogramBucket<bRegression> *>(reinterpret_cast<char *>(aHistogramBuckets) + index * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+EBM_INLINE HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<HistogramBucket<bRegression> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
 template<bool bRegression>
-EBM_INLINE const HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t index) {
-   return reinterpret_cast<const HistogramBucket<bRegression> *>(reinterpret_cast<const char *>(aHistogramBuckets) + index * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+EBM_INLINE const HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<const HistogramBucket<bRegression> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
@@ -233,12 +235,12 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
       // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
    one_last_loop:;
       // we store the already multiplied dimensional value in *pInputData
-      size_t iBinCombined = static_cast<size_t>(*pInputData);
+      size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
       ++pInputData;
       do {
-         const size_t iBin = maskBits & iBinCombined;
+         const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-         HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iBin);
+         HistogramBucket<IsRegression(countCompilerClassificationTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          const size_t cOccurences = *pCountOccurrences;
@@ -277,7 +279,7 @@ void BinDataSetTraining(HistogramBucket<IsRegression(countCompilerClassification
 
          EBM_ASSERT(!IsClassification(countCompilerClassificationTargetClasses) || 2 == cTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.0000001 < residualTotalDebug && residualTotalDebug < 0.0000001);
 
-         iBinCombined >>= cBitsPerItemMax;
+         iTensorBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
          --cItemsRemaining;
       } while(0 != cItemsRemaining);
@@ -380,11 +382,11 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(countCompilerClassificat
          const size_t cBins = pInputFeature->m_cBins;
          const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
          pInputData += iInstance;
-         StorageDataTypeCore data = *pInputData;
-         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(data)));
-         size_t iState = static_cast<size_t>(data);
-         EBM_ASSERT(iState < cBins);
-         iBucket += cBuckets * iState;
+         StorageDataTypeCore iBinOriginal = *pInputData;
+         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(iBinOriginal)));
+         size_t iBin = static_cast<size_t>(iBinOriginal);
+         EBM_ASSERT(iBin < cBins);
+         iBucket += cBuckets * iBin;
          cBuckets *= cBins;
          ++iDimension;
       } while(iDimension < cFeatures);
@@ -414,7 +416,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 ) {
    LOG(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;

@@ -208,17 +208,17 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_regression:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             *pResidualError = residualError;
             ++pResidualError;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -246,13 +246,13 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_classification:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
             StorageDataTypeCore targetData = *pTargetData;
 
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
             if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
@@ -300,7 +300,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             pTrainingPredictorScores += cVectorLength;
             ++pTargetData;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -338,7 +338,7 @@ static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFe
       // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
-      // TODO : perhaps we should change m_cBins into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
+      // TODO : perhaps we should change m_cBins into m_iBinMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
       TrainingSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
@@ -444,18 +444,18 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_regression:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             rootMeanSquareError += residualError * residualError;
             *pResidualError = residualError;
             ++pResidualError;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -490,13 +490,13 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_classification:;
          // we store the already multiplied dimensional value in *pInputData
-         size_t iBinCombined = static_cast<size_t>(*pInputData);
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
             StorageDataTypeCore targetData = *pTargetData;
 
-            const size_t iBin = maskBits & iBinCombined;
-            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iBin * cVectorLength];
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
             if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
@@ -526,7 +526,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             }
             ++pTargetData;
 
-            iBinCombined >>= cBitsPerItemMax;
+            iTensorBinCombined >>= cBitsPerItemMax;
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
@@ -567,7 +567,7 @@ static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombination
       // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
-      // TODO : perhaps we should change m_cBins into m_iStateMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
+      // TODO : perhaps we should change m_cBins into m_iBinMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
       return ValidationSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
@@ -733,7 +733,7 @@ public:
                FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
                IntegerDataType countBins = pFeatureInitialize->countBins;
-               EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 state don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
+               EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
                if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
                   LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                   return true;
@@ -792,7 +792,7 @@ public:
                      EBM_ASSERT(iFeatureForCombination < m_cFeatures);
                      FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                      if(LIKELY(1 < pInputFeature->m_cBins)) {
-                        // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                        // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         ++cSignificantFeaturesInCombination;
                      } else {
                         LOG(TraceLevelInfo, "INFO EbmTrainingState::Initialize feature combination with no useful features");
@@ -800,7 +800,6 @@ public:
                      ++pFeatureCombinationIndexTemp;
                   } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndexTemp);
 
-                  // TODO : we can allow more dimensions, if some of the dimensions have only 1 state
                   if(k_cDimensionsMax < cSignificantFeaturesInCombination) {
                      // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
                      LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize k_cDimensionsMax < cSignificantFeaturesInCombination");
@@ -833,7 +832,7 @@ public:
                      const FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                      const size_t cBins = pInputFeature->m_cBins;
                      if(LIKELY(1 < cBins)) {
-                        // if we have only 1 state, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                        // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         pFeatureCombinationEntry->m_pFeature = pInputFeature;
                         ++pFeatureCombinationEntry;
                         if(IsMultiplyError(cTensorStates, cBins)) {
@@ -1190,7 +1189,7 @@ EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombination
 template<>
 EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(const size_t cRuntimeTargetClasses, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    UNUSED(cRuntimeTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
+   // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < cRuntimeTargetClasses);
    return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
 }
@@ -1241,7 +1240,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
    } else {
       const size_t cTargetClasses = pEbmTrainingState->m_cTargetClasses;
       if(cTargetClasses <= 1) {
-         // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
+         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
          if(nullptr != gainReturn) {
             *gainReturn = 0;
@@ -1271,8 +1270,8 @@ template<ptrdiff_t countCompilerClassificationTargetClasses>
 static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    LOG(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdatePerTargetClasses");
 
-   EBM_ASSERT(nullptr != pEbmTrainingState->m_apCurrentModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pEbmTrainingState->m_apBestModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 states (which we check before calling this function), so it shouldn't be possible to be null
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apCurrentModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
+   EBM_ASSERT(nullptr != pEbmTrainingState->m_apBestModel); // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != aModelFeatureCombinationUpdateTensor); // aModelFeatureCombinationUpdateTensor is checked for nullptr before calling this function   
 
    pEbmTrainingState->m_apCurrentModel[iFeatureCombination]->AddExpanded(aModelFeatureCombinationUpdateTensor);
@@ -1343,7 +1342,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate(c
 template<>
 EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(const size_t cRuntimeTargetClasses, EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    UNUSED(cRuntimeTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target state, so let our runtime system handle those unlikley and uninteresting cases
+   // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < cRuntimeTargetClasses);
    return ApplyModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(pEbmTrainingState, iFeatureCombination, aModelFeatureCombinationUpdateTensor, pValidationMetricReturn);
 }
@@ -1383,7 +1382,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatu
    } else {
       const size_t cTargetClasses = pEbmTrainingState->m_cTargetClasses;
       if(cTargetClasses <= 1) {
-         // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
+         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
          if(nullptr != validationMetricReturn) {
             *validationMetricReturn = 0;
@@ -1413,7 +1412,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
       // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) and we'll return 1 from this function.  We'd like to return 0 (success) here, so we handle it ourselves
       const size_t cTargetClasses = pEbmTrainingState->m_cTargetClasses;
       if(cTargetClasses <= 1) {
-         // if there is only 1 target state for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
+         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
          if(nullptr != validationMetricReturn) {
             *validationMetricReturn = 0;
@@ -1446,7 +1445,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
       // if pEbmTrainingState->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
@@ -1472,7 +1471,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
       // if pEbmTrainingState->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_cTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target state, then the probability of that state is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
       return nullptr;
    }
 
