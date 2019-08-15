@@ -33,32 +33,32 @@
 // we DO need to check for this error condition though, since it's not impossible for someone to request this kind of thing.
 // any dimensions with only 1 bin don't count since you would just be multiplying by 1 for each such dimension
 
-template<bool bRegression>
+template<bool bClassification>
 class HistogramBucket;
 
-template<bool bRegression>
+template<bool bClassification>
 EBM_INLINE bool GetHistogramBucketSizeOverflow(const size_t cVectorLength) {
-   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bRegression>), cVectorLength) ? true : IsAddError(sizeof(HistogramBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>), sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength) ? true : false;
+   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? true : IsAddError(sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>), sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength) ? true : false;
 }
-template<bool bRegression>
+template<bool bClassification>
 EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
-   return sizeof(HistogramBucket<bRegression>) - sizeof(HistogramBucketVectorEntry<bRegression>) + sizeof(HistogramBucketVectorEntry<bRegression>) * cVectorLength;
+   return sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
 }
-template<bool bRegression>
-EBM_INLINE HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+template<bool bClassification>
+EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bClassification> * const aHistogramBuckets, const ptrdiff_t iBin) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucket<bRegression> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
-template<bool bRegression>
-EBM_INLINE const HistogramBucket<bRegression> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bRegression> * const aHistogramBuckets, const ptrdiff_t iBin) {
+template<bool bClassification>
+EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bClassification> * const aHistogramBuckets, const ptrdiff_t iBin) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucket<bRegression> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
 #define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_aHistogramBuckets, MACRO_aHistogramBucketsEnd) (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_aHistogramBuckets) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
-template<bool bRegression>
+template<bool bClassification>
 class HistogramBucket final {
 public:
 
@@ -71,11 +71,11 @@ public:
    // period of time
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
    ActiveDataType bucketValue;
-   HistogramBucketVectorEntry<bRegression> aHistogramBucketVectorEntry[1];
+   HistogramBucketVectorEntry<bClassification> aHistogramBucketVectorEntry[1];
 
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Add(const HistogramBucket<bRegression> & other, const size_t cTargetClasses) {
-      static_assert(IsRegression(compilerLearningTypeOrCountTargetClasses) == bRegression, "regression types must match");
+   EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cTargetClasses) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
       cInstancesInBucket += other.cInstancesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -83,8 +83,8 @@ public:
       }
    }
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Subtract(const HistogramBucket<bRegression> & other, const size_t cTargetClasses) {
-      static_assert(IsRegression(compilerLearningTypeOrCountTargetClasses) == bRegression, "regression types must match");
+   EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const size_t cTargetClasses) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
       cInstancesInBucket -= other.cInstancesInBucket;
       const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -92,27 +92,27 @@ public:
       }
    }
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Copy(const HistogramBucket<bRegression> & other, const size_t cTargetClasses) {
-      static_assert(IsRegression(compilerLearningTypeOrCountTargetClasses) == bRegression, "regression types must match");
+   EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const size_t cTargetClasses) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bRegression>(cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
 
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void Zero(const size_t cTargetClasses) {
-      static_assert(IsRegression(compilerLearningTypeOrCountTargetClasses) == bRegression, "regression types must match");
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
       const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bRegression>(cVectorLength);
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
       memset(this, 0, cBytesPerHistogramBucket);
    }
 
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void AssertZero(const size_t cTargetClasses) const {
       UNUSED(cTargetClasses);
-      static_assert(IsRegression(compilerLearningTypeOrCountTargetClasses) == bRegression, "regression types must match");
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
 #ifndef NDEBUG
       const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
       EBM_ASSERT(0 == cInstancesInBucket);
@@ -129,11 +129,11 @@ static_assert(std::is_pod<HistogramBucket<false>>::value, "HistogramBucket will 
 static_assert(std::is_pod<HistogramBucket<true>>::value, "HistogramBucket will be more efficient as a POD as we make potentially large arrays of them!");
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses) {
+void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
@@ -144,7 +144,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(compilerLearn
    // this shouldn't overflow since we're accessing existing memory
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
-   HistogramBucketVectorEntry<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
+   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
    while(pResidualErrorEnd != pResidualError) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -193,7 +193,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(compilerLearn
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-void BinDataSetTraining(HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
+void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -207,8 +207,8 @@ void BinDataSetTraining(HistogramBucket<IsRegression(compilerLearningTypeOrCount
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
@@ -240,14 +240,14 @@ void BinDataSetTraining(HistogramBucket<IsRegression(compilerLearningTypeOrCount
       do {
          const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-         HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
          pHistogramBucketEntry->cInstancesInBucket += cOccurences;
          const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
-         HistogramBucketVectorEntry<IsRegression(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
+         HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
          size_t iVector = 0;
 
 #ifndef NDEBUG
@@ -304,7 +304,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDim
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -331,7 +331,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const size_t cTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -348,7 +348,7 @@ public:
 
 // TODO: make the number of dimensions (pFeatureCombination->m_cFeatures) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void BinDataSetInteraction(HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const DataSetByFeature * const pDataSet, const size_t cTargetClasses
+void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const DataSetByFeature * const pDataSet, const size_t cTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -356,8 +356,8 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(compilerLearningTypeOrCo
    LOG(TraceLevelVerbose, "Entered BinDataSetInteraction");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
 
    const FractionalDataType * pResidualError = pDataSet->GetResidualPointer();
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
@@ -391,7 +391,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(compilerLearningTypeOrCo
          ++iDimension;
       } while(iDimension < cFeatures);
  
-      HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntry = GetHistogramBucketByIndex<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntry = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
       pHistogramBucketEntry->cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -410,7 +410,7 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(compilerLearningTypeOrCo
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const size_t cHistogramBuckets, HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, size_t * const pcInstancesTotal, HistogramBucketVectorEntry<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTargetClasses
+size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const size_t cHistogramBuckets, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, size_t * const pcInstancesTotal, HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -424,11 +424,11 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 #endif // NDEBUG
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
 
-   HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * pCopyFrom = aHistogramBuckets;
-   HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * pCopyFromEnd = GetHistogramBucketByIndex<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyFrom = aHistogramBuckets;
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyFromEnd = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
 
    // we do a lot more work in the GrowDecisionTree function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
    // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long and have many different labels, 
@@ -438,7 +438,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
       if(UNLIKELY(0 == pCopyFrom->cInstancesInBucket)) {
-         HistogramBucket<IsRegression(compilerLearningTypeOrCountTargetClasses)> * pCopyTo = pCopyFrom;
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyTo = pCopyFrom;
          goto skip_first_check;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
@@ -454,11 +454,11 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
                }
 
                pCopyTo->bucketValue = static_cast<ActiveDataType>(iBucket);
-               pCopyTo = GetHistogramBucketByIndex<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyTo, 1);
+               pCopyTo = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyTo, 1);
             }
             skip_first_check:
             ++iBucket;
-            pCopyFrom = GetHistogramBucketByIndex<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
+            pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
          } while(pCopyFromEnd != pCopyFrom);
          // TODO: eliminate this extra variable copy by making our outer loop use pCopyTo which is equal to pCopyFrom in the outer loop
          pCopyFrom = pCopyTo;
@@ -474,7 +474,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
       pCopyFrom->bucketValue = static_cast<ActiveDataType>(iBucket);
 
       ++iBucket;
-      pCopyFrom = GetHistogramBucketByIndex<IsRegression(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
+      pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
    EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
    size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;

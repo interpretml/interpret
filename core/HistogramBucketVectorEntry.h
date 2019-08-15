@@ -11,11 +11,11 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-template<bool bRegression>
+template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
 template<>
-struct HistogramBucketVectorEntry<false> final {
+struct HistogramBucketVectorEntry<true> final {
    // classification version of the HistogramBucketVectorEntry class
 
    FractionalDataType sumResidualError;
@@ -28,15 +28,15 @@ struct HistogramBucketVectorEntry<false> final {
    EBM_INLINE void SetSumDenominator(FractionalDataType sumDenominatorSet) {
       sumDenominator = sumDenominatorSet;
    }
-   EBM_INLINE void Add(const HistogramBucketVectorEntry<false> & other) {
+   EBM_INLINE void Add(const HistogramBucketVectorEntry<true> & other) {
       sumResidualError += other.sumResidualError;
       sumDenominator += other.sumDenominator;
    }
-   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<false> & other) {
+   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<true> & other) {
       sumResidualError -= other.sumResidualError;
       sumDenominator -= other.sumDenominator;
    }
-   EBM_INLINE void Copy(const HistogramBucketVectorEntry<false> & other) {
+   EBM_INLINE void Copy(const HistogramBucketVectorEntry<true> & other) {
       sumResidualError = other.sumResidualError;
       sumDenominator = other.sumDenominator;
    }
@@ -47,7 +47,7 @@ struct HistogramBucketVectorEntry<false> final {
 };
 
 template<>
-struct HistogramBucketVectorEntry<true> final {
+struct HistogramBucketVectorEntry<false> final {
    // regression version of the HistogramBucketVectorEntry class
 
    FractionalDataType sumResidualError;
@@ -60,13 +60,13 @@ struct HistogramBucketVectorEntry<true> final {
       UNUSED(sumDenominator);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
-   EBM_INLINE void Add(const HistogramBucketVectorEntry<true> & other) {
+   EBM_INLINE void Add(const HistogramBucketVectorEntry<false> & other) {
       sumResidualError += other.sumResidualError;
    }
-   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<true> & other) {
+   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<false> & other) {
       sumResidualError -= other.sumResidualError;
    }
-   EBM_INLINE void Copy(const HistogramBucketVectorEntry<true> & other) {
+   EBM_INLINE void Copy(const HistogramBucketVectorEntry<false> & other) {
       sumResidualError = other.sumResidualError;
    }
    EBM_INLINE void AssertZero() const {

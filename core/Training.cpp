@@ -578,17 +578,17 @@ static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombination
 }
 
 union CachedThreadResourcesUnion {
-   CachedTrainingThreadResources<true> regression;
-   CachedTrainingThreadResources<false> classification;
+   CachedTrainingThreadResources<false> regression;
+   CachedTrainingThreadResources<true> classification;
 
    CachedThreadResourcesUnion(const bool bRegression, const size_t cVectorLength) {
       LOG(TraceLevelInfo, "Entered CachedThreadResourcesUnion: bRegression=%u, cVectorLength=%zu", static_cast<unsigned int>(bRegression), cVectorLength);
       if(bRegression) {
          // member classes inside a union requre explicit call to constructor
-         new(&regression) CachedTrainingThreadResources<true>(cVectorLength);
+         new(&regression) CachedTrainingThreadResources<false>(cVectorLength);
       } else {
          // member classes inside a union requre explicit call to constructor
-         new(&classification) CachedTrainingThreadResources<false>(cVectorLength);
+         new(&classification) CachedTrainingThreadResources<true>(cVectorLength);
       }
       LOG(TraceLevelInfo, "Exited CachedThreadResourcesUnion");
    }
@@ -1092,14 +1092,14 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    return pEbmTraining;
 }
 
-template<bool bRegression>
-EBM_INLINE CachedTrainingThreadResources<bRegression> * GetCachedThreadResources(EbmTrainingState * pEbmTrainingState);
+template<bool bClassification>
+EBM_INLINE CachedTrainingThreadResources<bClassification> * GetCachedThreadResources(EbmTrainingState * pEbmTrainingState);
 template<>
-EBM_INLINE CachedTrainingThreadResources<false> * GetCachedThreadResources<false>(EbmTrainingState * pEbmTrainingState) {
+EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(EbmTrainingState * pEbmTrainingState) {
    return &pEbmTrainingState->m_cachedThreadResourcesUnion.classification;
 }
 template<>
-EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(EbmTrainingState * pEbmTrainingState) {
+EBM_INLINE CachedTrainingThreadResources<false> * GetCachedThreadResources<false>(EbmTrainingState * pEbmTrainingState) {
    return &pEbmTrainingState->m_cachedThreadResourcesUnion.regression;
 }
 
@@ -1119,7 +1119,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
    }
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmTrainingState->m_cSamplingSets) ? 1 : pEbmTrainingState->m_cSamplingSets;
-   CachedTrainingThreadResources<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(compilerLearningTypeOrCountTargetClasses)>(pEbmTrainingState);
+   CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmTrainingState);
    const FeatureCombinationCore * const pFeatureCombination = pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
