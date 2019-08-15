@@ -108,18 +108,18 @@ static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmente
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetClasses>
+template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetClasses, cTargetClasses);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
    const size_t cInstances = pTrainingSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
    if(0 == pFeatureCombination->m_cFeatures) {
       FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
       const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
-      if(IsRegression(countCompilerClassificationTargetClasses)) {
+      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
          while(pResidualErrorEnd != pResidualError) {
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
@@ -128,10 +128,10 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             ++pResidualError;
          }
       } else {
-         EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FractionalDataType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
          const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
-         if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+         if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FractionalDataType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
             while(pResidualErrorEnd != pResidualError) {
                StorageDataTypeCore targetData = *pTargetData;
@@ -200,7 +200,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
    const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
-   if(IsRegression(countCompilerClassificationTargetClasses)) {
+   if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       size_t cItemsRemaining;
       while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
          cItemsRemaining = cItemsPerBitPackDataUnit;
@@ -234,7 +234,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
       }
       EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    } else {
-      EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       FractionalDataType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
       const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
@@ -254,7 +254,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
-            if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+            if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                const FractionalDataType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
@@ -322,45 +322,45 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetClasses>
+template<unsigned int cInputBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, const size_t cTargetClasses) {
    if(cTargetClasses <= 1 << 1) {
-      TrainingSetTargetFeatureLoop<cInputBits, 1, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 2) {
-      TrainingSetTargetFeatureLoop<cInputBits, 2, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 2, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 4) {
-      TrainingSetTargetFeatureLoop<cInputBits, 4, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 4, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 8) {
-      TrainingSetTargetFeatureLoop<cInputBits, 8, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 8, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 16) {
-      TrainingSetTargetFeatureLoop<cInputBits, 16, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 16, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(static_cast<uint64_t>(cTargetClasses) <= uint64_t { 1 } << 32) {
       // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
       // TODO : perhaps we should change m_cBins into m_iBinMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
-      TrainingSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 32, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
       // our interface doesn't allow more than 64 bits, so even if size_t was bigger then we don't need to examine higher
       static_assert(63 == CountBitsRequiredPositiveMax<IntegerDataType>(), "");
-      TrainingSetTargetFeatureLoop<cInputBits, 64, countCompilerClassificationTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      TrainingSetTargetFeatureLoop<cInputBits, 64, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    }
 }
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t countCompilerClassificationTargetClasses>
+template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, const size_t cTargetClasses) {
    LOG(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetClasses, cTargetClasses);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
    const size_t cInstances = pValidationSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
    if(0 == pFeatureCombination->m_cFeatures) {
-      if(IsRegression(countCompilerClassificationTargetClasses)) {
+      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
          const FractionalDataType * const pResidualErrorEnd = pResidualError + cInstances;
 
@@ -379,14 +379,14 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          LOG(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
          return sqrt(rootMeanSquareError);
       } else {
-         EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FractionalDataType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
          const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
          const FractionalDataType * const pValidationPredictionEnd = pValidationPredictorScores + cVectorLength * cInstances;
 
          FractionalDataType sumLogLoss = 0;
-         if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+         if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FractionalDataType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
             while(pValidationPredictionEnd != pValidationPredictorScores) {
                StorageDataTypeCore targetData = *pTargetData;
@@ -432,7 +432,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
    const StorageDataTypeCore * pInputData = pValidationSet->GetDataPointer(pFeatureCombination);
 
-   if(IsRegression(countCompilerClassificationTargetClasses)) {
+   if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
       const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
 
@@ -475,7 +475,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
       LOG(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
       return sqrt(rootMeanSquareError);
    } else {
-      EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       FractionalDataType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
       const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
 
@@ -498,7 +498,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FractionalDataType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
-            if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+            if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FractionalDataType smallChangeToPredictorScores = pValues[0];
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
@@ -551,29 +551,29 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<unsigned int cInputBits, ptrdiff_t countCompilerClassificationTargetClasses>
+template<unsigned int cInputBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, const size_t cTargetClasses) {
    if(cTargetClasses <= 1 << 1) {
-      return ValidationSetTargetFeatureLoop<cInputBits, 1, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 2) {
-      return ValidationSetTargetFeatureLoop<cInputBits, 2, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 2, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 4) {
-      return ValidationSetTargetFeatureLoop<cInputBits, 4, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 4, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 8) {
-      return ValidationSetTargetFeatureLoop<cInputBits, 8, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 8, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(cTargetClasses <= 1 << 16) {
-      return ValidationSetTargetFeatureLoop<cInputBits, 16, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 16, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else if(static_cast<uint64_t>(cTargetClasses) <= uint64_t { 1 } << 32) {
       // if this is a 32 bit system, then m_cBins can't be 0x100000000 or above, because we would have checked that when converting the 64 bit numbers into size_t, and m_cBins will be promoted to a 64 bit number for the above comparison
       // if this is a 64 bit system, then this comparison is fine
 
       // TODO : perhaps we should change m_cBins into m_iBinMax so that we don't need to do the above promotion to 64 bits.. we can make it <= 0xFFFFFFFF.  Write a function to fill the lowest bits with ones for any number of bits
 
-      return ValidationSetTargetFeatureLoop<cInputBits, 32, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 32, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    } else {
       // our interface doesn't allow more than 64 bits, so even if size_t was bigger then we don't need to examine higher
       static_assert(63 == CountBitsRequiredPositiveMax<IntegerDataType>(), "");
-      return ValidationSetTargetFeatureLoop<cInputBits, 64, countCompilerClassificationTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
+      return ValidationSetTargetFeatureLoop<cInputBits, 64, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, cTargetClasses);
    }
 }
 
@@ -821,7 +821,7 @@ public:
                   pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
                } else {
                   EBM_ASSERT(nullptr != featureCombinationIndexes);
-                  size_t cTensorStates = 1;
+                  size_t cTensorBins = 1;
                   FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
                   do {
                      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
@@ -835,17 +835,17 @@ public:
                         // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                         pFeatureCombinationEntry->m_pFeature = pInputFeature;
                         ++pFeatureCombinationEntry;
-                        if(IsMultiplyError(cTensorStates, cBins)) {
+                        if(IsMultiplyError(cTensorBins, cBins)) {
                            // if this overflows, we definetly won't be able to allocate it
                            LOG(TraceLevelWarning, "WARNING EbmTrainingState::Initialize IsMultiplyError(cTensorStates, cBins)");
                            return true;
                         }
-                        cTensorStates *= cBins;
+                        cTensorBins *= cBins;
                      }
                      ++pFeatureCombinationIndex;
                   } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
                   // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
-                  const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorStates - 1);
+                  const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorBins - 1);
                   pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
                }
                ++iFeatureCombination;
@@ -1073,7 +1073,7 @@ EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<ptrdiff_t countCompilerClassificationTargetClasses>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetClasses function
    UNUSED(aTrainingWeights);
@@ -1086,7 +1086,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
    }
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmTrainingState->m_cSamplingSets) ? 1 : pEbmTrainingState->m_cSamplingSets;
-   CachedTrainingThreadResources<IsRegression(countCompilerClassificationTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(countCompilerClassificationTargetClasses)>(pEbmTrainingState);
+   CachedTrainingThreadResources<IsRegression(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsRegression(compilerLearningTypeOrCountTargetClasses)>(pEbmTrainingState);
    const FeatureCombinationCore * const pFeatureCombination = pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
@@ -1103,15 +1103,15 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FractionalDataType gain = 0;
          if(0 == pFeatureCombination->m_cFeatures) {
-            if(TrainZeroDimensional<countCompilerClassificationTargetClasses>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetClasses)) {
+            if(TrainZeroDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetClasses)) {
                return nullptr;
             }
          } else if(1 == pFeatureCombination->m_cFeatures) {
-            if(TrainSingleDimensional<countCompilerClassificationTargetClasses>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmTrainingState->m_cTargetClasses)) {
+            if(TrainSingleDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmTrainingState->m_cTargetClasses)) {
                return nullptr;
             }
          } else {
-            if(TrainMultiDimensional<countCompilerClassificationTargetClasses, 0>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetClasses)) {
+            if(TrainMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(pCachedThreadResources, pEbmTrainingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmTrainingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmTrainingState->m_cTargetClasses)) {
                return nullptr;
             }
          }
@@ -1127,7 +1127,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
 
       // we need to divide by the number of sampling sets that we constructed this from.
       // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we multiply by a user defined learning rate
-      if(IsClassification(countCompilerClassificationTargetClasses)) {
+      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
 #ifdef EXPAND_BINARY_LOGITS
          constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS
@@ -1143,7 +1143,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
          //   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          //}
 
-         constexpr bool bDividing = bExpandBinaryLogits && 2 == countCompilerClassificationTargetClasses;
+         constexpr bool bDividing = bExpandBinaryLogits && 2 == compilerLearningTypeOrCountTargetClasses;
          if(bDividing) {
             pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero / 2);
          } else {
@@ -1266,7 +1266,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<ptrdiff_t countCompilerClassificationTargetClasses>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmTrainingState * const pEbmTrainingState, const size_t iFeatureCombination, const FractionalDataType * const aModelFeatureCombinationUpdateTensor, FractionalDataType * const pValidationMetricReturn) {
    LOG(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdatePerTargetClasses");
 
@@ -1281,7 +1281,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmTra
    // if the count of training instances is zero, then pEbmTrainingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmTrainingState->m_pTrainingSet) {
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
-      TrainingSetInputFeatureLoop<1, countCompilerClassificationTargetClasses>(pFeatureCombination, pEbmTrainingState->m_pTrainingSet, aModelFeatureCombinationUpdateTensor, pEbmTrainingState->m_cTargetClasses);
+      TrainingSetInputFeatureLoop<1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pEbmTrainingState->m_pTrainingSet, aModelFeatureCombinationUpdateTensor, pEbmTrainingState->m_cTargetClasses);
    }
 
    FractionalDataType modelMetric = 0;
@@ -1298,7 +1298,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmTra
 
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
 
-      modelMetric = ValidationSetInputFeatureLoop<1, countCompilerClassificationTargetClasses>(pFeatureCombination, pEbmTrainingState->m_pValidationSet, aModelFeatureCombinationUpdateTensor, pEbmTrainingState->m_cTargetClasses);
+      modelMetric = ValidationSetInputFeatureLoop<1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pEbmTrainingState->m_pValidationSet, aModelFeatureCombinationUpdateTensor, pEbmTrainingState->m_cTargetClasses);
 
       // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
       if(LIKELY(modelMetric < pEbmTrainingState->m_bestModelMetric)) {

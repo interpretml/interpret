@@ -178,12 +178,12 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    return pEbmInteraction;
 }
 
-template<ptrdiff_t countCompilerClassificationTargetClasses>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
 
-   if(CalculateInteractionScore<countCompilerClassificationTargetClasses, 0>(pEbmInteractionState->m_cTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(pEbmInteractionState->m_cTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }

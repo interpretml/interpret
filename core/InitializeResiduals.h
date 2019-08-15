@@ -14,7 +14,7 @@
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<ptrdiff_t countCompilerClassificationTargetClasses>
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, FractionalDataType * pResidualError, const size_t cTargetClasses) {
    LOG(TraceLevelInfo, "Entered InitializeResiduals");
 
@@ -24,7 +24,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != pResidualError);
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(countCompilerClassificationTargetClasses, cTargetClasses);
+   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, cTargetClasses);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const size_t cVectoredItems = cVectorLength * cInstances;
@@ -33,7 +33,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
 
    if(nullptr == aPredictorScores) {
       // TODO: do we really need to handle the case where pPredictorScores is null? In the future, we'll probably initialize our data with the intercept, in which case we'll always have existing predictions
-      if(IsRegression(countCompilerClassificationTargetClasses)) {
+      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          // calling ComputeRegressionResidualError(predictionScore, data) with predictionScore as zero gives just data, so we can memcopy these values
          memcpy(pResidualError, aTargetData, cInstances * sizeof(pResidualError[0]));
 #ifndef NDEBUG
@@ -50,7 +50,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          } while(pResidualErrorEnd != pResidualError);
 #endif // NDEBUG
       } else {
-         EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
 
          const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
 
@@ -68,7 +68,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
             EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetClasses)));
             EBM_ASSERT(target < static_cast<StorageDataTypeCore>(cTargetClasses));
 
-            if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+            if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(target);
                *pResidualError = residualError;
                ++pResidualError;
@@ -97,7 +97,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
       }
    } else {
       const FractionalDataType * pPredictorScores = aPredictorScores;
-      if(IsRegression(countCompilerClassificationTargetClasses)) {
+      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
          do {
             const FractionalDataType data = *pTargetData;
@@ -111,7 +111,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
             ++pResidualError;
          } while(pResidualErrorEnd != pResidualError);
       } else {
-         EBM_ASSERT(IsClassification(countCompilerClassificationTargetClasses));
+         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
 
          const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
 
@@ -126,7 +126,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
             EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cTargetClasses)));
             EBM_ASSERT(target < static_cast<StorageDataTypeCore>(cTargetClasses));
 
-            if(IsBinaryClassification(countCompilerClassificationTargetClasses)) {
+            if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FractionalDataType predictionScore = *pPredictorScores;
                const FractionalDataType residualError = EbmStatistics::ComputeClassificationResidualErrorBinaryclass(predictionScore, target);
                *pResidualError = residualError;
