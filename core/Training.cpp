@@ -1045,14 +1045,47 @@ EbmTrainingState * AllocateCore(bool bRegression, IntegerDataType randomSeed, In
    return pEbmTrainingState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTrainingInstances, const FractionalDataType * trainingTargets, const IntegerDataType * trainingBinnedData, const FractionalDataType * trainingPredictorScores, IntegerDataType countValidationInstances, const FractionalDataType * validationTargets, const IntegerDataType * validationBinnedData, const FractionalDataType * validationPredictorScores, IntegerDataType countInnerBags) {
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+   IntegerDataType randomSeed,
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countFeatureCombinations,
+   const EbmCoreFeatureCombination * featureCombinations,
+   const IntegerDataType * featureCombinationIndexes,
+   IntegerDataType countTrainingInstances,
+   const FractionalDataType * trainingTargets,
+   const IntegerDataType * trainingBinnedData,
+   const FractionalDataType * trainingPredictorScores,
+   IntegerDataType countValidationInstances,
+   const FractionalDataType * validationTargets,
+   const IntegerDataType * validationBinnedData,
+   const FractionalDataType * validationPredictorScores,
+   IntegerDataType countInnerBags
+) {
    LOG(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
    PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(true, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, 0, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG(TraceLevelInfo, "Exited InitializeTrainingRegression %p", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(IntegerDataType randomSeed, IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * featureCombinations, const IntegerDataType * featureCombinationIndexes, IntegerDataType countTargetClasses, IntegerDataType countTrainingInstances, const IntegerDataType * trainingTargets, const IntegerDataType * trainingBinnedData, const FractionalDataType * trainingPredictorScores, IntegerDataType countValidationInstances, const IntegerDataType * validationTargets, const IntegerDataType * validationBinnedData, const FractionalDataType * validationPredictorScores, IntegerDataType countInnerBags) {
+EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
+   IntegerDataType randomSeed,
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countFeatureCombinations,
+   const EbmCoreFeatureCombination * featureCombinations,
+   const IntegerDataType * featureCombinationIndexes,
+   IntegerDataType countTargetClasses,
+   IntegerDataType countTrainingInstances,
+   const IntegerDataType * trainingTargets,
+   const IntegerDataType * trainingBinnedData,
+   const FractionalDataType * trainingPredictorScores,
+   IntegerDataType countValidationInstances,
+   const IntegerDataType * validationTargets,
+   const IntegerDataType * validationBinnedData,
+   const FractionalDataType * validationPredictorScores,
+   IntegerDataType countInnerBags
+) {
    LOG(TraceLevelInfo, "Entered InitializeTrainingClassification: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTargetClasses=%" IntegerDataTypePrintf ", countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTargetClasses, countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
    PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCore(false, randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, countTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG(TraceLevelInfo, "Exited InitializeTrainingClassification %p", static_cast<void *>(pEbmTraining));
@@ -1199,7 +1232,16 @@ EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombination
 static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessages = 10;
 
 // TODO : we can make GenerateModelFeatureCombinationUpdate callable by multiple threads so that this step could be parallelized before making a decision and applying one of the updates.  Right now we're accessing scratch space in the pEbmTrainingState object, but we can move that to a thread resident object.  Do do this, we would need to have our caller allocate our tensor, but that is a manageable operation
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countInstancesRequiredForParentSplitMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * gainReturn) {
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination,
+   FractionalDataType learningRate,
+   IntegerDataType countTreeSplitsMax,
+   IntegerDataType countInstancesRequiredForParentSplitMin,
+   const FractionalDataType * trainingWeights,
+   const FractionalDataType * validationWeights,
+   FractionalDataType * gainReturn
+) {
    LOG_COUNTED(&g_cLogGenerateModelFeatureCombinationUpdateParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GenerateModelFeatureCombinationUpdate parameters: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf ", learningRate=%" FractionalDataTypePrintf ", countTreeSplitsMax=%" IntegerDataTypePrintf ", countInstancesRequiredForParentSplitMin=%" IntegerDataTypePrintf ", trainingWeights=%p, validationWeights=%p, gainReturn=%p", static_cast<void *>(ebmTraining), indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, static_cast<const void *>(trainingWeights), static_cast<const void *>(validationWeights), static_cast<void *>(gainReturn));
 
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
@@ -1351,7 +1393,12 @@ EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate<k
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogApplyModelFeatureCombinationUpdateParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, const FractionalDataType * modelFeatureCombinationUpdateTensor, FractionalDataType * validationMetricReturn) {
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination,
+   const FractionalDataType * modelFeatureCombinationUpdateTensor,
+   FractionalDataType * validationMetricReturn
+) {
    LOG_COUNTED(&g_cLogApplyModelFeatureCombinationUpdateParametersMessages, TraceLevelInfo, TraceLevelVerbose, "ApplyModelFeatureCombinationUpdate parameters: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf ", modelFeatureCombinationUpdateTensor=%p, validationMetricReturn=%p", static_cast<void *>(ebmTraining), indexFeatureCombination, static_cast<const void *>(modelFeatureCombinationUpdateTensor), static_cast<void *>(validationMetricReturn));
 
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
@@ -1404,7 +1451,16 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatu
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination, FractionalDataType learningRate, IntegerDataType countTreeSplitsMax, IntegerDataType countInstancesRequiredForParentSplitMin, const FractionalDataType * trainingWeights, const FractionalDataType * validationWeights, FractionalDataType * validationMetricReturn) {
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination,
+   FractionalDataType learningRate,
+   IntegerDataType countTreeSplitsMax,
+   IntegerDataType countInstancesRequiredForParentSplitMin,
+   const FractionalDataType * trainingWeights,
+   const FractionalDataType * validationWeights,
+   FractionalDataType * validationMetricReturn
+) {
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
    EBM_ASSERT(nullptr != pEbmTrainingState);
 
@@ -1431,7 +1487,10 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(PE
    return ApplyModelFeatureCombinationUpdate(ebmTraining, indexFeatureCombination, pModelFeatureCombinationUpdateTensor, validationMetricReturn);
 }
 
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination) {
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination
+) {
    LOG(TraceLevelInfo, "Entered GetCurrentModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
 
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
@@ -1457,7 +1516,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    return pRet;
 }
 
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(PEbmTraining ebmTraining, IntegerDataType indexFeatureCombination) {
+EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination
+) {
    LOG(TraceLevelInfo, "Entered GetBestModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
 
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
@@ -1483,7 +1545,9 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    return pRet;
 }
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(PEbmTraining ebmTraining) {
+EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(
+   PEbmTraining ebmTraining
+) {
    LOG(TraceLevelInfo, "Entered FreeTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
    EBM_ASSERT(nullptr != pEbmTrainingState);

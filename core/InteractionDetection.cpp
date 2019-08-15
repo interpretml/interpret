@@ -164,14 +164,29 @@ EbmInteractionState * AllocateCoreInteraction(bool bRegression, IntegerDataType 
    return pEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countInstances, const FractionalDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countInstances,
+   const FractionalDataType * targets,
+   const IntegerDataType * binnedData,
+   const FractionalDataType * predictorScores
+) {
    LOG(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(true, countFeatures, features, 0, countInstances, targets, binnedData, predictorScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(IntegerDataType countFeatures, const EbmCoreFeature * features, IntegerDataType countTargetClasses, IntegerDataType countInstances, const IntegerDataType * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countTargetClasses,
+   IntegerDataType countInstances,
+   const IntegerDataType * targets,
+   const IntegerDataType * binnedData,
+   const FractionalDataType * predictorScores
+) {
    LOG(TraceLevelInfo, "Entered InitializeInteractionClassification: countFeatures=%" IntegerDataTypePrintf ", features=%p, countTargetClasses=%" IntegerDataTypePrintf ", countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countTargetClasses, countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(false, countFeatures, features, countTargetClasses, countInstances, targets, binnedData, predictorScores));
    LOG(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
@@ -214,7 +229,12 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(PEbmInteraction ebmInteraction, IntegerDataType countFeaturesInCombination, const IntegerDataType * featureIndexes, FractionalDataType * interactionScoreReturn) {
+EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+   PEbmInteraction ebmInteraction,
+   IntegerDataType countFeaturesInCombination,
+   const IntegerDataType * featureIndexes,
+   FractionalDataType * interactionScoreReturn
+) {
    LOG_COUNTED(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntegerDataTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(featureIndexes), static_cast<void *>(interactionScoreReturn));
 
    EBM_ASSERT(nullptr != ebmInteraction);
@@ -325,7 +345,9 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(PEbmInteraction ebmInteraction) {
+EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(
+   PEbmInteraction ebmInteraction
+) {
    LOG(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
    EBM_ASSERT(nullptr != pEbmInteractionState);
