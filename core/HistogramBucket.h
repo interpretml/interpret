@@ -176,8 +176,8 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsRegression(compilerLearn
          pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-            const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-            pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
+            const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
+            pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator);
          }
          ++pResidualError;
          ++iVector;
@@ -267,8 +267,8 @@ void BinDataSetTraining(HistogramBucket<IsRegression(compilerLearningTypeOrCount
             pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-               const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-               pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * (absResidualError * (1 - absResidualError)));
+               const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
+               pHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketVectorEntry[iVector].GetSumDenominator() + cFloatOccurences * denominator);
             }
             ++pResidualError;
             ++iVector;
@@ -395,11 +395,12 @@ void BinDataSetInteraction(HistogramBucket<IsRegression(compilerLearningTypeOrCo
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
       pHistogramBucketEntry->cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].sumResidualError += *pResidualError;
+         const FractionalDataType residualError = *pResidualError;
+         pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].sumResidualError += residualError;
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
-            FractionalDataType absResidualError = std::abs(*pResidualError); // abs will return the same type that it is given, either float or double
-            pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + absResidualError * (1 - absResidualError));
+            const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
+            pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].SetSumDenominator(pHistogramBucketEntry->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + denominator);
          }
          ++pResidualError;
       }

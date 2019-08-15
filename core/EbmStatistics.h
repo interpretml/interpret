@@ -18,7 +18,15 @@ class EbmStatistics final {
 
 public:
 
+   EBM_INLINE static FractionalDataType ComputeNewtonRaphsonStep(const FractionalDataType residualError) {
+      // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that they are using t * (2 - t) since they have a 2 in their objective
+      const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
+      return absResidualError * (1 - absResidualError);
+   }
+
    EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
+      // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
+
       // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
       EBM_ASSERT(0 < cInstances); // we purge bins that have an instance counts of zero, so cInstances should never be zero
       return sumResidualError / cInstances * sumResidualError;
