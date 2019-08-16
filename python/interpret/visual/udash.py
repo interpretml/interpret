@@ -749,12 +749,6 @@ The explanations available are split into tabs, each covering an aspect of the p
             )(register_update_idx_cb())
 
     def gen_share_table_container(model_idxs, explanation_type):
-<<<<<<< HEAD
-        if len(model_idxs) == 0:  # pragma: no cover
-            return None
-
-=======
->>>>>>> 5bd89ba06f407fdec2657d3fa34b488446414de1
         log.debug(
             "Generating shared table container: {0}|{1}".format(
                 model_idxs, explanation_type
@@ -809,12 +803,6 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-<<<<<<< HEAD
-        if model_idx is None:  # pragma: no cover
-            return None
-
-=======
->>>>>>> 5bd89ba06f407fdec2657d3fa34b488446414de1
         log.debug("Generating overall plots: {0}".format(model_idx))
 
         ctx = app.ctx
