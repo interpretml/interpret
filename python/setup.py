@@ -37,13 +37,24 @@ version = re.search(
     io.open(os.path.join(script_path, name, "version.py"), encoding="utf_8_sig").read(),
 ).group(1)
 
-###
-# get install_requires data from requirements.txt
-#
-install_requires = []
+EXTRAS = {
+    "extra": ["skope-rules>=1.0.0"],
+    "testing": [
+        "pytest>=4.3.0",
+        "pytest-runner>=4.4",
+        "nbconvert>=5.4.1",
+        "selenium>=3.141.0",
+        "pytest-cov>=2.6.1",
+        "flake8>=3.7.7",
+        "jupyter>=1.0.0",
+        "ipywidgets>=7.4.2",
+    ],
+}
+
+# Get install_requires data from requirements.txt
 with open("./requirements.txt") as f:
     install_requires = f.read().splitlines()
-install_requires = [x for x in install_requires if not x.startswith('#')]
+install_requires = [x for x in install_requires if not x.startswith("#")]
 
 setup(
     name=name,
@@ -90,10 +101,11 @@ setup(
     },
     setup_requires=[] + dev_tools,
     tests_require=[] + dev_tools,
+    extras_require=EXTRAS,
     entry_points={
         "interpret_ext_blackbox": [
             "BlackboxExplainerExample = interpret.ext.blackbox.example_blackbox_explainer_ext:ExampleExplainer"
-            ]
+        ]
     },
     install_requires=install_requires,
 )

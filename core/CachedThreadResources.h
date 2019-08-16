@@ -9,7 +9,7 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bRegression>
@@ -19,13 +19,13 @@ template<bool bRegression>
 class CompareTreeNodeSplittingGain final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this via a function
-   TML_INLINE bool operator() (const TreeNode<bRegression> * const & lhs, const TreeNode<bRegression> * const & rhs) const {
+   EBM_INLINE bool operator() (const TreeNode<bRegression> * const & lhs, const TreeNode<bRegression> * const & rhs) const {
       return rhs->m_UNION.afterExaminationForPossibleSplitting.splitGain < lhs->m_UNION.afterExaminationForPossibleSplitting.splitGain;
    }
 };
 
 template<bool bRegression>
-struct PredictionStatistics;
+struct HistogramBucketVectorEntry;
 
 template<bool bRegression>
 class CachedTrainingThreadResources {
@@ -42,9 +42,9 @@ class CachedTrainingThreadResources {
 
 public:
 
-   PredictionStatistics<bRegression> * const m_aSumPredictionStatistics;
-   PredictionStatistics<bRegression> * const m_aSumPredictionStatistics1;
-   PredictionStatistics<bRegression> * const m_aSumPredictionStatisticsBest;
+   HistogramBucketVectorEntry<bRegression> * const m_aSumHistogramBucketVectorEntry;
+   HistogramBucketVectorEntry<bRegression> * const m_aSumHistogramBucketVectorEntry1;
+   HistogramBucketVectorEntry<bRegression> * const m_aSumHistogramBucketVectorEntryBest;
    FractionalDataType * const m_aSumResidualErrors2;
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
@@ -59,9 +59,9 @@ public:
       , m_cThreadByteBufferCapacity1(0)
       , m_aThreadByteBuffer2(nullptr)
       , m_cThreadByteBufferCapacity2(0)
-      , m_aSumPredictionStatistics(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
-      , m_aSumPredictionStatistics1(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
-      , m_aSumPredictionStatisticsBest(new (std::nothrow) PredictionStatistics<bRegression>[cVectorLength])
+      , m_aSumHistogramBucketVectorEntry(new (std::nothrow) HistogramBucketVectorEntry<bRegression>[cVectorLength])
+      , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bRegression>[cVectorLength])
+      , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bRegression>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
       // m_bestTreeNodeToSplit should be constructed last because we want everything above to be initialized before the constructor for m_bestTreeNodeToSplit is called since it could throw an exception and we don't want partial state in the rest of the member data.  
       // Construction initialization actually depends on order within the class, so this placement doesn't matter here.
@@ -85,15 +85,15 @@ public:
 
       free(m_aThreadByteBuffer1);
       free(m_aThreadByteBuffer2);
-      delete[] m_aSumPredictionStatistics;
-      delete[] m_aSumPredictionStatistics1;
-      delete[] m_aSumPredictionStatisticsBest;
+      delete[] m_aSumHistogramBucketVectorEntry;
+      delete[] m_aSumHistogramBucketVectorEntry1;
+      delete[] m_aSumHistogramBucketVectorEntryBest;
       delete[] m_aSumResidualErrors2;
 
       LOG(TraceLevelInfo, "Exited ~CachedTrainingThreadResources");
    }
 
-   TML_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+   EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
@@ -110,7 +110,7 @@ public:
    }
 
    // TODO : we can probably avoid redoing any tree growing IF realloc doesn't move the memory since all the internal pointers would still be valid in that case
-   TML_INLINE bool GrowThreadByteBuffer2(const size_t cByteBoundaries) {
+   EBM_INLINE bool GrowThreadByteBuffer2(const size_t cByteBoundaries) {
       // by adding cByteBoundaries and shifting our existing size, we do 2 things:
       //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
       //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
@@ -128,16 +128,16 @@ public:
       return false;
    }
 
-   TML_INLINE void * GetThreadByteBuffer2() {
+   EBM_INLINE void * GetThreadByteBuffer2() {
       return m_aThreadByteBuffer2;
    }
 
-   TML_INLINE size_t GetThreadByteBuffer2Size() const {
+   EBM_INLINE size_t GetThreadByteBuffer2Size() const {
       return m_cThreadByteBufferCapacity2;
    }
 
-   TML_INLINE bool IsError() const {
-      return m_bError || nullptr == m_aSumPredictionStatistics || nullptr == m_aSumPredictionStatistics1 || nullptr == m_aSumPredictionStatisticsBest || nullptr == m_aSumResidualErrors2;
+   EBM_INLINE bool IsError() const {
+      return m_bError || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumHistogramBucketVectorEntryBest || nullptr == m_aSumResidualErrors2;
    }
 };
 
@@ -161,7 +161,7 @@ public:
       LOG(TraceLevelInfo, "Exited ~CachedInteractionThreadResources");
    }
 
-   TML_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+   EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);

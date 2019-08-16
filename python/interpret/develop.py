@@ -54,24 +54,31 @@ def dynamic_system_info():
     import psutil
     import numpy as np
 
-    cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
-    cpu_freq = psutil.cpu_freq()
-    virtual_memory = psutil.virtual_memory()._asdict()
-    virtual_memory = {
-        k: sizeof_fmt(v) if k != "percent" else v for k, v in virtual_memory.items()
-    }
-    swap_memory = psutil.swap_memory()._asdict()
-    swap_memory = {
-        k: sizeof_fmt(v) if k != "percent" else v for k, v in swap_memory.items()
-    }
+    try:
+        cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
+        cpu_freq = psutil.cpu_freq()
+        virtual_memory = psutil.virtual_memory()._asdict()
+        virtual_memory = {
+            k: sizeof_fmt(v) if k != "percent" else v for k, v in virtual_memory.items()
+        }
+        swap_memory = psutil.swap_memory()._asdict()
+        swap_memory = {
+            k: sizeof_fmt(v) if k != "percent" else v for k, v in swap_memory.items()
+        }
 
-    system_info = {
-        "psutil.virtual_memory": virtual_memory,
-        "psutil.swap_memory": swap_memory,
-        "psutil.avg_cpu_percent": None if cpu_percent is None else np.mean(cpu_percent),
-        "psutil.std_cpu_percent": None if cpu_percent is None else np.std(cpu_percent),
-        "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
-    }
+        system_info = {
+            "psutil.virtual_memory": virtual_memory,
+            "psutil.swap_memory": swap_memory,
+            "psutil.avg_cpu_percent": None
+            if cpu_percent is None
+            else np.mean(cpu_percent),
+            "psutil.std_cpu_percent": None
+            if cpu_percent is None
+            else np.std(cpu_percent),
+            "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
+        }
+    except Exception:  # pragma: no cover
+        system_info = None
 
     return system_info
 

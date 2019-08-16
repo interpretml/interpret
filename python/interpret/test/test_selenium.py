@@ -4,6 +4,7 @@ from ..data import ClassHistogram
 from ..perf import ROC
 from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
+from copy import deepcopy
 
 # Timeout for element to not show up in selenium driver.
 TIMEOUT = 60
@@ -70,279 +71,208 @@ def all_explanations():
     return explanations
 
 
-@pytest.fixture(scope="module")
-def small_explanations():
-    data = synthetic_classification()
-    ebm = ExplainableBoostingClassifier()
-    ebm.fit(data["train"]["X"], data["train"]["y"])
-    lr = LogisticRegression()
-    lr.fit(data["train"]["X"], data["train"]["y"])
+# NOTE: This is used for debugging tests. Commented out.
+# @pytest.fixture(scope="module")
+# def small_explanations():
+#     data = synthetic_classification()
+#     ebm = ExplainableBoostingClassifier()
+#     ebm.fit(data["train"]["X"], data["train"]["y"])
+#     lr = LogisticRegression()
+#     lr.fit(data["train"]["X"], data["train"]["y"])
+#
+#     hist_exp = ClassHistogram().explain_data(
+#         data["train"]["X"], data["train"]["y"], name="Histogram"
+#     )
+#
+#     lr_global_exp = lr.explain_global(name="LR")
+#     lr_local_exp = lr.explain_local(
+#         data["test"]["X"].head(), data["test"]["y"].head(), name="LR"
+#     )
+#     lr_perf = ROC(lr.predict_proba).explain_perf(
+#         data["test"]["X"], data["test"]["y"], name="LR"
+#     )
+#
+#     ebm_global_exp = ebm.explain_global(name="EBM")
+#     ebm_local_exp = ebm.explain_local(
+#         data["test"]["X"].head(), data["test"]["y"].head(), name="EBM"
+#     )
+#     ebm_perf = ROC(ebm.predict_proba).explain_perf(
+#         data["test"]["X"], data["test"]["y"], name="EBM"
+#     )
+#
+#     return [
+#         hist_exp,
+#         lr_local_exp,
+#         lr_global_exp,
+#         lr_perf,
+#         ebm_local_exp,
+#         ebm_global_exp,
+#         ebm_perf,
+#     ]
 
-    hist_exp = ClassHistogram().explain_data(data["train"]["X"], data["train"]["y"], name="Histogram")
 
-    lr_global_exp = lr.explain_global(name="LR")
-    lr_local_exp = lr.explain_local(data["test"]["X"].head(), data["test"]["y"].head(), name="LR")
-    lr_perf = ROC(lr.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"], name="LR")
-
-    ebm_global_exp = ebm.explain_global(name="EBM")
-    ebm_local_exp = ebm.explain_local(data["test"]["X"].head(), data["test"]["y"].head(), name="EBM")
-    ebm_perf = ROC(ebm.predict_proba).explain_perf(data["test"]["X"], data["test"]["y"], name="EBM")
-
-    return [hist_exp, lr_local_exp, lr_global_exp, lr_perf, ebm_local_exp, ebm_global_exp, ebm_perf]
-
-
-# TODO: Code duplication, refactor.
 @pytest.mark.selenium
-def test_show_small_set_selenium(small_explanations, driver):
+@pytest.mark.xfail(strict=False)
+def test_all_explainers_selenium(all_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
 
-    target_addr = ("127.0.0.1", 7100)
+    from ..glassbox.decisiontree import TreeExplanation
+
+    target_addr = ("127.0.0.1", 7101)
     set_show_addr(target_addr)
-    dashboard_url = show_link(small_explanations)
-    mini_url = show_link(small_explanations[2])
 
-    # Home page
-    driver.get(dashboard_url)
-    driver.find_element_by_id("overview-tab")
+    def goto_mini_url(explanation):
+        mini_url = show_link(explanation)
+        driver.get(mini_url)
+        driver.find_element_by_class_name("card")
 
-    # Expect overview tab's welcome message
+    def check_mini_overall_graph():
+        # Expect overall graph
+        wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
+
+    def check_mini_specific_graph(index=0):
+        # Click on specific graph
+        dropdown_el = driver.find_element_by_class_name("Select-control")
+        dropdown_el.click()
+        specific_el = dropdown_el.find_element_by_xpath(
+            "//div[contains(text(),'{} : ')]".format(index + 1)
+        )
+        specific_el.click()
+
+        # Expect specific graph
+        wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
+
+    # Run mini app checks
     wait = WebDriverWait(driver, TIMEOUT)
-    wait.until(
-        EC.text_to_be_present_in_element(
-            (By.ID, "overview-tab"), "Welcome to Interpret ML"
-        )
-    )
+    for explanation in all_explanations:
+        # NOTE: Known bug with decision tree visualization.
+        if isinstance(explanation, TreeExplanation):
+            continue
+        goto_mini_url(explanation)
+        check_mini_overall_graph()
+        if explanation.selector is not None:
+            check_mini_specific_graph(0)
+            check_mini_specific_graph(1)
 
-    # Move to data
-    tabs_el = driver.find_element_by_id("tabs")
-    data_tab_el = tabs_el.find_element_by_xpath("//span[contains(text(),'Data')]")
-    data_tab_el.click()
-
-    # Expect dropdown
-    wait.until(
-        EC.text_to_be_present_in_element(
-            (By.CLASS_NAME, "card-title"), "Select Explanation"
+    def goto_full_tab(explanation_type):
+        tabs_el = driver.find_element_by_id("tabs")
+        if explanation_type == "perf":
+            tab_name = "Performance"
+        else:
+            tab_name = explanation_type.capitalize()
+        tab_el = tabs_el.find_element_by_xpath(
+            "//span[contains(text(),'{}')]".format(tab_name)
         )
-    )
-    # Click on dropdown
-    data_tab_el = driver.find_element_by_id("data-tab")
-    dropdown_el = data_tab_el.find_element_by_class_name("Select-placeholder")
-    dropdown_el.click()
-    # Select histogram item
-    hist_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'Histogram')]")
-    hist_el.click()
+        tab_el.click()
 
-    # Expect shared container
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[contains(text(),'Select Components to Graph')]")
-        )
-    )
-    first_path = "//label[@for='checkbox0']"
-    second_path = "//label[@for='checkbox1']"
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, first_path)
-        )
-    )
-    # Click on first two items
-    first_el = data_tab_el.find_element_by_xpath(first_path)
-    first_el.click()
-    second_el = data_tab_el.find_element_by_xpath(second_path)
-    second_el.click()
-    # Expect two specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-1")
-    ))
-    # Expect overall graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-0")
-    ))
+    def duplicate_explanations(explanation, num_duplicates):
+        explanations = []
+        for i in range(num_duplicates):
+            an_explanation = deepcopy(explanation)
+            an_explanation.name = "{}_{}".format(explanation.name, i)
+            explanations.append(an_explanation)
+        return explanations
 
-    # Move to perf
-    tabs_el = driver.find_element_by_id("tabs")
-    perf_tab_el = tabs_el.find_element_by_xpath("//span[contains(text(),'Perf')]")
-    perf_tab_el.click()
+    def goto_full_url(explanations, share_tables=True):
+        full_url = show_link(explanations, share_tables=share_tables)
+        driver.get(full_url)
+        driver.find_element_by_id("overview-tab")
 
-    # Expect dropdown
-    wait.until(
-        EC.text_to_be_present_in_element(
-            (By.CLASS_NAME, "card-title"), "Select Explanation"
+        wait.until(
+            EC.text_to_be_present_in_element(
+                (By.ID, "overview-tab"), "Welcome to Interpret ML"
+            )
         )
-    )
-    # Click on dropdown
-    perf_tab_el = driver.find_element_by_id("perf-tab")
-    # Select LR item
-    dropdown_el = perf_tab_el.find_element_by_class_name("Select-control")
-    dropdown_el.click()
-    lr_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'LR')]")
-    lr_el.click()
-    # Select EBM item
-    dropdown_el.click()
-    ebm_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'EBM')]")
-    ebm_el.click()
-    # Expect two overall graphs
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[@id='perf-overall-plot-container-0']//div[contains(@id, 'example-overall-graph-')]")
-        )
-    )
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[@id='perf-overall-plot-container-1']//div[contains(@id, 'example-overall-graph-')]")
-        )
-    )
 
-    # Move to global
-    tabs_el = driver.find_element_by_id("tabs")
-    global_tab_el = tabs_el.find_element_by_xpath("//span[contains(text(),'Global')]")
-    global_tab_el.click()
-
-    # Expect dropdown
-    wait.until(
-        EC.text_to_be_present_in_element(
-            (By.CLASS_NAME, "card-title"), "Select Explanation"
+    def check_full_dropdown(explanations):
+        wait.until(
+            EC.text_to_be_present_in_element(
+                (By.CLASS_NAME, "card-title"), "Select Explanation"
+            )
         )
-    )
+        # Select items
+        for explanation in explanations:
+            dropdown_el = driver.find_element_by_class_name("Select-control")
+            dropdown_el.click()
 
-    # Click on dropdown
-    global_tab_el = driver.find_element_by_id("global-tab")
-    # Select LR item
-    dropdown_el = global_tab_el.find_element_by_class_name("Select-control")
-    dropdown_el.click()
-    lr_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'LR')]")
-    lr_el.click()
-    # Select EBM item
-    dropdown_el.click()
-    ebm_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'EBM')]")
-    ebm_el.click()
+            item_el = dropdown_el.find_element_by_xpath(
+                "//div[contains(text(),'{}')]".format(explanation.name)
+            )
+            item_el.click()
 
-    # Expect shared container
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[contains(text(),'Select Components to Graph')]")
-        )
-    )
-    first_path = "//label[@for='checkbox0']"
-    second_path = "//label[@for='checkbox1']"
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, first_path)
-        )
-    )
-    # Click on first two items
-    first_el = global_tab_el.find_element_by_xpath(first_path)
-    first_el.click()
-    second_el = global_tab_el.find_element_by_xpath(second_path)
-    second_el.click()
-    # Expect four specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-2-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-2-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-5-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-5-1")
-    ))
-    # Expect two overall graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-2")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-5")
-    ))
+    def check_full_overall_graphs(explanations):
+        if explanations[0].visualize() is None:
+            return
 
-    # Move to local
-    tabs_el = driver.find_element_by_id("tabs")
-    local_tab_el = tabs_el.find_element_by_xpath("//span[contains(text(),'Local')]")
-    local_tab_el.click()
-
-    # Expect dropdown
-    wait.until(
-        EC.text_to_be_present_in_element(
-            (By.CLASS_NAME, "card-title"), "Select Explanation"
-        )
-    )
-
-    # Click on dropdown
-    local_tab_el = driver.find_element_by_id("local-tab")
-    # Select LR item
-    dropdown_el = local_tab_el.find_element_by_class_name("Select-control")
-    dropdown_el.click()
-    lr_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'LR')]")
-    lr_el.click()
-    # Select EBM item
-    dropdown_el.click()
-    ebm_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'EBM')]")
-    ebm_el.click()
-
-    # Expect two selectors
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[@class='gr']/div[@class='gr-col'][1]")
-        )
-    )
-    wait.until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[@class='gr']/div[@class='gr-col'][2]")
-        )
-    )
-    # Click on first two items for both panes
-    for pane_idx in range(2):
-        for item_idx in range(2):
-            item_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(pane_idx + 1, item_idx)
+        for i in range(len(explanations)):
             wait.until(
                 EC.presence_of_element_located(
-                    (By.XPATH, item_path)
+                    (By.ID, "example-overall-graph-{}".format(i))
                 )
             )
-            item_el = local_tab_el.find_element_by_xpath(item_path)
-            item_el.click()
-    # Expect four specific graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-1-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-1-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-4-0")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-4-1")
-    ))
-    # Expect two overall graphs
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-1")
-    ))
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph-4")
-    ))
 
-    # Mini page
-    driver.get(mini_url)
-    driver.find_element_by_class_name("card")
-    # Expect overall graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "example-overall-graph--1")
-    ))
-    # Click on specific graph
-    dropdown_el = driver.find_element_by_class_name("Select-control")
-    dropdown_el.click()
-    specific_el = dropdown_el.find_element_by_xpath("//div[contains(text(),'1 : ')]")
-    specific_el.click()
-    # Expect specific graph
-    wait.until(EC.presence_of_element_located(
-        (By.ID, "graph-0-0")
-    ))
+    def check_full_specific_graphs(explanations, share_tables, num_records=2):
+        if explanations[0].visualize(0) is None:
+            return
+
+        if share_tables:
+            # Expect shared container
+            wait.until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//div[contains(text(),'Select Components to Graph')]")
+                )
+            )
+
+            # Click on records
+            for i in range(num_records):
+                record_path = "//label[@for='checkbox{}']".format(i)
+                wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
+                record_el = driver.find_element_by_xpath(record_path)
+                record_el.click()
+        else:
+            # Expect multiple containers
+            for i in range(len(explanations)):
+                wait.until(
+                    EC.presence_of_element_located(
+                        (
+                            By.XPATH,
+                            "//div[@class='gr']/div[@class='gr-col'][{}]".format(i + 1),
+                        )
+                    )
+                )
+
+            # Click on records
+            for explanation_idx in range(len(explanations)):
+                for record_idx in range(num_records):
+                    record_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(
+                        explanation_idx + 1, record_idx
+                    )
+                    wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
+                    record_el = driver.find_element_by_xpath(record_path)
+                    record_el.click()
+
+        # Expect specific graphs
+        for explanation_idx in range(len(explanations)):
+            for record_idx in range(num_records):
+                wait.until(
+                    EC.presence_of_element_located(
+                        (By.ID, "graph-{}-{}".format(explanation_idx, record_idx))
+                    )
+                )
+
+    # Run full app checks
+    for explanation in all_explanations:
+        for share_tables in [True, False]:
+            if isinstance(explanation, TreeExplanation):
+                continue
+
+            explanations = duplicate_explanations(explanation, 2)
+            goto_full_url(explanations, share_tables=share_tables)
+            goto_full_tab(explanations[0].explanation_type)
+            check_full_dropdown(explanations)
+            check_full_overall_graphs(explanations)
+            check_full_specific_graphs(explanations, share_tables)
 
     shutdown_show_server()

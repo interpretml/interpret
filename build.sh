@@ -13,7 +13,7 @@ for arg in "$@"; do
 done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
-compile_all="\"$root_path/core/DataSetByAttribute.cpp\" \"$root_path/core/DataSetByAttributeCombination.cpp\" \"$root_path/core/InteractionDetection.cpp\" \"$root_path/core/Logging.cpp\" \"$root_path/core/SamplingWithReplacement.cpp\" \"$root_path/core/Training.cpp\" -I\"$root_path/core\" -I\"$root_path/core/inc\" -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
+compile_all="\"$root_path/core/DataSetByFeature.cpp\" \"$root_path/core/DataSetByFeatureCombination.cpp\" \"$root_path/core/InteractionDetection.cpp\" \"$root_path/core/Logging.cpp\" \"$root_path/core/SamplingWithReplacement.cpp\" \"$root_path/core/Training.cpp\" -I\"$root_path/core\" -I\"$root_path/core/inc\" -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 -fpermissive -fvisibility=hidden -fvisibility-inlines-hidden -O3 -march=core2 -DEBMCORE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -159,7 +159,7 @@ elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/core/EbmCoreExports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/core/WrapFunc.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/core/ebmcore_exports.txt\" -Wl,--exclude-libs,ALL -Wl,--wrap=memcpy \"$root_path/core/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"

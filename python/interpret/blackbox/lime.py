@@ -89,23 +89,24 @@ class LimeTabular(ExplainerMixin):
             }
             data_dicts.append(data_dict)
 
-        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
-            {
-                "explanation_type": "local_feature_importance",
-                "value": {
-                    "scores": scores_list,
-                    "intercept": intercept,
-                    "perf": perf_list
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "local_feature_importance",
+                    "value": {
+                        "scores": scores_list,
+                        "intercept": intercept,
+                        "perf": perf_list,
+                    },
                 }
-            }]
+            ],
         }
         internal_obj["mli"].append(
             {
                 "explanation_type": "evaluation_dataset",
-                "value": {
-                    "dataset_x": X,
-                    "dataset_y": y
-                }
+                "value": {"dataset_x": X, "dataset_y": y},
             }
         )
         selector = gen_local_selector(X, y, predictions)

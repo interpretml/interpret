@@ -8,10 +8,10 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE & UNLIKLEY
+#include "EbmInternal.h" // EBM_INLINE & UNLIKLEY
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
-#include "DataSetByAttributeCombination.h" // we use an iterator which requires a full definition.  TODO : in the future we'll be eliminating the iterator, so check back here to see if we can eliminate this include file
+#include "DataSetByFeatureCombination.h" // we use an iterator which requires a full definition.  TODO : in the future we'll be eliminating the iterator, so check back here to see if we can eliminate this include file
 #include "SamplingWithReplacement.h"
 
 SamplingWithReplacement::~SamplingWithReplacement() {
@@ -20,33 +20,33 @@ SamplingWithReplacement::~SamplingWithReplacement() {
    LOG(TraceLevelInfo, "Exited ~SamplingWithReplacement");
 }
 
-size_t SamplingWithReplacement::GetTotalCountCaseOccurrences() const {
-      // for SamplingWithReplacement (bootstrap sampling), we have the same number of cases as our original dataset
-   size_t cTotalCountCaseOccurrences = m_pOriginDataSet->GetCountCases();
+size_t SamplingWithReplacement::GetTotalCountInstanceOccurrences() const {
+      // for SamplingWithReplacement (bootstrap sampling), we have the same number of instances as our original dataset
+   size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
 #ifndef NDEBUG
-   size_t cTotalCountCaseOccurrencesDebug = 0;
-   for(size_t i = 0; i < m_pOriginDataSet->GetCountCases(); ++i) {
-      cTotalCountCaseOccurrencesDebug += m_aCountOccurrences[i];
+   size_t cTotalCountInstanceOccurrencesDebug = 0;
+   for(size_t i = 0; i < m_pOriginDataSet->GetCountInstances(); ++i) {
+      cTotalCountInstanceOccurrencesDebug += m_aCountOccurrences[i];
    }
-   EBM_ASSERT(cTotalCountCaseOccurrencesDebug == cTotalCountCaseOccurrences);
+   EBM_ASSERT(cTotalCountInstanceOccurrencesDebug == cTotalCountInstanceOccurrences);
 #endif // NDEBUG
-   return cTotalCountCaseOccurrences;
+   return cTotalCountInstanceOccurrences;
 }
 
-SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet) {
+SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet) {
    LOG(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
-   const size_t cCases = pOriginDataSet->GetCountCases();
-   EBM_ASSERT(0 < cCases); // if there were no cases, we wouldn't be called
+   const size_t cInstances = pOriginDataSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   if(IsMultiplyError(sizeof(size_t), cCases)) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cCases)");
+   if(IsMultiplyError(sizeof(size_t), cInstances)) {
+      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cInstances)");
       return nullptr;
    }
-   const size_t cBytesData = sizeof(size_t) * cCases;
+   const size_t cBytesData = sizeof(size_t) * cInstances;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
    if(nullptr == aCountOccurrences) {
       LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet nullptr == aCountOccurrences");
@@ -56,8 +56,8 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
    memset(aCountOccurrences, 0, cBytesData);
 
    try {
-      for(size_t iCase = 0; iCase < cCases; ++iCase) {
-         const size_t iCountOccurrences = pRandomStream->Next(size_t { 0 }, cCases - 1);
+      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+         const size_t iCountOccurrences = pRandomStream->Next(size_t { 0 }, cInstances - 1);
          ++aCountOccurrences[iCountOccurrences];
       }
    } catch(...) {
@@ -78,23 +78,23 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
    return pRet;
 }
 
-SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetAttributeCombination * const pOriginDataSet) {
+SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet) {
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataSet);
-   const size_t cCases = pOriginDataSet->GetCountCases();
-   EBM_ASSERT(0 < cCases); // if there were no cases, we wouldn't be called
+   const size_t cInstances = pOriginDataSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   const size_t cBytesData = sizeof(size_t) * cCases;
+   const size_t cBytesData = sizeof(size_t) * cInstances;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
    if(nullptr == aCountOccurrences) {
       LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
 
-   for(size_t iCase = 0; iCase < cCases; ++iCase) {
-      aCountOccurrences[iCase] = 1;
+   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+      aCountOccurrences[iInstance] = 1;
    }
 
    SamplingWithReplacement * pRet = new (std::nothrow) SamplingWithReplacement(pOriginDataSet, aCountOccurrences);
@@ -119,7 +119,7 @@ void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, Sampl
    LOG(TraceLevelInfo, "Exited SamplingWithReplacement::FreeSamplingSets");
 }
 
-SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetAttributeCombination * const pOriginDataSet, const size_t cSamplingSets) {
+SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet, const size_t cSamplingSets) {
    LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);

@@ -11,15 +11,39 @@ module_logger = logging.getLogger(__name__)
 BLACKBOX_EXTENSION_KEY = "interpret_ext_blackbox"
 
 
+# TODO: More checks for blackbox validation, specifically on spec for explainer/explanation when instantiated.
 def _is_valid_blackbox_explainer(proposed_blackbox_explainer):
-    for explanation_type in ["local", "global", "perf", "data"]:
-        if hasattr(proposed_blackbox_explainer, "explain_" + explanation_type):
-            return True
-    return False
+    try:
+        explainer_type = proposed_blackbox_explainer.explainer_type
+        available_explanations = proposed_blackbox_explainer.available_explanations
+
+        if explainer_type != "blackbox":
+            module_logger.warning("Proposed explainer is not a blackbox.")
+            return False
+
+        for available_explanation in available_explanations:
+            has_explain_method = hasattr(
+                proposed_blackbox_explainer, "explain_" + available_explanation
+            )
+            if not has_explain_method:
+                module_logger.warning(
+                    "Proposed explainer has available explanation {} but has no respective method.".format(
+                        available_explanation
+                    )
+                )
+                return False
+
+        return True
+
+    except Exception as e:
+        module_logger.warning("Validate function threw exception {}".format(e))
+        return False
 
 
 # How to get the current module
 # https://stackoverflow.com/questions/1676835
 current_module = sys.modules[__name__]
 
-load_class_extensions(current_module, BLACKBOX_EXTENSION_KEY, _is_valid_blackbox_explainer)
+load_class_extensions(
+    current_module, BLACKBOX_EXTENSION_KEY, _is_valid_blackbox_explainer
+)

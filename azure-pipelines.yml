@@ -173,9 +173,9 @@ jobs:
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
-      python -m pip install numpy scipy pyscaffold
+      python -m pip install numpy scipy
     workingDirectory: python
-    displayName: 'Install numpy/scipy/pyscaffold first for mis-specified pip packages.'
+    displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
       mkdir -p ~/.matplotlib
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
@@ -189,7 +189,7 @@ jobs:
     displayName: 'Install requirements'
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
-      python -m pytest -vv --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+      python -m pytest -vv --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Run pytest (Windows)'
