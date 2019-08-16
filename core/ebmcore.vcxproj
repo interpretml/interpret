@@ -283,27 +283,27 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="inc\ebmcore.h" />
-    <ClInclude Include="AttributeInternal.h" />
-    <ClInclude Include="AttributeCombinationInternal.h" />
-    <ClInclude Include="BinnedBucket.h" />
+    <ClInclude Include="FeatureCore.h" />
+    <ClInclude Include="FeatureCombinationCore.h" />
+    <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="CachedThreadResources.h" />
-    <ClInclude Include="DataSetByAttribute.h" />
-    <ClInclude Include="DataSetByAttributeCombination.h" />
+    <ClInclude Include="DataSetByFeature.h" />
+    <ClInclude Include="DataSetByFeatureCombination.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStatistics.h" />
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="MultiDimensionalTraining.h" />
+    <ClInclude Include="DimensionMultiple.h" />
     <ClInclude Include="PrecompiledHeader.h" />
-    <ClInclude Include="PredictionStatistics.h" />
+    <ClInclude Include="HistogramBucketVectorEntry.h" />
     <ClInclude Include="RandomStream.h" />
     <ClInclude Include="SamplingWithReplacement.h" />
-    <ClInclude Include="SegmentedRegion.h" />
-    <ClInclude Include="SingleDimensionalTraining.h" />
+    <ClInclude Include="SegmentedTensor.h" />
+    <ClInclude Include="DimensionSingle.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DataSetByAttribute.cpp" />
-    <ClCompile Include="DataSetByAttributeCombination.cpp" />
+    <ClCompile Include="DataSetByFeature.cpp" />
+    <ClCompile Include="DataSetByFeatureCombination.cpp" />
     <ClCompile Include="DllMainCore.cpp" />
     <ClCompile Include="InteractionDetection.cpp" />
     <ClCompile Include="Logging.cpp" />
@@ -315,7 +315,7 @@ EXIT /B 0
     </ClCompile>
     <ClCompile Include="SamplingWithReplacement.cpp" />
     <ClCompile Include="Training.cpp" />
-    <ClCompile Include="WrapFunc.cpp">
+    <ClCompile Include="wrap_func.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -326,7 +326,7 @@ EXIT /B 0
     <None Include="ebmcore.def" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="EbmCoreExports.txt" />
+    <Text Include="ebmcore_exports.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

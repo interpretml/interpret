@@ -99,26 +99,29 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         schema=None,
-        cont_n_bins=255,
+        max_n_bins=255,
         missing_constant=0,
         unknown_constant=0,
         feature_names=None,
+        binning_strategy="uniform",
     ):
         """ Initializes EBM preprocessor.
 
         Args:
             schema: A dictionary that encapsulates column information,
                     such as type and domain.
-            cont_n_bins: Max number of bins to process numeric features.
+            max_n_bins: Max number of bins to process numeric features.
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
+            binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform". 
         """
         self.schema = schema
-        self.cont_n_bins = cont_n_bins
+        self.max_n_bins = max_n_bins
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
         self.feature_names = feature_names
+        self.binning_strategy = binning_strategy
 
     def fit(self, X):
         """ Fits transformer to provided instances.
@@ -164,11 +167,16 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
 
                 uniq_vals = set(col_data[~np.isnan(col_data)])
-                if len(uniq_vals) < self.cont_n_bins:
+                if len(uniq_vals) < self.max_n_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    bins = self.cont_n_bins
-
+                    if self.binning_strategy == 'uniform':
+                        bins = self.max_n_bins
+                    elif self.binning_strategy == 'quantile':
+                        bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.max_n_bins + 1)))
+                    else: 
+                        raise ValueError("Unknown binning_strategy: '{}'.".format(self.binning_strategy))
+                
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
@@ -698,6 +706,8 @@ class BaseEBM(BaseEstimator):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        binning_strategy="uniform",
     ):
 
         # Arguments for explainer
@@ -730,6 +740,9 @@ class BaseEBM(BaseEstimator):
         self.n_jobs = n_jobs
         self.random_state = random_state
 
+        # Arguments for preprocessor
+        self.binning_strategy = binning_strategy
+
     def fit(self, X, y):
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types
@@ -742,7 +755,7 @@ class BaseEBM(BaseEstimator):
                 X, feature_names=self.feature_names, feature_types=self.feature_types
             )
 
-        self.preprocessor_ = EBMPreprocessor(schema=self.schema_)
+        self.preprocessor_ = EBMPreprocessor(schema=self.schema_, binning_strategy=self.binning_strategy)
         self.preprocessor_.fit(X)
 
         if is_classifier(self):
@@ -1170,6 +1183,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        binning_strategy="uniform",
     ):
 
         super(ExplainableBoostingClassifier, self).__init__(
@@ -1197,6 +1212,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
+            # Preprocessor
+            binning_strategy=binning_strategy,
         )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
@@ -1246,6 +1263,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Overall
         n_jobs=-2,
         random_state=42,
+        # Preprocessor
+        binning_strategy="uniform",
     ):
 
         super(ExplainableBoostingRegressor, self).__init__(
@@ -1273,6 +1292,8 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
+            # Preprocessor
+            binning_strategy=binning_strategy,
         )
 
     def predict(self, X):

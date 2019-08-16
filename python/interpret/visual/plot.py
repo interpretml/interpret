@@ -54,6 +54,7 @@ def plot_performance_curve(
     main_fig = go.Figure(data=data, layout=layout)
     title += "<br>" + auc_str
 
+    # TODO: Remove this if threshold lines are never used.
     # # Add treshold line
     # figure = _plot_with_line(data_dict, main_fig,
     #                          title=title, xtitle=xtitle, ytitle=ytitle,
@@ -167,15 +168,16 @@ def _pretty_number(x, rounding=2):
     return round(x, rounding)
 
 
-def _plot_with_line(
-    data_dict, main_fig, title="", xtitle="", ytitle="", share_xaxis=False, line_name=""
-):
-
-    secondary_fig = plot_line(
-        data_dict["line"], title=title, xtitle=xtitle, ytitle=ytitle, name=line_name
-    )
-    figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
-    return figure
+# TODO: Remove this completely once performance graphs are hardened.
+# def _plot_with_line(
+#     data_dict, main_fig, title="", xtitle="", ytitle="", share_xaxis=False, line_name=""
+# ):
+#
+#     secondary_fig = plot_line(
+#         data_dict["line"], title=title, xtitle=xtitle, ytitle=ytitle, name=line_name
+#     )
+#     figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
+#     return figure
 
 
 def plot_density(

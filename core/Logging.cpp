@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 #include "ebmcore.h" // FractionalDataType
-#include "EbmInternal.h" // AttributeTypeCore
+#include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h"
 
 extern const char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";

@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.13] - 2019-08-14
+### Added
+- EBM has new parameter 'binning_strategy'. Can now support quantile based binning.
+- EBM now gracefully handles many edge cases around data.
+- Selenium support added for visual smoke tests.
+### Fixed
+- Method debug_mode now works in wider environments including WSL.
+- Linear models in last version returned the same graphs no matter the selection. Fixed.
+### Changed
+- Testing requirements now fully separate from default user install.
+- Internal EBM class has many renames associated with native codebase. Attribute has been changed to Feature.
+- Native codebase has many renames. Diff commits from v0.1.12 to v0.1.13 for more details.
+- Dependency gevent lightened to take 1.3.6 or greater. This affects cloud/older Python environments.
+- Installation for interpret package should now be 'pip install -U interpret'.
+- Removal of skope-rules as a required dependency. User now has to install it manually.
+- EBM parameter 'cont_n_bins' renamed to 'max_n_bins'.
+### Experimental (WIP)
+- Extensions validation method is hardened to ensure blackbox specs are closely met.
+- Explanation methods data and visual, require key of form ('mli', key), to access mli interop.
+
 ## [v0.1.12] - 2019-08-09
 ### Fixed
 - Fixed EBM bug where 2 features with 1 state are included in the dataset.
@@ -146,6 +166,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.13]: https://github.com/microsoft/interpret/releases/tag/v0.1.13
 [v0.1.12]: https://github.com/microsoft/interpret/releases/tag/v0.1.12
 [v0.1.11]: https://github.com/microsoft/interpret/releases/tag/v0.1.11
 [v0.1.10]: https://github.com/microsoft/interpret/releases/tag/v0.1.10

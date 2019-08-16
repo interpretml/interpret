@@ -12,16 +12,16 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // TML_INLINE
+#include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
-// we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedRegions right now for different types
+// we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedTensors right now for different types
 // but they could all be shared into one class that get morphed.  We're currently getting some type safety that we wouldn't though otherwise, so hold off on this change until we can performance check
 // I think we'll find that using size_t as TDivisions is as performant or better than using anything else, so it may be a moot point, in which case leave it as hard coded types and just make all TDivisions size_t, even for mains
 // for pairs and triplicates, we already know that the dimensionality aspect requires us to have common division types since we don't want char/short SegmentedRegion classes and all the combinatorial options that would allow
 template<typename TDivisions, typename TValues>
-class SegmentedRegionCore final {
+class SegmentedTensor final {
    struct DimensionInfoStack {
       const TDivisions * pDivision1;
       const TDivisions * pDivision2;
@@ -54,12 +54,12 @@ public:
    size_t m_cDimensions;
    TValues * m_aValues;
    bool m_bExpanded;
-   // TODO : I lean towards leaving this alone since pointers to SegmentedRegions instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
+   // TODO : I lean towards leaving this alone since pointers to SegmentedTensors instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
    DimensionInfo m_aDimensions[1];
 
-   TML_INLINE static SegmentedRegionCore * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
+   EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
-      EBM_ASSERT(1 <= cVectorLength); // having 0 states makes no sense, and having 1 state is useless
+      EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
       if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
          LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
@@ -73,8 +73,8 @@ public:
       const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
 
       // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
-      const size_t cBytesSegmentedRegion = sizeof(SegmentedRegionCore) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-      SegmentedRegionCore * const pSegmentedRegion = static_cast<SegmentedRegionCore *>(malloc(cBytesSegmentedRegion));
+      const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
+      SegmentedTensor * const pSegmentedRegion = static_cast<SegmentedTensor *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
          LOG(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
@@ -116,7 +116,7 @@ public:
       return pSegmentedRegion;
    }
 
-   TML_INLINE static void Free(SegmentedRegionCore * const pSegmentedRegion) {
+   EBM_INLINE static void Free(SegmentedTensor * const pSegmentedRegion) {
       if(UNLIKELY(nullptr != pSegmentedRegion)) {
          free(pSegmentedRegion->m_aValues);
          for(size_t iDimension = 0; iDimension < pSegmentedRegion->m_cDimensionsMax; ++iDimension) {
@@ -126,21 +126,21 @@ public:
       }
    }
 
-   TML_INLINE void SetCountDimensions(const size_t cDimensions) {
+   EBM_INLINE void SetCountDimensions(const size_t cDimensions) {
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
 
-   TML_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
+   EBM_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return &m_aDimensions[iDimension].aDivisions[0];
    }
 
-   TML_INLINE TValues * GetValuePointer() {
+   EBM_INLINE TValues * GetValuePointer() {
       return &m_aValues[0];
    }
 
-   TML_INLINE void Reset() {
+   EBM_INLINE void Reset() {
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          m_aDimensions[iDimension].cDivisions = 0;
       }
@@ -150,7 +150,7 @@ public:
       m_bExpanded = false;
    }
 
-   TML_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
+   EBM_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
       EBM_ASSERT(iDimension < m_cDimensions);
       DimensionInfo * const pDimension = &m_aDimensions[iDimension];
       EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -183,7 +183,7 @@ public:
       return false;
    }
 
-   TML_INLINE bool EnsureValueCapacity(const size_t cValues) {
+   EBM_INLINE bool EnsureValueCapacity(const size_t cValues) {
       if(UNLIKELY(m_cValueCapacity < cValues)) {
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -212,7 +212,7 @@ public:
       return false;
    }
 
-   TML_INLINE bool Copy(const SegmentedRegionCore & rhs) {
+   EBM_INLINE bool Copy(const SegmentedTensor & rhs) {
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
       size_t cValues = m_cVectorLength;
@@ -239,7 +239,7 @@ public:
    }
 
 #ifndef NDEBUG
-   TML_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+   EBM_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
       if(0 == m_cDimensions) {
          return &m_aValues[0]; // there are no dimensions, and only 1 value
       }
@@ -304,7 +304,7 @@ public:
    }
 #endif // NDEBUG
 
-   TML_INLINE void Multiply(const TValues v) {
+   EBM_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          EBM_ASSERT(!IsMultiplyError(cValues, m_aDimensions[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
@@ -352,13 +352,13 @@ public:
       do {
          const size_t cDivisions1 = pDimensionFirst1->cDivisions;
 
-         EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
          cValues1 *= cDivisions1 + 1;
          const TDivisions * const p1End = &pDimensionFirst1->aDivisions[cDivisions1];
 
          pDimensionInfoStackFirst->pDivision1 = p1End - 1;
          const size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cDivisionsPlusOne)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cDivisionsPlusOne)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
          cNewValues *= cDivisionsPlusOne;
          const size_t maxDivision = cDivisionsPlusOne - 2;
 
@@ -404,7 +404,7 @@ public:
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedRegions
+         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValuesEnd == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -484,7 +484,7 @@ public:
       return false;
    }
 
-   TML_INLINE void AddExpanded(const TValues * const aFromValues) {
+   EBM_INLINE void AddExpanded(const TValues * const aFromValues) {
       EBM_ASSERT(m_bExpanded);
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -503,7 +503,7 @@ public:
    }
 
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
-   bool Add(const SegmentedRegionCore & rhs) {
+   bool Add(const SegmentedTensor & rhs) {
       DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
@@ -583,7 +583,7 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->cNewDivisions = cNewSingleDimensionDivisions;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cStates in TmlTrainingState->Initialize when we unpack attributeCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;
@@ -629,7 +629,7 @@ public:
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedRegions
+         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValuesEnd == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -725,7 +725,7 @@ public:
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedRegions have zero divisions
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedTensors have zero divisions
             EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur);
             EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur);
             EBM_ASSERT(p1Cur <= pTopCur);
@@ -764,7 +764,7 @@ public:
    }
 
 #ifndef NDEBUG
-   bool IsEqual(const SegmentedRegionCore & rhs) const {
+   bool IsEqual(const SegmentedTensor & rhs) const {
       if(m_cDimensions != rhs.m_cDimensions) {
          return false;
       }
@@ -815,6 +815,6 @@ public:
    static_assert(std::is_pod<TValues>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
 // SegmentedRegion must be a POD, which it will be if both our D and V types are PODs and SegmentedRegion<char, char> is a POD
-static_assert(std::is_pod<SegmentedRegionCore<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(std::is_pod<SegmentedTensor<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_REGION_H
