@@ -636,26 +636,17 @@ The explanations available are split into tabs, each covering an aspect of the p
             if is_shared is None:
                 return None
 
-            if value is None:
+            if value is None or len(value) == 0:
                 return None
             return gen_share_table_container(value, explanation_type)
 
         return output_callback
 
-    def register_update_shared_to_instance_indices(explanation_type):
-        def output_callback(value):
-            return value
-
-        return output_callback
-
     def register_update_idx_cb():
         def output_callback(data, derived_virtual_selected_row_ids):
-            output = None
             if derived_virtual_selected_row_ids is None:
                 output = None
                 return output
-            if data is None:
-                output = derived_virtual_selected_row_ids
             output = [data[i]["id"] for i in derived_virtual_selected_row_ids]
             return output
 
@@ -672,7 +663,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_update_plots_cb(pane_idx):
         def output_callback(model_idx, instance_idx):
-            if pane_idx >= len(model_idx):
+            if pane_idx >= len(model_idx):  # pragma: no cover
+                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
                 return None
             log.debug(
                 "Updating plots: {0}|{1}|{2}".format(pane_idx, model_idx, instance_idx)
@@ -683,7 +675,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_update_overall_plot_cb(pane_idx):
         def output_callback(model_idx, empty):
-            if pane_idx >= len(model_idx):
+            if pane_idx >= len(model_idx):  # pragma: no cover
+                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
                 return None
             log.debug("Updating overall plots: {0}".format(model_idx))
             return gen_overall_plot_container(model_idx[pane_idx])
@@ -756,9 +749,6 @@ The explanations available are split into tabs, each covering an aspect of the p
             )(register_update_idx_cb())
 
     def gen_share_table_container(model_idxs, explanation_type):
-        if len(model_idxs) == 0:
-            return None
-
         log.debug(
             "Generating shared table container: {0}|{1}".format(
                 model_idxs, explanation_type
@@ -813,9 +803,6 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-        if model_idx is None:
-            return None
-
         log.debug("Generating overall plots: {0}".format(model_idx))
 
         ctx = app.ctx

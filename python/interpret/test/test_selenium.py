@@ -144,6 +144,14 @@ def test_all_explainers_selenium(all_explanations, driver):
         # Expect specific graph
         wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
 
+    def check_close_specific_graph():
+        # Click on close
+        close_el = driver.find_element_by_class_name("Select-clear")
+        close_el.click()
+
+        # Expect placeholder for select
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "Select-placeholder")))
+
     # Run mini app checks
     wait = WebDriverWait(driver, TIMEOUT)
     for explanation in all_explanations:
@@ -155,6 +163,7 @@ def test_all_explainers_selenium(all_explanations, driver):
         if explanation.selector is not None:
             check_mini_specific_graph(0)
             check_mini_specific_graph(1)
+        check_close_specific_graph()
 
     def goto_full_tab(explanation_type):
         tabs_el = driver.find_element_by_id("tabs")
