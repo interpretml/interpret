@@ -130,7 +130,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
     def check_mini_overall_graph():
         # Expect overall graph
-        wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
+        wait.until(EC.presence_of_element_located((By.ID, "overall-graph--1")))
 
     def check_mini_specific_graph(index=0):
         # Click on specific graph
@@ -209,7 +209,7 @@ def test_all_explainers_selenium(all_explanations, driver):
         for i in range(len(explanations)):
             wait.until(
                 EC.presence_of_element_located(
-                    (By.ID, "example-overall-graph-{}".format(i))
+                    (By.ID, "overall-graph-{}".format(i))
                 )
             )
 

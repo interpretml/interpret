@@ -227,7 +227,7 @@ def gen_overall_plot(exp, model_idx):
                     filter_action="naive",
                     sort_action="naive",
                     editable=False,
-                    id="example-overall-graph-{0}".format(model_idx),
+                    id="overall-graph-{0}".format(model_idx),
                 )
             ]
         )
@@ -235,7 +235,7 @@ def gen_overall_plot(exp, model_idx):
         output_graph = html.Div(
             [
                 html.Iframe(
-                    id="example-overall-graph-{0}".format(model_idx),
+                    id="overall-graph-{0}".format(model_idx),
                     sandbox="",
                     srcDoc=figure,
                     style={"border": "0", "width": "100%", "height": "390px"},
@@ -244,13 +244,13 @@ def gen_overall_plot(exp, model_idx):
         )
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
-            id="example-overall-graph-{0}".format(model_idx),
+            id="overall-graph-{0}".format(model_idx),
             figure=figure,
             config={"displayModeBar": "hover"},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = "example-overall-graph-{0}".format(model_idx)
+        output_graph.id = "overall-graph-{0}".format(model_idx)
     else:  # pragma: no cover
         _type = type(figure)
         log.warning("Visualization type not supported: {0}".format(_type))
