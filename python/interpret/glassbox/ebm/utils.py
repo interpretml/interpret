@@ -52,6 +52,10 @@ class EBMUtils:
 
             # Get the current column(s) to process
             attr_idxs = attribute_set["attributes"]
+
+            # TODO: Double check that this works
+            attr_idxs = list(reversed(attr_idxs))
+
             sliced_X = X[:, attr_idxs]
             scores = tensor[tuple(sliced_X.T)]
 

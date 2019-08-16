@@ -611,6 +611,9 @@ class NativeEBM:
             attr_idxs.append(attr_idx)
             dimensions.append(n_bins)
 
+        # TODO: Remove once we check that this works
+        dimensions = list(reversed(dimensions))
+
         # Array returned for multiclass is one higher dimension
         if self.model_type == "classification" and self.num_classification_states > 2:
             dimensions.append(self.num_classification_states)
@@ -632,7 +635,7 @@ class NativeEBM:
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
-            array_p, shape, dtype=np.double, order="F", own_data=False
+            array_p, shape, dtype=np.double, order="C", own_data=False
         )
         return array.copy()
 
@@ -652,8 +655,11 @@ class NativeEBM:
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(
-            array_p, shape, dtype=np.double, order="F", own_data=False
+            array_p, shape, dtype=np.double, order="C", own_data=False
         )
+
+        # if self.model_type == "classification" and self.num_classification_states > 2:
+        #     array = array.T.reshape(array.shape)
         return array.copy()
 
 

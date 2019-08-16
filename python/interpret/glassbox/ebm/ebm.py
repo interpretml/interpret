@@ -348,13 +348,22 @@ class BaseCoreEBM(BaseEstimator):
             self.n_classes_ = -1
 
         # Split data into train/val
-        X_train, X_val, y_train, y_val = train_test_split(
-            X,
-            y,
-            test_size=self.holdout_split,
-            random_state=self.random_state,
-            stratify=y if is_classifier(self) else None,
-        )
+
+        if self.holdout_split > 0:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X,
+                y,
+                test_size=self.holdout_split,
+                random_state=self.random_state,
+                stratify=y if is_classifier(self) else None,
+            )
+        elif self.holdout_split == 0:
+            X_train = X
+            y_train = y
+            X_val = np.empty(shape=(0,0)).astype(np.int64)
+            y_val = np.empty(shape=(0,)).astype(np.int64)
+        else:  # pragma: no cover
+            raise Exception("Holdout_split must be between 0 and 1.")
         # Define attributes
         self.attributes_ = EBMUtils.gen_attributes(self.col_types, self.col_n_bins)
         # Build EBM allocation code
@@ -739,8 +748,8 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
-            if self.n_classes_ > 2:
-                raise RuntimeError("Multiclass currently not supported.")
+            # if self.n_classes_ > 2:
+            #     raise RuntimeError("Multiclass currently not supported.")
 
             proto_estimator = CoreEBMClassifier(
                 # Data
