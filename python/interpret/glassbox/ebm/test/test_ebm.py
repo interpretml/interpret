@@ -34,6 +34,7 @@ def test_ebm_synthetic_multiclass():
     y = data["full"]["y"]
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, n_estimators=2)
+    clf.fit(X, y)
 
     prob_scores = clf.predict_proba(X)
     
@@ -53,7 +54,7 @@ def test_ebm_multiclass():
 
 
     clf = ExplainableBoostingClassifier()
-    clf.train(X_train, y_train)
+    clf.fit(X_train, y_train)
 
     assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
