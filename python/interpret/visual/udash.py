@@ -4,7 +4,7 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
-import dash_table_experiments as dt
+import dash_table as dt
 
 from dash.dependencies import Input, Output
 import dash.development.base_component as dash_base
@@ -26,6 +26,58 @@ class UDash(dash.Dash):
         self.ctx_item = kwargs.pop('ctx_item', None)
         self.options = kwargs.pop('options', None)
         super().__init__(*args, **kwargs)
+
+
+DATA_TABLE_DEFAULTS = dict(
+    fixed_rows={'headers': True, 'data': 0},
+    filter_action="native",
+    sort_action="native",
+    virtualization=True,
+    editable=False,
+    style_table={
+        'height': '250px',
+        'overflowX': 'auto',
+        'overflowY': 'auto',
+    },
+    css=[
+            {
+                'selector': '.dash-cell div.dash-cell-value',
+                'rule': 'display: inline; white-space: inherit; overflow: inherit;'
+            },
+            {
+                'selector': '.dash-spreadsheet-container .sort',
+                'rule': 'float: left;'
+            },
+    ],
+    style_cell={
+        'textAlign': 'right',
+        'paddingTop': '5px',
+        'paddingBottom': '5px',
+        'paddingLeft': '5px',
+        'paddingRight': '7.5px',
+        'fontFamily': '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif',
+        'whiteSpace': 'no-wrap',
+        'overflow': 'hidden',
+        'maxWidth': 0,
+    },
+    style_data=[
+        {
+            'backgroundColor': 'white',
+        }
+    ],
+    style_data_conditional=[
+        {
+            'if': {'row_index': 'odd'},
+            'backgroundColor': '#f9f9f9',
+        }
+    ],
+    style_header={
+        'fontWeight': 'bold',
+        # 'fontSize': '1.25em',
+        'backgroundColor': '#eaeaea',
+        # 'color': 'white'
+    },
+)
 
 
 # Dash app for a single explanation only
@@ -117,7 +169,8 @@ def generate_app_mini(
         [
             html.Div([selector_component, viz_component]),
             # NOTE: Workaround for tables not rendering
-            html.Div(dt.DataTable(rows=[{}]), style={"display": "none"}),
+            # TODO: Check if this is needed with the new tables.
+            html.Div(dt.DataTable(data=[{}]), style={"display": "none"}),
         ],
         className="mini-app",
     )
@@ -165,15 +218,15 @@ def gen_overall_plot(exp, model_idx):
     # NOTE: We also have support for data frames, but we don't advertise it.
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
+        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
         output_graph = html.Div(
             [
                 dt.DataTable(
-                    rows=records,
-                    columns=figure.columns,
-                    filterable=True,
-                    sortable=True,
+                    data=records,
+                    columns=columns,
+                    filter_action="naive",
+                    sort_action="naive",
                     editable=False,
-                    max_rows_in_viewport=10,
                     id="example-overall-graph-{0}".format(model_idx),
                 )
             ]
@@ -221,14 +274,12 @@ def gen_plot(exp, picker, model_idx, counter):
     figure = exp.visualize(key=picker)
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
+        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
         output_graph = dt.DataTable(
-            rows=records,
-            columns=figure.columns,
-            filterable=True,
-            sortable=True,
-            editable=False,
-            max_rows_in_viewport=10,
+            data=records,
+            columns=columns,
             id="graph-{0}-{1}".format(model_idx, counter),
+            **DATA_TABLE_DEFAULTS,
         )
     elif isinstance(figure, str):
         output_graph = html.Div(
@@ -333,10 +384,11 @@ def generate_app_full(  # noqa: C901
                     ],
                     vertical=False,
                     mobile_breakpoint=480,
+                    value="overview",
                 )
             ),
             # NOTE: Workaround for tables not rendering
-            html.Div(dt.DataTable(rows=[{}]), style={"display": "none"}),
+            html.Div(dt.DataTable(data=[{}]), style={"display": "none"}),
         ],
         className="app",
     )
@@ -375,16 +427,12 @@ def generate_app_full(  # noqa: C901
         # Define components
         ctx = app.ctx
         records = get_model_records(ctx)
+        columns = [{"name": "Name", "id": "Name"}, {"name": "Type", "id": "Type"}]
         table = dt.DataTable(
-            rows=records,
-            columns=["Name", "Type"],
+            data=records,
+            columns=columns,
             row_selectable=False,
-            filterable=False,
-            sortable=True,
-            selected_row_indices=[],
-            editable=False,
-            max_rows_in_viewport=10,
-            id="overview-table-dt",
+            **DATA_TABLE_DEFAULTS,
         )
         markdown = """
 Welcome to Interpret ML's dashboard. Here you will find en-masse visualizations for your machine learning pipeline.
@@ -521,16 +569,13 @@ The explanations available are split into tabs, each covering an aspect of the p
                     if is_shared is not None:
                         component = html.Div()
                     else:
+                        columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
                         instance_table = dt.DataTable(
-                            rows=records,
-                            columns=df.columns,
-                            row_selectable=True,
-                            filterable=True,
-                            sortable=True,
-                            # selected_row_indices=[],
-                            editable=False,
-                            max_rows_in_viewport=6,
+                            data=records,
+                            columns=columns,
                             id="{0}-instance-table-{1}".format(explanation_type, s_i),
+                            row_selectable="multi",
+                            **DATA_TABLE_DEFAULTS,
                         )
                         component = html.Div(
                             [
@@ -604,21 +649,20 @@ The explanations available are split into tabs, each covering an aspect of the p
         return output_callback
 
     def register_update_idx_cb():
-        def output_callback(rows, selected_row_indices):
+        def output_callback(data, derived_virtual_selected_row_ids):
             output = None
-            if selected_row_indices is None:
+            if derived_virtual_selected_row_ids is None:
                 output = None
                 return output
-            if rows is None:
-                output = selected_row_indices
-            output = [rows[i]["SelectID"] for i in selected_row_indices]
+            if data is None:
+                output = derived_virtual_selected_row_ids
+            output = [data[i]["id"] for i in derived_virtual_selected_row_ids]
             return output
 
         return output_callback
 
     def register_update_instance_idx_cb():
         def output_callback(is_shared, shared_indices, specific_indices):
-
             if is_shared is not None:
                 return shared_indices
             else:
@@ -686,8 +730,8 @@ The explanations available are split into tabs, each covering an aspect of the p
         app.callback(
             Output("{0}-shared-idx".format(tab), "children"),
             [
-                Input("{0}-shared-table".format(tab), "rows"),
-                Input("{0}-shared-table".format(tab), "selected_row_indices"),
+                Input("{0}-shared-table".format(tab), "data"),
+                Input("{0}-shared-table".format(tab), "derived_virtual_selected_row_ids"),
             ],
         )(register_update_idx_cb())
         for i in range(MAX_NUM_PANES):
@@ -703,10 +747,10 @@ The explanations available are split into tabs, each covering an aspect of the p
             app.callback(
                 Output("{0}-specific-idx-{1}".format(tab, s_i), "children"),
                 [
-                    Input("{0}-instance-table-{1}".format(tab, s_i), "rows"),
+                    Input("{0}-instance-table-{1}".format(tab, s_i), "data"),
                     Input(
                         "{0}-instance-table-{1}".format(tab, s_i),
-                        "selected_row_indices",
+                        "derived_virtual_selected_row_ids",
                     ),
                 ],
             )(register_update_idx_cb())
@@ -727,16 +771,13 @@ The explanations available are split into tabs, each covering an aspect of the p
         df = ctx[model_idx][1]
         if df is not None:
             records = df.to_dict("records")
+            columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
             instance_table = dt.DataTable(
-                rows=records,
-                columns=df.columns,
-                row_selectable=True,
-                filterable=True,
-                sortable=True,
-                # selected_row_indices=[],
-                editable=False,
-                max_rows_in_viewport=6,
+                data=records,
+                columns=columns,
                 id="{0}-shared-table".format(explanation_type),
+                row_selectable="multi",
+                **DATA_TABLE_DEFAULTS,
             )
             component = html.Div(
                 [
@@ -765,7 +806,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         output = []
         counter = 0
-        for picker in picker_idx:
+        for picker in reversed(picker_idx):
             output_div = gen_plot(exp, picker, model_idx, counter)
             counter += 1
             output.append(output_div)
@@ -834,7 +875,7 @@ def _expand_ctx_item(item):
     if selector is not None:
         df = selector.copy()
         df.reset_index(inplace=True, drop=True)
-        df["SelectID"] = df.index
+        df["id"] = df.index
         df *= 1
     else:
         df = None
