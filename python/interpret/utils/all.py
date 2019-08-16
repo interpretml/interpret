@@ -68,14 +68,15 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
             record["# Unique"] = np.nan
             record["% Non-zero"] = np.nan
 
-        if importance_scores is None:
-            record["Importance"] = np.nan
-        else:
-            record["Importance"] = importance_scores[feat_idx]
+        # if importance_scores is None:
+        #     record["Importance"] = np.nan
+        # else:
+        #     record["Importance"] = importance_scores[feat_idx]
 
         records.append(record)
 
-    columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
+    # columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
+    columns = ["Name", "Type", "# Unique", "% Non-zero"]
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)

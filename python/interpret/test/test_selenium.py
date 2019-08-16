@@ -112,7 +112,7 @@ def all_explanations():
 
 
 @pytest.mark.selenium
-@pytest.mark.xfail(strict=False)
+# @pytest.mark.xfail(strict=False)
 def test_all_explainers_selenium(all_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -130,7 +130,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
     def check_mini_overall_graph():
         # Expect overall graph
-        wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
+        wait.until(EC.presence_of_element_located((By.ID, "overall-graph--1")))
 
     def check_mini_specific_graph(index=0):
         # Click on specific graph
@@ -144,6 +144,15 @@ def test_all_explainers_selenium(all_explanations, driver):
         # Expect specific graph
         wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
 
+    # TODO: Investigate why this doesn't work in DevOps environment.
+    # def check_close_specific_graph():
+    #     # Click on close
+    #     close_el = driver.find_element_by_class_name("Select-clear")
+    #     close_el.click()
+    #
+    #     # Expect placeholder for select
+    #     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "Select-placeholder")))
+
     # Run mini app checks
     wait = WebDriverWait(driver, TIMEOUT)
     for explanation in all_explanations:
@@ -155,6 +164,7 @@ def test_all_explainers_selenium(all_explanations, driver):
         if explanation.selector is not None:
             check_mini_specific_graph(0)
             check_mini_specific_graph(1)
+        # check_close_specific_graph()
 
     def goto_full_tab(explanation_type):
         tabs_el = driver.find_element_by_id("tabs")
@@ -209,7 +219,7 @@ def test_all_explainers_selenium(all_explanations, driver):
         for i in range(len(explanations)):
             wait.until(
                 EC.presence_of_element_located(
-                    (By.ID, "example-overall-graph-{}".format(i))
+                    (By.ID, "overall-graph-{}".format(i))
                 )
             )
 
@@ -227,8 +237,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
             # Click on records
             for i in range(num_records):
-                record_path = "//label[@for='checkbox{}']".format(i)
-                wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
+                record_path = "(//input[@type='checkbox'])[{}]".format(i + 1)
                 record_el = driver.find_element_by_xpath(record_path)
                 record_el.click()
         else:
@@ -246,10 +255,9 @@ def test_all_explainers_selenium(all_explanations, driver):
             # Click on records
             for explanation_idx in range(len(explanations)):
                 for record_idx in range(num_records):
-                    record_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(
-                        explanation_idx + 1, record_idx
+                    record_path = "(//div[@class='gr-col'][{}]//input[@type='checkbox'])[{}]".format(
+                        explanation_idx + 1, record_idx + 1
                     )
-                    wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
                     record_el = driver.find_element_by_xpath(record_path)
                     record_el.click()
 
