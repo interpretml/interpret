@@ -173,19 +173,20 @@ class TreeExplanation(ExplanationMixin):
 
         return new_nodes
 
-    def _weight_nodes_feature(self, nodes, feature_name):
-        nodes = deepcopy(nodes)
-
-        new_nodes = []
-        for node in nodes:
-            feature = node["data"]["feature"]
-            if feature == feature_name:
-                node["data"]["weight"] = 2
-            else:
-                node["data"]["weight"] = 1
-            new_nodes.append(node)
-
-        return new_nodes
+    # # TODO: Keep this here for now, might need this when DT is looked at again.
+    # def _weight_nodes_feature(self, nodes, feature_name):
+    #     nodes = deepcopy(nodes)
+    #
+    #     new_nodes = []
+    #     for node in nodes:
+    #         feature = node["data"]["feature"]
+    #         if feature == feature_name:
+    #             node["data"]["weight"] = 2
+    #         else:
+    #             node["data"]["weight"] = 1
+    #         new_nodes.append(node)
+    #
+    #     return new_nodes
 
 
 class BaseShallowDecisionTree:
