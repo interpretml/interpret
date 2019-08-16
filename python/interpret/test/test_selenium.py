@@ -112,7 +112,7 @@ def all_explanations():
 
 
 @pytest.mark.selenium
-@pytest.mark.xfail(strict=False)
+# @pytest.mark.xfail(strict=False)
 def test_all_explainers_selenium(all_explanations, driver):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -227,8 +227,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
             # Click on records
             for i in range(num_records):
-                record_path = "//label[@for='checkbox{}']".format(i)
-                wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
+                record_path = "(//input[@type='checkbox'])[{}]".format(i + 1)
                 record_el = driver.find_element_by_xpath(record_path)
                 record_el.click()
         else:
@@ -246,10 +245,9 @@ def test_all_explainers_selenium(all_explanations, driver):
             # Click on records
             for explanation_idx in range(len(explanations)):
                 for record_idx in range(num_records):
-                    record_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(
-                        explanation_idx + 1, record_idx
+                    record_path = "(//div[@class='gr-col'][{}]//input[@type='checkbox'])[{}]".format(
+                        explanation_idx + 1, record_idx + 1
                     )
-                    wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
                     record_el = driver.find_element_by_xpath(record_path)
                     record_el.click()
 
