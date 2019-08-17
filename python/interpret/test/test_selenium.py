@@ -32,14 +32,9 @@ def all_explanations():
             raise Exception("Not supported explainer type.")
 
         if "local" in explainer.available_explanations:
-            # With labels
             explanation = explainer.explain_local(
                 data["test"]["X"].head(), data["test"]["y"].head()
             )
-            explanations.append(explanation)
-
-            # Without labels
-            explanation = explainer.explain_local(data["test"]["X"].head())
             explanations.append(explanation)
         if "global" in explainer.available_explanations:
             explanation = explainer.explain_global()
@@ -65,8 +60,6 @@ def test_all_explainers_selenium(all_explanations, job_id):
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
     from selenium import webdriver
-
-    from ..glassbox.decisiontree import TreeExplanation
 
     # Select explanations to target based on job id
     explanations = [explanation for i, explanation in enumerate(all_explanations) if i % num_jobs == job_id]
@@ -111,9 +104,6 @@ def test_all_explainers_selenium(all_explanations, job_id):
     # Run mini app checks
     wait = WebDriverWait(driver, TIMEOUT)
     for explanation in explanations:
-#         # NOTE: Known bug with decision tree visualization.
-#         if isinstance(explanation, TreeExplanation):
-#             continue
         goto_mini_url(explanation)
         check_mini_overall_graph()
         if explanation.selector is not None:
@@ -228,9 +218,6 @@ def test_all_explainers_selenium(all_explanations, job_id):
     # Run full app checks
     for explanation in explanations:
         for share_tables in [True, False]:
-#             if isinstance(explanation, TreeExplanation):
-#                 continue
-
             explanations = duplicate_explanations(explanation, 2)
             goto_full_url(explanations, share_tables=share_tables)
             goto_full_tab(explanations[0].explanation_type)
