@@ -6,6 +6,9 @@ import dash_html_components as html
 import dash_core_components as dcc
 import dash_table as dt
 
+# NOTE: Even though this isn't used here, it has to be imported to work.
+import dash_cytoscape as cyto
+
 from dash.dependencies import Input, Output
 import dash.development.base_component as dash_base
 from pandas.core.generic import NDFrame
@@ -184,9 +187,11 @@ def generate_app_mini(
 
         explanation, selector = app.ctx_item
         if value == -1:
-            return gen_overall_plot(explanation, int(value))
+            output_div = gen_overall_plot(explanation, int(value))
         else:
-            return gen_plot(explanation, int(value), 0, 0)
+            output_div = gen_plot(explanation, int(value), 0, 0)
+
+        return output_div
 
     @server.errorhandler(Exception)
     def handle_error(e):  # pragma: no cover
