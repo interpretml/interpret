@@ -58,6 +58,7 @@ num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
 
 
 @pytest.mark.selenium
+@pytest.mark.xfail(strict=False)
 @pytest.mark.parametrize('job_id', list(range(num_jobs)))
 def test_all_explainers_selenium(all_explanations, job_id):
     from selenium.webdriver.support.ui import WebDriverWait
