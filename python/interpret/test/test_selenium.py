@@ -14,8 +14,6 @@ TIMEOUT = 60
 def driver():
     from selenium import webdriver
 
-    _driver = webdriver.Firefox()
-
     # Set up driver
     _driver = webdriver.Firefox()
     _driver.implicitly_wait(TIMEOUT)

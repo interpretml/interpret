@@ -7,6 +7,7 @@ import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat.v4 import new_code_cell
 import pytest
+import re
 
 
 def run_notebook(notebook_path):
@@ -23,6 +24,8 @@ def run_notebook(notebook_path):
         "from interpret import shutdown_show_server\nshutdown_show_server()"
     )
     nb.cells.append(shutdown_cell)
+    # In the second cell, enable sampling
+    nb.cells[1]["source"] = re.sub("# df = df.sample", "df = df.sample", nb.cells[1]["source"])
 
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 
@@ -36,17 +39,29 @@ def run_notebook(notebook_path):
     return nb, errors
 
 
-@pytest.mark.slow
-def test_example_notebooks():
+def extract_notebook_paths():
     script_path = os.path.dirname(os.path.abspath(__file__))
     notebooks_path = os.path.abspath(
         os.path.join(script_path, "..", "..", "..", "examples", "python", "notebooks")
     )
 
     # NOTE: This test runs only when you have the source repo.
+    paths = []
     if os.path.exists(notebooks_path):
         for entry in os.scandir(notebooks_path):
             if entry.is_file() and entry.path.endswith(".ipynb"):
-                nb, errors = run_notebook(entry.path)
+                paths.append(entry.path)
+    return paths
 
-                assert errors == []
+
+notebook_paths = extract_notebook_paths()
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize('notebook_path', notebook_paths)
+def test_example_notebooks(notebook_path):
+    def check_notebook(notebook_path):
+        nb, errors = run_notebook(notebook_path)
+        assert errors == []
+
+    check_notebook(notebook_path)
