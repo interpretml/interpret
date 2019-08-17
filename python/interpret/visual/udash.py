@@ -51,6 +51,11 @@ DATA_TABLE_DEFAULTS = dict(
                 'selector': '.dash-spreadsheet-container .sort',
                 'rule': 'float: left;'
             },
+            {
+                'selector': '.dash-select-cell input[type=checkbox]',
+                'rule': 'transform: scale(1.5);'
+
+            },
     ],
     style_cell={
         'textAlign': 'right',
