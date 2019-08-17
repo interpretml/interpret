@@ -70,8 +70,18 @@ def plot_performance_curve(
     figure["layout"]["yaxis1"].update(title=ytitle)
     return figure
 
+# def plot_multiclass_continuous_bar(data_dict, title=None):
+#     if data_dict.get("scores", None) is None:  # pragma: no cover
+#         return None
 
-def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
+#     x_vals = data_dict["names"].copy()
+#     y_vals = data_dict["scores"].copy()
+#     y_hi = data_dict.get("upper_bounds", None)
+#     y_lo = data_dict.get("lower_bounds", None)
+#     error_present = y_hi is not None
+
+
+def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None, xtitle="", ytitle=""):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
@@ -80,6 +90,10 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
     y_hi = data_dict.get("upper_bounds", None)
     y_lo = data_dict.get("lower_bounds", None)
     error_present = y_hi is not None
+
+    # Hacky overwrite for multiclass
+    if show_error == False:
+        error_present = False
 
     def extend_x_range(x):
         target = []
@@ -106,18 +120,29 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
     if error_present:
         fill = "tonexty"
 
-    main_line = go.Scatter(
-        x=new_x_vals,
-        y=new_y_vals,
-        name="Main",
-        mode="lines",
-        line=dict(color="rgb(31, 119, 180)", shape="hvh"),
-        fillcolor="rgba(68, 68, 68, 0.15)",
-        fill=fill,
-    )
-    data.append(main_line)
+    if multiclass:
+        for i in range(y_vals.shape[1]):
+            class_line = go.Scatter(
+                x=new_x_vals,
+                y=new_y_vals[:, i],
+                line=dict(shape="hvh"),
+                name="Class " + str(i),
+                mode="lines"
+            )
+            data.append(class_line)
+    else: 
+        main_line = go.Scatter(
+            x=new_x_vals,
+            y=new_y_vals,
+            name="Main",
+            mode="lines",
+            line=dict(color="rgb(31, 119, 180)", shape="hvh"),
+            fillcolor="rgba(68, 68, 68, 0.15)",
+            fill=fill,
+        )
+        data.append(main_line)
 
-    if error_present:
+    if error_present and not multiclass:
         upper_bound = go.Scatter(
             name="Upper Bound",
             x=new_x_vals,
@@ -140,7 +165,7 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
 
     layout = go.Layout(
         title=title,
-        showlegend=False,
+        showlegend=False if error_present else True,
         xaxis=dict(title=xtitle),
         yaxis=dict(title=ytitle),
     )

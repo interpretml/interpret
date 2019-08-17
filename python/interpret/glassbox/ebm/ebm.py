@@ -66,6 +66,7 @@ class EBMExplanation(FeatureValueExplanation):
             return None
 
         # Overall graph
+        # TODO: Fix for multiclass classification
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
@@ -84,7 +85,10 @@ class EBMExplanation(FeatureValueExplanation):
             and self.feature_types[key] == "continuous"
         ):
             title = self.feature_names[key]
-            figure = plot_continuous_bar(data_dict, title=title)
+            if isinstance(data_dict['scores'], np.ndarray) and data_dict['scores'].ndim == 2:
+                figure = plot_continuous_bar(data_dict, multiclass=True, show_error=False, title=title)
+            else:
+                figure = plot_continuous_bar(data_dict, title=title)
 
             return figure
 
@@ -1041,10 +1045,10 @@ class BaseEBM(BaseEstimator):
                 data_dict = {
                     "type": "univariate",
                     "names": bin_labels,
-                    "scores": list(model_graph),
+                    "scores": model_graph,  # TODO: Dropped list(model_graph) to make way for multiclass
                     "scores_range": bounds,
-                    "upper_bounds": list(model_graph + errors),
-                    "lower_bounds": list(model_graph - errors),
+                    "upper_bounds": model_graph + errors,
+                    "lower_bounds": model_graph - errors,
                     "density": {
                         "names": self.preprocessor_.get_hist_edges(
                             attribute_indexes[0]
