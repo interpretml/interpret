@@ -9,7 +9,7 @@ import os
 TIMEOUT = 60
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def all_explanations():
     all_explainers = get_all_explainers()
     data = synthetic_classification()

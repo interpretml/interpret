@@ -173,9 +173,10 @@ class TreeExplanation(ExplanationMixin):
 
         return new_nodes
 
+    # TODO: Consider removing later, potentially dead code.
     def _weight_nodes_feature(self, nodes, feature_name):
         nodes = deepcopy(nodes)
-
+    
         new_nodes = []
         for node in nodes:
             feature = node["data"]["feature"]
@@ -184,7 +185,7 @@ class TreeExplanation(ExplanationMixin):
             else:
                 node["data"]["weight"] = 1
             new_nodes.append(node)
-
+    
         return new_nodes
 
 
