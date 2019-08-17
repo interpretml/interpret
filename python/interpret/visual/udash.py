@@ -20,6 +20,14 @@ log = logging.getLogger(__name__)
 MAX_NUM_PANES = 5
 
 
+class UDash(dash.Dash):
+    def __init__(self, *args, **kwargs):
+        self.ctx = kwargs.pop('ctx', None)
+        self.ctx_item = kwargs.pop('ctx_item', None)
+        self.options = kwargs.pop('options', None)
+        super().__init__(*args, **kwargs)
+
+
 # Dash app for a single explanation only
 def generate_app_mini(
     ctx_item,
@@ -35,7 +43,7 @@ def generate_app_mini(
     log.info("Generating mini dash")
 
     # Initialize
-    app = dash.Dash(
+    app = UDash(
         __name__,
         url_base_pathname=url_base_pathname,
         requests_pathname_prefix=requests_pathname_prefix,
@@ -44,7 +52,7 @@ def generate_app_mini(
     app.scripts.config.serve_locally = True
     app.css.config.serve_locally = True
     app.config["suppress_callback_exceptions"] = True
-    app.config["ctx_item"] = ctx_item
+    app.ctx_item = ctx_item
     app.logger.handlers = []
     app.title = "InterpretML"
     server = app.server
@@ -121,7 +129,7 @@ def generate_app_mini(
         if value is None:
             return None
 
-        explanation, selector = app.config["ctx_item"]
+        explanation, selector = app.ctx_item
         if value == -1:
             return gen_overall_plot(explanation, int(value))
         else:
@@ -276,7 +284,7 @@ def generate_app_full(  # noqa: C901
     log.info("Generating full dash")
 
     # Initialize
-    app = dash.Dash(
+    app = UDash(
         __name__,
         url_base_pathname=url_base_pathname,
         requests_pathname_prefix=requests_pathname_prefix,
@@ -365,7 +373,7 @@ def generate_app_full(  # noqa: C901
         """
 
         # Define components
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         records = get_model_records(ctx)
         table = dt.DataTable(
             rows=records,
@@ -421,8 +429,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def gen_tab(explanation_type):
         log.debug("Generating tab: {0}".format(explanation_type))
-        ctx = app.config["ctx"]
-        options = app.config["options"]
+        ctx = app.ctx
+        options = app.options
         data_options = [
             {"label": ctx[i][0].name, "value": i}
             for i in range(len(ctx))
@@ -501,7 +509,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             if value is None:
                 return None
 
-            ctx = app.config["ctx"]
+            ctx = app.ctx
             components = []
 
             for i, model_idx in enumerate(value):
@@ -709,7 +717,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         # Since tables are shared (identical in content), we take the first.
         model_idx = model_idxs[0]
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         df = ctx[model_idx][1]
         if df is not None:
             records = df.to_dict("records")
@@ -746,7 +754,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         log.debug("Generating plots: {0}|{1}".format(model_idx, picker_idx))
 
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         exp = ctx[model_idx][0]
 
         output = []
@@ -763,7 +771,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         log.debug("Generating overall plots: {0}".format(model_idx))
 
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         exp = ctx[model_idx][0]
 
         output_div = gen_overall_plot(exp, model_idx)
@@ -885,6 +893,6 @@ def generate_app(
     new_options["share_tables"] = shared_frames
     log.debug("POST shared_tables: {0}".format(shared_frames))
 
-    app.config["ctx"] = new_ctx
-    app.config["options"] = new_options
+    app.ctx = new_ctx
+    app.options = new_options
     return app
