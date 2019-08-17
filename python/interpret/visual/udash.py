@@ -597,12 +597,6 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         return output_callback
 
-    def register_update_shared_to_instance_indices(explanation_type):
-        def output_callback(value):
-            return value
-
-        return output_callback
-
     def register_update_idx_cb():
         def output_callback(rows, selected_row_indices):
             output = None
@@ -712,7 +706,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             )(register_update_idx_cb())
 
     def gen_share_table_container(model_idxs, explanation_type):
-        if len(model_idxs) == 0:
+        if len(model_idxs) == 0:  # pragma: no cover
             return None
 
         log.debug(
@@ -772,7 +766,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-        if model_idx is None:
+        if model_idx is None:  # pragma: no cover
             return None
 
         log.debug("Generating overall plots: {0}".format(model_idx))

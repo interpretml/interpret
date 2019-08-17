@@ -57,7 +57,7 @@
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
 
-#define TML_INLINE inline __attribute__((always_inline))
+#define EBM_INLINE inline __attribute__((always_inline))
 
 // TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are not aliased
 // EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program (the memory wasn't reached previously)
@@ -73,7 +73,7 @@
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
-#define TML_INLINE __forceinline
+#define EBM_INLINE __forceinline
 
 #else // compiler type
 #error compiler not recognized
@@ -83,7 +83,7 @@ WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
-constexpr TML_INLINE bool IsNumberConvertable(const TFrom number) {
+constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    // TODO: this function won't work for some floats and doubles.  For example, if you had just a bit more than the maximum integer in a double, it might round down properly, but this function will say that it won't.
 
    // the general rules of conversion are as follows:
@@ -133,9 +133,9 @@ constexpr TML_INLINE bool IsNumberConvertable(const TFrom number) {
 
 WARNING_POP
 
-enum class AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
+enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetStatesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
 // 200 => 2.65%
 // 32  => 3.28%
@@ -143,9 +143,9 @@ enum class AttributeTypeCore { OrdinalCore = 0, NominalCore = 1};
 // 8   => 5.34%
 // 4   => 8.31%
 // TODO: increase this up to something like 16.  I have decreased it to 2 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
-// TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing countCompilerClassificationTargetStates from the main template of SegmentedRegion (using a template on just the Add function would be ok)
-constexpr ptrdiff_t k_cCompilerOptimizedTargetStatesMax = 3;
-static_assert(2 <= k_cCompilerOptimizedTargetStatesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class state then we would output model files with two values instead of our special case 1");
+// TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing compilerLearningTypeOrCountTargetClasses from the main template of SegmentedRegion (using a template on just the Add function would be ok)
+constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 3;
+static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
 
 // TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
@@ -155,61 +155,51 @@ typedef size_t StorageDataTypeCore;
 // we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
 typedef ptrdiff_t ActiveDataType;
 
-// TODO : rename cCompilerClassificationTargetStates -> compilerLearningTypeOrCountClassificationStates (see the testing program for how this would look)
-
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
-constexpr TML_INLINE bool IsRegression(const ptrdiff_t cCompilerClassificationTargetStates) {
-   return k_Regression == cCompilerClassificationTargetStates;
+constexpr EBM_INLINE bool IsRegression(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
+   return k_Regression == compilerLearningTypeOrCountTargetClasses;
 }
-constexpr TML_INLINE bool IsClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
-   return 0 <= cCompilerClassificationTargetStates;
+constexpr EBM_INLINE bool IsClassification(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
+   return 0 <= compilerLearningTypeOrCountTargetClasses;
 }
-constexpr TML_INLINE bool IsBinaryClassification(const ptrdiff_t cCompilerClassificationTargetStates) {
+constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
 #ifdef EXPAND_BINARY_LOGITS
    return false;
 #else // EXPAND_BINARY_LOGITS
-   return 2 == cCompilerClassificationTargetStates;
+   return 2 == compilerLearningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetStates) {
-   // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetClasses) {
+   // this will work for anything except if compilerLearningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr TML_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetStates) {
-   // this will work for anything except if countCompilerClassificationTargetStates is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses) {
+   // this will work for anything except if compilerLearningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cTargetStates <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cTargetStates <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetStates);
+   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// The caller can put pTargetAttribute->m_cStates inside the macro call and it will be optimize away if it isn't necessary
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_countCompilerClassificationTargetStates, MACRO_countRuntimeClassificationTargetStates) (k_DynamicClassification == (MACRO_countCompilerClassificationTargetStates) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetStates) : GetVectorLengthFlatCore(MACRO_countCompilerClassificationTargetStates))
+// The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeCountTargetClasses) (k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? static_cast<size_t>(MACRO_runtimeCountTargetClasses) : GetVectorLengthFlatCore(MACRO_compilerLearningTypeOrCountTargetClasses))
+
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-// this macro is legal to use when the template is set to non-classification opterations, but it will return a number that will overflow any memory allocation if anyone tries to use the value
-// this macro can always be used before calling GET_VECTOR_LENGTH if you want to make other section of the code that depend on cTargetStates compile out
-// TODO: use this macro more
-#define GET_COUNT_CLASSIFICATION_TARGET_STATES(MACRO_countCompilerClassificationTargetStates, MACRO_countRuntimeClassificationTargetStates) ((MACRO_countCompilerClassificationTargetStates) < 0 ? std::numeric_limits<size_t>::max() : (0 == (MACRO_countCompilerClassificationTargetStates) ? static_cast<size_t>(MACRO_countRuntimeClassificationTargetStates) : static_cast<size_t>(MACRO_countCompilerClassificationTargetStates)))
-
-// THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
-// We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
-// This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// having compile time counts of the target state should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
@@ -224,22 +214,22 @@ constexpr size_t CountBitsRequiredPositiveMax() {
 }
 
 constexpr size_t k_cBitsForSizeTCore = CountBitsRequiredPositiveMax<size_t>();
-// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of states per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
+// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
 // TODO : we should check at startup if there are equal to or less than these number of dimensions, otherwise return an error.  I don't think we want to wait until we try allocating the memory to discover that we can't do it
-// TODO : we can restrict the dimensionatlity even more because BinnedBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
+// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataTypeCore>();
 constexpr size_t k_cCountItemsBitPackedMax = k_cBitsForStorageType; // if each item is a bit, then the number of items will equal the number of bits
 
-constexpr TML_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;
 }
-constexpr TML_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
+constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
-constexpr TML_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
+constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
@@ -249,7 +239,7 @@ WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 // TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
 // TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
-constexpr TML_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
+constexpr EBM_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -261,7 +251,7 @@ constexpr TML_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) 
 }
 WARNING_POP
 
-constexpr TML_INLINE bool IsAddError(const size_t num1, const size_t num2) {
+constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }

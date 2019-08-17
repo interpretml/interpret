@@ -54,6 +54,7 @@ def plot_performance_curve(
     main_fig = go.Figure(data=data, layout=layout)
     title += "<br>" + auc_str
 
+    # TODO: Remove this if threshold lines are never used.
     # # Add treshold line
     # figure = _plot_with_line(data_dict, main_fig,
     #                          title=title, xtitle=xtitle, ytitle=ytitle,
@@ -152,7 +153,9 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
 
     # Add density
     if data_dict.get("density", None) is not None:
-        figure = _plot_with_density(data_dict["density"], main_fig, title=title, yrange=yrange)
+        figure = _plot_with_density(
+            data_dict["density"], main_fig, title=title, yrange=yrange
+        )
     else:
         figure = main_fig
 
@@ -165,15 +168,16 @@ def _pretty_number(x, rounding=2):
     return round(x, rounding)
 
 
-def _plot_with_line(
-    data_dict, main_fig, title="", xtitle="", ytitle="", share_xaxis=False, line_name=""
-):
-
-    secondary_fig = plot_line(
-        data_dict["line"], title=title, xtitle=xtitle, ytitle=ytitle, name=line_name
-    )
-    figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
-    return figure
+# TODO: Remove this completely once performance graphs are hardened.
+# def _plot_with_line(
+#     data_dict, main_fig, title="", xtitle="", ytitle="", share_xaxis=False, line_name=""
+# ):
+#
+#     secondary_fig = plot_line(
+#         data_dict["line"], title=title, xtitle=xtitle, ytitle=ytitle, name=line_name
+#     )
+#     figure = _two_plot(main_fig, secondary_fig, title=title, share_xaxis=share_xaxis)
+#     return figure
 
 
 def plot_density(
@@ -367,7 +371,11 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     # Add density
     if data_dict.get("density", None) is not None:
         figure = _plot_with_density(
-            data_dict["density"], main_fig, title=title, is_categorical=True, yrange=yrange
+            data_dict["density"],
+            main_fig,
+            title=title,
+            is_categorical=True,
+            yrange=yrange,
         )
     else:
         figure = main_fig
@@ -438,7 +446,17 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
     return figure
 
 
-def mli_plot_horizontal_bar(scores, names, values=None, perf=None, intercept=None, title="", xtitle="", ytitle="", start_zero=False):
+def mli_plot_horizontal_bar(
+    scores,
+    names,
+    values=None,
+    perf=None,
+    intercept=None,
+    title="",
+    xtitle="",
+    ytitle="",
+    start_zero=False,
+):
     if values is not None:
         names = _names_with_values(names, values)
 
@@ -551,9 +569,7 @@ def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
         return np.arange(top_n)
 
 
-def mli_sort_take(
-    data, sort_indexes, reverse_results=False
-):
+def mli_sort_take(data, sort_indexes, reverse_results=False):
     if isinstance(data[0], list):
         out_list = []
         for j, data_instance in enumerate(data):

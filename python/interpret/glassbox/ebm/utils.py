@@ -52,6 +52,10 @@ class EBMUtils:
 
             # Get the current column(s) to process
             attr_idxs = attribute_set["attributes"]
+
+            # TODO: Double check that this works
+            attr_idxs = list(reversed(attr_idxs))
+
             sliced_X = X[:, attr_idxs]
             scores = tensor[tuple(sliced_X.T)]
 
@@ -66,10 +70,10 @@ class EBMUtils:
             X = X.reshape(1, X.shape[0])
 
         # Initialize empty vector for predictions
-        if isinstance(intercept, numbers.Number) or len(intercept) == 1:   
+        if isinstance(intercept, numbers.Number) or len(intercept) == 1:
             score_vector = np.zeros(X.shape[0])
         else:
-            score_vector = np.zeros((X.shape[0],len(intercept)))
+            score_vector = np.zeros((X.shape[0], len(intercept)))
 
         score_vector += intercept
 
@@ -111,7 +115,6 @@ class EBMUtils:
     #         raise Exception(msg)
 
     #     return score_vector
-
 
     @staticmethod
     def classifier_predict_proba(X, estimator, skip_attr_set_idxs=[]):

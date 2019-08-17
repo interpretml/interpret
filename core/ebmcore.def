@@ -5,15 +5,13 @@ EXPORTS
   SetTraceLevel
   InitializeTrainingRegression
   InitializeTrainingClassification
-  GenerateModelUpdate
-  ApplyModelUpdate
+  GenerateModelFeatureCombinationUpdate
+  ApplyModelFeatureCombinationUpdate
   TrainingStep
-  GetCurrentModel
-  GetBestModel
-  CancelTraining
+  GetCurrentModelFeatureCombination
+  GetBestModelFeatureCombination
   FreeTraining
   InitializeInteractionRegression
   InitializeInteractionClassification
   GetInteractionScore
-  CancelInteraction
   FreeInteraction
