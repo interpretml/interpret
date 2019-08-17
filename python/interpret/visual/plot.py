@@ -5,7 +5,7 @@
 
 import plotly.graph_objs as go
 import numpy as np
-from plotly import tools
+from plotly import subplots
 from numbers import Number
 
 COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
@@ -162,10 +162,24 @@ def plot_continuous_bar(data_dict, title=None, xtitle="", ytitle=""):
     return figure
 
 
-def _pretty_number(x, rounding=2):
+# Taken from:
+# https://stackoverflow.com/questions/579310/formatting-long-numbers-as-strings-in-python
+def _human_format(num):
+    num = float('{:.3g}'.format(num))
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+
+
+# TODO: Clean this up after validation.
+# def _pretty_number(x, rounding=2):
+def _pretty_number(x):
     if isinstance(x, str):
         return x
-    return round(x, rounding)
+    # return round(x, rounding)
+    return _human_format(x)
 
 
 # TODO: Remove this completely once performance graphs are hardened.
@@ -247,7 +261,7 @@ def _plot_with_density(
 
 
 def _two_plot(main_fig, secondary_fig, title="", share_xaxis=True):
-    figure = tools.make_subplots(
+    figure = subplots.make_subplots(
         print_grid=False, shared_xaxes=share_xaxis, rows=2, cols=1
     )
     [figure.append_trace(datum, 1, 1) for datum in main_fig["data"]]
