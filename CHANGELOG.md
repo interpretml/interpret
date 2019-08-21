@@ -177,6 +177,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.14]: https://github.com/microsoft/interpret/releases/tag/v0.1.14
 [v0.1.13]: https://github.com/microsoft/interpret/releases/tag/v0.1.13
 [v0.1.12]: https://github.com/microsoft/interpret/releases/tag/v0.1.12
 [v0.1.11]: https://github.com/microsoft/interpret/releases/tag/v0.1.11
