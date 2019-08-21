@@ -325,7 +325,9 @@ class ClassHistogramExplanation(ExplanationMixin):
             data.append(fig["data"][0])
 
         layout = go.Layout(
-            title=column_name, barmode="stack", hoverlabel=dict(font=dict(size=25))
+            title=column_name,
+            barmode="stack",
+            # hoverlabel=dict(font=dict(size=25))
         )
         figure = go.Figure(data, layout)
         figure["layout"]["yaxis1"].update(title="Density")

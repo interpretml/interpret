@@ -4,7 +4,10 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
-import dash_table_experiments as dt
+import dash_table as dt
+
+# NOTE: Even though this isn't used here, it has to be imported to work.
+import dash_cytoscape as cyto
 
 from dash.dependencies import Input, Output
 import dash.development.base_component as dash_base
@@ -18,6 +21,71 @@ log = logging.getLogger(__name__)
 
 # Constants
 MAX_NUM_PANES = 5
+
+
+class UDash(dash.Dash):
+    def __init__(self, *args, **kwargs):
+        self.ctx = kwargs.pop('ctx', None)
+        self.ctx_item = kwargs.pop('ctx_item', None)
+        self.options = kwargs.pop('options', None)
+        super().__init__(*args, **kwargs)
+
+
+DATA_TABLE_DEFAULTS = dict(
+    fixed_rows={'headers': True, 'data': 0},
+    filter_action="native",
+    sort_action="native",
+    virtualization=True,
+    editable=False,
+    style_table={
+        'height': '250px',
+        'overflowX': 'auto',
+        'overflowY': 'auto',
+    },
+    css=[
+            {
+                'selector': '.dash-cell div.dash-cell-value',
+                'rule': 'display: inline; white-space: inherit; overflow: inherit;'
+            },
+            {
+                'selector': '.dash-spreadsheet-container .sort',
+                'rule': 'float: left;'
+            },
+            {
+                'selector': '.dash-select-cell input[type=checkbox]',
+                'rule': 'transform: scale(1.5);'
+
+            },
+    ],
+    style_cell={
+        'textAlign': 'right',
+        'paddingTop': '5px',
+        'paddingBottom': '5px',
+        'paddingLeft': '5px',
+        'paddingRight': '7.5px',
+        'fontFamily': '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif',
+        'whiteSpace': 'no-wrap',
+        'overflow': 'hidden',
+        'maxWidth': 0,
+    },
+    style_data=[
+        {
+            'backgroundColor': 'white',
+        }
+    ],
+    style_data_conditional=[
+        {
+            'if': {'row_index': 'odd'},
+            'backgroundColor': '#f9f9f9',
+        }
+    ],
+    style_header={
+        'fontWeight': 'bold',
+        # 'fontSize': '1.25em',
+        'backgroundColor': '#eaeaea',
+        # 'color': 'white'
+    },
+)
 
 
 # Dash app for a single explanation only
@@ -35,7 +103,7 @@ def generate_app_mini(
     log.info("Generating mini dash")
 
     # Initialize
-    app = dash.Dash(
+    app = UDash(
         __name__,
         url_base_pathname=url_base_pathname,
         requests_pathname_prefix=requests_pathname_prefix,
@@ -44,7 +112,7 @@ def generate_app_mini(
     app.scripts.config.serve_locally = True
     app.css.config.serve_locally = True
     app.config["suppress_callback_exceptions"] = True
-    app.config["ctx_item"] = ctx_item
+    app.ctx_item = ctx_item
     app.logger.handlers = []
     app.title = "InterpretML"
     server = app.server
@@ -109,7 +177,8 @@ def generate_app_mini(
         [
             html.Div([selector_component, viz_component]),
             # NOTE: Workaround for tables not rendering
-            html.Div(dt.DataTable(rows=[{}]), style={"display": "none"}),
+            # TODO: Check if this is needed with the new tables.
+            html.Div(dt.DataTable(data=[{}]), style={"display": "none"}),
         ],
         className="mini-app",
     )
@@ -121,11 +190,13 @@ def generate_app_mini(
         if value is None:
             return None
 
-        explanation, selector = app.config["ctx_item"]
+        explanation, selector = app.ctx_item
         if value == -1:
-            return gen_overall_plot(explanation, int(value))
+            output_div = gen_overall_plot(explanation, int(value))
         else:
-            return gen_plot(explanation, int(value), 0, 0)
+            output_div = gen_plot(explanation, int(value), 0, 0)
+
+        return output_div
 
     @server.errorhandler(Exception)
     def handle_error(e):  # pragma: no cover
@@ -157,16 +228,16 @@ def gen_overall_plot(exp, model_idx):
     # NOTE: We also have support for data frames, but we don't advertise it.
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
+        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
         output_graph = html.Div(
             [
                 dt.DataTable(
-                    rows=records,
-                    columns=figure.columns,
-                    filterable=True,
-                    sortable=True,
+                    data=records,
+                    columns=columns,
+                    filter_action="naive",
+                    sort_action="naive",
                     editable=False,
-                    max_rows_in_viewport=10,
-                    id="example-overall-graph-{0}".format(model_idx),
+                    id="overall-graph-{0}".format(model_idx),
                 )
             ]
         )
@@ -174,7 +245,7 @@ def gen_overall_plot(exp, model_idx):
         output_graph = html.Div(
             [
                 html.Iframe(
-                    id="example-overall-graph-{0}".format(model_idx),
+                    id="overall-graph-{0}".format(model_idx),
                     sandbox="",
                     srcDoc=figure,
                     style={"border": "0", "width": "100%", "height": "390px"},
@@ -183,13 +254,13 @@ def gen_overall_plot(exp, model_idx):
         )
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
-            id="example-overall-graph-{0}".format(model_idx),
+            id="overall-graph-{0}".format(model_idx),
             figure=figure,
             config={"displayModeBar": "hover"},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = "example-overall-graph-{0}".format(model_idx)
+        output_graph.id = "overall-graph-{0}".format(model_idx)
     else:  # pragma: no cover
         _type = type(figure)
         log.warning("Visualization type not supported: {0}".format(_type))
@@ -213,14 +284,12 @@ def gen_plot(exp, picker, model_idx, counter):
     figure = exp.visualize(key=picker)
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
+        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
         output_graph = dt.DataTable(
-            rows=records,
-            columns=figure.columns,
-            filterable=True,
-            sortable=True,
-            editable=False,
-            max_rows_in_viewport=10,
+            data=records,
+            columns=columns,
             id="graph-{0}-{1}".format(model_idx, counter),
+            **DATA_TABLE_DEFAULTS,
         )
     elif isinstance(figure, str):
         output_graph = html.Div(
@@ -276,7 +345,7 @@ def generate_app_full(  # noqa: C901
     log.info("Generating full dash")
 
     # Initialize
-    app = dash.Dash(
+    app = UDash(
         __name__,
         url_base_pathname=url_base_pathname,
         requests_pathname_prefix=requests_pathname_prefix,
@@ -325,10 +394,11 @@ def generate_app_full(  # noqa: C901
                     ],
                     vertical=False,
                     mobile_breakpoint=480,
+                    value="overview",
                 )
             ),
             # NOTE: Workaround for tables not rendering
-            html.Div(dt.DataTable(rows=[{}]), style={"display": "none"}),
+            html.Div(dt.DataTable(data=[{}]), style={"display": "none"}),
         ],
         className="app",
     )
@@ -365,18 +435,14 @@ def generate_app_full(  # noqa: C901
         """
 
         # Define components
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         records = get_model_records(ctx)
+        columns = [{"name": "Name", "id": "Name"}, {"name": "Type", "id": "Type"}]
         table = dt.DataTable(
-            rows=records,
-            columns=["Name", "Type"],
+            data=records,
+            columns=columns,
             row_selectable=False,
-            filterable=False,
-            sortable=True,
-            selected_row_indices=[],
-            editable=False,
-            max_rows_in_viewport=10,
-            id="overview-table-dt",
+            **DATA_TABLE_DEFAULTS,
         )
         markdown = """
 Welcome to Interpret ML's dashboard. Here you will find en-masse visualizations for your machine learning pipeline.
@@ -421,8 +487,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def gen_tab(explanation_type):
         log.debug("Generating tab: {0}".format(explanation_type))
-        ctx = app.config["ctx"]
-        options = app.config["options"]
+        ctx = app.ctx
+        options = app.options
         data_options = [
             {"label": ctx[i][0].name, "value": i}
             for i in range(len(ctx))
@@ -501,7 +567,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             if value is None:
                 return None
 
-            ctx = app.config["ctx"]
+            ctx = app.ctx
             components = []
 
             for i, model_idx in enumerate(value):
@@ -513,16 +579,13 @@ The explanations available are split into tabs, each covering an aspect of the p
                     if is_shared is not None:
                         component = html.Div()
                     else:
+                        columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
                         instance_table = dt.DataTable(
-                            rows=records,
-                            columns=df.columns,
-                            row_selectable=True,
-                            filterable=True,
-                            sortable=True,
-                            # selected_row_indices=[],
-                            editable=False,
-                            max_rows_in_viewport=6,
+                            data=records,
+                            columns=columns,
                             id="{0}-instance-table-{1}".format(explanation_type, s_i),
+                            row_selectable="multi",
+                            **DATA_TABLE_DEFAULTS,
                         )
                         component = html.Div(
                             [
@@ -583,28 +646,24 @@ The explanations available are split into tabs, each covering an aspect of the p
             if is_shared is None:
                 return None
 
-            if value is None:
+            if value is None or len(value) == 0:
                 return None
             return gen_share_table_container(value, explanation_type)
 
         return output_callback
 
     def register_update_idx_cb():
-        def output_callback(rows, selected_row_indices):
-            output = None
-            if selected_row_indices is None:
+        def output_callback(data, derived_virtual_selected_row_ids):
+            if derived_virtual_selected_row_ids is None:
                 output = None
                 return output
-            if rows is None:
-                output = selected_row_indices
-            output = [rows[i]["SelectID"] for i in selected_row_indices]
+            output = [data[i]["id"] for i in derived_virtual_selected_row_ids]
             return output
 
         return output_callback
 
     def register_update_instance_idx_cb():
         def output_callback(is_shared, shared_indices, specific_indices):
-
             if is_shared is not None:
                 return shared_indices
             else:
@@ -614,7 +673,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_update_plots_cb(pane_idx):
         def output_callback(model_idx, instance_idx):
-            if pane_idx >= len(model_idx):
+            if pane_idx >= len(model_idx):  # pragma: no cover
+                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
                 return None
             log.debug(
                 "Updating plots: {0}|{1}|{2}".format(pane_idx, model_idx, instance_idx)
@@ -625,7 +685,8 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_update_overall_plot_cb(pane_idx):
         def output_callback(model_idx, empty):
-            if pane_idx >= len(model_idx):
+            if pane_idx >= len(model_idx):  # pragma: no cover
+                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
                 return None
             log.debug("Updating overall plots: {0}".format(model_idx))
             return gen_overall_plot_container(model_idx[pane_idx])
@@ -672,8 +733,8 @@ The explanations available are split into tabs, each covering an aspect of the p
         app.callback(
             Output("{0}-shared-idx".format(tab), "children"),
             [
-                Input("{0}-shared-table".format(tab), "rows"),
-                Input("{0}-shared-table".format(tab), "selected_row_indices"),
+                Input("{0}-shared-table".format(tab), "data"),
+                Input("{0}-shared-table".format(tab), "derived_virtual_selected_row_ids"),
             ],
         )(register_update_idx_cb())
         for i in range(MAX_NUM_PANES):
@@ -689,18 +750,15 @@ The explanations available are split into tabs, each covering an aspect of the p
             app.callback(
                 Output("{0}-specific-idx-{1}".format(tab, s_i), "children"),
                 [
-                    Input("{0}-instance-table-{1}".format(tab, s_i), "rows"),
+                    Input("{0}-instance-table-{1}".format(tab, s_i), "data"),
                     Input(
                         "{0}-instance-table-{1}".format(tab, s_i),
-                        "selected_row_indices",
+                        "derived_virtual_selected_row_ids",
                     ),
                 ],
             )(register_update_idx_cb())
 
     def gen_share_table_container(model_idxs, explanation_type):
-        if len(model_idxs) == 0:  # pragma: no cover
-            return None
-
         log.debug(
             "Generating shared table container: {0}|{1}".format(
                 model_idxs, explanation_type
@@ -709,20 +767,17 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         # Since tables are shared (identical in content), we take the first.
         model_idx = model_idxs[0]
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         df = ctx[model_idx][1]
         if df is not None:
             records = df.to_dict("records")
+            columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
             instance_table = dt.DataTable(
-                rows=records,
-                columns=df.columns,
-                row_selectable=True,
-                filterable=True,
-                sortable=True,
-                # selected_row_indices=[],
-                editable=False,
-                max_rows_in_viewport=6,
+                data=records,
+                columns=columns,
                 id="{0}-shared-table".format(explanation_type),
+                row_selectable="multi",
+                **DATA_TABLE_DEFAULTS,
             )
             component = html.Div(
                 [
@@ -746,24 +801,21 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         log.debug("Generating plots: {0}|{1}".format(model_idx, picker_idx))
 
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         exp = ctx[model_idx][0]
 
         output = []
         counter = 0
-        for picker in picker_idx:
+        for picker in reversed(picker_idx):
             output_div = gen_plot(exp, picker, model_idx, counter)
             counter += 1
             output.append(output_div)
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-        if model_idx is None:  # pragma: no cover
-            return None
-
         log.debug("Generating overall plots: {0}".format(model_idx))
 
-        ctx = app.config["ctx"]
+        ctx = app.ctx
         exp = ctx[model_idx][0]
 
         output_div = gen_overall_plot(exp, model_idx)
@@ -820,7 +872,7 @@ def _expand_ctx_item(item):
     if selector is not None:
         df = selector.copy()
         df.reset_index(inplace=True, drop=True)
-        df["SelectID"] = df.index
+        df["id"] = df.index
         df *= 1
     else:
         df = None
@@ -885,6 +937,6 @@ def generate_app(
     new_options["share_tables"] = shared_frames
     log.debug("POST shared_tables: {0}".format(shared_frames))
 
-    app.config["ctx"] = new_ctx
-    app.config["options"] = new_options
+    app.ctx = new_ctx
+    app.options = new_options
     return app

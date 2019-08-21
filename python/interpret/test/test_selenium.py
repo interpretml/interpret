@@ -1,29 +1,12 @@
 import pytest
 from .utils import synthetic_classification, get_all_explainers
-from ..data import ClassHistogram
-from ..perf import ROC
-from ..glassbox import LogisticRegression, ExplainableBoostingClassifier
+from ..glassbox import LogisticRegression
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 from copy import deepcopy
+import os
 
 # Timeout for element to not show up in selenium driver.
 TIMEOUT = 60
-
-
-@pytest.fixture(scope="module")
-def driver():
-    from selenium import webdriver
-
-    _driver = webdriver.Firefox()
-
-    # Set up driver
-    _driver = webdriver.Firefox()
-    _driver.implicitly_wait(TIMEOUT)
-
-    yield _driver
-
-    # Close driver
-    _driver.close()
 
 
 @pytest.fixture(scope="module")
@@ -49,14 +32,9 @@ def all_explanations():
             raise Exception("Not supported explainer type.")
 
         if "local" in explainer.available_explanations:
-            # With labels
             explanation = explainer.explain_local(
                 data["test"]["X"].head(), data["test"]["y"].head()
             )
-            explanations.append(explanation)
-
-            # Without labels
-            explanation = explainer.explain_local(data["test"]["X"].head())
             explanations.append(explanation)
         if "global" in explainer.available_explanations:
             explanation = explainer.explain_global()
@@ -71,56 +49,26 @@ def all_explanations():
     return explanations
 
 
-# NOTE: This is used for debugging tests. Commented out.
-# @pytest.fixture(scope="module")
-# def small_explanations():
-#     data = synthetic_classification()
-#     ebm = ExplainableBoostingClassifier()
-#     ebm.fit(data["train"]["X"], data["train"]["y"])
-#     lr = LogisticRegression()
-#     lr.fit(data["train"]["X"], data["train"]["y"])
-#
-#     hist_exp = ClassHistogram().explain_data(
-#         data["train"]["X"], data["train"]["y"], name="Histogram"
-#     )
-#
-#     lr_global_exp = lr.explain_global(name="LR")
-#     lr_local_exp = lr.explain_local(
-#         data["test"]["X"].head(), data["test"]["y"].head(), name="LR"
-#     )
-#     lr_perf = ROC(lr.predict_proba).explain_perf(
-#         data["test"]["X"], data["test"]["y"], name="LR"
-#     )
-#
-#     ebm_global_exp = ebm.explain_global(name="EBM")
-#     ebm_local_exp = ebm.explain_local(
-#         data["test"]["X"].head(), data["test"]["y"].head(), name="EBM"
-#     )
-#     ebm_perf = ROC(ebm.predict_proba).explain_perf(
-#         data["test"]["X"], data["test"]["y"], name="EBM"
-#     )
-#
-#     return [
-#         hist_exp,
-#         lr_local_exp,
-#         lr_global_exp,
-#         lr_perf,
-#         ebm_local_exp,
-#         ebm_global_exp,
-#         ebm_perf,
-#     ]
+num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
 
 
 @pytest.mark.selenium
 @pytest.mark.xfail(strict=False)
-def test_all_explainers_selenium(all_explanations, driver):
+@pytest.mark.parametrize('job_id', list(range(num_jobs)))
+def test_all_explainers_selenium(all_explanations, job_id):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
+    from selenium import webdriver
 
-    from ..glassbox.decisiontree import TreeExplanation
+    # Select explanations to target based on job id
+    explanations = [explanation for i, explanation in enumerate(all_explanations) if i % num_jobs == job_id]
 
-    target_addr = ("127.0.0.1", 7101)
+    # Set up driver
+    driver = webdriver.Firefox()
+    driver.implicitly_wait(TIMEOUT)
+
+    target_addr = ("127.0.0.1", 7100 + job_id)
     set_show_addr(target_addr)
 
     def goto_mini_url(explanation):
@@ -130,7 +78,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
     def check_mini_overall_graph():
         # Expect overall graph
-        wait.until(EC.presence_of_element_located((By.ID, "example-overall-graph--1")))
+        wait.until(EC.presence_of_element_located((By.ID, "overall-graph--1")))
 
     def check_mini_specific_graph(index=0):
         # Click on specific graph
@@ -144,17 +92,24 @@ def test_all_explainers_selenium(all_explanations, driver):
         # Expect specific graph
         wait.until(EC.presence_of_element_located((By.ID, "graph-0-0")))
 
+    # TODO: Investigate why this doesn't work in DevOps environment.
+    # def check_close_specific_graph():
+    #     # Click on close
+    #     close_el = driver.find_element_by_class_name("Select-clear")
+    #     close_el.click()
+    #
+    #     # Expect placeholder for select
+    #     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "Select-placeholder")))
+
     # Run mini app checks
     wait = WebDriverWait(driver, TIMEOUT)
-    for explanation in all_explanations:
-        # NOTE: Known bug with decision tree visualization.
-        if isinstance(explanation, TreeExplanation):
-            continue
+    for explanation in explanations:
         goto_mini_url(explanation)
         check_mini_overall_graph()
         if explanation.selector is not None:
             check_mini_specific_graph(0)
             check_mini_specific_graph(1)
+        # check_close_specific_graph()
 
     def goto_full_tab(explanation_type):
         tabs_el = driver.find_element_by_id("tabs")
@@ -209,7 +164,7 @@ def test_all_explainers_selenium(all_explanations, driver):
         for i in range(len(explanations)):
             wait.until(
                 EC.presence_of_element_located(
-                    (By.ID, "example-overall-graph-{}".format(i))
+                    (By.ID, "overall-graph-{}".format(i))
                 )
             )
 
@@ -227,8 +182,7 @@ def test_all_explainers_selenium(all_explanations, driver):
 
             # Click on records
             for i in range(num_records):
-                record_path = "//label[@for='checkbox{}']".format(i)
-                wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
+                record_path = "(//input[@type='checkbox'])[{}]".format(i + 1)
                 record_el = driver.find_element_by_xpath(record_path)
                 record_el.click()
         else:
@@ -246,10 +200,9 @@ def test_all_explainers_selenium(all_explanations, driver):
             # Click on records
             for explanation_idx in range(len(explanations)):
                 for record_idx in range(num_records):
-                    record_path = "//div[@class='gr-col'][{0}]//label[@for='checkbox{1}']".format(
-                        explanation_idx + 1, record_idx
+                    record_path = "(//div[@class='gr-col'][{}]//input[@type='checkbox'])[{}]".format(
+                        explanation_idx + 1, record_idx + 1
                     )
-                    wait.until(EC.presence_of_element_located((By.XPATH, record_path)))
                     record_el = driver.find_element_by_xpath(record_path)
                     record_el.click()
 
@@ -263,11 +216,8 @@ def test_all_explainers_selenium(all_explanations, driver):
                 )
 
     # Run full app checks
-    for explanation in all_explanations:
+    for explanation in explanations:
         for share_tables in [True, False]:
-            if isinstance(explanation, TreeExplanation):
-                continue
-
             explanations = duplicate_explanations(explanation, 2)
             goto_full_url(explanations, share_tables=share_tables)
             goto_full_tab(explanations[0].explanation_type)
@@ -275,4 +225,5 @@ def test_all_explainers_selenium(all_explanations, driver):
             check_full_overall_graphs(explanations)
             check_full_specific_graphs(explanations, share_tables)
 
+    driver.close()
     shutdown_show_server()

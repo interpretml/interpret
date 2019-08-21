@@ -171,20 +171,12 @@ constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t compilerLearnin
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t cTargetClasses) {
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    // this will work for anything except if compilerLearningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
+   return runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
-#endif // EXPAND_BINARY_LOGITS
-}
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses) {
-   // this will work for anything except if compilerLearningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
-#ifdef EXPAND_BINARY_LOGITS
-   return cTargetClasses <= 1 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
-#else // EXPAND_BINARY_LOGITS
-   return cTargetClasses <= 2 ? size_t { 1 } : static_cast<size_t>(cTargetClasses);
+   return runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -193,8 +185,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const size_t cTargetClasses)
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeCountTargetClasses) (k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? static_cast<size_t>(MACRO_runtimeCountTargetClasses) : GetVectorLengthFlatCore(MACRO_compilerLearningTypeOrCountTargetClasses))
-
+#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) (GetVectorLengthFlatCore(k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : (MACRO_compilerLearningTypeOrCountTargetClasses)))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed

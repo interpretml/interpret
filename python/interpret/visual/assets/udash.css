@@ -182,7 +182,11 @@ code {
   color: #ffffff;
 }
 .card-table{
-  min-height: 350px;
+  min-height: 250px;
+  padding-top: 30px;
+  padding-bottom: 30px;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 .card-figure{
   min-height: 450px;

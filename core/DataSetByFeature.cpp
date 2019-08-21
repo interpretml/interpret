@@ -14,13 +14,13 @@
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool bRegression, const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetClasses) {
+EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
 
-   const size_t cVectorLength = GetVectorLengthFlatCore(cTargetClasses);
+   const size_t cVectorLength = GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
@@ -38,13 +38,13 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const bool 
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
-   if(bRegression) {
-      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 0);
+   if(IsRegression(runtimeLearningTypeOrCountTargetClasses)) {
+      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression);
    } else {
-      if(2 == cTargetClasses) {
-         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, 2);
+      if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
+         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 });
       } else {
-         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, cTargetClasses);
+         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, runtimeLearningTypeOrCountTargetClasses);
       }
    }
 
@@ -118,8 +118,8 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const bool bRegression, const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const size_t cTargetClasses)
-   : m_aResidualErrors(ConstructResidualErrors(bRegression, cInstances, aTargetData, aPredictorScores, cTargetClasses))
+DataSetByFeature::DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
+   : m_aResidualErrors(ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {
