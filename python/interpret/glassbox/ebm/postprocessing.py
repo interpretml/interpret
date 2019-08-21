@@ -1,21 +1,31 @@
+# Copyright (c) 2019 Microsoft Corporation
+# Distributed under the MIT software license
+
 import copy
+import numpy as np
+
 
 def multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, feature_types):
-    '''
-    X_binned: Training dataset, pre-binned. Contains integer values, 0+. Each value is a unique bin.
-    feature_graphs: List of 2d numpy arrays. List is size d for d features. Each numpy array is of size b for b bins in the feature. Each bin has k elements for k classes.
-    binned_predict_proba: Function that takes in X_binned, returns 2d numpy array of predictions. Each row in the return vector has k elements, with probability of belonging to class k.
-    feature_types: List of strings containing either "categorical" or "numeric" for each feature.
-    '''
+    """ Postprocesses multiclass model graphs with desired properties.
+
+    Args:
+        X_binned: Training dataset, pre-binned. Contains integer values, 0+. Each value is a unique bin.
+        feature_graphs: List of 2d numpy arrays. List is size d for d features. Each numpy array is of size b for b bins in the feature. Each bin has k elements for k classes.
+        binned_predict_proba: Function that takes in X_binned, returns 2d numpy array of predictions. Each row in the return vector has k elements, with probability of belonging to class k.
+        feature_types: List of strings containing either "categorical" or "numeric" for each feature.
+
+    Returns:
+        Dictionary with updated model graphs and new intercepts.
+    """
+
     updated_feature_graphs = copy.deepcopy(feature_graphs)
     K = feature_graphs[0].shape[1]
-    d = len(feature_graphs) # num of features
 
-    ## Compute the predicted probability on the original data.
+    # Compute the predicted probability on the original data.
     predprob = binned_predict_proba(X_binned)
     predprob_prev = [None]*len(feature_graphs)
 
-    ## Compute the predicted probability on the counterfactual data with each value in feature i decrease by 1.
+    # Compute the predicted probability on the counterfactual data with each value in feature i decrease by 1.
     for i in range(len(feature_graphs)):
         data_prev = np.copy(X_binned)
         data_prev[:,i] = np.maximum(X_binned[:,i]-1,0)
@@ -46,25 +56,4 @@ def multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, featu
             intercepts[k] += mean
     return { 'feature_graphs' : updated_feature_graphs, 'intercepts' : intercepts}
 
-
-
-
-if __name__=="__main__":
-    import numpy as np
-    n=1000
-    d = 2
-    k = 3
-    b = 10
-
-    X_binned = np.random.randint(b,size = (n,d))
-    feature_graphs = []
-    for _ in range(d):
-        feature_graphs.append(np.random.rand(b,k))
-    def binned_predict_proba(X_binned,k=3):
-        n = len(X_binned)
-        return 1/k * np.ones((n,k))
-
-    feature_types = ['numeric']*d
-    results = multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, feature_types)
-    print('test for centering: ', [np.mean(graph, axis = 1) for graph in results['feature_graphs']])
 
