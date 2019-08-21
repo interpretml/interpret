@@ -443,9 +443,13 @@ class NativeEBM:
             attribute_ar[idx].countBins = attribute["n_bins"]
 
         attribute_set_indexes = []
-        attribute_sets_ar = (this.native.EbmCoreFeatureCombination * len(attribute_sets))()
+        attribute_sets_ar = (
+            this.native.EbmCoreFeatureCombination * len(attribute_sets)
+        )()
         for idx, attribute_set in enumerate(attribute_sets):
-            attribute_sets_ar[idx].countFeaturesInCombination = attribute_set["n_attributes"]
+            attribute_sets_ar[idx].countFeaturesInCombination = attribute_set[
+                "n_attributes"
+            ]
 
             for attr_idx in attribute_set["attributes"]:
                 attribute_set_indexes.append(attr_idx)
@@ -621,7 +625,9 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
-        array_p = this.native.lib.GetBestModelFeatureCombination(self.model_pointer, attribute_set_index)
+        array_p = this.native.lib.GetBestModelFeatureCombination(
+            self.model_pointer, attribute_set_index
+        )
         shape = self._get_attribute_set_shape(attribute_set_index)
 
         array = make_nd_array(

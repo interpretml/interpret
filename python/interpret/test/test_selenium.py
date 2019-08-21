@@ -54,7 +54,7 @@ num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
 
 @pytest.mark.selenium
 @pytest.mark.xfail(strict=False)
-@pytest.mark.parametrize('job_id', list(range(num_jobs)))
+@pytest.mark.parametrize("job_id", list(range(num_jobs)))
 def test_all_explainers_selenium(all_explanations, job_id):
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -62,7 +62,11 @@ def test_all_explainers_selenium(all_explanations, job_id):
     from selenium import webdriver
 
     # Select explanations to target based on job id
-    explanations = [explanation for i, explanation in enumerate(all_explanations) if i % num_jobs == job_id]
+    explanations = [
+        explanation
+        for i, explanation in enumerate(all_explanations)
+        if i % num_jobs == job_id
+    ]
 
     # Set up driver
     driver = webdriver.Firefox()
@@ -163,9 +167,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
 
         for i in range(len(explanations)):
             wait.until(
-                EC.presence_of_element_located(
-                    (By.ID, "overall-graph-{}".format(i))
-                )
+                EC.presence_of_element_located((By.ID, "overall-graph-{}".format(i)))
             )
 
     def check_full_specific_graphs(explanations, share_tables, num_records=2):

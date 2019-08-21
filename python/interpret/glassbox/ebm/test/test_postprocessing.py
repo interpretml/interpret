@@ -20,8 +20,10 @@ def test_multiclass_postprocess_smoke():
         n = len(X_binned)
         return 1 / k * np.ones((n, k))
 
-    feature_types = ['numeric'] * d
-    results = multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, feature_types)
+    feature_types = ["numeric"] * d
+    results = multiclass_postprocess(
+        X_binned, feature_graphs, binned_predict_proba, feature_types
+    )
 
     assert "intercept" in results
     assert "feature_graphs" in results

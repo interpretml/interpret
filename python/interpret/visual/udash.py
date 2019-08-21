@@ -25,64 +25,47 @@ MAX_NUM_PANES = 5
 
 class UDash(dash.Dash):
     def __init__(self, *args, **kwargs):
-        self.ctx = kwargs.pop('ctx', None)
-        self.ctx_item = kwargs.pop('ctx_item', None)
-        self.options = kwargs.pop('options', None)
+        self.ctx = kwargs.pop("ctx", None)
+        self.ctx_item = kwargs.pop("ctx_item", None)
+        self.options = kwargs.pop("options", None)
         super().__init__(*args, **kwargs)
 
 
 DATA_TABLE_DEFAULTS = dict(
-    fixed_rows={'headers': True, 'data': 0},
+    fixed_rows={"headers": True, "data": 0},
     filter_action="native",
     sort_action="native",
     virtualization=True,
     editable=False,
-    style_table={
-        'height': '250px',
-        'overflowX': 'auto',
-        'overflowY': 'auto',
-    },
+    style_table={"height": "250px", "overflowX": "auto", "overflowY": "auto"},
     css=[
-            {
-                'selector': '.dash-cell div.dash-cell-value',
-                'rule': 'display: inline; white-space: inherit; overflow: inherit;'
-            },
-            {
-                'selector': '.dash-spreadsheet-container .sort',
-                'rule': 'float: left;'
-            },
-            {
-                'selector': '.dash-select-cell input[type=checkbox]',
-                'rule': 'transform: scale(1.5);'
-
-            },
+        {
+            "selector": ".dash-cell div.dash-cell-value",
+            "rule": "display: inline; white-space: inherit; overflow: inherit;",
+        },
+        {"selector": ".dash-spreadsheet-container .sort", "rule": "float: left;"},
+        {
+            "selector": ".dash-select-cell input[type=checkbox]",
+            "rule": "transform: scale(1.5);",
+        },
     ],
     style_cell={
-        'textAlign': 'right',
-        'paddingTop': '5px',
-        'paddingBottom': '5px',
-        'paddingLeft': '5px',
-        'paddingRight': '7.5px',
-        'fontFamily': '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif',
-        'whiteSpace': 'no-wrap',
-        'overflow': 'hidden',
-        'maxWidth': 0,
+        "textAlign": "right",
+        "paddingTop": "5px",
+        "paddingBottom": "5px",
+        "paddingLeft": "5px",
+        "paddingRight": "7.5px",
+        "fontFamily": '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif',
+        "whiteSpace": "no-wrap",
+        "overflow": "hidden",
+        "maxWidth": 0,
     },
-    style_data=[
-        {
-            'backgroundColor': 'white',
-        }
-    ],
-    style_data_conditional=[
-        {
-            'if': {'row_index': 'odd'},
-            'backgroundColor': '#f9f9f9',
-        }
-    ],
+    style_data=[{"backgroundColor": "white"}],
+    style_data_conditional=[{"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"}],
     style_header={
-        'fontWeight': 'bold',
+        "fontWeight": "bold",
         # 'fontSize': '1.25em',
-        'backgroundColor': '#eaeaea',
+        "backgroundColor": "#eaeaea",
         # 'color': 'white'
     },
 )
@@ -228,7 +211,11 @@ def gen_overall_plot(exp, model_idx):
     # NOTE: We also have support for data frames, but we don't advertise it.
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
-        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
+        columns = [
+            {"name": col, "id": col}
+            for _, col in enumerate(figure.columns)
+            if col != "id"
+        ]
         output_graph = html.Div(
             [
                 dt.DataTable(
@@ -284,7 +271,11 @@ def gen_plot(exp, picker, model_idx, counter):
     figure = exp.visualize(key=picker)
     if isinstance(figure, NDFrame):
         records = figure.to_dict("records")
-        columns = [{"name": col, "id": col} for _, col in enumerate(figure.columns) if col != "id"]
+        columns = [
+            {"name": col, "id": col}
+            for _, col in enumerate(figure.columns)
+            if col != "id"
+        ]
         output_graph = dt.DataTable(
             data=records,
             columns=columns,
@@ -439,10 +430,7 @@ def generate_app_full(  # noqa: C901
         records = get_model_records(ctx)
         columns = [{"name": "Name", "id": "Name"}, {"name": "Type", "id": "Type"}]
         table = dt.DataTable(
-            data=records,
-            columns=columns,
-            row_selectable=False,
-            **DATA_TABLE_DEFAULTS,
+            data=records, columns=columns, row_selectable=False, **DATA_TABLE_DEFAULTS
         )
         markdown = """
 Welcome to Interpret ML's dashboard. Here you will find en-masse visualizations for your machine learning pipeline.
@@ -579,7 +567,11 @@ The explanations available are split into tabs, each covering an aspect of the p
                     if is_shared is not None:
                         component = html.Div()
                     else:
-                        columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
+                        columns = [
+                            {"name": col, "id": col}
+                            for _, col in enumerate(df.columns)
+                            if col != "id"
+                        ]
                         instance_table = dt.DataTable(
                             data=records,
                             columns=columns,
@@ -674,7 +666,9 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_plots_cb(pane_idx):
         def output_callback(model_idx, instance_idx):
             if pane_idx >= len(model_idx):  # pragma: no cover
-                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
+                log.warning(
+                    "Pane index {} larger than selected explanations.".format(pane_idx)
+                )
                 return None
             log.debug(
                 "Updating plots: {0}|{1}|{2}".format(pane_idx, model_idx, instance_idx)
@@ -686,7 +680,9 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_overall_plot_cb(pane_idx):
         def output_callback(model_idx, empty):
             if pane_idx >= len(model_idx):  # pragma: no cover
-                log.warning("Pane index {} larger than selected explanations.".format(pane_idx))
+                log.warning(
+                    "Pane index {} larger than selected explanations.".format(pane_idx)
+                )
                 return None
             log.debug("Updating overall plots: {0}".format(model_idx))
             return gen_overall_plot_container(model_idx[pane_idx])
@@ -734,7 +730,9 @@ The explanations available are split into tabs, each covering an aspect of the p
             Output("{0}-shared-idx".format(tab), "children"),
             [
                 Input("{0}-shared-table".format(tab), "data"),
-                Input("{0}-shared-table".format(tab), "derived_virtual_selected_row_ids"),
+                Input(
+                    "{0}-shared-table".format(tab), "derived_virtual_selected_row_ids"
+                ),
             ],
         )(register_update_idx_cb())
         for i in range(MAX_NUM_PANES):
@@ -771,7 +769,11 @@ The explanations available are split into tabs, each covering an aspect of the p
         df = ctx[model_idx][1]
         if df is not None:
             records = df.to_dict("records")
-            columns = [{"name": col, "id": col} for _, col in enumerate(df.columns) if col != "id"]
+            columns = [
+                {"name": col, "id": col}
+                for _, col in enumerate(df.columns)
+                if col != "id"
+            ]
             instance_table = dt.DataTable(
                 data=records,
                 columns=columns,

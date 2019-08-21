@@ -5,7 +5,9 @@ import copy
 import numpy as np
 
 
-def multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, feature_types):
+def multiclass_postprocess(
+    X_binned, feature_graphs, binned_predict_proba, feature_types
+):
     """ Postprocesses multiclass model graphs with desired properties.
 
     Args:
@@ -23,37 +25,49 @@ def multiclass_postprocess(X_binned, feature_graphs, binned_predict_proba, featu
 
     # Compute the predicted probability on the original data.
     predprob = binned_predict_proba(X_binned)
-    predprob_prev = [None]*len(feature_graphs)
+    predprob_prev = [None] * len(feature_graphs)
 
     # Compute the predicted probability on the counterfactual data with each value in feature i decrease by 1.
     for i in range(len(feature_graphs)):
         data_prev = np.copy(X_binned)
-        data_prev[:,i] = np.maximum(X_binned[:,i]-1,0)
+        data_prev[:, i] = np.maximum(X_binned[:, i] - 1, 0)
         predprob_prev[i] = binned_predict_proba(data_prev)
 
     intercepts = np.zeros(K)
     for i in range(len(feature_graphs)):
-        bincount = np.bincount(X_binned[:,i].astype(int))
-        if feature_types[i]=='numeric':
+        bincount = np.bincount(X_binned[:, i].astype(int))
+        if feature_types[i] == "numeric":
             num_bins = feature_graphs[i].shape[0]
             change = np.zeros(num_bins)
-            for v in range(1,num_bins):
-                subset_index = X_binned[:,i]==v
-                ratio = np.divide(predprob[subset_index,:],predprob_prev[i][subset_index,:])
-                sum_ratio = np.sum(np.subtract(ratio,1),axis = 0)
-                difference = feature_graphs[i][v,:] - feature_graphs[i][v-1,:]+ change[v-1]
+            for v in range(1, num_bins):
+                subset_index = X_binned[:, i] == v
+                ratio = np.divide(
+                    predprob[subset_index, :], predprob_prev[i][subset_index, :]
+                )
+                sum_ratio = np.sum(np.subtract(ratio, 1), axis=0)
+                difference = (
+                    feature_graphs[i][v, :]
+                    - feature_graphs[i][v - 1, :]
+                    + change[v - 1]
+                )
                 change[v] = np.mean(difference)
                 new_difference = difference - change[v]
                 back_change = 0
                 for k in range(K):
-                    if new_difference[k]*sum_ratio[k]<0 and abs(back_change) < abs(new_difference[k]):
+                    if new_difference[k] * sum_ratio[k] < 0 and abs(back_change) < abs(
+                        new_difference[k]
+                    ):
                         back_change = new_difference[k]
-                change[v] = change[v]+back_change
-            updated_feature_graphs[i] = np.subtract(updated_feature_graphs[i],change.reshape((num_bins,-1)))
+                change[v] = change[v] + back_change
+            updated_feature_graphs[i] = np.subtract(
+                updated_feature_graphs[i], change.reshape((num_bins, -1))
+            )
         for k in range(K):
-            mean = np.sum(np.multiply(updated_feature_graphs[i][:,k],bincount))/len(X_binned)
-            updated_feature_graphs[i][:,k] = np.subtract(updated_feature_graphs[i][:,k],mean)
+            mean = np.sum(np.multiply(updated_feature_graphs[i][:, k], bincount)) / len(
+                X_binned
+            )
+            updated_feature_graphs[i][:, k] = np.subtract(
+                updated_feature_graphs[i][:, k], mean
+            )
             intercepts[k] += mean
-    return { 'feature_graphs' : updated_feature_graphs, 'intercepts' : intercepts}
-
-
+    return {"feature_graphs": updated_feature_graphs, "intercepts": intercepts}

@@ -85,8 +85,13 @@ class EBMExplanation(FeatureValueExplanation):
             and self.feature_types[key] == "continuous"
         ):
             title = self.feature_names[key]
-            if isinstance(data_dict['scores'], np.ndarray) and data_dict['scores'].ndim == 2:
-                figure = plot_continuous_bar(data_dict, multiclass=True, show_error=False, title=title)
+            if (
+                isinstance(data_dict["scores"], np.ndarray)
+                and data_dict["scores"].ndim == 2
+            ):
+                figure = plot_continuous_bar(
+                    data_dict, multiclass=True, show_error=False, title=title
+                )
             else:
                 figure = plot_continuous_bar(data_dict, title=title)
 
@@ -174,13 +179,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 if len(uniq_vals) < self.max_n_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    if self.binning_strategy == 'uniform':
+                    if self.binning_strategy == "uniform":
                         bins = self.max_n_bins
-                    elif self.binning_strategy == 'quantile':
-                        bins = np.unique(np.quantile(col_data, q=np.linspace(0, 1, self.max_n_bins + 1)))
-                    else: 
-                        raise ValueError("Unknown binning_strategy: '{}'.".format(self.binning_strategy))
-                
+                    elif self.binning_strategy == "quantile":
+                        bins = np.unique(
+                            np.quantile(
+                                col_data, q=np.linspace(0, 1, self.max_n_bins + 1)
+                            )
+                        )
+                    else:
+                        raise ValueError(
+                            "Unknown binning_strategy: '{}'.".format(
+                                self.binning_strategy
+                            )
+                        )
+
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
@@ -372,7 +385,7 @@ class BaseCoreEBM(BaseEstimator):
         elif self.holdout_split == 0:
             X_train = X
             y_train = y
-            X_val = np.empty(shape=(0,0)).astype(np.int64)
+            X_val = np.empty(shape=(0, 0)).astype(np.int64)
             y_val = np.empty(shape=(0,)).astype(np.int64)
         else:  # pragma: no cover
             raise Exception("Holdout_split must be between 0 and 1.")
@@ -759,7 +772,9 @@ class BaseEBM(BaseEstimator):
                 X, feature_names=self.feature_names, feature_types=self.feature_types
             )
 
-        self.preprocessor_ = EBMPreprocessor(schema=self.schema_, binning_strategy=self.binning_strategy)
+        self.preprocessor_ = EBMPreprocessor(
+            schema=self.schema_, binning_strategy=self.binning_strategy
+        )
         self.preprocessor_.fit(X)
 
         if is_classifier(self):
@@ -1048,12 +1063,8 @@ class BaseEBM(BaseEstimator):
                 upper_bounds = list(model_graph + errors)
                 lower_bounds = list(model_graph - errors)
                 density_dict = {
-                    "names": self.preprocessor_.get_hist_edges(
-                        attribute_indexes[0]
-                    ),
-                    "scores": self.preprocessor_.get_hist_counts(
-                        attribute_indexes[0]
-                    ),
+                    "names": self.preprocessor_.get_hist_edges(attribute_indexes[0]),
+                    "scores": self.preprocessor_.get_hist_counts(attribute_indexes[0]),
                 }
 
                 feature_dict = {
@@ -1118,20 +1129,17 @@ class BaseEBM(BaseEstimator):
             "names": self.feature_names,
             "scores": self.mean_abs_scores_,
         }
-        internal_obj = {"overall": overall_dict, "specific": data_dicts, "mli": [
-            {
-                "explanation_type": "ebm_global",
-                "value": {
-                    "feature_list": feature_list
-                }
-            },
-            {
-                "explanation_type": "density",
-                "value": {
-                    "density": density_list
-                }
-            }
-        ]}
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "ebm_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {"explanation_type": "density", "value": {"density": density_list}},
+            ],
+        }
 
         return EBMExplanation(
             "global",
@@ -1195,7 +1203,10 @@ class BaseEBM(BaseEstimator):
 
         selector = gen_local_selector(instances, y, scores)
 
-        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
                 {
                     "explanation_type": "ebm_local",
                     "value": {

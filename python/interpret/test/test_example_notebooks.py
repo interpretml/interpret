@@ -25,7 +25,9 @@ def run_notebook(notebook_path):
     )
     nb.cells.append(shutdown_cell)
     # In the second cell, enable sampling
-    nb.cells[1]["source"] = re.sub("# df = df.sample", "df = df.sample", nb.cells[1]["source"])
+    nb.cells[1]["source"] = re.sub(
+        "# df = df.sample", "df = df.sample", nb.cells[1]["source"]
+    )
 
     proc.preprocess(nb, {"metadata": {"path": package_path}})
 
@@ -58,7 +60,7 @@ notebook_paths = extract_notebook_paths()
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize('notebook_path', notebook_paths)
+@pytest.mark.parametrize("notebook_path", notebook_paths)
 def test_example_notebooks(notebook_path):
     def check_notebook(notebook_path):
         nb, errors = run_notebook(notebook_path)

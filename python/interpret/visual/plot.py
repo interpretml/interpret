@@ -10,6 +10,7 @@ from numbers import Number
 
 
 import logging
+
 log = logging.getLogger(__name__)
 
 COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
@@ -74,6 +75,7 @@ def plot_performance_curve(
     figure["layout"]["yaxis1"].update(title=ytitle)
     return figure
 
+
 # def plot_multiclass_continuous_bar(data_dict, title=None):
 #     if data_dict.get("scores", None) is None:  # pragma: no cover
 #         return None
@@ -85,7 +87,9 @@ def plot_performance_curve(
 #     error_present = y_hi is not None
 
 
-def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None, xtitle="", ytitle=""):
+def plot_continuous_bar(
+    data_dict, multiclass=False, show_error=True, title=None, xtitle="", ytitle=""
+):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
@@ -95,7 +99,9 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
     y_lo = data_dict.get("lower_bounds", None)
 
     if y_hi is None or multiclass:
-        log.warning("Argument show_error is set to true, but there are no bounds in the data.")
+        log.warning(
+            "Argument show_error is set to true, but there are no bounds in the data."
+        )
         show_error = False
 
     def extend_x_range(x):
@@ -130,10 +136,10 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
                 y=new_y_vals[:, i],
                 line=dict(shape="hvh"),
                 name="Class " + str(i),
-                mode="lines"
+                mode="lines",
             )
             data.append(class_line)
-    else: 
+    else:
         main_line = go.Scatter(
             x=new_x_vals,
             y=new_y_vals,
@@ -194,12 +200,14 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
 # Taken from:
 # https://stackoverflow.com/questions/579310/formatting-long-numbers-as-strings-in-python
 def _human_format(num):
-    num = float('{:.3g}'.format(num))
+    num = float("{:.3g}".format(num))
     magnitude = 0
     while abs(num) >= 1000:
         magnitude += 1
         num /= 1000.0
-    return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+    return "{}{}".format(
+        "{:f}".format(num).rstrip("0").rstrip("."), ["", "K", "M", "B", "T"][magnitude]
+    )
 
 
 # TODO: Clean this up after validation.

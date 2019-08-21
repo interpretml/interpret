@@ -118,26 +118,20 @@ class PartialDependence(ExplainerMixin):
                 "feature_values": pdp["values"],
                 "scores": pdp["scores"],
                 "upper_bounds": pdp["upper_bounds"],
-                "lower_bounds": pdp["lower_bounds"]
+                "lower_bounds": pdp["lower_bounds"],
             }
             feature_list.append(feature_dict)
             density_list.append(pdp["density"])
             data_dicts.append(pdp)
 
-        internal_obj = {"overall": None, "specific": data_dicts, "mli": [
-            {
-                "explanation_type": "pdp",
-                "value": {
-                    "feature_list": feature_list
-                }
-            },
-            {
-                "explanation_type": "density",
-                "value": {
-                    "density": density_list
-                }
-            }
-        ]}
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {"explanation_type": "pdp", "value": {"feature_list": feature_list}},
+                {"explanation_type": "density", "value": {"density": density_list}},
+            ],
+        }
 
         selector = gen_global_selector(
             self.data, self.feature_names, self.feature_types, None
