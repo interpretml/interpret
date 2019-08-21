@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.14] - 2019-08-20
+### Fixed
+- Fixed occasional browser crash relating to density graphs.
+- Fixed decision trees not displaying in Jupyter notebooks.
+### Changed
+- Dash components no longer pinned. Upgraded to latest.
+- Upgrade from dash-table-experiment to dash-table.
+- Numerous renames within native code.
+### Experimental (WIP)
+- Explanation data methods for PDP, EBM enabled for mli interop.
+
 ## [v0.1.13] - 2019-08-14
 ### Added
 - EBM has new parameter 'binning_strategy'. Can now support quantile based binning.
