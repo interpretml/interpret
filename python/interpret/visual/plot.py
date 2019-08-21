@@ -8,6 +8,10 @@ import numpy as np
 from plotly import subplots
 from numbers import Number
 
+
+import logging
+log = logging.getLogger(__name__)
+
 COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
 
 
@@ -89,11 +93,10 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
     y_vals = data_dict["scores"].copy()
     y_hi = data_dict.get("upper_bounds", None)
     y_lo = data_dict.get("lower_bounds", None)
-    error_present = y_hi is not None
 
-    # Hacky overwrite for multiclass
-    if show_error == False:
-        error_present = False
+    if y_hi is None or multiclass:
+        log.warning("Argument show_error is set to true, but there are no bounds in the data.")
+        show_error = False
 
     def extend_x_range(x):
         target = []
@@ -111,13 +114,13 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
 
     new_x_vals = extend_x_range(x_vals)
     new_y_vals = extend_y_range(y_vals)
-    if error_present:
+    if show_error:
         new_y_hi = extend_y_range(y_hi)
         new_y_lo = extend_y_range(y_lo)
 
     data = []
     fill = "none"
-    if error_present:
+    if show_error:
         fill = "tonexty"
 
     if multiclass:
@@ -142,7 +145,7 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
         )
         data.append(main_line)
 
-    if error_present and not multiclass:
+    if show_error:
         upper_bound = go.Scatter(
             name="Upper Bound",
             x=new_x_vals,
@@ -163,9 +166,10 @@ def plot_continuous_bar(data_dict, multiclass=False, show_error=True, title=None
         )
         data = [lower_bound, main_line, upper_bound]
 
+    show_legend = True if multiclass or not show_error else False
     layout = go.Layout(
         title=title,
-        showlegend=False if error_present else True,
+        showlegend=show_legend,
         xaxis=dict(title=xtitle),
         yaxis=dict(title=ytitle),
     )
