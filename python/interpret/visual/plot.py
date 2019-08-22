@@ -383,19 +383,28 @@ def plot_line(
 def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
-
     x = data_dict["names"].copy()
     y = data_dict["scores"].copy()
     y_upper_err = data_dict.get("upper_bounds", None)
-
     if y_upper_err is not None:
-        y_err = [err - y_val for err, y_val in zip(y_upper_err, y)]
+        y_err = y_upper_err - y
     else:
         y_err = None
-
-    trace = go.Bar(
-        x=x, y=y, error_y=dict(type="data", color="#ff6614", array=y_err, visible=True)
-    )
+    multiclass = isinstance(y, np.ndarray) and y.ndim == 2
+    traces = []
+    if multiclass:
+        for i in range(y.shape[1]):
+            class_bar = go.Bar(
+                x=x,
+                y=y[:, i],
+                error_y=dict(type="data", array=y_err[:, i], visible=True)
+            )
+            traces.append(class_bar)
+    else:
+        trace = go.Bar(
+            x=x, y=y, error_y=dict(type="data", color="#ff6614", array=y_err, visible=True)
+        )
+        traces.append(trace)
     layout = go.Layout(
         title=title,
         showlegend=False,
@@ -406,7 +415,10 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     if data_dict.get("scores_range", None) is not None:
         scores_range = data_dict["scores_range"]
         yrange = scores_range
-    main_fig = go.Figure(data=[trace], layout=layout)
+    main_fig = go.Figure(data=traces, layout=layout)
+
+    if multiclass:
+        main_fig.update_layout(barmode='group')
 
     # Add density
     if data_dict.get("density", None) is not None:
@@ -419,7 +431,6 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
         )
     else:
         figure = main_fig
-
     return figure
 
 
