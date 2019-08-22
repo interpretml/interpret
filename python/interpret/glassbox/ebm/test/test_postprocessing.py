@@ -25,5 +25,5 @@ def test_multiclass_postprocess_smoke():
         X_binned, feature_graphs, binned_predict_proba, feature_types
     )
 
-    assert "intercept" in results
+    assert "intercepts" in results
     assert "feature_graphs" in results

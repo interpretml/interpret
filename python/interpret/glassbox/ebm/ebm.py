@@ -5,6 +5,7 @@
 from ...utils import perf_dict
 from .utils import EBMUtils
 from .internal import NativeEBM
+from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -780,8 +781,10 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
-            # if self.n_classes_ > 2:
-            #     raise RuntimeError("Multiclass currently not supported.")
+            if self.n_classes_ > 2 and self.interactions != 0:
+                raise RuntimeError(
+                    "Multiclass with interactions currently not supported."
+                )
 
             proto_estimator = CoreEBMClassifier(
                 # Data
@@ -885,8 +888,8 @@ class BaseEBM(BaseEstimator):
             log_odds_tensors = []
             for estimator in estimators:
                 log_odds_tensors.append(estimator.attribute_set_models_[index])
-            averaged_model = np.average(np.array(log_odds_tensors), axis=0)
 
+            averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
             self.attribute_set_models_.append(averaged_model)
@@ -930,6 +933,16 @@ class BaseEBM(BaseEstimator):
                 # Add mean center adjustment back to intercept
                 self.intercept_ = self.intercept_ + score_mean
                 self._attrib_set_model_means_.append(score_mean)
+
+        # Postprocess model graphs for multiclass
+        if self.n_classes_ > 2:
+            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(x, self)
+
+            postprocessed = multiclass_postprocess(
+                X, self.attribute_set_models_, binned_predict_proba, self.feature_types
+            )
+            self.attribute_set_models_ = postprocessed["feature_graphs"]
+            self.intercept_ = postprocessed["intercepts"]
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_attrib_set(
@@ -1081,7 +1094,7 @@ class BaseEBM(BaseEstimator):
                 data_dict = {
                     "type": "univariate",
                     "names": bin_labels,
-                    "scores": model_graph,  # TODO: Dropped list(model_graph) to make way for multiclass
+                    "scores": model_graph,
                     "scores_range": bounds,
                     "upper_bounds": model_graph + errors,
                     "lower_bounds": model_graph - errors,

@@ -76,17 +76,6 @@ def plot_performance_curve(
     return figure
 
 
-# def plot_multiclass_continuous_bar(data_dict, title=None):
-#     if data_dict.get("scores", None) is None:  # pragma: no cover
-#         return None
-
-#     x_vals = data_dict["names"].copy()
-#     y_vals = data_dict["scores"].copy()
-#     y_hi = data_dict.get("upper_bounds", None)
-#     y_lo = data_dict.get("lower_bounds", None)
-#     error_present = y_hi is not None
-
-
 def plot_continuous_bar(
     data_dict, multiclass=False, show_error=True, title=None, xtitle="", ytitle=""
 ):
@@ -116,7 +105,7 @@ def plot_continuous_bar(
         return target
 
     def extend_y_range(y):
-        return [y[0]] + y
+        return np.r_[y[np.newaxis, 0], y]
 
     new_x_vals = extend_x_range(x_vals)
     new_y_vals = extend_y_range(y_vals)
