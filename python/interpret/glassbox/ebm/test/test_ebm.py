@@ -17,7 +17,6 @@ from sklearn.model_selection import (
     StratifiedShuffleSplit,
     train_test_split,
 )
-from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score
 import pytest
 
@@ -46,6 +45,17 @@ def test_ebm_synthetic_multiclass():
     assert within_bounds
 
     valid_ebm(clf)
+
+
+@pytest.mark.slow
+def test_ebm_synthetic_multiclass_pairwise():
+    data = synthetic_multiclass()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, n_estimators=2)
+    with pytest.raises(RuntimeError):
+        clf.fit(X, y)
 
 
 @pytest.mark.slow
