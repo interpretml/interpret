@@ -1,6 +1,5 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
-# TODO: Dashboard needs to be tested.
 
 from IPython import display
 import re
