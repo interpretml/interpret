@@ -13,6 +13,7 @@ from ...utils import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
 
 import numpy as np
+from warnings import warn
 
 from sklearn.base import is_classifier, clone
 from sklearn.utils.validation import check_is_fitted
@@ -781,6 +782,8 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             self.n_classes_ = len(self.classes_)
+            if self.n_classes_ > 2:
+                warn("Multiclass is still experimental. Subject to change per release.")
             if self.n_classes_ > 2 and self.interactions != 0:
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
