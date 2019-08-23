@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.15] - 2019-08-23
+### Experimental (WIP)
+- Multiclass EBM added. Includes visualization and postprocessing. Currently does not support multiclass pairs.
+
 ## [v0.1.14] - 2019-08-20
 ### Fixed
 - Fixed occasional browser crash relating to density graphs.
@@ -177,6 +181,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.15]: https://github.com/microsoft/interpret/releases/tag/v0.1.15
 [v0.1.14]: https://github.com/microsoft/interpret/releases/tag/v0.1.14
 [v0.1.13]: https://github.com/microsoft/interpret/releases/tag/v0.1.13
 [v0.1.12]: https://github.com/microsoft/interpret/releases/tag/v0.1.12
