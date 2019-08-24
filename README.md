@@ -3,10 +3,9 @@
 ![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
-![Build Status](https://img.shields.io/azure-devops/build/paulkochms/explainableml/13/master.svg?style=flat-square)
+![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/151/master.svg?style=flat-square)
+![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/151/master.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2019.svg?style=flat-square)
-
-*Equal contributions: Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana*
 
 <br/>
 
@@ -16,7 +15,7 @@
 
 <br/>
 
-InterpretML is an open-source package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
+InterpretML is an open-source python package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
 - Detecting bias - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
@@ -49,7 +48,6 @@ In addition to EBM, InterpretML also supports methods like LIME, SHAP, linear mo
 
 Python 3.5+ | Linux, Mac OS X, Windows
 ```sh
-pip install numpy scipy pyscaffold
 pip install -U interpret
 ```
 
@@ -73,7 +71,7 @@ from interpret import show
 ebm_global = ebm.explain_global()
 show(ebm_global)
 ```
-![Global Explanation Image](examples/assets/readme_ebm_global_specific.PNG?raw=true)
+![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
 <br/>
 
@@ -82,7 +80,7 @@ Understand individual predictions
 ebm_local = ebm.explain_local(X_test, y_test)
 show(ebm_local)
 ```
-![Local Explanation Image](examples/assets/readme_ebm_local_specific.PNG?raw=true)
+![Local Explanation Image](examples/python/assets/readme_ebm_local_specific.PNG?raw=true)
 
 <br/>
 
@@ -90,16 +88,16 @@ And if you have multiple models, compare them
 ```python
 show([logistic_regression, decision_tree])
 ```
-![Dashboard Image](examples/assets/readme_dashboard.PNG?raw=true)
+![Dashboard Image](examples/python/assets/readme_dashboard.PNG?raw=true)
 
 <br/>
 
 ## Example Notebooks
 
-- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Classification%20Methods.ipynb)
-- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Interpretable%20Regression%20Methods.ipynb)
-- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
-- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
+- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)
+- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Regression%20Methods.ipynb)
+- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
+- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
 
 ## Roadmap
 
@@ -112,13 +110,13 @@ Currently we're working on:
 
 ## Contributing
 
-If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Acknowledgements
 
-Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
+InterpretML was originally created by (equal contributions): Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana
 
-<br/>
+Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
 
 We also build on top of many great packages. Please check them out!
 
@@ -137,7 +135,7 @@ We also build on top of many great packages. Please check them out!
 
 ## Contact us
 
-Multiple ways to get in touch:
+There are multiple ways to get in touch:
 - Email us at interpret@microsoft.com
 - Or, feel free to raise a GitHub issue
 

@@ -1,0 +1,17 @@
+LIBRARY
+
+EXPORTS
+  SetLogMessageFunction
+  SetTraceLevel
+  InitializeTrainingRegression
+  InitializeTrainingClassification
+  GenerateModelFeatureCombinationUpdate
+  ApplyModelFeatureCombinationUpdate
+  TrainingStep
+  GetCurrentModelFeatureCombination
+  GetBestModelFeatureCombination
+  FreeTraining
+  InitializeInteractionRegression
+  InitializeInteractionClassification
+  GetInteractionScore
+  FreeInteraction

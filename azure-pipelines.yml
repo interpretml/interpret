@@ -3,38 +3,34 @@ jobs:
   strategy:
     matrix:
       Linux:
-        python.version: '3.6'
         image.name: 'ubuntu-16.04'
       Windows:
-        python.version: '3.6'
         image.name: 'windows-2019'
       Mac:
-        python.version: '3.6'
         image.name: 'macOS-10.13'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
-
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '$(python.version)'
-      architecture: 'x64'
+  - script: |
+      sudo apt-get -y install g++-multilib
+    displayName: 'Install prereq for linux.'
+    condition: in(variables['image.name'], 'ubuntu-16.04')
   - script: |
       chmod +x build.sh
-      ./build.sh
+      ./build.sh -32bit
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Building/moving native code (linux/mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      build.bat
+      build.bat -32bit
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Building/moving native code. (win)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
       sourceFolder: staging
-      contents: 'ebmcore_*'
+      contents: '*'
       targetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Move binary to staging'
   - task: PublishBuildArtifacts@1
@@ -42,6 +38,46 @@ jobs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)
       artifactName: native-$(image.name)
     displayName: 'Publish native library'
+
+- job: 'Test_Native'
+  dependsOn: 'Build_Native'
+  strategy:
+    matrix:
+      Linux:
+        image.name: 'ubuntu-16.04'
+      Windows:
+        image.name: 'windows-2019'
+      Mac:
+        image.name: 'macOS-10.13'
+    maxParallel: 3
+  pool:
+    vmImage: '$(image.name)'
+  steps:
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'specific'
+    displayName: 'Download build artifacts'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/lib_ebmcore_*'
+      targetFolder: 'staging'
+      flattenFolders: true
+    displayName: 'Move binary to staging directory'
+  - script: |
+      sudo apt-get -y install g++-multilib
+    displayName: 'Install prereq for linux.'
+    condition: in(variables['image.name'], 'ubuntu-16.04')
+  - script: |
+      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Testing native code (linux/mac).'
+  - script: |
+      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      .\tests\core\test_core_api.bat -nobuildcore
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Testing native code. (win)'
 
 - job: 'Build_Package'
   dependsOn: 'Build_Native'
@@ -62,24 +98,24 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/ebmcore_*'
-      targetFolder: 'src/python/interpret/lib'
+      contents: '**/lib_ebmcore_*'
+      targetFolder: 'python/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
-  - script: python setup.py bdist_wheel -d ../../staging
+  - script: python setup.py bdist_wheel -d ../staging
     condition: succeeded()
-    workingDirectory: src/python
+    workingDirectory: python
     displayName: 'Build wheel'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
       sourceFolder: staging
       contents: '*.whl'
-      targetFolder: '$(Build.ArtifactStagingDirectory)'
+      targetFolder: '$(Build.ArtifactStagingDirectory)/wheel'
     displayName: 'Move wheel for Build Artifact'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      pathtoPublish: '$(Build.ArtifactStagingDirectory)/wheel'
       artifactName: 'wheel'
     displayName: 'Publish wheel as Build Artifact'
 
@@ -98,13 +134,13 @@ jobs:
         image.name: 'ubuntu-16.04'
       WindowsPython35:
         python.version: '3.5'
-        image.name: 'vs2017-win2016'
+        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
-        image.name: 'vs2017-win2016'
+        image.name: 'windows-2019'
       WindowsPython37:
         python.version: '3.7'
-        image.name: 'vs2017-win2016'
+        image.name: 'windows-2019'
       MacPython35:
         python.version: '3.5'
         image.name: 'macOS-10.13'
@@ -126,8 +162,8 @@ jobs:
   - task: CopyFiles@2
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/ebmcore_*.*'
-      targetFolder: 'src/python/interpret/lib'
+      contents: '**/lib_ebmcore_*'
+      targetFolder: 'python/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
   - task: UsePythonVersion@0
@@ -137,31 +173,49 @@ jobs:
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
-      python -m pip install numpy scipy pyscaffold
-    workingDirectory: src/python
-    displayName: 'Install numpy/scipy/pyscaffold first for mis-specified pip packages.'
+      python -m pip install numpy scipy
+    workingDirectory: python
+    displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
       mkdir -p ~/.matplotlib
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
     condition: in(variables['image.name'], 'macOS-10.13')
     displayName: 'Matplotlib patch for mac.'
   - script: |
-      python -m pip install -r requirements.txt
-    workingDirectory: src/python
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
+      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
+      python -m pip install -r dev-requirements.txt
+    workingDirectory: python
     displayName: 'Install requirements'
   - script: |
-      python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    workingDirectory: src/python
-    displayName: 'Run pytest'
+      set PATH=%PATH%;%GeckoWebDriver%
+      python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+    workingDirectory: python
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Run pytest (Windows)'
+  - script: |
+      python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+    workingDirectory: python
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Run pytest (Non-Windows)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
       testResultsFiles: '**/test-*.xml'
       testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
     displayName: 'Publish test results'
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
-  dependsOn: 'Test'
+  dependsOn:
+  - 'Test'
+  - 'Test_Native'
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
@@ -174,5 +228,3 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       artifactName: 'drop'
-
-

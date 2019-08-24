@@ -1,7 +1,0 @@
-# Required dependencies
-.
-
-# Dev dependencies
-sphinx>=1.8.4
-pytest-cov>=2.6.1
-flake8>=3.7.7
