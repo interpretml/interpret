@@ -12,14 +12,13 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-template<bool bClassification>
-class TreeNode;
+#include "TreeNode.h"
 
 template<bool bClassification>
 class CompareTreeNodeSplittingGain final {
 public:
-   // TODO : check how efficient this is.  Is there a faster way to to this via a function
-   EBM_INLINE bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
+   // TODO : check how efficient this is.  Is there a faster way to to this
+   constexpr bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
       return rhs->m_UNION.afterExaminationForPossibleSplitting.splitGain < lhs->m_UNION.afterExaminationForPossibleSplitting.splitGain;
    }
 };
@@ -30,8 +29,6 @@ struct HistogramBucketVectorEntry;
 template<bool bClassification>
 class CachedTrainingThreadResources {
    bool m_bError;
-
-   const CompareTreeNodeSplittingGain<bClassification> m_compareTreeNodeSplitGain;
 
    // this allows us to share the memory between underlying data types
    void * m_aThreadByteBuffer1;
@@ -54,7 +51,6 @@ public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
    CachedTrainingThreadResources(const size_t cVectorLength) try
       : m_bError(true)
-      , m_compareTreeNodeSplitGain()
       , m_aThreadByteBuffer1(nullptr)
       , m_cThreadByteBufferCapacity1(0)
       , m_aThreadByteBuffer2(nullptr)
@@ -63,9 +59,7 @@ public:
       , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
-      // m_bestTreeNodeToSplit should be constructed last because we want everything above to be initialized before the constructor for m_bestTreeNodeToSplit is called since it could throw an exception and we don't want partial state in the rest of the member data.  
-      // Construction initialization actually depends on order within the class, so this placement doesn't matter here.
-      , m_bestTreeNodeToSplit(std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>>(m_compareTreeNodeSplitGain)) {
+      , m_bestTreeNodeToSplit() {
 
       // an unfortunate thing about function exception handling is that accessing non-static data from the catch block gives undefined behavior
       // so, we can't set m_bError to true if an error occurs, so instead we set it to true in the static initialization

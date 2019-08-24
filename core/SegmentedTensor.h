@@ -8,6 +8,7 @@
 // TODO : check for multiplication overflows within this class (we could overflow in several parts)
 // TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
 
+#include <string.h> // memset
 #include <type_traits> // std::is_pod
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t

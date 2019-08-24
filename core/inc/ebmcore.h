@@ -55,6 +55,11 @@ typedef struct {
    char unused;
 } *PEbmInteraction;
 
+#ifndef PRId64
+// this should really be defined, but some compilers aren't compliant
+#define PRId64 "lld"
+#endif
+
 typedef double FractionalDataType;
 #define FractionalDataTypePrintf "f"
 typedef int64_t IntegerDataType;
@@ -66,6 +71,7 @@ const IntegerDataType FeatureTypeNominal = 1;
 typedef struct {
    IntegerDataType featureType; // enums aren't standardized accross languages, so use IntegerDataType values
    IntegerDataType hasMissing;
+   // TODO make the order (countBins, hasMissing, featureType).  In languages that default values countBins is the only item in this struct that can't really be defaulted, so put it at the top, as it will be in our caller's language.  hasMissing is TRUE/FALSE, so the user doesn't need to remember much there, make the featureType last since it's the most forgettable in terms of possible values
    IntegerDataType countBins;
 } EbmCoreFeature;
 

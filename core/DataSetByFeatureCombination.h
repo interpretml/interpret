@@ -29,7 +29,7 @@ public:
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aPredictorScores || nullptr == m_aTargetData || 0 != m_cFeatureCombinations && nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || nullptr == m_aPredictorScores || nullptr == m_aTargetData || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
    }
 
    EBM_INLINE FractionalDataType * GetResidualPointer() {

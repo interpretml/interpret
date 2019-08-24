@@ -25,7 +25,7 @@ public:
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || 0 != m_cFeatures && nullptr == m_aaInputData;
+      return nullptr == m_aResidualErrors || (0 != m_cFeatures && nullptr == m_aaInputData);
    }
 
    EBM_INLINE const FractionalDataType * GetResidualPointer() const {
