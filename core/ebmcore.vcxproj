@@ -282,6 +282,7 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="EbmInteractionState.h" />
     <ClInclude Include="EbmTrainingState.h" />
     <ClInclude Include="inc\ebmcore.h" />
     <ClInclude Include="FeatureCore.h" />
