@@ -3,12 +3,30 @@
 
 import sys
 import logging
+from ..provider.visualize import VisualizeProvider, AutoProvider
 
 log = logging.getLogger(__name__)
 
 this = sys.modules[__name__]
 this.app_runner = None
 this.app_addr = None
+
+this.visualize_provider = None
+
+
+def get_visualize_provider():
+    return this.visualize_provider
+
+
+def set_visualize_provider(provider):
+    if isinstance(provider, VisualizeProvider):
+        this.visualize_provider = provider
+    else:  # pragma: no cover
+        raise ValueError(
+            "Object of type {} is not a visualize provider.".format(
+                type(provider)
+            )
+        )
 
 
 def set_show_addr(addr):
@@ -90,31 +108,33 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     return None
 
 
-# TODO: Provide example in docstrings of share_tables usage.
-def show(explanation, share_tables=None):
+def show(explanation, key=-1):
     """ Provides an interactive visualization for a given explanation(s).
 
     The visualization provided is not preserved when the notebook exits.
 
     Args:
         explanation: As provided in 'show'.
-        share_tables: As provided in 'show'.
+        key: As provided in 'show'.
 
     Returns:
         None.
     """
 
     try:
-        # Initialize server if needed
-        if this.app_runner is None:  # pragma: no cover
-            init_show_server(this.app_addr)
+        # Get explanation key
+        if key is not None and not isinstance(key, int):
+            series = explanation.selector[explanation.selector.columns[0]]
+            if key not in series.values:  # pragma: no cover
+                raise ValueError("Key {} not in explanation's selector".format(key))
+            key = series[series == key].index[0]
 
-        # Register
-        this.app_runner.register(explanation, share_tables=share_tables)
+        # Set default render if needed
+        if this.visualize_provider is None:
+            this.visualize_provider = AutoProvider()
 
-        # Display
-        open_link = isinstance(explanation, list)
-        this.app_runner.display(explanation, open_link=open_link)
+        # Render
+        this.visualize_provider.render(explanation, key=key)
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e

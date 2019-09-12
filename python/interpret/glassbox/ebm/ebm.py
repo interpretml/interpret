@@ -9,7 +9,7 @@ from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
-from ...utils import JobLibProvider
+from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
 
 import numpy as np

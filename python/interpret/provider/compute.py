@@ -3,9 +3,10 @@
 
 from joblib import Parallel, delayed
 import gc
+from abc import ABC, abstractmethod
 
 
-class ComputeProvider:
+class ComputeProvider(ABC):
     pass
 
 

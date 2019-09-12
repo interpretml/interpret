@@ -7,8 +7,6 @@ import re
 
 module_logger = logging.getLogger(__name__)
 
-blackbox_key = "interpret_ext_blackbox"
-
 
 def _validate_class_name(proposed_class_name):
     """ Used to validate class names before registration.
@@ -63,6 +61,6 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         except Exception as e:  # pragma: no cover
             module_logger.warning(
                 "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
-                    blackbox_key, entrypoint, e
+                    extension_key, entrypoint, e
                 )
             )
