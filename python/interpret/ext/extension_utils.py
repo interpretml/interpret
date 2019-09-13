@@ -7,8 +7,34 @@ import re
 
 module_logger = logging.getLogger(__name__)
 
-blackbox_key = "interpret_ext_blackbox"
 
+# TODO: More checks for explainer validation, specifically on spec for explainer/explanation when instantiated.
+def _is_valid_explainer(proposed_explainer, expected_explainer_type):
+    try:
+        explainer_type = proposed_explainer.explainer_type
+        available_explanations = proposed_explainer.available_explanations
+
+        if explainer_type != expected_explainer_type:
+            module_logger.warning("Proposed explainer is not a {}.".format(expected_explainer_type))
+            return False
+
+        for available_explanation in available_explanations:
+            has_explain_method = hasattr(
+                proposed_explainer, "explain_" + available_explanation
+            )
+            if not has_explain_method:
+                module_logger.warning(
+                    "Proposed explainer has available explanation {} but has no respective method.".format(
+                        available_explanation
+                    )
+                )
+                return False
+
+        return True
+
+    except Exception as e:
+        module_logger.warning("Validate function threw exception {}".format(e))
+        return False
 
 def _validate_class_name(proposed_class_name):
     """ Used to validate class names before registration.
@@ -63,6 +89,6 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         except Exception as e:  # pragma: no cover
             module_logger.warning(
                 "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
-                    blackbox_key, entrypoint, e
+                    extension_key, entrypoint, e
                 )
             )
