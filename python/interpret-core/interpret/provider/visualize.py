@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 from abc import ABC, abstractmethod
-from ..visual.dashboard import AppRunner
 import logging
 
 log = logging.getLogger(__name__)
@@ -16,9 +15,12 @@ class VisualizeProvider(ABC):
 
 class AutoProvider(VisualizeProvider):
     def __init__(self):
-        self.provider = DashProvider()
+        self.provider = None
 
     def render(self, explanation, key=-1, **kwargs):
+        if self.provider is None:
+            self.provider = DashProvider()
+
         self.provider.render(explanation, key=key, **kwargs)
 
 
@@ -105,6 +107,7 @@ class PreserveProvider(VisualizeProvider):
 
 class DashProvider(VisualizeProvider):
     def __init__(self, addr=None, base_url=None, use_relative_links=False):
+        from ..visual.dashboard import AppRunner
         self.app_runner = AppRunner(
             addr, base_url=base_url, use_relative_links=use_relative_links
         )
