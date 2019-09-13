@@ -1,2 +1,0 @@
-# Required dependencies
-.[extra,testing]

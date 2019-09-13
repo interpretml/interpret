@@ -109,7 +109,7 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     return None
 
 
-def show(explanation, key=-1):
+def show(explanation, key=-1, **kwargs):
     """ Provides an interactive visualization for a given explanation(s).
 
     The visualization provided is not preserved when the notebook exits.
@@ -135,7 +135,7 @@ def show(explanation, key=-1):
             this.visualize_provider = AutoProvider()
 
         # Render
-        this.visualize_provider.render(explanation, key=key)
+        this.visualize_provider.render(explanation, key=key, **kwargs)
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e

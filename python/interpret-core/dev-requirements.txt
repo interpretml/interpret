@@ -1,0 +1,2 @@
+# Required dependencies
+.[required,debug,notebook,plotly,lime,sensitivity,shap,ebm,linear,decisiontree,dash,skoperules]

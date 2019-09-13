@@ -7,8 +7,6 @@ from ..utils import unify_predict_fn, unify_data
 from ..utils import gen_name_from_class, gen_global_selector
 
 from abc import ABC, abstractmethod
-from SALib.sample import morris as morris_sampler
-from SALib.analyze import morris
 import numpy as np
 
 
@@ -26,6 +24,7 @@ class MorrisSampler(SamplerMixin):
         self.kwargs = kwargs
 
     def sample(self):
+        from SALib.sample import morris as morris_sampler
         kwargs = {"num_levels": 4}
         kwargs.update(self.kwargs)
 
@@ -60,6 +59,8 @@ class MorrisSensitivity(ExplainerMixin):
             self.sampler = MorrisSampler(self.data, self.feature_names)
 
     def explain_global(self, name=None):
+        from SALib.analyze import morris
+
         if name is None:
             name = gen_name_from_class(self)
 

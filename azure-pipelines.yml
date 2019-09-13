@@ -99,13 +99,17 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebmcore_*'
-      targetFolder: 'python/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
   - script: python setup.py bdist_wheel -d ../staging
     condition: succeeded()
-    workingDirectory: python
-    displayName: 'Build wheel'
+    workingDirectory: 'python/interpret-core'
+    displayName: 'Build wheel (interpret-core)'
+  - script: python setup.py bdist_wheel -d ../staging
+    condition: succeeded()
+    workingDirectory: 'python/interpret'
+    displayName: 'Build wheel (interpret)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -163,7 +167,7 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebmcore_*'
-      targetFolder: 'python/interpret/lib'
+      targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
   - task: UsePythonVersion@0
