@@ -106,7 +106,7 @@ jobs:
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
     displayName: 'Build wheel (interpret-core)'
-  - script: python setup.py bdist_wheel -d ../staging
+  - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret'
     displayName: 'Build wheel (interpret)'
@@ -178,7 +178,7 @@ jobs:
     displayName: 'Install tools'
   - script: |
       python -m pip install numpy scipy
-    workingDirectory: python
+    workingDirectory: python/interpret-core
     displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
       mkdir -p ~/.matplotlib
@@ -189,17 +189,17 @@ jobs:
       export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
       export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
       python -m pip install -r dev-requirements.txt
-    workingDirectory: python
+    workingDirectory: python/interpret-core
     displayName: 'Install requirements'
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    workingDirectory: python
+    workingDirectory: python/interpret-core
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Run pytest (Windows)'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
-    workingDirectory: python
+    workingDirectory: python/interpret-core
     condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
     displayName: 'Run pytest (Non-Windows)'
   - task: PublishTestResults@2
