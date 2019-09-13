@@ -27,7 +27,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/python/interpret/lib" ] || mkdir -p "$root_path/python/interpret/lib"
+   [ -d "$root_path/python/interpret-core/interpret/lib" ] || mkdir -p "$root_path/python/interpret-core/interpret/lib"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -52,7 +52,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib" "$root_path/python/interpret/lib/"
+   cp "$root_path/tmp/clang/bin/release/mac/x64/ebmcore/lib_ebmcore_mac_x64.dylib" "$root_path/python/interpret-core/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -82,7 +82,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib" "$root_path/python/interpret/lib/"
+   cp "$root_path/tmp/clang/bin/debug/mac/x64/ebmcore/lib_ebmcore_mac_x64_debug.dylib" "$root_path/python/interpret-core/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -113,7 +113,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib" "$root_path/python/interpret/lib/"
+      cp "$root_path/tmp/clang/bin/release/mac/x86/ebmcore/lib_ebmcore_mac_x86.dylib" "$root_path/python/interpret-core/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -143,7 +143,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib" "$root_path/python/interpret/lib/"
+      cp "$root_path/tmp/clang/bin/debug/mac/x86/ebmcore/lib_ebmcore_mac_x86_debug.dylib" "$root_path/python/interpret-core/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -167,7 +167,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/python/interpret/lib" ] || mkdir -p "$root_path/python/interpret/lib"
+   [ -d "$root_path/python/interpret-core/interpret/lib" ] || mkdir -p "$root_path/python/interpret-core/interpret/lib"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -192,7 +192,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so" "$root_path/python/interpret/lib/"
+   cp "$root_path/tmp/gcc/bin/release/linux/x64/ebmcore/lib_ebmcore_linux_x64.so" "$root_path/python/interpret-core/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -222,7 +222,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so" "$root_path/python/interpret/lib/"
+   cp "$root_path/tmp/gcc/bin/debug/linux/x64/ebmcore/lib_ebmcore_linux_x64_debug.so" "$root_path/python/interpret-core/interpret/lib/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -253,7 +253,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so" "$root_path/python/interpret/lib/"
+      cp "$root_path/tmp/gcc/bin/release/linux/x86/ebmcore/lib_ebmcore_linux_x86.so" "$root_path/python/interpret-core/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -283,7 +283,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so" "$root_path/python/interpret/lib/"
+      cp "$root_path/tmp/gcc/bin/debug/linux/x86/ebmcore/lib_ebmcore_linux_x86_debug.so" "$root_path/python/interpret-core/interpret/lib/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code

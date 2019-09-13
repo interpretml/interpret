@@ -123,7 +123,7 @@
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -167,7 +167,7 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -217,7 +217,7 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
@@ -267,7 +267,7 @@ EXIT /B 0
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
+      <Command>robocopy /R:2 /NP "$(ProjectDir)..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" "$(ProjectDir)..\python\interpret-core\interpret\lib" "$(TargetName).dll" "$(TargetName).pdb"
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
    EXIT /B %ERRORLEVEL%
