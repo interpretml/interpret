@@ -38,7 +38,6 @@ version = re.search(
 ).group(1)
 
 EXTRAS = {
-    "extra": ["skope-rules>=1.0.0"],
     "testing": [
         "pytest>=4.3.0",
         "pytest-runner>=4.4",
@@ -106,6 +105,9 @@ setup(
     entry_points={
         "interpret_ext_blackbox": [
             "BlackboxExplainerExample = interpret.ext.blackbox.example_blackbox_explainer_ext:ExampleExplainer"
+        ],
+        "interpret_ext_provider": [
+            "ExampleVisualizeProvider = interpret.ext.provider.example_provider:ExampleVisualizeProvider"
         ]
     },
     install_requires=install_requires,

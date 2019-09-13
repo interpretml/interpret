@@ -22,14 +22,6 @@ class AutoProvider(VisualizeProvider):
         self.provider.render(explanation, key=key, **kwargs)
 
 
-class InlineProvider(VisualizeProvider):
-    def __init__(self):
-        pass
-
-    def render(self, explanation, key=-1, **kwargs):
-        pass
-
-
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         selector_key = kwargs.get('selector_key', None)

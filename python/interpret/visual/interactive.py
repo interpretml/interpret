@@ -3,7 +3,7 @@
 
 import sys
 import logging
-from ..provider.visualize import VisualizeProvider, AutoProvider
+from ..provider.visualize import AutoProvider
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +19,8 @@ def get_visualize_provider():
 
 
 def set_visualize_provider(provider):
-    if isinstance(provider, VisualizeProvider):
+    has_render_method = hasattr(provider, "render")
+    if has_render_method:
         this.visualize_provider = provider
     else:  # pragma: no cover
         raise ValueError(

@@ -44,6 +44,8 @@ def _is_valid_provider(proposed_provider):
 
         if has_parallel_method or has_render_method:
             return True
+
+        module_logger.warning("Proposed provider is not valid.")
         return False
 
     except Exception as e:

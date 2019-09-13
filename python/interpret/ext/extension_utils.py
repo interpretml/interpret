@@ -35,6 +35,7 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         extension_class_validator: A function(class) -> bool, that checks the class for correctness before it is registered.
     """
     for entrypoint in pkg_resources.iter_entry_points(extension_key):
+        module_logger.debug("processing entrypoint {}".format(extension_key))
         try:
             extension_class_name = entrypoint.name
             extension_class = entrypoint.load()
@@ -43,7 +44,6 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
                     extension_key, extension_class_name, extension_class
                 )
             )
-
             _validate_class_name(extension_class_name)
 
             if not extension_class_validator(extension_class):
