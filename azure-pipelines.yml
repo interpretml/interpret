@@ -197,7 +197,7 @@ jobs:
       python -m pip install -r dev-requirements.txt
     workingDirectory: python/interpret-core
     displayName: 'Install requirements (Non-Windows)'
-    condition: in(variables['image.name'], ['ubuntu-16.04', 'macOS-10.13'])
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
