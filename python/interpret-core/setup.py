@@ -55,7 +55,8 @@ extras = {
     "dash": [
         "dash>=1.0.0",
         "dash-cytoscape>=0.1.1",
-        "dash-table>=4.1.0" "gevent>=1.3.6",
+        "dash-table>=4.1.0",
+        "gevent>=1.3.6",
         "requests>=2.19.0",
     ],
     # Testing
