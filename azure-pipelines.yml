@@ -136,9 +136,9 @@ jobs:
       LinuxPython37:
         python.version: '3.7'
         image.name: 'ubuntu-16.04'
-      WindowsPython35:
-        python.version: '3.5'
-        image.name: 'windows-2019'
+#      WindowsPython35:
+#        python.version: '3.5'
+#        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
         image.name: 'windows-2019'
@@ -186,7 +186,6 @@ jobs:
     condition: in(variables['image.name'], 'macOS-10.13')
     displayName: 'Matplotlib patch for mac.'
   - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\
       python -m pip install -r dev-requirements.txt
     workingDirectory: python/interpret-core
     displayName: 'Install requirements (Windows)'
