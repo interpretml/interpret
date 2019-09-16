@@ -18,3 +18,6 @@ enc_temp_folder/
 *.egg-info/
 *.ipynb_checkpoints/
 venv/
+
+# General
+*.bak
