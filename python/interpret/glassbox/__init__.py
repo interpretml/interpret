@@ -6,3 +6,5 @@ from .linear import LogisticRegression, LinearRegression  # noqa: F401
 from .skoperules import DecisionListClassifier  # noqa: F401
 from .ebm.ebm import ExplainableBoostingClassifier  # noqa: F401
 from .ebm.ebm import ExplainableBoostingRegressor  # noqa: F401
+
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)
