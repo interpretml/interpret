@@ -7,7 +7,9 @@ from abc import ABC, abstractmethod
 
 
 class ComputeProvider(ABC):
-    pass
+    @abstractmethod
+    def parallel(self, compute_fn, compute_args_iter):
+        pass  # pragma: no cover
 
 
 class JobLibProvider(ComputeProvider):
@@ -23,5 +25,7 @@ class JobLibProvider(ComputeProvider):
         return results
 
 
+# NOTE: Not implemented yet
 class AzureMLProvider(ComputeProvider):
-    pass
+    def parallel(self, compute_fn, compute_args_iter):
+        raise NotImplementedError

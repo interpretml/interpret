@@ -3,7 +3,7 @@
 
 import sys
 import logging
-from ..provider.visualize import AutoProvider
+from ..provider.visualize import AutoVisualizeProvider, PreserveProvider
 
 log = logging.getLogger(__name__)
 
@@ -11,6 +11,7 @@ this = sys.modules[__name__]
 this.app_runner = None
 this.app_addr = None
 
+this._preserve_provider = None
 this.visualize_provider = None
 
 
@@ -132,7 +133,7 @@ def show(explanation, key=-1, **kwargs):
 
         # Set default render if needed
         if this.visualize_provider is None:
-            this.visualize_provider = AutoProvider()
+            this.visualize_provider = AutoVisualizeProvider()
 
         # Render
         this.visualize_provider.render(explanation, key=key, **kwargs)
@@ -189,92 +190,13 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
     Returns:
         None.
     """
+    if this._preserve_provider is None:
+        this._preserve_provider = PreserveProvider()
 
     try:
-        # Get explanation key
-        if selector_key is None:
-            key = None
-        elif isinstance(selector_key, int):
-            key = selector_key
-        else:
-            series = explanation.selector[explanation.selector.columns[0]]
-            key = series[series == selector_key].index[0]
-
-        # Get visual object
-        visual = explanation.visualize(key=key)
-
-        # Output to front-end/file
-        _preserve_output(
-            explanation.name,
-            visual,
-            selector_key=selector_key,
-            file_name=file_name,
-            **kwargs
-        )
+        this._preserve_provider.render(explanation, selector_key=selector_key, file_name=file_name, **kwargs)
         return None
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e
 
-
-def _preserve_output(
-    explanation_name, visual, selector_key=None, file_name=None, **kwargs
-):
-    from plotly.offline import iplot, plot, init_notebook_mode
-    from IPython.display import display, display_html
-    from base64 import b64encode
-
-    from plotly import graph_objs as go
-    from pandas.core.generic import NDFrame
-    import dash.development.base_component as dash_base
-
-    init_notebook_mode(connected=True)
-
-    def render_html(html_string):
-        base64_html = b64encode(html_string.encode("utf-8")).decode("ascii")
-        final_html = """<iframe src="data:text/html;base64,{data}" width="100%" height=400 frameBorder="0"></iframe>""".format(
-            data=base64_html
-        )
-        display_html(final_html, raw=True)
-
-    if visual is None:  # pragma: no cover
-        msg = "No visualization for explanation [{0}] with selector_key [{1}]".format(
-            explanation_name, selector_key
-        )
-        log.error(msg)
-        if file_name is None:
-            render_html(msg)
-        else:
-            pass
-        return False
-
-    if isinstance(visual, go.Figure):
-        if file_name is None:
-            iplot(visual, **kwargs)
-        else:
-            plot(visual, filename=file_name, **kwargs)
-    elif isinstance(visual, NDFrame):
-        if file_name is None:
-            display(visual, **kwargs)
-        else:
-            visual.to_html(file_name, **kwargs)
-    elif isinstance(visual, str):
-        if file_name is None:
-            render_html(visual)
-        else:
-            with open(file_name, "w") as f:
-                f.write(visual)
-    elif isinstance(visual, dash_base.Component):  # pragma: no cover
-        msg = "Preserving dash components is currently not supported."
-        if file_name is None:
-            render_html(msg)
-        log.error(msg)
-        return False
-    else:  # pragma: no cover
-        msg = "Visualization cannot be preserved for type: {0}.".format(type(visual))
-        if file_name is None:
-            render_html(msg)
-        log.error(msg)
-        return False
-
-    return True

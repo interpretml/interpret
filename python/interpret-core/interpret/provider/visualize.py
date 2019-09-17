@@ -13,13 +13,14 @@ class VisualizeProvider(ABC):
         pass  # pragma: no cover
 
 
-class AutoProvider(VisualizeProvider):
-    def __init__(self):
+class AutoVisualizeProvider(VisualizeProvider):
+    def __init__(self, **kwargs):
         self.provider = None
+        self.kwargs = kwargs
 
     def render(self, explanation, key=-1, **kwargs):
         if self.provider is None:
-            self.provider = DashProvider()
+            self.provider = DashProvider(**self.kwargs)
 
         self.provider.render(explanation, key=key, **kwargs)
 

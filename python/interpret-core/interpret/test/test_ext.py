@@ -9,7 +9,21 @@ from .utils import synthetic_classification
 from ..glassbox import LogisticRegression
 
 
-def test_import_demo_explainer():
+def test_import_demo_provider():
+    try:
+        from interpret.ext.provider import ExampleProvider  # noqa
+    except ImportError as import_error:
+        raise_from(
+            Exception(
+                "Failure in interpret.ext.provider while trying "
+                "to load example explainers through extension_utils",
+                import_error,
+            ),
+            None,
+        )
+
+
+def test_import_demo_blackbox_explainer():
     try:
         from interpret.ext.blackbox import BlackboxExplainerExample  # noqa
     except ImportError as import_error:
@@ -23,7 +37,7 @@ def test_import_demo_explainer():
         )
 
 
-def test_demo_explainer():
+def test_demo_blackbox_explainer():
     from interpret.ext.blackbox import BlackboxExplainerExample
 
     data = synthetic_classification()

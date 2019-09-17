@@ -17,7 +17,7 @@ entry_points = {
         "BlackboxExplainerExample = interpret.ext.blackbox.example_blackbox_explainer_ext:ExampleExplainer"
     ],
     "interpret_ext_provider": [
-        "ExampleVisualizeProvider = interpret.ext.provider.example_provider:ExampleVisualizeProvider"
+        "ExampleVisualizeProvider = interpret.ext.provider.example_provider_ext:ExampleVisualizeProvider"
     ],
 }
 package_data = {
