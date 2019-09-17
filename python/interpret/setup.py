@@ -25,6 +25,7 @@ interpret_core_extra = [
     "linear",
     "decisiontree",
     "dash",
+    "treeinterpreter",
 ]
 
 setup(
