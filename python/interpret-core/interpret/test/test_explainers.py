@@ -1,6 +1,7 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+from sklearn.ensemble import RandomForestClassifier
 
 from .utils import synthetic_classification, get_all_explainers
 from .utils import assert_valid_explanation, assert_valid_model_explainer
@@ -10,12 +11,16 @@ from ..glassbox import LogisticRegression
 import pytest
 
 
+# TODO: Generalize specific models (currently only testing trees)
 @pytest.mark.slow
 def test_spec_synthetic():
     all_explainers = get_all_explainers()
     data = synthetic_classification()
+
     blackbox = LogisticRegression()
     blackbox.fit(data["train"]["X"], data["train"]["y"])
+    tree = RandomForestClassifier()
+    tree.fit(data["train"]["X"], data["train"]["y"])
 
     predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
 
@@ -24,9 +29,10 @@ def test_spec_synthetic():
             explainer = explainer_class(predict_fn, data["train"]["X"])
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()
-
             explainer.fit(data["train"]["X"], data["train"]["y"])
             assert_valid_model_explainer(explainer, data["test"]["X"].head())
+        elif explainer_class.explainer_type == "specific":
+            explainer = explainer_class(tree, data["train"]["X"])
         elif explainer_class.explainer_type == "data":
             explainer = explainer_class()
         elif explainer_class.explainer_type == "perf":

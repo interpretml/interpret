@@ -30,6 +30,11 @@ class PreserveProvider(VisualizeProvider):
         selector_key = kwargs.pop('selector_key', None)
         file_name = kwargs.pop('file_name', None)
 
+        # NOTE: Preserve didn't support returning everything. If key is -1 default to key is None.
+        # This is for backward-compatibility. All of this will be deprecated shortly anyway.
+        if key == -1:
+            key = None
+
         # Get visual object
         visual = explanation.visualize(key=key)
 

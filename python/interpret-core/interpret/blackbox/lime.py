@@ -7,7 +7,6 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_local_selector
 from ..utils import perf_dict
 from ..utils import unify_data, unify_predict_fn
-from lime.lime_tabular import LimeTabularExplainer
 import warnings
 
 
@@ -27,6 +26,7 @@ class LimeTabular(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
+        from lime.lime_tabular import LimeTabularExplainer
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
             data, None, feature_names, feature_types

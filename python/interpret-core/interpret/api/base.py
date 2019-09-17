@@ -13,7 +13,7 @@ class ExplainerMixin(ABC):
         available_explanations: A list of strings subsetting the following
             - "perf", "data", "local", "global".
         explainer_type: A string that is one of the following
-            - "blackbox", "model", "specific".
+            - "blackbox", "model", "specific", "data", "perf".
     """
 
     @property

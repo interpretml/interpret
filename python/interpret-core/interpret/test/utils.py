@@ -9,6 +9,9 @@ from ..blackbox import ShapKernel
 from ..blackbox import MorrisSensitivity
 from ..blackbox import PartialDependence
 
+from ..greybox import TreeInterpreter
+from ..greybox import ShapTree
+
 from ..glassbox import LogisticRegression, LinearRegression
 from ..glassbox import ClassificationTree, RegressionTree
 from ..glassbox import DecisionListClassifier
@@ -35,6 +38,10 @@ def get_all_explainers():
         LinearRegression,
         ExplainableBoostingRegressor,
     ]
+    specific_explainer_classes = [
+        TreeInterpreter,
+        ShapTree,
+    ]
     blackbox_explainer_classes = [
         LimeTabular,
         ShapKernel,
@@ -43,6 +50,7 @@ def get_all_explainers():
     ]
     all_explainers = []
     all_explainers.extend(model_explainer_classes)
+    all_explainers.extend(specific_explainer_classes)
     all_explainers.extend(blackbox_explainer_classes)
     all_explainers.extend(data_explainer_classes)
     all_explainers.extend(perf_explainer_classes)

@@ -7,6 +7,8 @@ module_logger = logging.getLogger(__name__)
 PROVIDER_EXTENSION_KEY = "interpret_ext_provider"
 BLACKBOX_EXTENSION_KEY = "interpret_ext_blackbox"
 GREYBOX_EXTENSION_KEY = "interpret_ext_greybox"
+DATA_EXTENSION_KEY = "interpret_ext_data"
+PERF_EXTENSION_KEY = "interpret_ext_perf"
 
 
 def _is_valid_explainer(target_explainer_type, proposed_explainer):
@@ -43,6 +45,14 @@ def _is_valid_blackbox_explainer(proposed_explainer):
 
 def _is_valid_greybox_explainer(proposed_explainer):
     return _is_valid_explainer("specific", proposed_explainer)
+
+
+def _is_valid_data_explainer(proposed_explainer):
+    return _is_valid_explainer("data", proposed_explainer)
+
+
+def _is_valid_perf_explainer(proposed_explainer):
+    return _is_valid_explainer("perf", proposed_explainer)
 
 
 def _is_valid_provider(proposed_provider):
