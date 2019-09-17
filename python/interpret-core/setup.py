@@ -52,6 +52,7 @@ extras = {
     "linear": [sklearn_dep],
     "decisiontree": [sklearn_dep],
     "skoperules": ["skope-rules>=1.0.0"],
+    "treeinterpreter": ["treeinterpreter>=0.2.2"],
     # Dash
     "dash": [
         "dash>=1.0.0",

@@ -90,6 +90,7 @@ class BaseLinear:
 
         Args:
             X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
             name: User-defined explanation name.
 
         Returns:
