@@ -27,10 +27,8 @@ class AutoVisualizeProvider(VisualizeProvider):
 
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
-        selector_key = kwargs.get('selector_key', None)
-        file_name = kwargs.get('file_name', None)
-        del kwargs['selector_key']
-        del kwargs['file_name']
+        selector_key = kwargs.pop('selector_key', None)
+        file_name = kwargs.pop('file_name', None)
 
         # Get visual object
         visual = explanation.visualize(key=key)
