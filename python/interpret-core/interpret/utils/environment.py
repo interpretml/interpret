@@ -25,7 +25,7 @@ def _detect_ipython():
         from IPython import get_ipython
 
         return get_ipython() is not None
-    except NameError:
+    except NameError:  # pragma: no cover
         return False
 
 
@@ -48,7 +48,7 @@ def _detect_ipython_zmq():
             return False  # Terminal running IPython
         else:
             return False  # Other type (?)
-    except NameError:
+    except NameError:  # pragma: no cover
         return False  # Probably standard Python interpreter
 
 
