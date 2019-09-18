@@ -14,10 +14,19 @@ https://github.com/microsoft/interpret
 
 entry_points = {
     "interpret_ext_blackbox": [
-        "BlackboxExplainerExample = interpret.ext.blackbox.example_blackbox_explainer_ext:ExampleExplainer"
+        "ExampleBlackboxExplainer = interpret.ext.examples:ExampleBlackboxExplainer"
+    ],
+    "interpret_ext_data": [
+        "ExampleDataExplainer = interpret.ext.examples:ExampleDataExplainer"
+    ],
+    "interpret_ext_perf": [
+        "ExamplePerfExplainer = interpret.ext.examples:ExamplePerfExplainer"
+    ],
+    "interpret_ext_greybox": [
+        "ExampleGreyboxExplainer = interpret.ext.examples:ExampleGreyboxExplainer"
     ],
     "interpret_ext_provider": [
-        "ExampleVisualizeProvider = interpret.ext.provider.example_provider_ext:ExampleVisualizeProvider"
+        "ExampleVisualizeProvider = interpret.ext.examples:ExampleVisualizeProvider"
     ],
 }
 package_data = {
