@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def perf_dict(y, y_hat, i):
-    if y is None:
+    if y is None or y_hat is None:
         return None
 
     di = {}

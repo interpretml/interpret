@@ -5,12 +5,21 @@ from ..api.templates import FeatureValueExplanation
 from . import gen_name_from_class, unify_data, perf_dict, gen_local_selector
 
 
-def shap_explain_local(explainer, X, y=None, name=None):
+def shap_explain_local(explainer, X, y=None, name=None, is_classification=False):
     if name is None:
         name = gen_name_from_class(explainer)
     X, y, _, _ = unify_data(X, y, explainer.feature_names, explainer.feature_types)
 
-    all_shap_values = explainer.shap.shap_values(X)
+    if is_classification:
+        all_shap_values = explainer.shap.shap_values(X)[1]
+        expected_value = explainer.shap.expected_value[1]
+    else:
+        all_shap_values = explainer.shap.shap_values(X)
+        expected_value = explainer.shap.expected_value
+
+    print(len(all_shap_values))
+    print(all_shap_values)
+
     predictions = explainer.predict_fn(X)
 
     data_dicts = []
@@ -30,7 +39,7 @@ def shap_explain_local(explainer, X, y=None, name=None):
             "values": instance,
             "extra": {
                 "names": ["Base Value"],
-                "scores": [explainer.shap.expected_value],
+                "scores": [expected_value],
                 "values": [1],
             },
         }
@@ -44,7 +53,7 @@ def shap_explain_local(explainer, X, y=None, name=None):
                 "explanation_type": "local_feature_importance",
                 "value": {
                     "scores": scores_list,
-                    "intercept": explainer.shap.expected_value,
+                    "intercept": expected_value,
                     "perf": perf_list,
                 },
             }

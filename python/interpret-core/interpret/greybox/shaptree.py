@@ -24,16 +24,18 @@ class ShapTree(ExplainerMixin):
     ):
         import shap
 
+        self.data, _, self.feature_names, self.feature_types = unify_data(
+            data, None, feature_names, feature_types
+        )
+
         self.model = model
-        if is_classifier(self):
-            predict_fn = lambda x: self.model.predict_proba(x)[:, 1]
+        self.is_classifier = is_classifier(self.model)
+        if is_classifier:
+            predict_fn = self.model.predict_proba
         else:
             predict_fn = self.model.predict
         self.predict_fn = unify_predict_fn(predict_fn, self.data)
 
-        self.data, _, self.feature_names, self.feature_types = unify_data(
-            data, None, feature_names, feature_types
-        )
         self.n_jobs = n_jobs
 
         self.explain_kwargs = explain_kwargs
@@ -53,4 +55,4 @@ class ShapTree(ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
-        return shap_explain_local(self, X, y=y, name=name)
+        return shap_explain_local(self, X, y=y, name=name, is_classification=self.is_classifier)

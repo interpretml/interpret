@@ -29,7 +29,7 @@ class TreeInterpreter(ExplainerMixin):
 
     """
     available_explanations = ['local', 'global']
-    explainer_type = ['specific']
+    explainer_type = 'specific'
 
     def __init__(
             self,
@@ -48,6 +48,7 @@ class TreeInterpreter(ExplainerMixin):
         self.explain_kwargs = explain_kwargs
         self.kwargs = kwargs
         self.model = model
+        self.is_classifier = is_classifier(self.model)
 
     def explain_global(self, name=None):
         """ Provides global explanation for model.
@@ -71,7 +72,11 @@ class TreeInterpreter(ExplainerMixin):
             **self.explain_kwargs
         )
         contributions = np.mean(contributions, axis=0)
-        bias = biases[0]
+        if self.is_classifier:
+            contributions = contributions[:, 1]
+            bias = biases[0][1]
+        else:
+            bias = biases[0]
 
         overall_data_dict = {
             "names": self.feature_names,
@@ -110,8 +115,9 @@ class TreeInterpreter(ExplainerMixin):
 
         if name is None:
             name = gen_name_from_class(self)
+        X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
 
-        if is_classifier(self):
+        if self.is_classifier:
             predictions = self.model.predict_proba(X)[:, 1]
         else:
             predictions = self.model.predict(X)
@@ -120,7 +126,6 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
-        bias = biases[0]
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
@@ -132,11 +137,15 @@ class TreeInterpreter(ExplainerMixin):
 
             # Names/scores
             data_dict["names"] = self.feature_names
-            data_dict["scores"] = contributions[i, :]
+            if self.is_classifier:
+                data_dict["scores"] = contributions[i, :, 1]
+            else:
+                data_dict["scores"] = contributions[i, :]
 
             # Values
             data_dict["values"] = instance
             # TODO: Value 1 doesn't make sense for this bias, consider refactoring values to take None.
+            bias = biases[0, 1] if self.is_classifier else biases[0]
             data_dict["extra"] = {
                 "names": ["Bias"],
                 "scores": [bias],

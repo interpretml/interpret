@@ -11,7 +11,7 @@ from ..glassbox import LogisticRegression
 
 def test_import_demo_provider():
     try:
-        from interpret.ext.provider import ExampleProvider  # noqa
+        from interpret.ext.provider import ExampleVisualizeProvider  # noqa
     except ImportError as import_error:
         raise_from(
             Exception(
