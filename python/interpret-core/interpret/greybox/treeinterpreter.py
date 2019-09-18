@@ -29,7 +29,7 @@ class TreeInterpreter(ExplainerMixin):
 
     """
 
-    available_explanations = ["local", "global"]
+    available_explanations = ["local"]
     explainer_type = "specific"
 
     def __init__(
@@ -51,49 +51,6 @@ class TreeInterpreter(ExplainerMixin):
         self.model = model
         self.is_classifier = is_classifier(self.model)
 
-    def explain_global(self, name=None):
-        """ Provides global explanation for model.
-
-        Args:
-            feature_names: List of feature names as string.
-            name: User-defined explanation name.
-
-        Returns:
-            An explanation object,
-            visualizing feature-value pairs as horizontal bar chart.
-        """
-        from treeinterpreter import treeinterpreter as ti
-
-        if not name:
-            name = gen_name_from_class(self)
-
-        _, biases, contributions = ti.predict(
-            self.model, self.data, **self.explain_kwargs
-        )
-        contributions = np.mean(contributions, axis=0)
-        if self.is_classifier:
-            contributions = contributions[:, 1]
-            bias = biases[0][1]
-        else:
-            bias = biases[0]
-
-        overall_data_dict = {
-            "names": self.feature_names,
-            "scores": list(contributions),
-            "extra": {"names": ["Bias"], "scores": [bias]},
-        }
-        # TODO: Consider having specific graphs for treeinterpreter
-        specific_data_dicts = None
-        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
-
-        return FeatureValueExplanation(
-            "global",
-            internal_obj,
-            feature_names=self.feature_names,
-            feature_types=self.feature_types,
-            name=name,
-            selector=None,
-        )
 
     def explain_local(self, X, y=None, name=None):
         """ Provides local explanations for provided instances.
