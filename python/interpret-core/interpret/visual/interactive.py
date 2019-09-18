@@ -21,7 +21,7 @@ def get_visualize_provider():
 
 def set_visualize_provider(provider):
     has_render_method = hasattr(provider, "render")
-    if has_render_method:
+    if provider is None or has_render_method:
         this.visualize_provider = provider
     else:  # pragma: no cover
         raise ValueError(
