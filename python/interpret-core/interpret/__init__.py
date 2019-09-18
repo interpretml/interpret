@@ -17,5 +17,7 @@ from .visual.interactive import preserve  # noqa: F401
 from .visual.interactive import shutdown_show_server  # noqa: F401
 from .visual.interactive import init_show_server  # noqa: F401
 from .visual.interactive import status_show_server  # noqa: F401
+from .visual.interactive import set_visualize_provider  # noqa: F401
+from .visual.interactive import get_visualize_provider  # noqa: F401
 
 logging.getLogger(__name__).addHandler(NullHandler())
