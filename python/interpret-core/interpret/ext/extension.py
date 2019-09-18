@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
+
 module_logger = logging.getLogger(__name__)
 
 PROVIDER_EXTENSION_KEY = "interpret_ext_provider"
@@ -17,7 +18,9 @@ def _is_valid_explainer(target_explainer_type, proposed_explainer):
         available_explanations = proposed_explainer.available_explanations
 
         if explainer_type != target_explainer_type:
-            module_logger.warning("Proposed explainer is not {}.".format(target_explainer_type))
+            module_logger.warning(
+                "Proposed explainer is not {}.".format(target_explainer_type)
+            )
             return False
 
         for available_explanation in available_explanations:

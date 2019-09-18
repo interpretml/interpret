@@ -25,9 +25,7 @@ def set_visualize_provider(provider):
         this.visualize_provider = provider
     else:  # pragma: no cover
         raise ValueError(
-            "Object of type {} is not a visualize provider.".format(
-                type(provider)
-            )
+            "Object of type {} is not a visualize provider.".format(type(provider))
         )
 
 
@@ -194,9 +192,10 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         this._preserve_provider = PreserveProvider()
 
     try:
-        this._preserve_provider.render(explanation, selector_key=selector_key, file_name=file_name, **kwargs)
+        this._preserve_provider.render(
+            explanation, selector_key=selector_key, file_name=file_name, **kwargs
+        )
         return None
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
         raise e
-

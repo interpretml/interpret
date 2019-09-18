@@ -27,8 +27,8 @@ class AutoVisualizeProvider(VisualizeProvider):
 
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
-        selector_key = kwargs.pop('selector_key', None)
-        file_name = kwargs.pop('file_name', None)
+        selector_key = kwargs.pop("selector_key", None)
+        file_name = kwargs.pop("file_name", None)
 
         # NOTE: Preserve didn't support returning everything. If key is -1 default to key is None.
         # This is for backward-compatibility. All of this will be deprecated shortly anyway.
@@ -49,7 +49,7 @@ class PreserveProvider(VisualizeProvider):
         return None
 
     def _preserve_output(
-            self, explanation_name, visual, selector_key=None, file_name=None, **kwargs
+        self, explanation_name, visual, selector_key=None, file_name=None, **kwargs
     ):
         from plotly.offline import iplot, plot, init_notebook_mode
         from IPython.display import display, display_html
@@ -102,7 +102,9 @@ class PreserveProvider(VisualizeProvider):
             log.error(msg)
             return False
         else:  # pragma: no cover
-            msg = "Visualization cannot be preserved for type: {0}.".format(type(visual))
+            msg = "Visualization cannot be preserved for type: {0}.".format(
+                type(visual)
+            )
             if file_name is None:
                 render_html(msg)
             log.error(msg)
@@ -114,6 +116,7 @@ class PreserveProvider(VisualizeProvider):
 class DashProvider(VisualizeProvider):
     def __init__(self, addr=None, base_url=None, use_relative_links=False):
         from ..visual.dashboard import AppRunner
+
         self.app_runner = AppRunner(
             addr, base_url=base_url, use_relative_links=use_relative_links
         )
@@ -127,7 +130,7 @@ class DashProvider(VisualizeProvider):
         self._idempotent_start()
 
         # Register
-        share_tables = kwargs.get('share_tables', None)
+        share_tables = kwargs.get("share_tables", None)
         self.app_runner.register(explanation, share_tables=share_tables)
 
         url = self.app_runner.display_link(explanation)
@@ -137,7 +140,7 @@ class DashProvider(VisualizeProvider):
         self._idempotent_start()
 
         # Register
-        share_tables = kwargs.get('share_tables', None)
+        share_tables = kwargs.get("share_tables", None)
         self.app_runner.register(explanation, share_tables=share_tables)
 
         # Display

@@ -39,17 +39,25 @@ def test_demo_blackbox_explainer():
     predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
 
     explainer = ExampleBlackboxExplainer(predict_fn, data["train"]["X"])
-    explanation = explainer.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
+    explanation = explainer.explain_local(
+        data["test"]["X"].head(), data["test"]["y"].head()
+    )
     assert_valid_explanation(explanation)
 
     explainer = ExampleGreyboxExplainer(blackbox, data["train"]["X"])
-    explanation = explainer.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
+    explanation = explainer.explain_local(
+        data["test"]["X"].head(), data["test"]["y"].head()
+    )
     assert_valid_explanation(explanation)
 
     explainer = ExampleDataExplainer()
-    explanation = explainer.explain_data(data["test"]["X"].head(), data["test"]["y"].head())
+    explanation = explainer.explain_data(
+        data["test"]["X"].head(), data["test"]["y"].head()
+    )
     assert_valid_explanation(explanation)
 
     explainer = ExamplePerfExplainer(predict_fn)
-    explanation = explainer.explain_perf(data["test"]["X"].head(), data["test"]["y"].head())
+    explanation = explainer.explain_perf(
+        data["test"]["X"].head(), data["test"]["y"].head()
+    )
     assert_valid_explanation(explanation)

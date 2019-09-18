@@ -44,7 +44,9 @@ def run_notebook(notebook_path):
 def extract_notebook_paths():
     script_path = os.path.dirname(os.path.abspath(__file__))
     notebooks_path = os.path.abspath(
-        os.path.join(script_path, "..", "..", "..", "..", "examples", "python", "notebooks")
+        os.path.join(
+            script_path, "..", "..", "..", "..", "examples", "python", "notebooks"
+        )
     )
 
     # NOTE: This test runs only when you have the source repo.

@@ -28,17 +28,18 @@ class TreeInterpreter(ExplainerMixin):
         - ExtraTreesClassifier
 
     """
-    available_explanations = ['local', 'global']
-    explainer_type = 'specific'
+
+    available_explanations = ["local", "global"]
+    explainer_type = "specific"
 
     def __init__(
-            self,
-            model,
-            data,
-            feature_names=None,
-            feature_types=None,
-            explain_kwargs={},
-            **kwargs
+        self,
+        model,
+        data,
+        feature_names=None,
+        feature_types=None,
+        explain_kwargs={},
+        **kwargs
     ):
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
@@ -67,9 +68,7 @@ class TreeInterpreter(ExplainerMixin):
             name = gen_name_from_class(self)
 
         _, biases, contributions = ti.predict(
-            self.model,
-            self.data,
-            **self.explain_kwargs
+            self.model, self.data, **self.explain_kwargs
         )
         contributions = np.mean(contributions, axis=0)
         if self.is_classifier:
@@ -85,10 +84,7 @@ class TreeInterpreter(ExplainerMixin):
         }
         # TODO: Consider having specific graphs for treeinterpreter
         specific_data_dicts = None
-        internal_obj = {
-            "overall": overall_data_dict,
-            "specific": specific_data_dicts,
-        }
+        internal_obj = {"overall": overall_data_dict, "specific": specific_data_dicts}
 
         return FeatureValueExplanation(
             "global",
@@ -146,17 +142,10 @@ class TreeInterpreter(ExplainerMixin):
             data_dict["values"] = instance
             # TODO: Value 1 doesn't make sense for this bias, consider refactoring values to take None.
             bias = biases[0, 1] if self.is_classifier else biases[0]
-            data_dict["extra"] = {
-                "names": ["Bias"],
-                "scores": [bias],
-                "values": [1],
-            }
+            data_dict["extra"] = {"names": ["Bias"], "scores": [bias], "values": [1]}
             data_dicts.append(data_dict)
 
-        internal_obj = {
-            "overall": None,
-            "specific": data_dicts,
-        }
+        internal_obj = {"overall": None, "specific": data_dicts}
         selector = gen_local_selector(X, y, predictions)
 
         return FeatureValueExplanation(

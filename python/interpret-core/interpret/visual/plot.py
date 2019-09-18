@@ -397,12 +397,14 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
             class_bar = go.Bar(
                 x=x,
                 y=y[:, i],
-                error_y=dict(type="data", array=y_err[:, i], visible=True)
+                error_y=dict(type="data", array=y_err[:, i], visible=True),
             )
             traces.append(class_bar)
     else:
         trace = go.Bar(
-            x=x, y=y, error_y=dict(type="data", color="#ff6614", array=y_err, visible=True)
+            x=x,
+            y=y,
+            error_y=dict(type="data", color="#ff6614", array=y_err, visible=True),
         )
         traces.append(trace)
     layout = go.Layout(
@@ -418,7 +420,7 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     main_fig = go.Figure(data=traces, layout=layout)
 
     if multiclass:
-        main_fig.update_layout(barmode='group')
+        main_fig.update_layout(barmode="group")
 
     # Add density
     if data_dict.get("density", None) is not None:

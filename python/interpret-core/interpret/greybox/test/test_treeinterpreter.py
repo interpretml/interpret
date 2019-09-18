@@ -28,16 +28,24 @@ def test_that_tree_works():
     prediction, bias, contributions = ti.predict(rf, X_new)
 
     # Build actual local explanation
-    explainer = TreeInterpreter(
-        rf, X, feature_names=feature_names
-    )
+    explainer = TreeInterpreter(rf, X, feature_names=feature_names)
     local_expl = explainer.explain_local(X_new, y_new)
 
     a_local_data = local_expl.data(key=0)
-    assert all([feature_names[i] == a_local_data['names'][i] for i in range(len(feature_names))])
-    assert all([contributions[0, i] == a_local_data['scores'][i] for i in range(len(feature_names))])
-    assert a_local_data['extra']['names'][0] == 'Bias'
-    assert a_local_data['extra']['scores'][0] == bias[0]
+    assert all(
+        [
+            feature_names[i] == a_local_data["names"][i]
+            for i in range(len(feature_names))
+        ]
+    )
+    assert all(
+        [
+            contributions[0, i] == a_local_data["scores"][i]
+            for i in range(len(feature_names))
+        ]
+    )
+    assert a_local_data["extra"]["names"][0] == "Bias"
+    assert a_local_data["extra"]["scores"][0] == bias[0]
 
     # NOTE: Global calculation is not part of the blog post
     #       but difference of datasets is.
@@ -48,10 +56,20 @@ def test_that_tree_works():
     global_expl = explainer.explain_global()
     overall_global_data = global_expl.data()
 
-    assert all([feature_names[i] == overall_global_data['names'][i] for i in range(len(feature_names))])
-    assert all([contributions[i] == overall_global_data['scores'][i] for i in range(len(feature_names))])
-    assert overall_global_data['extra']['names'][0] == 'Bias'
-    assert overall_global_data['extra']['scores'][0] == bias[0]
+    assert all(
+        [
+            feature_names[i] == overall_global_data["names"][i]
+            for i in range(len(feature_names))
+        ]
+    )
+    assert all(
+        [
+            contributions[i] == overall_global_data["scores"][i]
+            for i in range(len(feature_names))
+        ]
+    )
+    assert overall_global_data["extra"]["names"][0] == "Bias"
+    assert overall_global_data["extra"]["scores"][0] == bias[0]
 
     # Assert failure case -- does not support Global w/ Keys
     assert global_expl.visualize(key=1) is None

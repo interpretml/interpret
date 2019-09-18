@@ -25,6 +25,7 @@ class MorrisSampler(SamplerMixin):
 
     def sample(self):
         from SALib.sample import morris as morris_sampler
+
         kwargs = {"num_levels": 4}
         kwargs.update(self.kwargs)
 

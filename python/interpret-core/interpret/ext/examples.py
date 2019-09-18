@@ -21,9 +21,7 @@ class ExampleDataExplainer(ExplainerMixin):
     available_explanations = ["data"]
     explainer_type = "data"
 
-    def __init__(
-            self, feature_names=None, feature_types=None
-    ):
+    def __init__(self, feature_names=None, feature_types=None):
         pass
 
     def explain_data(self, X, y, name=None):
@@ -45,9 +43,7 @@ class ExampleGreyboxExplainer(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "specific"
 
-    def __init__(
-            self, model, data, feature_names=None, feature_types=None
-    ):
+    def __init__(self, model, data, feature_names=None, feature_types=None):
         pass
 
     def explain_local(self, X, y=None, name=None):
@@ -59,7 +55,7 @@ class ExampleBlackboxExplainer(ExplainerMixin):
     explainer_type = "blackbox"
 
     def __init__(
-            self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
+        self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
     ):
         pass
 

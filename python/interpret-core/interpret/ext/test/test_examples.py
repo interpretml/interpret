@@ -4,7 +4,13 @@
 
 from ...glassbox import LinearRegression
 from ...api.base import ExplainerMixin
-from ..extension import _is_valid_blackbox_explainer, _is_valid_provider, _is_valid_greybox_explainer, _is_valid_data_explainer, _is_valid_perf_explainer
+from ..extension import (
+    _is_valid_blackbox_explainer,
+    _is_valid_provider,
+    _is_valid_greybox_explainer,
+    _is_valid_data_explainer,
+    _is_valid_perf_explainer,
+)
 
 
 class NotEvenAnExplainer:

@@ -23,6 +23,7 @@ def _detect_ipython():
 
     try:
         from IPython import get_ipython
+
         return get_ipython() is not None
     except NameError:
         return False
@@ -43,9 +44,9 @@ def _detect_ipython_zmq():
 
     try:
         shell = get_ipython().__class__.__name__
-        if shell == 'ZMQInteractiveShell':
+        if shell == "ZMQInteractiveShell":
             return True  # Jupyter notebook or qtconsole
-        elif shell == 'TerminalInteractiveShell':
+        elif shell == "TerminalInteractiveShell":
             return False  # Terminal running IPython
         else:
             return False  # Other type (?)
@@ -56,6 +57,7 @@ def _detect_ipython_zmq():
 def _detect_colab():
     try:
         import google.colab
+
         return True
     except ImportError:
         return False
@@ -96,7 +98,7 @@ class EnvironmentDetector:
             "binder": _detect_binder,
             "colab": _detect_colab,
             "ipython-zmq": _detect_ipython_zmq,
-            "ipython": _detect_ipython
+            "ipython": _detect_ipython,
         }
 
     def detect(self):
@@ -105,5 +107,3 @@ class EnvironmentDetector:
             if check():
                 envs.append(name)
         return envs
-
-

@@ -13,11 +13,7 @@ def task_fn(x, y):
     return x + y
 
 
-task_args_iter = [
-    [1, 1],
-    [2, 2],
-    [3, 3]
-]
+task_args_iter = [[1, 1], [2, 2], [3, 3]]
 
 
 @pytest.fixture("module")
@@ -62,4 +58,3 @@ def test_dash_provider(example_explanation):
     assert link is not None
 
     provider.app_runner.stop()
-

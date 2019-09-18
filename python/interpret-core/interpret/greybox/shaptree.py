@@ -13,14 +13,14 @@ class ShapTree(ExplainerMixin):
     explainer_type = "specific"
 
     def __init__(
-            self,
-            model,
-            data,
-            feature_names=None,
-            feature_types=None,
-            explain_kwargs=None,
-            n_jobs=1,
-            **kwargs
+        self,
+        model,
+        data,
+        feature_names=None,
+        feature_types=None,
+        explain_kwargs=None,
+        n_jobs=1,
+        **kwargs
     ):
         import shap
 
@@ -55,4 +55,6 @@ class ShapTree(ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
-        return shap_explain_local(self, X, y=y, name=name, is_classification=self.is_classifier)
+        return shap_explain_local(
+            self, X, y=y, name=name, is_classification=self.is_classifier
+        )
