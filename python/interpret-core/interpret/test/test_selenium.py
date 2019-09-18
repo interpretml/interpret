@@ -1,4 +1,6 @@
 import pytest
+from sklearn.ensemble import RandomForestClassifier
+
 from .utils import synthetic_classification, get_all_explainers
 from ..glassbox import LogisticRegression
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
@@ -15,6 +17,8 @@ def all_explanations():
     data = synthetic_classification()
     blackbox = LogisticRegression()
     blackbox.fit(data["train"]["X"], data["train"]["y"])
+    tree = RandomForestClassifier()
+    tree.fit(data["train"]["X"], data["train"]["y"])
 
     explanations = []
     predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
@@ -24,6 +28,8 @@ def all_explanations():
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
+        elif explainer_class.explainer_type == "specific":
+            explainer = explainer_class(tree, data["train"]["X"])
         elif explainer_class.explainer_type == "data":
             explainer = explainer_class()
         elif explainer_class.explainer_type == "perf":
