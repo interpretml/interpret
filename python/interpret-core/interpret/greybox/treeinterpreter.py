@@ -51,7 +51,6 @@ class TreeInterpreter(ExplainerMixin):
         self.model = model
         self.is_classifier = is_classifier(self.model)
 
-
     def explain_local(self, X, y=None, name=None):
         """ Provides local explanations for provided instances.
 

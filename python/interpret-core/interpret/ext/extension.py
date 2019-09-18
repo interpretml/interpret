@@ -19,7 +19,9 @@ def _is_valid_explainer(proposed_explainer, expected_explainer_type):
         available_explanations = proposed_explainer.available_explanations
 
         if explainer_type != expected_explainer_type:
-            module_logger.warning("Proposed explainer is not a {}.".format(expected_explainer_type))
+            module_logger.warning(
+                "Proposed explainer is not a {}.".format(expected_explainer_type)
+            )
             return False
 
         for available_explanation in available_explanations:
@@ -52,11 +54,15 @@ def _is_valid_glassbox_explainer(proposed_explainer):
         has_fit = hasattr(proposed_explainer, "fit")
         has_predict = hasattr(proposed_explainer, "predict")
         if not is_valid_explainer:
-            module_logger.warning("Explainer not valid due to missing explain_local or global function.")
+            module_logger.warning(
+                "Explainer not valid due to missing explain_local or global function."
+            )
         if not has_fit:
             module_logger.warning("Explainer not valid due to missing fit function.")
         if not has_predict:
-            module_logger.warning("Explainer not valid due to missing predict function.")
+            module_logger.warning(
+                "Explainer not valid due to missing predict function."
+            )
         return is_valid_explainer and has_fit and has_predict
 
     except Exception as e:

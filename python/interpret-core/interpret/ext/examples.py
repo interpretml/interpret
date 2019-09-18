@@ -43,9 +43,7 @@ class ExampleGlassboxExplainer(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "model"
 
-    def __init__(
-        self, feature_names=None, feature_types=None
-    ):
+    def __init__(self, feature_names=None, feature_types=None):
         pass
 
     def fit(self, X, y):
