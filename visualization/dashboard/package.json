@@ -1,0 +1,45 @@
+{
+  "name": "mlchartlib",
+  "version": "0.1.17",
+  "license": "See license file 'LICENSE'",
+  "description": "ML Chart Lib",
+  "main": "rel/index.js",
+  "module": "rel/index.js",
+  "types": "rel/index.d.ts",
+  "files": [
+    "rel/"
+  ],
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "build-css": "node-sass-chokidar src/MLIDashboard -o rel/ && node-sass-chokidar src/ChartTools -o rel/ && node-sass-chokidar src/MLIDashboard -o rel/MLIDashboard/ && node-sass-chokidar src/ChartTools -o rel/ChartTools && node-sass-chokidar src/FairnessDashboard -o rel/ && node-sass-chokidar src/FairnessDashboard -o rel/FairnessDashboard"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.15",
+    "@types/lodash": "4.14.123",
+    "@types/memoize-one": "4.1.1",
+    "@types/plotly.js": "1.44.0",
+    "@types/react": "16.8.10",
+    "@types/uuid": "3.4.4",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^24.8.0",
+    "node-sass-chokidar": "1.3.4",
+    "react-test-renderer": "^16.8.6",
+    "ts-jest": "^24.0.2",
+    "typescript": "^3.5.2"
+  },
+  "peerDependencies": {
+    "react": ">=16.3.2-0 <17.0.0",
+    "react-dom": ">=16.3.2-0 <17.0.0"
+  },
+  "dependencies": {
+    "jmespath": "^0.15.0",
+    "localized-strings": "^0.2.2",
+    "lodash": "^4.17.11",
+    "memoize-one": "^5.0.2",
+    "moment": "^2.24.0",
+    "office-ui-fabric-react": "^7.11.0",
+    "plotly.js": "^1.45.3",
+    "uuid": "^3.3.2"
+  }
+}

@@ -109,4 +109,20 @@ setup(
         ]
     },
     install_requires=install_requires,
+    include_package_data=True,
+    data_files=[
+        ('share/jupyter/nbextensions/interpret-ml-widget', [
+            'interpret/widget/static/extension.js',
+            'interpret/widget/static/extension.js.map',
+            'interpret/widget/static/index.js',
+            'interpret/widget/static/index.js.map'
+        ]),
+        ("etc/jupyter/nbconfig/notebook.d", [
+            "jupyter-config/nbconfig/notebook.d/interpret-ml-widget.json"
+        ]),
+        ('share/jupyter/lab/extensions', [
+            'interpret/widget/js/'
+            'interpret_ml_widget/labextension/interpret-ml-widget-0.1.7.tgz'
+        ])],
+    zip_safe=False
 )

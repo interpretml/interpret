@@ -1,0 +1,14 @@
+*.egg-info/
+.ipynb_checkpoints/
+
+build/
+*.py[cod]
+node_modules/
+/lib/
+
+# js dependencies
+/node_modules/
+
+
+# OS X
+.DS_Store

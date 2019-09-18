@@ -1,0 +1,60 @@
+{
+  "name": "interpret-ml-widget",
+  "version": "0.1.7",
+  "description": "Machine Learning explanation widget for Jupyter notebooks",
+  "author": "Interpret ML",
+  "license": "See license file 'LICENSE'",
+  "main": "lib/index.js",
+  "types": "./lib/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/interpret"
+  },
+  "keywords": [
+    "jupyter",
+    "widgets",
+    "ipython",
+    "ipywidgets",
+    "jupyterlab-extension"
+  ],
+  "files": [
+    "lib/**/*.js",
+    "dist/*.js"
+  ],
+  "scripts": {
+    "build": "npm run build:lib && npm run build:nbextension",
+    "build:labextension": "npm run clean:labextension && mkdirp interpret_ml_widget/labextension && cd interpret_ml_widget/labextension && npm pack ../..",
+    "build:lib": "tsc",
+    "build:nbextension": "webpack -p",
+    "build:all": "npm run build:lib && npm run build:labextension && npm run build:nbextension",
+    "clean": "npm run clean:lib && npm run clean:nbextension",
+    "clean:lib": "rimraf lib",
+    "clean:labextension": "rimraf interpret_ml_widget/labextension",
+    "clean:nbextension": "rimraf interpret_ml_widget/nbextension/static/index.js"
+  },
+  "devDependencies": {
+    "@phosphor/application": "^1.6.0",
+    "@phosphor/widgets": "^1.6.0",
+    "@types/node": "^10.11.6",
+    "@types/react-dom": "^16.8.4",
+    "mkdirp": "^0.5.1",
+    "rimraf": "^2.6.1",
+    "source-map-loader": "^0.2.4",
+    "ts-loader": "^5.2.1",
+    "typescript": "~3.1.2",
+    "webpack": "4.30.0",
+    "webpack-cli": "^3.3.1"
+  },
+  "dependencies": {
+    "@jupyter-widgets/base": "^1.1.10",
+    "css-loader": "^2.1.1",
+    "lodash": "^4.17.11",
+    "mlchartlib": "0.1.18",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "style-loader": "^0.23.1"
+  },
+  "jupyterlab": {
+    "extension": "lib/labplugin"
+  }
+}

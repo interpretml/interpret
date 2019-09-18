@@ -1,0 +1,41 @@
+.explanation-chart {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    .top-controls {
+        display: flex;
+        padding: 3px 15px;
+        justify-content: space-between;
+        .selector{
+            display: flex;
+            .selector-label {
+                display: flex;
+                flex-direction: row;
+                .label-text {
+                    max-width: 84px;
+                    line-height: 14px;
+                    margin-right: -16px;
+                    font-size: 14px;
+                    font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;    
+                }
+            }
+            .ms-ComboBox-container {
+                max-width: 208px;
+            }
+        }
+    }
+}
+
+.callout-info {
+    display: flex;
+    flex-direction: column;
+    max-width: 300px;
+    padding: 30px;
+    font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+    
+    button {
+        max-width: 100px;
+    }
+}

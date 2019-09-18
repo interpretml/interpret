@@ -1,0 +1,18 @@
+.feature-bar-explanation-chart {
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    .top-controls {
+        display: flex;
+        padding: 3px 15px;
+        .feature-slider{
+            flex: 1;
+        }
+    }
+    .feature-importance-bar-chart {
+        width: 100%;
+        flex: 1;
+    }
+}

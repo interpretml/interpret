@@ -18,6 +18,8 @@ from .visual.interactive import shutdown_show_server  # noqa: F401
 from .visual.interactive import init_show_server  # noqa: F401
 from .visual.interactive import status_show_server  # noqa: F401
 
+from .widget.ExplanationDashboard import ExplanationDashboard
+
 logging.getLogger(__name__).addHandler(NullHandler())
 
 # Set name of package

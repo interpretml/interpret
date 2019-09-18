@@ -1,0 +1,31 @@
+.ICE-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    .unavailable, .charting-prompt, .loading {
+        margin: auto;
+        font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+        padding: 40px;
+        font-size: 25px;
+    }
+    .feature-picker {
+        display: flex;
+        padding: 3px 15px;
+        justify-content: space-between;
+        border-bottom: 1px solid grey;
+    }
+    .rangeview {
+        display: flex;
+        justify-content: flex-end;
+        .parameter-set {
+            display: flex;
+        }
+    }
+    .second-wrapper {
+        width: 100%;
+        flex: 1;
+    }
+    .chart-wrapper {
+        height: 100%;
+    }
+}

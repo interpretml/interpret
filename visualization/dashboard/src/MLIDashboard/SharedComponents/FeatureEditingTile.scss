@@ -1,0 +1,30 @@
+.tile {
+    background-color: whitesmoke;
+    margin: 15px;
+    width: 200px;
+    min-height: 120px;
+    box-sizing: border-box;
+    box-shadow: 0 0 15px -2px #ccc;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    .tile-label {
+        font-family: "Segoe UI", "Segoe UI Web (West European)", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+        overflow-wrap: break-word;
+        font-size: 20px;
+        padding: 3px 4px 15px 4px;
+    }
+
+    &.edited {
+        border: 2px solid #0078D4;
+        padding: 3px;
+        border-radius: 5px;
+    }
+
+    &.error {
+        border: 2px solid #A80000;
+        padding: 3px;
+        border-radius: 5px;
+    }
+}

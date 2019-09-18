@@ -1,0 +1,109 @@
+{
+    "selectPoint": "Select a point to see its local explanation",
+    "defaultClassNames": "Class {0}",
+    "defaultFeatureNames": "Feature {0}",
+    "absoluteAverage": "Average of absolute value",
+    "predictedClass": "Predicted class",
+    "dataExploration": "Data Exploration",
+    "globalImportance": "Global Importance",
+    "explanationExploration": "Explanation Exploration",
+    "summaryImportance": "Summary Importance",
+    "featureImportance": "Feature Importance",
+    "perturbationExploration": "Perturbation Exploration",
+    "ice": "ICE",
+    "clearSelection": "Clear selection",
+    "ExplanationScatter": {
+        "dataLabel": "Data : {0}",
+        "importanceLabel": "Importance : {0}",
+        "predictedY": "PredictedY",
+        "index": "Index",
+        "dataGroupLabel": "Data",
+        "output": "Output",
+        "probabilityLabel": "Probability : {0}",
+        "trueY": "True Y",
+        "class": "class",
+        "xValue": "X value:",
+        "yValue": "Y value:",
+        "colorValue": "Color:"
+    },
+    "CrossClass": {
+        "label": "Cross-class weighting:",
+        "info": "Info",
+        "overviewInfo": "Multiclass models generate an independent feature importance vector for each class. Each class's feature importance vector demonstrates which features made a class more likely or less likely. You can select how the weights of the per-class feature importance vectors are summarized into a single value:",
+        "absoluteValInfo": "Average of absolute value: Shows the sum of the feature's importance across all possible classes, divided by number of classes",
+        "predictedClassInfo": "Predicted class: Shows the feature importance value for a given point's predicted class",
+        "enumeratedClassInfo": "Enumerated class names: Shows only the specified class's feature importance values across all data points.",
+        "close": "Close"
+    },
+    "AggregateImportance": {
+        "scaledFeatureValue": "Scaled Feature Value",
+        "low": "Low",
+        "high": "High",
+        "featureLabel": "Feature: {0}",
+        "valueLabel": "Feature value: {0}",
+        "importanceLabel": "Importance: {0}",
+        "predictedClassTooltip": "Predicted Class: {0}",
+        "trueClassTooltip": "True Class: {0}",
+        "predictedOutputTooltip": "Predicted Output: {0}",
+        "trueOutputTooltip": "True Output: {0}",
+        "topKFeatures": "Top K Features:",
+        "scaledFeatureValues": "Scaled Feature Values",
+        "predictedValue": "Predicted Value",
+        "predictedClass": "Predicted Class",
+        "trueValue": "True Value",
+        "trueClass": "True Class"
+    },
+    "BarChart": {
+        "classLabel": "Class: {0}",
+        "sortBy": "Sort by",
+        "noData": "No Data",
+        "absoluteGlobal": "Absolute global",
+        "absoluteLocal": "Absolute local",
+        "calculatingExplanation": "Calculating explanation"
+    },
+    "IcePlot": {
+        "numericError": "Must be numeric",
+        "integerError": "Must be an integer",
+        "prediction": "Prediction",
+        "predictedProbability": "Predicted probability",
+        "predictionLabel": "Prediction: {0}",
+        "probabilityLabel": "Probability: {0}",
+        "noModelError": "Please provide an operationalized model to explore predictions in ICE plots.",
+        "featurePickerLabel": "Feature:",
+        "minimumInputLabel": "Minimum:",
+        "maximumInputLabel": "Maximum:",
+        "stepInputLabel": "Steps:",
+        "loadingMessage": "Loading data...",
+        "submitPrompt": "Submit a range to view an ICE plot",
+        "topLevelErrorMessage": "Error in parameter",
+        "errorPrefix": "Error encountered: {0}"
+    },
+    "PerturbationExploration": {
+        "loadingMessage": "Loading...",
+        "perturbationLabel": "Perturbation:"
+    },
+    "PredictionLabel": {
+        "predictedValueLabel": "Predicted value : {0}",
+        "predictedClassLabel": "Predicted class : {0}"
+    },
+    "Violin": {
+        "groupNone": "No grouping",
+        "groupPredicted": "Predicted Y",
+        "groupTrue": "True Y",
+        "groupBy": "Group by"
+    },
+    "FeatureImportanceWrapper": {
+        "chartType": "Chart type:",
+        "violinText": "Violin",
+        "barText": "Bar",
+        "boxText": "Box",
+        "beehiveText": "Swarm",
+        "globalImportanceExplanation": "Global feature importance is calculated by averaging the absolute value of the feature importance of all points (L1 normalization). ",
+        "multiclassImportanceAddendum": "All points are included in calculating a feature's importance for all classes, no differential weighting is used. So a feature that has large negative importance for many points predicted to not be of 'Class A' will greatly increase that feature's 'Class A'  importance."
+    },
+    "Fairness": {
+        "accuracyTab": "Fairness in Accuracy",
+        "opportunityTab": "Fairness in Opportunity",
+        "modelComparisonTab": "Model Comparison"
+    }
+}

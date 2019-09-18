@@ -1,0 +1,24 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "target": "es5",
+        "resolveJsonModule": true,
+        "lib": [ "dom", "es2015", "es2017" ],
+        "jsx": "react",
+        "sourceMap": true,
+        "module":  "esnext",
+        "outDir": "./rel",
+        "moduleResolution": "node",
+        "declaration": true,
+        "noImplicitThis": true,
+        "experimentalDecorators": true,
+        "esModuleInterop":true,
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "rel"
+    ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "component-host",
+  "version": "1.0.0",
+  "description": "Host for component to be consumed as npm package",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "start": "start http://localhost:7777/ & webpack-dev-server"
+  },
+  "author": "",
+  "license": "See Licence file 'LICENSE'",
+  "dependencies": {
+    "@babel/core": "7.4.3",
+    "@babel/plugin-proposal-class-properties": "^7.4.0",
+    "@babel/preset-env": "7.4.3",
+    "@babel/preset-react": "7.0.0",
+    "babel-loader": "8.0.5",
+    "babel-preset-es2015": "6.24.1",
+    "babel-preset-react": "6.24.1",
+    "css-loader": "2.1.1",
+    "react": "16.8.6",
+    "react-dom": "16.8.6",
+    "style-loader": "0.23.1",
+    "webpack": "4.29.6",
+    "webpack-cli": "3.3.0",
+    "webpack-dev-server": "3.2.1"
+  }
+}

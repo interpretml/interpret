@@ -1,0 +1,13 @@
+.feature-picker {
+    display: flex;
+    padding: 3px 15px;
+    justify-content: space-between;
+    border-bottom: 1px solid grey;
+}
+.rangeview {
+    display: flex;
+    justify-content: flex-end;
+    .parameter-set {
+        display: flex;
+    }
+}
