@@ -27,7 +27,6 @@ class AutoVisualizeProvider(VisualizeProvider):
 
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
-        selector_key = kwargs.pop("selector_key", None)
         file_name = kwargs.pop("file_name", None)
 
         # NOTE: Preserve didn't support returning everything. If key is -1 default to key is None.
@@ -42,7 +41,7 @@ class PreserveProvider(VisualizeProvider):
         self._preserve_output(
             explanation.name,
             visual,
-            selector_key=selector_key,
+            selector_key=key,
             file_name=file_name,
             **kwargs
         )
@@ -130,7 +129,7 @@ class DashProvider(VisualizeProvider):
         self._idempotent_start()
 
         # Register
-        share_tables = kwargs.get("share_tables", None)
+        share_tables = kwargs.pop("share_tables", None)
         self.app_runner.register(explanation, share_tables=share_tables)
 
         url = self.app_runner.display_link(explanation)
@@ -140,7 +139,7 @@ class DashProvider(VisualizeProvider):
         self._idempotent_start()
 
         # Register
-        share_tables = kwargs.get("share_tables", None)
+        share_tables = kwargs.pop("share_tables", None)
         self.app_runner.register(explanation, share_tables=share_tables)
 
         # Display

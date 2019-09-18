@@ -108,6 +108,16 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     return None
 
 
+def _get_integer_key(key, selector):
+    if key is not None and not isinstance(key, int):
+        series = selector[selector.columns[0]]
+        if key not in series.values:  # pragma: no cover
+            raise ValueError("Key {} not in explanation's selector".format(key))
+        key = series[series == key].index[0]
+
+    return key
+
+
 def show(explanation, key=-1, **kwargs):
     """ Provides an interactive visualization for a given explanation(s).
 
@@ -123,11 +133,7 @@ def show(explanation, key=-1, **kwargs):
 
     try:
         # Get explanation key
-        if key is not None and not isinstance(key, int):
-            series = explanation.selector[explanation.selector.columns[0]]
-            if key not in series.values:  # pragma: no cover
-                raise ValueError("Key {} not in explanation's selector".format(key))
-            key = series[series == key].index[0]
+        key = _get_integer_key(key, explanation.selector)
 
         # Set default render if needed
         if this.visualize_provider is None:
@@ -192,8 +198,11 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         this._preserve_provider = PreserveProvider()
 
     try:
+        # Get explanation key
+        key = _get_integer_key(selector_key, explanation.selector)
+
         this._preserve_provider.render(
-            explanation, selector_key=selector_key, file_name=file_name, **kwargs
+            explanation, key=key, file_name=file_name, **kwargs
         )
         return None
     except Exception as e:  # pragma: no cover
