@@ -127,6 +127,7 @@ We also build on top of many great packages. Please check them out!
 [shap](https://github.com/slundberg/shap) |
 [salib](https://github.com/SALib/SALib) |
 [skope-rules](https://github.com/scikit-learn-contrib/skope-rules) |
+[treeinterpreter](https://github.com/andosa/treeinterpreter) |
 [gevent](https://github.com/gevent/gevent) | 
 [joblib](https://github.com/joblib/joblib) |
 [pytest](https://github.com/pytest-dev/pytest) | 
