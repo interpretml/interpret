@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.16] - 2019-09-17
+### Added
+- Visualize and compute platforms are now refactored and use an extension system. Details on use upcoming in later release.
+- Package interpret is now a meta-package using interpret-core.
+  This enables partial installs via interpret-core for production environments.
+### Fixed
+- Updated SHAP dependency to require dill.
+### Experimental (WIP)
+- Greybox introduced (explainers that only work for specific types of models). Starting with SHAP tree and TreeInterpreter.
+- Extension system now works across all explainer types and providers.
+
 ## [v0.1.15] - 2019-08-26
 ### Experimental (WIP)
 - Multiclass EBM added. Includes visualization and postprocessing. Currently does not support multiclass pairs.
@@ -181,6 +192,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.16]: https://github.com/microsoft/interpret/releases/tag/v0.1.16
 [v0.1.15]: https://github.com/microsoft/interpret/releases/tag/v0.1.15
 [v0.1.14]: https://github.com/microsoft/interpret/releases/tag/v0.1.14
 [v0.1.13]: https://github.com/microsoft/interpret/releases/tag/v0.1.13
