@@ -7,6 +7,7 @@ from ...api.base import ExplainerMixin
 from ..extension import (
     _is_valid_blackbox_explainer,
     _is_valid_provider,
+    _is_valid_glassbox_explainer,
     _is_valid_greybox_explainer,
     _is_valid_data_explainer,
     _is_valid_perf_explainer,
@@ -55,6 +56,15 @@ def test_invalid_greybox_explainer():
     assert not _is_valid_greybox_explainer(LinearRegression)
     assert not _is_valid_greybox_explainer(InvalidGreyboxExplainer)
     assert not _is_valid_greybox_explainer(NotEvenAnExplainer)
+
+
+def test_invalid_glassbox_explainer():
+    class InvalidGlassboxExplainer(ExplainerMixin):
+        explainer_type = "model"
+        available_explanations = ["local"]
+
+    assert not _is_valid_glassbox_explainer(InvalidGlassboxExplainer)
+    assert not _is_valid_glassbox_explainer(NotEvenAnExplainer)
 
 
 def test_invalid_blackbox_explainer():

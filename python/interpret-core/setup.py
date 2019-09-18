@@ -22,6 +22,9 @@ entry_points = {
     "interpret_ext_perf": [
         "ExamplePerfExplainer = interpret.ext.examples:ExamplePerfExplainer"
     ],
+    "interpret_ext_glassbox": [
+        "ExampleGlassboxExplainer = interpret.ext.examples:ExampleGlassboxExplainer"
+    ],
     "interpret_ext_greybox": [
         "ExampleGreyboxExplainer = interpret.ext.examples:ExampleGreyboxExplainer"
     ],

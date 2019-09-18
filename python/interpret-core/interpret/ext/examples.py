@@ -39,6 +39,25 @@ class ExamplePerfExplainer(ExplainerMixin):
         return ExampleExplanation()
 
 
+class ExampleGlassboxExplainer(ExplainerMixin):
+    available_explanations = ["local"]
+    explainer_type = "model"
+
+    def __init__(
+        self, feature_names=None, feature_types=None
+    ):
+        pass
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        return None
+
+    def explain_local(self, X, y=None, name=None):
+        return ExampleExplanation()
+
+
 class ExampleGreyboxExplainer(ExplainerMixin):
     available_explanations = ["local"]
     explainer_type = "specific"

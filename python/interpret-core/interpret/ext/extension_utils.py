@@ -8,6 +8,7 @@ import re
 module_logger = logging.getLogger(__name__)
 
 
+# TODO: More checks for explainer validation, specifically on spec for explainer/explanation when instantiated.
 def _validate_class_name(proposed_class_name):
     """ Used to validate class names before registration.
 
