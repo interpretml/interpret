@@ -46,30 +46,3 @@ def test_that_tree_works():
     )
     assert a_local_data["extra"]["names"][0] == "Bias"
     assert a_local_data["extra"]["scores"][0] == bias[0]
-
-    # NOTE: Global calculation is not part of the blog post
-    #       but difference of datasets is.
-    # Check global interpretation
-    prediction, bias, contributions = ti.predict(rf, X)
-    contributions = np.mean(contributions, axis=0)
-
-    global_expl = explainer.explain_global()
-    overall_global_data = global_expl.data()
-
-    assert all(
-        [
-            feature_names[i] == overall_global_data["names"][i]
-            for i in range(len(feature_names))
-        ]
-    )
-    assert all(
-        [
-            contributions[i] == overall_global_data["scores"][i]
-            for i in range(len(feature_names))
-        ]
-    )
-    assert overall_global_data["extra"]["names"][0] == "Bias"
-    assert overall_global_data["extra"]["scores"][0] == bias[0]
-
-    # Assert failure case -- does not support Global w/ Keys
-    assert global_expl.visualize(key=1) is None
