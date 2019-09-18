@@ -56,7 +56,7 @@ extras = {
     # Explainers
     "lime": ["lime>=0.1.1.33"],
     "sensitivity": ["SALib>=1.3.3"],
-    "shap": ["shap>=0.28.5", "dill"],
+    "shap": ["shap>=0.28.5", "dill>=0.2.5"],
     "ebm": [],
     "linear": [],
     "decisiontree": [],
