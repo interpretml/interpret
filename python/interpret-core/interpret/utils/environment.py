@@ -56,7 +56,7 @@ def _detect_ipython_zmq():
 
 def _detect_colab():
     try:
-        import google.colab
+        import google.colab  # noqa: F401
 
         return True
     except ImportError:

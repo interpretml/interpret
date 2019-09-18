@@ -32,8 +32,6 @@ def _build_path(path, base_url=None):
 
 class AppRunner:
     def __init__(self, addr=None, base_url=None, use_relative_links=False):
-        import requests
-
         self.app = DispatcherApp(
             base_url=base_url, use_relative_links=use_relative_links
         )

@@ -7,7 +7,7 @@ import dash_core_components as dcc
 import dash_table as dt
 
 # NOTE: Even though this isn't used here, it has to be imported to work.
-import dash_cytoscape as cyto
+import dash_cytoscape as cyto  # noqa: F401
 
 from dash.dependencies import Input, Output
 import dash.development.base_component as dash_base

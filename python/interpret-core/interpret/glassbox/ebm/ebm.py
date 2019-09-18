@@ -125,7 +125,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
-            binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform". 
+            binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
         self.schema = schema
         self.max_n_bins = max_n_bins
@@ -762,7 +762,8 @@ class BaseEBM(BaseEstimator):
         # Arguments for preprocessor
         self.binning_strategy = binning_strategy
 
-    def fit(self, X, y):
+    # NOTE: Consider refactoring later.
+    def fit(self, X, y):  # noqa: C901
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types
         )

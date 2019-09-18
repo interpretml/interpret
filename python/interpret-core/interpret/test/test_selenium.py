@@ -52,7 +52,7 @@ def all_explanations():
 num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
 
 
-@pytest.mark.selenium
+@pytest.mark.selenium  # noqa: C901
 @pytest.mark.xfail(strict=False)
 @pytest.mark.parametrize("job_id", list(range(num_jobs)))
 def test_all_explainers_selenium(all_explanations, job_id):
