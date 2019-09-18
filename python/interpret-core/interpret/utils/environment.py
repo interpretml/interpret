@@ -38,11 +38,9 @@ def _detect_ipython_zmq():
     Returns:
         True if called in IPython notebook or qtconsole.
     """
-
-    if _detect_ipython() is False:
-        return False
-
     try:
+        from IPython import get_ipython
+
         shell = get_ipython().__class__.__name__
         if shell == "ZMQInteractiveShell":
             return True  # Jupyter notebook or qtconsole
