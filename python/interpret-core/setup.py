@@ -42,6 +42,7 @@ package_data = {
         "lib/lib_ebmcore_mac_x64_debug.dylib",
         "lib/lib_ebmcore_win_x64.pdb",
         "lib/lib_ebmcore_win_x64_debug.pdb",
+        "lib/interpret-inline.js",
         "visual/assets/udash.css",
         "visual/assets/udash.js",
         "visual/assets/favicon.ico",

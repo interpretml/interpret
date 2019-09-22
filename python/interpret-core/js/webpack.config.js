@@ -1,3 +1,8 @@
+/*
+Copyright (c) 2019 Microsoft Corporation
+Distributed under the MIT software license
+*/
+
 const webpack = require("webpack");
 const path = require("path");
 

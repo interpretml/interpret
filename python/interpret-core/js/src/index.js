@@ -1,12 +1,16 @@
+/*
+Copyright (c) 2019 Microsoft Corporation
+Distributed under the MIT software license
+*/
+/* eslint-disable react/prop-types */
+
 import React from "react";
 import ReactDOM from "react-dom";
 import "./styles.scss";
 
-class App extends React.Component {
-  render() {
-    return <div>Hello {this.props.name}</div>;
-  }
-}
+const App = props => {
+  return <>Hello {props.name}</>;
+};
 
-var mountNode = document.getElementById("app");
+const mountNode = document.getElementById("app");
 ReactDOM.render(<App name="Jane" />, mountNode);
