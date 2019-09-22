@@ -13,9 +13,12 @@
     "start": "webpack-dev-server --hot --mode development"
   },
   "dependencies": {
+    "plotly.js": "^1.49.5",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
-    "react-hot-loader": "^4.12.12"
+    "react-hot-loader": "^4.12.12",
+    "react-plotly.js": "^2.3.0",
+    "react-select": "^3.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.5.5",
