@@ -7,6 +7,8 @@
 
 import pytest
 
+collect_ignore_glob = ["js/*"]
+
 
 def pytest_addoption(parser):
     parser.addoption(
