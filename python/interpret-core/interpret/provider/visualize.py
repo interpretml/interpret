@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import logging
 
 from ..utils.environment import EnvironmentDetector, is_cloud_env
+from warnings import warn
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,11 @@ class AutoVisualizeProvider(VisualizeProvider):
 
         if self.in_cloud_env:
             log.info("Detected cloud environment.")
-            log.warning("Cloud environment: integration is still experimental.")
+            warn(
+                "Cloud environment detected ({}): viz integration is still experimental.".format(
+                    detected_envs
+                )
+            )
             self.provider = InlineProvider(detected_envs=detected_envs)
         else:
             log.info("Detected non-cloud environment.")

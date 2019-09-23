@@ -1,9 +1,6 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-# TODO: Show error message as HTML for dashboard until implemented.
-# TODO: Show not supported message for Dash components.
-
 # NOTE: This module is highly experimental. Expect changes every version.
 
 import os
@@ -14,9 +11,36 @@ from plotly.io import to_json
 from plotly import graph_objs as go
 import sys
 import json
+import base64
+
+import logging
+
+log = logging.getLogger(__name__)
 
 this = sys.modules[__name__]
 this.jupyter_initialized = False
+
+
+def _build_error_frame(msg):
+    error_template = r"""
+    <style>
+    .center {{
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+    }}
+    </style>
+    <div class='center'><h1>{}</h1></div>
+    """
+    html_str = error_template.format(msg)
+    return _build_base64_frame_src(html_str)
+
+
+def _build_base64_frame_src(html_str):
+    html_hex64 = base64.b64encode(html_str.encode("utf-8")).decode("ascii")
+    return "data:text/html;base64,{}".format(html_hex64)
 
 
 def _build_viz_figure(visualization):
@@ -28,33 +52,53 @@ def _build_viz_figure(visualization):
         figure = json.loads(to_json(visualization))
     elif isinstance(visualization, str):
         _type = "html"
-        figure = visualization
+        figure = _build_base64_frame_src(visualization)
     else:
-        raise RuntimeError(
-            "Viz figure of type {} not supported".format(type(visualization))
-        )
+        # NOTE: This error is largely specific to Dash components,
+        #       all Dash component visualizations are being replaced with D3 soon.
+        _type = "html"
+        msg = "This visualization is not yet supported in the cloud environment."
+        log.debug("Visualization type cannot render: {}".format(type(visualization)))
+        figure = _build_error_frame(msg)
 
     return {"type": _type, "figure": figure}
+
+
+def _build_viz_err_obj(err_msg):
+    _type = "html"
+    figure = _build_error_frame(err_msg)
+    viz_figure = {"type": _type, "figure": figure}
+
+    viz_obj = {
+        "name": "Error",
+        "overall": viz_figure,
+        "specific": [],
+        "selector": {"columns": [], "data": []},
+    }
+    return viz_obj
 
 
 def _build_viz_obj(explanation):
     overall = _build_viz_figure(explanation.visualize())
     if explanation.selector is None:
-        specific = None
+        # NOTE: Unsure if this should be a list or None in the long term.
+        specific = []
+        selector_obj = {"columns": [], "data": []}
     else:
         specific = [
             _build_viz_figure(explanation.visualize(i))
             for i in range(len(explanation.selector))
         ]
+        selector_obj = {
+            "columns": list(explanation.selector.columns),
+            "data": explanation.selector.to_dict("records"),
+        }
 
     viz_obj = {
         "name": explanation.name,
         "overall": overall,
         "specific": specific,
-        "selector": {
-            "columns": list(explanation.selector.columns),
-            "data": explanation.selector.to_dict("records"),
-        },
+        "selector": selector_obj,
     }
     return viz_obj
 
@@ -119,7 +163,12 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1):
 
 
 def render(explanation, id_str=None, default_key=-1, detected_envs=None):
-    viz_obj = _build_viz_obj(explanation)
+    if isinstance(explanation, list):
+        msg = "Dashboard not yet supported in cloud environments."
+        viz_obj = _build_viz_err_obj(msg)
+    else:
+        viz_obj = _build_viz_obj(explanation)
+
     init_js, body_js = _build_javascript(viz_obj, id_str, default_key=default_key)
 
     final_js = body_js

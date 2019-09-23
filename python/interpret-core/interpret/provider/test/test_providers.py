@@ -60,6 +60,9 @@ def test_inline_provider(example_explanation):
     provider = InlineProvider()
     provider.render(example_explanation, key=0)
 
+    # NOTE: Should display error message, smoke test here.
+    provider.render([example_explanation])
+
 
 def test_dash_provider(example_explanation):
     provider = DashProvider(addr=("127.0.0.1", "7201"))

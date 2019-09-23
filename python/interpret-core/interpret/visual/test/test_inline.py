@@ -17,13 +17,15 @@ def test_build_viz_figure():
     fig = "<h1>Some HTML</h1>"
     viz_fig = _build_viz_figure(fig)
     assert viz_fig["type"] == "html"
-    assert viz_fig["figure"] == fig
+    assert isinstance(viz_fig["figure"], str)
 
     fig = None
     viz_fig = _build_viz_figure(fig)
     assert viz_fig["type"] == "none"
     assert viz_fig["figure"] == "null"
 
-    with pytest.raises(RuntimeError):
-        fig = 1
-        _fig = _build_viz_figure(fig)
+    # NOTE: Should produce HTML error message.
+    fig = 1
+    viz_fig = _build_viz_figure(fig)
+    assert viz_fig["type"] == "html"
+    assert isinstance(viz_fig["figure"], str)
