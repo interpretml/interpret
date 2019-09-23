@@ -141,3 +141,10 @@ class DashProvider(VisualizeProvider):
         # Display
         open_link = isinstance(explanation, list)
         self.app_runner.display(explanation, open_link=open_link)
+
+
+class InlineProvider(VisualizeProvider):
+    def render(self, explanation, key=-1, **kwargs):
+        from ..visual.inline import render
+
+        render(explanation, default_key=key, **kwargs)
