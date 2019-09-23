@@ -27,4 +27,3 @@ def test_build_viz_figure():
     with pytest.raises(RuntimeError):
         fig = 1
         _fig = _build_viz_figure(fig)
-

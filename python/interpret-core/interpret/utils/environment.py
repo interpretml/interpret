@@ -85,6 +85,14 @@ def _detect_databricks():
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 
+def is_cloud_env(detected):
+    cloud_env = ["databricks", "azure", "kaggle", "sagemaker", "binder", "colab"]
+    if len(set(cloud_env).intersection(detected)) != 0:
+        return True
+    else:
+        return False
+
+
 class EnvironmentDetector:
     def __init__(self):
         self.checks = {

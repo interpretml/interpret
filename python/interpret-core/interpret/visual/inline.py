@@ -59,7 +59,7 @@ def _build_viz_obj(explanation):
 def _build_javascript(viz_obj, id_str=None, default_key=-1):
     script_path = os.path.dirname(os.path.abspath(__file__))
     js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
-    with open(js_path, 'r', encoding='utf-8') as f:
+    with open(js_path, "r", encoding="utf-8") as f:
         show_js = f.read()
 
     init_js = """
@@ -115,11 +115,7 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1):
     return init_js, body_js
 
 
-def render(explanation, id_str=None, default_key=-1):
-    _render_jupyter(explanation, id_str=id_str, default_key=default_key)
-
-
-def _render_jupyter(explanation, id_str=None, default_key=-1):
+def render(explanation, id_str=None, default_key=-1, detected_envs=None):
     viz_obj = _build_viz_obj(explanation)
     init_js, body_js = _build_javascript(viz_obj, id_str, default_key=default_key)
 
@@ -128,4 +124,8 @@ def _render_jupyter(explanation, id_str=None, default_key=-1):
         final_js = init_js + body_js
         this.jupyter_initialized = True
 
-    display(HTML(final_js))
+    if detected_envs is not None and "databricks" in detected_envs:
+        # NOTE: If in databricks environment, the following function is globally defined.
+        displayHTML(final_js)
+    else:
+        display(HTML(final_js))
