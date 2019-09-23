@@ -1,14 +1,13 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-from abc import ABC, abstractmethod
-
-import numpy as np
-
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import (gen_global_selector, gen_name_from_class, unify_data,
-                     unify_predict_fn)
+from ..utils import unify_predict_fn, unify_data
+from ..utils import gen_name_from_class, gen_global_selector
+
+from abc import ABC, abstractmethod
+import numpy as np
 
 
 class SamplerMixin(ABC):
@@ -68,7 +67,7 @@ class MorrisSensitivity(ExplainerMixin):
 
         samples = self.sampler.sample()
         problem = self.sampler.gen_problem_from_data(self.data, self.feature_names)
-        analysis = morris.analyze(problem, samples, self.predict_fn(samples))
+        analysis = morris.analyze(problem, samples, self.predict_fn(samples).astype(float))
 
         mu = analysis["mu"]
         mu_star = analysis["mu_star"]
