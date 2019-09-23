@@ -102,7 +102,7 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
-  - script: python build-js-bundles.py
+  - script: python build-js-bundles.py devops
     condition: succeeded()
     workingDirectory: 'python/scripts'
     displayName: 'Build JS bundle'
