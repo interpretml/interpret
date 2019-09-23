@@ -174,14 +174,14 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
-  - script: python build-js-bundles.py devops
-    condition: succeeded()
-    workingDirectory: 'python/scripts'
-    displayName: 'Build JS bundle'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
+  - script: python build-js-bundles.py devops
+    condition: succeeded()
+    workingDirectory: 'python/scripts'
+    displayName: 'Build JS bundle'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
