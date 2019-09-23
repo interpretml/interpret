@@ -179,9 +179,13 @@ jobs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
   - script: python build-js-bundles.py devops
-    condition: succeeded()
     workingDirectory: 'python/scripts'
-    displayName: 'Build JS bundle'
+    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Build JS bundle (Non-Windows)'
+  - script: python build-js-bundles.py
+    workingDirectory: 'python/scripts'
+    condition: in(variables['image.name'], 'windows-2019')
+    displayName: 'Build JS bundle (Windows)'
   - script: python -m pip install --upgrade pip setuptools wheel
     displayName: 'Install tools'
   - script: |
