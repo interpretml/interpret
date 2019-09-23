@@ -1,6 +1,9 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+# TODO: Show error message as HTML for dashboard until implemented.
+# TODO: Show not supported message for Dash components.
+
 # NOTE: This module is highly experimental. Expect changes every version.
 
 import os

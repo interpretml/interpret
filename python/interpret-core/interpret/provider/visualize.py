@@ -39,10 +39,7 @@ class AutoVisualizeProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         if not self.has_initialized:
             self._lazy_initialize()
-
-        if isinstance(key, list) and self.in_cloud_env:  # pragma: no cover
-            err_msg = "Dashboard is currently not supported in cloud environments. We are actively working on it."
-            raise NotImplementedError(err_msg)
+            self.has_initialized = True
 
         self.provider.render(explanation, key=key, **kwargs)
 
