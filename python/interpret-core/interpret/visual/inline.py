@@ -3,7 +3,6 @@
 
 # NOTE: This module is highly experimental. Expect changes every version.
 
-import pkgutil
 import os
 from IPython.display import display, HTML
 import uuid
