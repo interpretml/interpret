@@ -30,4 +30,6 @@ if __name__ == '__main__':
         script_path, "..", "interpret-core",
         "interpret", "lib", "interpret-inline.js"
     )
+
+    os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
     copyfile(js_bundle_src, js_bundle_dest)
