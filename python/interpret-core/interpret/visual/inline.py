@@ -58,9 +58,10 @@ def _build_viz_obj(explanation):
 
 
 def _build_javascript(viz_obj, id_str=None, default_key=-1):
-    show_js = pkgutil.get_data(
-        "interpret_viz", os.path.join("assets", "bundle.js")
-    ).decode("utf-8")
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
+    with open(js_path, 'r', encoding='utf-8') as f:
+        show_js = f.read()
 
     init_js = """
     <script type="text/javascript">
