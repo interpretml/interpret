@@ -3,9 +3,81 @@ Copyright (c) 2019 Microsoft Corporation
 Distributed under the MIT software license
 */
 
-$primary-color: white;
-$bg: black;
+$default_plot_height: 450px;
+$root_height: 800px;
+$root_width: 100%;
+$frame_height: 390px;
+$frame_width: 100%;
+
+html {
+  font-size: 62.5%;
+}
+
 body {
-  color: $primary-color;
-  background-color: $bg;
+  font-size: 1.5em;
+  line-height: 1.6;
+  font-weight: 400;
+  font-family: "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  color: rgb(50, 50, 50);
+}
+
+.center-no-graph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+.center-no-graph h1 {
+  padding: 0;
+  margin: 0;
+}
+
+.renderable-frame {
+  border: 0;
+  height: $frame_height;
+  width: $frame_width;
+}
+
+.root {
+  height: $root_height;
+  width: $root_width;
+}
+
+.empty-space {
+  width: 100%;
+  height: 100%;
+  min-height: $default_plot_height;
+}
+
+.card {
+  border-radius: 3px;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #d1d6e6;
+  margin: 30px 20px;
+}
+
+.card-header {
+  padding: 12px 20px;
+  position: relative;
+  line-height: 1;
+  border-bottom: 1px solid #eaeff2;
+  background-color: rgba(20, 100, 130, 0.78);
+}
+
+.card-body {
+  position: relative;
+  padding: 30px 20px;
+}
+
+.card-title {
+  display: inline-block;
+  margin: 0;
+  color: #ffffff;
+}
+
+.card-renderable {
+  height: $default_plot_height;
 }

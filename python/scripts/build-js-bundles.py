@@ -13,8 +13,8 @@ if __name__ == '__main__':
 
     # NOTE: Using shell=True can be a security hazard where there is user inputs.
     # In this case, there are no user inputs.
-    subprocess.run(["npm", "install"], cwd=js_dir, shell=True)
-    subprocess.run(["npm", "run", "build-prod"], cwd=js_dir, shell=True)
+    subprocess.run(["npm install"], cwd=js_dir, shell=True)
+    subprocess.run(["npm run build-prod"], cwd=js_dir, shell=True)
     js_bundle_src = os.path.join(js_dir, "dist", "bundle.js")
     js_bundle_dest = os.path.join(
         script_path, "..", "interpret-core",
