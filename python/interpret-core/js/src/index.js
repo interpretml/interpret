@@ -48,7 +48,7 @@ const App = props => {
 
     return options;
   };
-  console.log("Building options");
+  // console.log("Building options");
   const options = buildOptions(props.explanations.selector);
   const select = (
     <Select
@@ -61,7 +61,7 @@ const App = props => {
   let renderable = <div className={"empty-space"} />;
   let name = "";
 
-  console.log("Selecting plot");
+  // console.log("Selecting plot");
 
   if (selectedOption !== null) {
     name = props.explanations.name;
@@ -77,8 +77,8 @@ const App = props => {
       figure = specific.figure;
       type = specific.type;
     }
-    console.log(type);
-    console.log(figure);
+    // console.log(type);
+    // console.log(figure);
 
     if (type === "none") {
       renderable = (

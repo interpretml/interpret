@@ -150,7 +150,6 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1):
         callback(root['interpret-inline']);
       }}
     }})(this, function(interpretInline) {{
-        console.log(interpretInline);
         interpretInline.RenderApp("{0}", {1}, {2});
     }});
 

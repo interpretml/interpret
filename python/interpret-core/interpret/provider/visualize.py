@@ -174,4 +174,4 @@ class InlineProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         from ..visual.inline import render
 
-        render(explanation, default_key=key, detected_envs=self.detected_envs, **kwargs)
+        render(explanation, default_key=key, detected_envs=self.detected_envs)
