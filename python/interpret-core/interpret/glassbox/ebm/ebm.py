@@ -331,6 +331,7 @@ class BaseCoreEBM(BaseEstimator):
         col_types=None,
         col_n_bins=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -351,6 +352,7 @@ class BaseCoreEBM(BaseEstimator):
         self.col_n_bins = col_n_bins
 
         # Arguments for EBM beyond training a feature-step.
+        self.main_attr = main_attr
         self.interactions = interactions
         self.holdout_split = holdout_split
         self.data_n_episodes = data_n_episodes
@@ -408,7 +410,12 @@ class BaseCoreEBM(BaseEstimator):
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
-        main_attr_indices = [[x] for x in range(len(self.attributes_))]
+        if(isinstance(self.main_attr, str) and self.main_attr == "all"):
+            main_attr_indices = [[x] for x in range(len(self.attributes_))]
+        elif(isinstance(self.main_attr, list) and all(isinstance(x, int) for x in self.main_attr)):
+            main_attr_indices = [[x] for x in self.main_attr]
+        else:
+            raise RuntimeError("Argument 'main_attr' has invalid value")
         main_attr_sets = EBMUtils.gen_attribute_sets(main_attr_indices)
         with closing(
             NativeEBM(
@@ -606,6 +613,7 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
         col_types=None,
         col_n_bins=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -625,6 +633,7 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
             col_types=col_types,
             col_n_bins=col_n_bins,
             # Core
+            main_attr=main_attr,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -657,6 +666,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
         col_types=None,
         col_n_bins=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -676,6 +686,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
             col_types=col_types,
             col_n_bins=col_n_bins,
             # Core
+            main_attr=main_attr,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -711,6 +722,7 @@ class BaseEBM(BaseEstimator):
         holdout_size=0.15,
         scoring=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -742,6 +754,7 @@ class BaseEBM(BaseEstimator):
         self.scoring = scoring
 
         # Arguments for EBM beyond training a feature-step.
+        self.main_attr = main_attr
         self.interactions = interactions
         self.holdout_split = holdout_split
         self.data_n_episodes = data_n_episodes
@@ -795,6 +808,7 @@ class BaseEBM(BaseEstimator):
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
+                main_attr=self.main_attr,
                 interactions=self.interactions,
                 holdout_split=self.holdout_split,
                 data_n_episodes=self.data_n_episodes,
@@ -816,6 +830,7 @@ class BaseEBM(BaseEstimator):
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
+                main_attr=self.main_attr,
                 interactions=self.interactions,
                 holdout_split=self.holdout_split,
                 data_n_episodes=self.data_n_episodes,
@@ -881,7 +896,12 @@ class BaseEBM(BaseEstimator):
         self.attributes_ = EBMUtils.gen_attributes(
             self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
         )
-        main_indices = [[x] for x in range(len(self.attributes_))]
+        if(isinstance(self.main_attr, str) and self.main_attr == "all"):
+            main_indices = [[x] for x in range(len(self.attributes_))]
+        elif(isinstance(self.main_attr, list) and all(isinstance(x, int) for x in self.main_attr)):
+            main_indices = [[x] for x in self.main_attr]
+        else:
+            raise RuntimeError("Argument 'main_attr' has invalid value")
         self.attribute_sets_ = EBMUtils.gen_attribute_sets(main_indices)
         self.attribute_sets_.extend(EBMUtils.gen_attribute_sets(pair_indices))
 
@@ -1269,6 +1289,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         holdout_size=0.15,
         scoring=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -1298,6 +1319,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             holdout_size=holdout_size,
             scoring=scoring,
             # Core
+            main_attr=main_attr,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -1349,6 +1371,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         holdout_size=0.15,
         scoring=None,
         # Core
+        main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -1378,6 +1401,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             holdout_size=holdout_size,
             scoring=scoring,
             # Core
+            main_attr=main_attr,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
