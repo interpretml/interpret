@@ -178,6 +178,7 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None):
 
     if detected_envs is not None and "databricks" in detected_envs:
         # NOTE: If in databricks environment, the following function is globally defined.
+        global displayHTML
         displayHTML(final_js)
     else:
         display(HTML(final_js))
