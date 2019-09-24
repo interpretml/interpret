@@ -4,6 +4,9 @@
 from abc import ABC, abstractmethod
 import logging
 
+from ..utils.environment import EnvironmentDetector, is_cloud_env
+from warnings import warn
+
 log = logging.getLogger(__name__)
 
 
@@ -15,12 +18,33 @@ class VisualizeProvider(ABC):
 
 class AutoVisualizeProvider(VisualizeProvider):
     def __init__(self, **kwargs):
+        self.has_initialized = False
+        self.environment_detector = None
+        self.in_cloud_env = False
         self.provider = None
         self.kwargs = kwargs
 
+    def _lazy_initialize(self):
+        self.environment_detector = EnvironmentDetector()
+        detected_envs = self.environment_detector.detect()
+        self.in_cloud_env = is_cloud_env(detected_envs)
+
+        if self.in_cloud_env:
+            log.info("Detected cloud environment.")
+            warn(
+                "Cloud environment detected ({}): viz integration is still experimental.".format(
+                    detected_envs
+                )
+            )
+            self.provider = InlineProvider(detected_envs=detected_envs)
+        else:
+            log.info("Detected non-cloud environment.")
+            self.provider = DashProvider()
+
     def render(self, explanation, key=-1, **kwargs):
-        if self.provider is None:
-            self.provider = DashProvider(**self.kwargs)
+        if not self.has_initialized:
+            self._lazy_initialize()
+            self.has_initialized = True
 
         self.provider.render(explanation, key=key, **kwargs)
 
@@ -141,3 +165,13 @@ class DashProvider(VisualizeProvider):
         # Display
         open_link = isinstance(explanation, list)
         self.app_runner.display(explanation, open_link=open_link)
+
+
+class InlineProvider(VisualizeProvider):
+    def __init__(self, detected_envs=None):
+        self.detected_envs = detected_envs
+
+    def render(self, explanation, key=-1, **kwargs):
+        from ..visual.inline import render
+
+        render(explanation, default_key=key, detected_envs=self.detected_envs, **kwargs)

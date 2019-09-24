@@ -42,16 +42,18 @@ package_data = {
         "lib/lib_ebmcore_mac_x64_debug.dylib",
         "lib/lib_ebmcore_win_x64.pdb",
         "lib/lib_ebmcore_win_x64_debug.pdb",
+        "lib/interpret-inline.js",
         "visual/assets/udash.css",
         "visual/assets/udash.js",
         "visual/assets/favicon.ico",
         "pytest.ini",
     ]
 }
-sklearn_dep = "scikit-learn>=0.20.0"
+sklearn_dep = "scikit-learn>=0.18.1"
+joblib_dep = "joblib>=0.11"
 extras = {
     # Core
-    "required": ["numpy>=1.15.1", "scipy>=1.2.1", "pandas>=0.24.0", sklearn_dep],
+    "required": ["numpy>=1.11.1", "scipy>=0.18.1", "pandas>=0.19.2", sklearn_dep],
     "debug": ["psutil>=5.6.2"],
     "notebook": ["ipykernel>=5.1.0", "ipython>=7.4.0"],
     # Plotly (required if .visualize is ever called)
@@ -60,9 +62,9 @@ extras = {
     "lime": ["lime>=0.1.1.33"],
     "sensitivity": ["SALib>=1.3.3"],
     "shap": ["shap>=0.28.5", "dill>=0.2.5"],
-    "ebm": [],
+    "ebm": [joblib_dep],
     "linear": [],
-    "decisiontree": [],
+    "decisiontree": [joblib_dep],
     "skoperules": ["skope-rules>=1.0.0"],
     "treeinterpreter": ["treeinterpreter>=0.2.2"],
     # Dash

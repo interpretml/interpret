@@ -2,7 +2,12 @@
 # Distributed under the MIT software license
 
 from ..compute import JobLibProvider, AzureMLProvider
-from ..visualize import AutoVisualizeProvider, DashProvider, PreserveProvider
+from ..visualize import (
+    AutoVisualizeProvider,
+    DashProvider,
+    PreserveProvider,
+    InlineProvider,
+)
 import pytest
 
 from ...test.utils import synthetic_classification
@@ -49,6 +54,14 @@ def test_auto_visualize_provider(example_explanation):
 def test_preserve_provider(example_explanation):
     provider = PreserveProvider()
     provider.render(example_explanation, key=0)
+
+
+def test_inline_provider(example_explanation):
+    provider = InlineProvider()
+    provider.render(example_explanation, key=0)
+
+    # NOTE: Should display error message, smoke test here.
+    provider.render([example_explanation])
 
 
 def test_dash_provider(example_explanation):

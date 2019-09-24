@@ -79,8 +79,32 @@ jobs:
     condition: in(variables['image.name'], 'windows-2019')
     displayName: 'Testing native code. (win)'
 
+- job: 'Build_JS_Inline'
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+  - script: python build-js-bundles.py devops
+    workingDirectory: 'python/scripts'
+    displayName: 'Build JS bundle'
+  - task: CopyFiles@2
+    condition: succeeded()
+    inputs:
+      sourceFolder: 'python/interpret-core/interpret/lib'
+      contents: 'interpret-inline.js'
+      targetFolder: '$(Build.ArtifactStagingDirectory)'
+    displayName: 'Move assets to staging'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: interpret-inline-bundle
+    displayName: 'Publish interpret inline library'
+
 - job: 'Build_Package'
-  dependsOn: 'Build_Native'
+  dependsOn: ['Build_Native', 'Build_JS_Inline']
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
@@ -102,6 +126,13 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/interpret-inline.js'
+      targetFolder: 'python/interpret-core/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move Interpret inline to Python layer'
   - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
@@ -170,6 +201,13 @@ jobs:
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
+  - task: CopyFiles@2
+    inputs:
+      sourceFolder: '$(System.ArtifactsDirectory)'
+      contents: '**/interpret-inline.js'
+      targetFolder: 'python/interpret-core/interpret/lib'
+      flattenFolders: true
+    displayName: 'Move Interpret inline to Python layer'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '$(python.version)'
