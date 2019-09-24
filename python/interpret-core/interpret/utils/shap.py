@@ -17,9 +17,6 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
         all_shap_values = explainer.shap.shap_values(X)
         expected_value = explainer.shap.expected_value
 
-    print(len(all_shap_values))
-    print(all_shap_values)
-
     predictions = explainer.predict_fn(X)
 
     data_dicts = []
