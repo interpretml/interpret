@@ -162,6 +162,32 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1):
     return init_js, body_js
 
 
+# NOTE: Code mostly derived from Plotly's databricks render as linked below:
+# https://github.com/plotly/plotly.py/blob/01a78d3fdac14848affcd33ddc4f9ec72d475232/packages/python/plotly/plotly/io/_base_renderers.py
+def _render_databricks(js):  # pragma: no cover
+    import inspect
+
+    if _render_databricks.displayHTML is None:
+        found = False
+        for frame in inspect.getouterframes(inspect.currentframe()):
+            global_names = set(frame.frame.f_globals)
+            target_names = {"displayHTML", "display", "spark"}
+            if target_names.issubset(global_names):
+                _render_databricks.displayHTML = frame.frame.f_globals["displayHTML"]
+                found = True
+                break
+
+        if not found:
+            msg = "Could not find DataBrick's displayHTML function"
+            log.error(msg)
+            raise RuntimeError(msg)
+
+    _render_databricks.displayHTML(js)
+
+
+_render_databricks.displayHTML = None
+
+
 def render(explanation, id_str=None, default_key=-1, detected_envs=None):
     if isinstance(explanation, list):
         msg = "Dashboard not yet supported in cloud environments."
@@ -177,8 +203,6 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None):
         this.jupyter_initialized = True
 
     if detected_envs is not None and "databricks" in detected_envs:
-        # NOTE: If in databricks environment, the following function is globally defined.
-        global displayHTML
-        displayHTML(final_js)
+        _render_databricks(final_js)
     else:
         display(HTML(final_js))
