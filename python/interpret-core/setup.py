@@ -53,7 +53,7 @@ sklearn_dep = "scikit-learn>=0.18.1"
 joblib_dep = "joblib>=0.11"
 extras = {
     # Core
-    "required": ["numpy>=1.11.1", "scipy>=0.18.1", "pandas>=0.21.0", sklearn_dep],
+    "required": ["numpy>=1.11.1", "scipy>=0.18.1", "pandas>=0.19.2", sklearn_dep],
     "debug": ["psutil>=5.6.2"],
     "notebook": ["ipykernel>=5.1.0", "ipython>=7.4.0"],
     # Plotly (required if .visualize is ever called)

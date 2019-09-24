@@ -7,7 +7,13 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
-from pandas.core.dtypes.common import is_numeric_dtype, is_string_dtype
+
+# NOTE: Old versions of pandas have these utils in a different namepsace.
+try:
+    from pandas.api.types import is_numeric_dtype, is_string_dtype
+except ImportError:  # pragma: no cover
+    from pandas.core.dtypes.common import is_numeric_dtype, is_string_dtype
+
 from pandas.core.generic import NDFrame
 from pandas.core.series import Series
 
