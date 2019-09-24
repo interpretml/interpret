@@ -176,9 +176,9 @@ jobs:
       WindowsPython37:
         python.version: '3.7'
         image.name: 'windows-2019'
-      MacPython35:
-        python.version: '3.5'
-        image.name: 'macOS-10.13'
+#      MacPython35:
+#        python.version: '3.5'
+#        image.name: 'macOS-10.13'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.13'
