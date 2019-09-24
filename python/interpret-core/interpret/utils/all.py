@@ -231,7 +231,11 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
     """
     # TODO: Clean up code to have less duplication.
     if isinstance(data, NDFrame):
-        new_data = data.to_numpy()
+        # NOTE: Workaround for older versions of pandas.
+        try:
+            new_data = data.to_numpy()
+        except AttributeError:  # pragma: no cover
+            new_data = data.values
 
         if feature_names is None:
             new_feature_names = list(data.columns)
