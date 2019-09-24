@@ -125,7 +125,7 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1):
 
     body_js = """
     <div id="{0}"></div>
-    <script type="text/javascript">
+    <script defer type="text/javascript">
 
     (function universalLoad(root, callback) {{
       if(typeof exports === 'object' && typeof module === 'object') {{
