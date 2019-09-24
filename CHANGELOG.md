@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.17] - 2019-09-24
+### Fixed
+- Morris sensitivity now works for both predict and predict_proba on scikit models.
+- Removal of debug print statements around blackbox explainers.
+### Changed
+- Dependencies for numpy/scipy/pandas/scikit-learn relaxed to (1.11.1,0.18.1,0.19.2, 0.18.1) respectively.
+- Visualization provider defaults set by environment detection (cloud and local use different providers).
+### Experimental (WIP)
+- Inline visualizations for show(explanation). This allows cloud notebooks, and offline notebook support.
+  Dashboard integration still ongoing.
+
 ## [v0.1.16] - 2019-09-17
 ### Added
 - Visualize and compute platforms are now refactored and use an extension system. Details on use upcoming in later release.
@@ -192,6 +203,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.17]: https://github.com/microsoft/interpret/releases/tag/v0.1.17
 [v0.1.16]: https://github.com/microsoft/interpret/releases/tag/v0.1.16
 [v0.1.15]: https://github.com/microsoft/interpret/releases/tag/v0.1.15
 [v0.1.14]: https://github.com/microsoft/interpret/releases/tag/v0.1.14
