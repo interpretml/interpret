@@ -319,11 +319,18 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             "Passing a numpy array to schema autogen when it should be dataframe."
         )
         if feature_names is None:
-            X = pd.DataFrame(
-                X, columns=["col_" + str(i) for i in range(X.shape[1])]
-            ).infer_objects()
-        else:
-            X = pd.DataFrame(X, columns=feature_names).infer_objects()
+            feature_names = ["col_" + str(i) for i in range(X.shape[1])]
+
+        # NOTE: Use rolled out infer_objects for old pandas.
+        # As used from SO:
+        # https://stackoverflow.com/questions/47393134/attributeerror-dataframe-object-has-no-attribute-infer-objects
+        X = pd.DataFrame(X, columns=feature_names)
+        try:
+            X = X.infer_objects()
+        except AttributeError:
+            for k in list(X):
+                X[k] = pd.to_numeric(X[k], errors='ignore')
+
     if isinstance(X, NDFrame):
         for name, col_dtype in zip(X.dtypes.index, X.dtypes):
             schema[name] = {}
