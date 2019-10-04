@@ -429,7 +429,7 @@ class BaseCoreEBM(BaseEstimator):
             self._fit_main(native_ebm, main_attr_sets)
 
             # Build interaction terms
-            self.inter_indices_ = self._build_interactions(native_ebm)
+            self.inter_indices_, self.inter_scores_ = self._build_interactions(native_ebm)
 
         self.staged_fit_interactions(X, y, self.inter_indices_)
 
@@ -450,16 +450,20 @@ class BaseCoreEBM(BaseEstimator):
                 sorted(interaction_scores, key=lambda x: x[1], reverse=True)
             )
             n_interactions = min(len(ranked_scores), self.interactions)
+            final_ranked_scores = ranked_scores[0:n_interactions]
 
-            inter_indices_ = [x[0] for x in ranked_scores[0:n_interactions]]
+            final_indices = [x[0] for x in final_ranked_scores]
+            final_scores = [x[1] for x in final_ranked_scores]
         elif isinstance(self.interactions, int) and self.interactions == 0:
-            inter_indices_ = []
+            final_indices = []
+            final_scores = []
         elif isinstance(self.interactions, list):
-            inter_indices_ = self.interactions
+            final_indices = self.interactions
+            final_scores = [None for _ in range(len(self.interactions))]
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
-        return inter_indices_
+        return final_indices, final_scores
 
     def _fit_main(self, native_ebm, main_attr_sets):
         log.info("Train main effects")
@@ -876,6 +880,8 @@ class BaseEBM(BaseEstimator):
             pair_indices = self.interactions
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
+
+        self.inter_indices_ = pair_indices
 
         # Average base models into one.
         self.attributes_ = EBMUtils.gen_attributes(
