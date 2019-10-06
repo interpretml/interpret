@@ -34,7 +34,7 @@ extern const char g_assertLogMessage[];
          if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
             (*g_pLogMessageFunc)(LOG__traceLevel, LOG__originalMessage); \
          } else { \
-            InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, ##__VA_ARGS__); \
+            InteralLogWithArguments(LOG__traceLevel, LOG__originalMessage, __VA_ARGS__); \
          } \
       } \
       /* the "(void)0, 0" part supresses the conditional expression is constant compiler warning */ \
@@ -61,7 +61,7 @@ extern const char g_assertLogMessage[];
             if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
                (*g_pLogMessageFunc)(LOG__traceLevelBefore, LOG__originalMessage); \
             } else { \
-               InteralLogWithArguments(LOG__traceLevelBefore, LOG__originalMessage, ##__VA_ARGS__); \
+               InteralLogWithArguments(LOG__traceLevelBefore, LOG__originalMessage, __VA_ARGS__); \
             } \
          } else { \
             if(UNLIKELY(LOG__traceLevelAfter <= g_traceLevel)) { \
@@ -69,7 +69,7 @@ extern const char g_assertLogMessage[];
                if(bZeroArguments) { /* if there are no arguments we might as well send the log directly without reserving stack space for vsnprintf and without log length limitations for stack allocation */ \
                   (*g_pLogMessageFunc)(LOG__traceLevelAfter, LOG__originalMessage); \
                } else { \
-                  InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, ##__VA_ARGS__); \
+                  InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, __VA_ARGS__); \
                } \
             } \
          } \
