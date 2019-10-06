@@ -12,6 +12,8 @@
 #define INVALID_POINTER (reinterpret_cast<void *>(~size_t { 0 }))
 #define UNUSED(x) (void)(x)
 
+// here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
+
 #if defined(__clang__) // compiler type
 
 #define WARNING_PUSH _Pragma("clang diagnostic push")
@@ -30,6 +32,19 @@
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 
+#elif defined(__SUNPRO_CC) // compiler type (Oracle Developer Studio)
+
+// I don't see a way to push/pop the error messages, so we may have to disable them for the entire program.  I can live with that for an oddball compiler
+// https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code
+// example: #pragma error_messages(off,symdeprecated,symdeprecated2)
+
+#define WARNING_PUSH
+#define WARNING_POP
+#define WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+#define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
+#define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+#define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+
 #elif defined(_MSC_VER) // compiler type
 
 #define WARNING_PUSH __pragma(warning(push))
@@ -43,7 +58,7 @@
 #error compiler not recognized
 #endif // compiler type
 
-#if defined(__clang__) || defined(__GNUC__) // compiler
+#if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC) // compiler
 #ifndef __has_builtin
 #define __has_builtin(x) 0 // __has_builtin is supported in newer compilers.  On older compilers diable anything we would check with it
 #endif // __has_builtin

@@ -18,7 +18,7 @@ extern "C" {
 #error we should not be expanding binary logits while reducing multiclass logits
 #endif
 
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #define EBMCORE_IMPORT_EXPORT __attribute__ ((visibility ("default")))
 #define EBMCORE_CALLING_CONVENTION
