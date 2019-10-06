@@ -9,6 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
+#define INVALID_POINTER (reinterpret_cast<void *>(~size_t { 0 }))
 #define UNUSED(x) (void)(x)
 
 #if defined(__clang__) // compiler type

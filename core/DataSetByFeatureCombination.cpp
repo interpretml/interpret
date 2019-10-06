@@ -15,8 +15,6 @@
 #include "FeatureCombinationCore.h"
 #include "DataSetByFeatureCombination.h"
 
-#define INVALID_POINTER (reinterpret_cast<void *>(~ size_t { 0 }))
-
 EBM_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
    LOG(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");
 

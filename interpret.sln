@@ -27,6 +27,30 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "python", "python\python.pyproj", "{ED16326F-19C9-4360-A976-E11E0979B790}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4CFD-AE75-710460EF590D}"
+	ProjectSection(SolutionItems) = preProject
+		R\build_R.bat = R\build_R.bat
+		R\DESCRIPTION = R\DESCRIPTION
+		R\R\interpret_core.R = R\R\interpret_core.R
+		R\src\interpret_R.cpp = R\src\interpret_R.cpp
+		R\src\Makevars.interpret = R\src\Makevars.interpret
+		R\NAMESPACE = R\NAMESPACE
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB54-4A5C-9968-2A94829CB1CB}"
+	ProjectSection(SolutionItems) = preProject
+		R\man\ebm_feature.Rd = R\man\ebm_feature.Rd
+		R\man\ebm_feature_combination.Rd = R\man\ebm_feature_combination.Rd
+		R\man\get_best_model_feature_combination.Rd = R\man\get_best_model_feature_combination.Rd
+		R\man\get_current_model_feature_combination.Rd = R\man\get_current_model_feature_combination.Rd
+		R\man\get_interaction_score.Rd = R\man\get_interaction_score.Rd
+		R\man\initialize_interaction_classification.Rd = R\man\initialize_interaction_classification.Rd
+		R\man\initialize_interaction_regression.Rd = R\man\initialize_interaction_regression.Rd
+		R\man\initialize_training_classification.Rd = R\man\initialize_training_classification.Rd
+		R\man\initialize_training_regression.Rd = R\man\initialize_training_regression.Rd
+		R\man\training_step.Rd = R\man\training_step.Rd
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -58,6 +82,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3939C139-57E9-4CFD-AE75-710460EF590D} = {F5894036-AD18-466C-825A-9347FA61CF2D}
+		{B695C21B-DB54-4A5C-9968-2A94829CB1CB} = {3939C139-57E9-4CFD-AE75-710460EF590D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A1DD85D3-F373-45AE-B998-4F7E1ADF40DC}

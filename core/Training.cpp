@@ -1419,8 +1419,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    }
 
    SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pEbmTrainingState->m_apCurrentModel[iFeatureCombination];
+   EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pCurrentModel->GetValuePointer();
+   EBM_ASSERT(nullptr != pRet);
 
    LOG(TraceLevelInfo, "Exited GetCurrentModelFeatureCombination %p", static_cast<void *>(pRet));
    return pRet;
@@ -1450,8 +1452,10 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    }
 
    SegmentedTensor<ActiveDataType, FractionalDataType> * pBestModel = pEbmTrainingState->m_apBestModel[iFeatureCombination];
+   EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
    FractionalDataType * pRet = pBestModel->GetValuePointer();
+   EBM_ASSERT(nullptr != pRet);
 
    LOG(TraceLevelInfo, "Exited GetBestModelFeatureCombination %p", static_cast<void *>(pRet));
    return pRet;
