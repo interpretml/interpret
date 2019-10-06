@@ -25,7 +25,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG(TraceLevelVerbose, "Entered SplitTreeNode: pTreeNode=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(pTreeNode), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
+   LOG_N(TraceLevelVerbose, "Entered SplitTreeNode: pTreeNode=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(pTreeNode), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -150,7 +150,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
 
    EBM_ASSERT(pTreeNode->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
-   LOG(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(pTreeNode->m_UNION.afterExaminationForPossibleSplitting.divisionValue), pTreeNode->m_UNION.afterExaminationForPossibleSplitting.splitGain);
+   LOG_N(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(pTreeNode->m_UNION.afterExaminationForPossibleSplitting.divisionValue), pTreeNode->m_UNION.afterExaminationForPossibleSplitting.splitGain);
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
@@ -159,7 +159,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLea
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG(TraceLevelVerbose, "Entered GrowDecisionTree");
+   LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
 
@@ -170,7 +170,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLea
       // there will be no splits at all
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
          return true;
       }
 
@@ -189,7 +189,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLea
          }
       }
 
-      LOG(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
+      LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
       *pTotalGain = 0;
       return false;
    }
@@ -197,7 +197,7 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLea
    // there will be at least one split
 
    if(GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
       return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
    }
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -210,7 +210,7 @@ retry_with_bigger_tree_node_children_array:
    if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
       // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode)
       if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
-         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
          return true;
       }
       cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
@@ -237,7 +237,7 @@ retry_with_bigger_tree_node_children_array:
       EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cInstancesRequiredForParentSplitMin) && !GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cInstancesRequiredForParentSplitMin));
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
-         LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
          return true;
       }
 
@@ -262,7 +262,7 @@ retry_with_bigger_tree_node_children_array:
          }
       }
 
-      LOG(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
+      LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
       *pTotalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
       return false;
    }
@@ -309,7 +309,7 @@ retry_with_bigger_tree_node_children_array:
             TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                  LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                   return true;
                }
                goto retry_with_bigger_tree_node_children_array;
@@ -333,7 +333,7 @@ retry_with_bigger_tree_node_children_array:
             TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceNext = AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) {
                if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)) {
-                  LOG(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
+                  LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesPerTreeNode)");
                   return true;
                }
                goto retry_with_bigger_tree_node_children_array;
@@ -359,53 +359,53 @@ retry_with_bigger_tree_node_children_array:
       *pTotalGain = totalGain;
       EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
-      LOG(TraceLevelWarning, "WARNING GrowDecisionTree exception");
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
    }
 
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits))) {
-      LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits)");
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, cSplits)");
       return true;
    }
    if(IsMultiplyError(cVectorLength, cSplits + 1)) {
-      LOG(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cSplits + 1)");
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree IsMultiplyError(cVectorLength, cSplits + 1)");
       return true;
    }
    if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)))) {
-      LOG(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)");
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * (cSplits + 1)");
       return true;
    }
    ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
    FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
-   LOG(TraceLevelVerbose, "Entered Flatten");
+   LOG_0(TraceLevelVerbose, "Entered Flatten");
    pRootTreeNode->Flatten(&pDivisions, &pValues, cVectorLength);
-   LOG(TraceLevelVerbose, "Exited Flatten");
+   LOG_0(TraceLevelVerbose, "Exited Flatten");
 
    EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);
    EBM_ASSERT(static_cast<size_t>(pDivisions - pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)) == cSplits);
    EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer() < pValues);
    EBM_ASSERT(static_cast<size_t>(pValues - pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()) == cVectorLength * (cSplits + 1));
 
-   LOG(TraceLevelVerbose, "Exited GrowDecisionTree via normal exit");
+   LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via normal exit");
    return false;
 }
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG(TraceLevelVerbose, "Entered TrainZeroDimensional");
+   LOG_0(TraceLevelVerbose, "Entered TrainZeroDimensional");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG(TraceLevelWarning, "WARNING TODO fill this in");
+      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket));
    if(UNLIKELY(nullptr == pHistogramBucket)) {
-      LOG(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pHistogramBucket");
+      LOG_0(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pHistogramBucket");
       return true;
    }
    memset(pHistogramBucket, 0, cBytesPerHistogramBucket);
@@ -426,14 +426,14 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compile
       }
    }
 
-   LOG(TraceLevelVerbose, "Exited TrainZeroDimensional");
+   LOG_0(TraceLevelVerbose, "Exited TrainZeroDimensional");
    return false;
 }
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG(TraceLevelVerbose, "Entered TrainSingleDimensional");
+   LOG_0(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
    size_t cTotalBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cBins;
@@ -441,19 +441,19 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG(TraceLevelWarning, "WARNING TODO fill this in");
+      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG(TraceLevelWarning, "WARNING TODO fill this in");
+      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aHistogramBuckets");
+      LOG_0(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aHistogramBuckets");
       return true;
    }
    // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
@@ -490,7 +490,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
 #endif // NDEBUG
    );
 
-   LOG(TraceLevelVerbose, "Exited TrainSingleDimensional");
+   LOG_0(TraceLevelVerbose, "Exited TrainSingleDimensional");
    return bRet;
 }
 

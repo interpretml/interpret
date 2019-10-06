@@ -39,23 +39,23 @@ public:
    }
 
    EBM_INLINE ~EbmInteractionState() {
-      LOG(TraceLevelInfo, "Entered ~EbmInteractionState");
+      LOG_0(TraceLevelInfo, "Entered ~EbmInteractionState");
 
       delete m_pDataSet;
       free(m_aFeatures);
 
-      LOG(TraceLevelInfo, "Exited ~EbmInteractionState");
+      LOG_0(TraceLevelInfo, "Exited ~EbmInteractionState");
    }
 
    EBM_INLINE bool InitializeInteraction(const EbmCoreFeature * const aFeatures, const size_t cInstances, const void * const aTargets, const IntegerDataType * const aBinnedData, const FractionalDataType * const aPredictorScores) {
-      LOG(TraceLevelInfo, "Entered InitializeInteraction");
+      LOG_0(TraceLevelInfo, "Entered InitializeInteraction");
 
       if(0 != m_cFeatures && nullptr == m_aFeatures) {
-         LOG(TraceLevelWarning, "WARNING InitializeInteraction 0 != m_cFeatures && nullptr == m_aFeatures");
+         LOG_0(TraceLevelWarning, "WARNING InitializeInteraction 0 != m_cFeatures && nullptr == m_aFeatures");
          return true;
       }
 
-      LOG(TraceLevelInfo, "InitializeInteraction starting feature processing");
+      LOG_0(TraceLevelInfo, "InitializeInteraction starting feature processing");
       if(0 != m_cFeatures) {
          EBM_ASSERT(!IsMultiplyError(m_cFeatures, sizeof(*aFeatures))); // if this overflows then our caller should not have been able to allocate the array
          const EbmCoreFeature * pFeatureInitialize = aFeatures;
@@ -71,13 +71,13 @@ public:
             IntegerDataType countBins = pFeatureInitialize->countBins;
             EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
             if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
-               LOG(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
+               LOG_0(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                return true;
             }
             size_t cBins = static_cast<size_t>(countBins);
             if(cBins <= 1) {
                EBM_ASSERT(0 != cBins || 0 == cInstances);
-               LOG(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
+               LOG_0(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
             }
 
             EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
@@ -94,20 +94,20 @@ public:
             ++pFeatureInitialize;
          } while(pFeatureEnd != pFeatureInitialize);
       }
-      LOG(TraceLevelInfo, "InitializeInteraction done feature processing");
+      LOG_0(TraceLevelInfo, "InitializeInteraction done feature processing");
 
-      LOG(TraceLevelInfo, "Entered DataSetByFeature");
+      LOG_0(TraceLevelInfo, "Entered DataSetByFeature");
       EBM_ASSERT(nullptr == m_pDataSet);
       if(0 != cInstances) {
          m_pDataSet = new (std::nothrow) DataSetByFeature(m_cFeatures, m_aFeatures, cInstances, aBinnedData, aTargets, aPredictorScores, m_runtimeLearningTypeOrCountTargetClasses);
          if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
-            LOG(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
+            LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;
          }
       }
-      LOG(TraceLevelInfo, "Exited DataSetByFeature");
+      LOG_0(TraceLevelInfo, "Exited DataSetByFeature");
 
-      LOG(TraceLevelInfo, "Exited InitializeInteraction");
+      LOG_0(TraceLevelInfo, "Exited InitializeInteraction");
       return false;
    }
 };

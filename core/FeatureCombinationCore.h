@@ -57,7 +57,7 @@ public:
    }
 
    EBM_INLINE static FeatureCombinationCore ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
-      LOG(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
+      LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
 
       EBM_ASSERT(0 < cFeatureCombinations);
       FeatureCombinationCore ** const apFeatureCombinations = new (std::nothrow) FeatureCombinationCore * [cFeatureCombinations];
@@ -66,12 +66,12 @@ public:
          EBM_ASSERT(!IsMultiplyError(sizeof(*apFeatureCombinations), cFeatureCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
          memset(apFeatureCombinations, 0, sizeof(*apFeatureCombinations) * cFeatureCombinations);
       }
-      LOG(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
+      LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
       return apFeatureCombinations;
    }
 
    EBM_INLINE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombinationCore ** apFeatureCombinations) {
-      LOG(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
+      LOG_0(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
       if(nullptr != apFeatureCombinations) {
          EBM_ASSERT(0 < cFeatureCombinations);
          for(size_t i = 0; i < cFeatureCombinations; ++i) {
@@ -79,7 +79,7 @@ public:
          }
          delete[] apFeatureCombinations;
       }
-      LOG(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
+      LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
    }
 };
 static_assert(std::is_pod<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");

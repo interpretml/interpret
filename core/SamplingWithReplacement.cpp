@@ -15,9 +15,9 @@
 #include "SamplingWithReplacement.h"
 
 SamplingWithReplacement::~SamplingWithReplacement() {
-   LOG(TraceLevelInfo, "Entered ~SamplingWithReplacement");
+   LOG_0(TraceLevelInfo, "Entered ~SamplingWithReplacement");
    free(const_cast<size_t *>(m_aCountOccurrences));
-   LOG(TraceLevelInfo, "Exited ~SamplingWithReplacement");
+   LOG_0(TraceLevelInfo, "Exited ~SamplingWithReplacement");
 }
 
 size_t SamplingWithReplacement::GetTotalCountInstanceOccurrences() const {
@@ -34,7 +34,7 @@ size_t SamplingWithReplacement::GetTotalCountInstanceOccurrences() const {
 }
 
 SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet) {
-   LOG(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
+   LOG_0(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(nullptr != pOriginDataSet);
@@ -43,13 +43,13 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
    if(IsMultiplyError(sizeof(size_t), cInstances)) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cInstances)");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet IsMultiplyError(sizeof(size_t), cInstances)");
       return nullptr;
    }
    const size_t cBytesData = sizeof(size_t) * cInstances;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
    if(nullptr == aCountOccurrences) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet nullptr == aCountOccurrences");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
 
@@ -62,24 +62,24 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
       }
    } catch(...) {
       // Next could in theory throw an exception
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet exception");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet exception");
       free(aCountOccurrences);
       return nullptr;
    }
 
    SamplingWithReplacement * pRet = new (std::nothrow) SamplingWithReplacement(pOriginDataSet, aCountOccurrences);
    if(nullptr == pRet) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet nullptr == pRet");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet nullptr == pRet");
       free(aCountOccurrences);
       return nullptr;
    }
 
-   LOG(TraceLevelVerbose, "Exited SamplingWithReplacement::GenerateSingleSamplingSet");
+   LOG_0(TraceLevelVerbose, "Exited SamplingWithReplacement::GenerateSingleSamplingSet");
    return pRet;
 }
 
 SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet) {
-   LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateFlatSamplingSet");
+   LOG_0(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataSet);
@@ -89,7 +89,7 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const
    const size_t cBytesData = sizeof(size_t) * cInstances;
    size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
    if(nullptr == aCountOccurrences) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateFlatSamplingSet nullptr == aCountOccurrences");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
 
@@ -99,16 +99,16 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateFlatSamplingSet(const
 
    SamplingWithReplacement * pRet = new (std::nothrow) SamplingWithReplacement(pOriginDataSet, aCountOccurrences);
    if(nullptr == pRet) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateFlatSamplingSet nullptr == pRet");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateFlatSamplingSet nullptr == pRet");
       free(aCountOccurrences);
    }
 
-   LOG(TraceLevelInfo, "Exited SamplingWithReplacement::GenerateFlatSamplingSet");
+   LOG_0(TraceLevelInfo, "Exited SamplingWithReplacement::GenerateFlatSamplingSet");
    return pRet;
 }
 
 void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, SamplingMethod ** apSamplingSets) {
-   LOG(TraceLevelInfo, "Entered SamplingWithReplacement::FreeSamplingSets");
+   LOG_0(TraceLevelInfo, "Entered SamplingWithReplacement::FreeSamplingSets");
    if(LIKELY(nullptr != apSamplingSets)) {
       const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
@@ -116,11 +116,11 @@ void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, Sampl
       }
       delete[] apSamplingSets;
    }
-   LOG(TraceLevelInfo, "Exited SamplingWithReplacement::FreeSamplingSets");
+   LOG_0(TraceLevelInfo, "Exited SamplingWithReplacement::FreeSamplingSets");
 }
 
 SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet, const size_t cSamplingSets) {
-   LOG(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
+   LOG_0(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(nullptr != pOriginDataSet);
@@ -129,13 +129,13 @@ SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * c
 
    SamplingMethod ** apSamplingSets = new (std::nothrow) SamplingMethod *[cSamplingSetsAfterZero];
    if(UNLIKELY(nullptr == apSamplingSets)) {
-      LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == apSamplingSets");
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == apSamplingSets");
       return nullptr;
    }
    if(0 == cSamplingSets) {
       SamplingWithReplacement * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet);
       if(UNLIKELY(nullptr == pSingleSamplingSet)) {
-         LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == pSingleSamplingSet");
+         LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == pSingleSamplingSet");
          free(apSamplingSets);
          return nullptr;
       }
@@ -145,13 +145,13 @@ SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * c
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSets; ++iSamplingSet) {
          SamplingWithReplacement * const pSingleSamplingSet = GenerateSingleSamplingSet(pRandomStream, pOriginDataSet);
          if(UNLIKELY(nullptr == pSingleSamplingSet)) {
-            LOG(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == pSingleSamplingSet");
+            LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSamplingSets nullptr == pSingleSamplingSet");
             FreeSamplingSets(cSamplingSets, apSamplingSets);
             return nullptr;
          }
          apSamplingSets[iSamplingSet] = pSingleSamplingSet;
       }
    }
-   LOG(TraceLevelInfo, "Exited SamplingWithReplacement::GenerateSamplingSets");
+   LOG_0(TraceLevelInfo, "Exited SamplingWithReplacement::GenerateSamplingSets");
    return apSamplingSets;
 }

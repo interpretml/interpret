@@ -30,7 +30,7 @@ union CachedThreadResourcesUnion {
    CachedTrainingThreadResources<true> classification;
 
    EBM_INLINE CachedThreadResourcesUnion(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      LOG(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
+      LOG_N(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
       const size_t cVectorLength = GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses);
       if(IsRegression(runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to constructor
@@ -40,12 +40,12 @@ union CachedThreadResourcesUnion {
          // member classes inside a union requre explicit call to constructor
          new(&classification) CachedTrainingThreadResources<true>(cVectorLength);
       }
-      LOG(TraceLevelInfo, "Exited CachedThreadResourcesUnion");
+      LOG_0(TraceLevelInfo, "Exited CachedThreadResourcesUnion");
    }
 
    EBM_INLINE ~CachedThreadResourcesUnion() {
       // TODO: figure out why this is being called, and if that is bad!
-      //LOG(TraceLevelError, "ERROR ~CachedThreadResourcesUnion called.  It's union destructors should be called explicitly");
+      //LOG_0(TraceLevelError, "ERROR ~CachedThreadResourcesUnion called.  It's union destructors should be called explicitly");
 
       // we don't have enough information here to delete this object, so we do it from our caller
       // we still need this destructor for a technicality that it might be called
@@ -103,16 +103,16 @@ public:
    }
 
    EBM_INLINE ~EbmTrainingState() {
-      LOG(TraceLevelInfo, "Entered ~EbmTrainingState");
+      LOG_0(TraceLevelInfo, "Entered ~EbmTrainingState");
 
       if(IsRegression(m_runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to destructor
-         LOG(TraceLevelInfo, "~EbmTrainingState identified as regression type");
+         LOG_0(TraceLevelInfo, "~EbmTrainingState identified as regression type");
          m_cachedThreadResourcesUnion.regression.~CachedTrainingThreadResources();
       } else {
          EBM_ASSERT(IsClassification(m_runtimeLearningTypeOrCountTargetClasses));
          // member classes inside a union requre explicit call to destructor
-         LOG(TraceLevelInfo, "~EbmTrainingState identified as classification type");
+         LOG_0(TraceLevelInfo, "~EbmTrainingState identified as classification type");
          m_cachedThreadResourcesUnion.classification.~CachedTrainingThreadResources();
       }
 
@@ -130,7 +130,7 @@ public:
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
-      LOG(TraceLevelInfo, "Exited ~EbmTrainingState");
+      LOG_0(TraceLevelInfo, "Exited ~EbmTrainingState");
    }
 
    static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedTensors);

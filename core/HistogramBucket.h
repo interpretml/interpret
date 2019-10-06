@@ -130,7 +130,7 @@ static_assert(std::is_pod<HistogramBucket<true>>::value, "HistogramBucket will b
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
+   LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -188,7 +188,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
 
       EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
    }
-   LOG(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
+   LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
@@ -198,7 +198,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG(TraceLevelVerbose, "Entered BinDataSetTraining");
+   LOG_0(TraceLevelVerbose, "Entered BinDataSetTraining");
 
    EBM_ASSERT(cCompilerDimensions == pFeatureCombination->m_cFeatures);
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
@@ -286,7 +286,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
    }
    const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
    if(pResidualError < pResidualErrorEnd) {
-      LOG(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
+      LOG_0(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
 
       // first time through?
       EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
@@ -297,7 +297,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
    }
    EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
-   LOG(TraceLevelVerbose, "Exited BinDataSetTraining");
+   LOG_0(TraceLevelVerbose, "Exited BinDataSetTraining");
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
@@ -353,7 +353,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG(TraceLevelVerbose, "Entered BinDataSetInteraction");
+   LOG_0(TraceLevelVerbose, "Entered BinDataSetInteraction");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -405,7 +405,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
          ++pResidualError;
       }
    }
-   LOG(TraceLevelVerbose, "Exited BinDataSetInteraction");
+   LOG_0(TraceLevelVerbose, "Exited BinDataSetInteraction");
 }
 
 // TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
@@ -415,7 +415,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG(TraceLevelVerbose, "Entered CompressHistogramBuckets");
+   LOG_0(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
    EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
@@ -484,7 +484,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 
    *pcInstancesTotal = cInstancesTotal;
 
-   LOG(TraceLevelVerbose, "Exited CompressHistogramBuckets");
+   LOG_0(TraceLevelVerbose, "Exited CompressHistogramBuckets");
    return cFinalItems;
 }
 

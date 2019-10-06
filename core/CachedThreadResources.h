@@ -75,7 +75,7 @@ public:
    }
 
    ~CachedTrainingThreadResources() {
-      LOG(TraceLevelInfo, "Entered ~CachedTrainingThreadResources");
+      LOG_0(TraceLevelInfo, "Entered ~CachedTrainingThreadResources");
 
       free(m_aThreadByteBuffer1);
       free(m_aThreadByteBuffer2);
@@ -84,13 +84,13 @@ public:
       delete[] m_aSumHistogramBucketVectorEntryBest;
       delete[] m_aSumResidualErrors2;
 
-      LOG(TraceLevelInfo, "Exited ~CachedTrainingThreadResources");
+      LOG_0(TraceLevelInfo, "Exited ~CachedTrainingThreadResources");
    }
 
    EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-         LOG(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+         LOG_N(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
          // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory in the old slot or it can be moved
          void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
          if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
@@ -110,7 +110,7 @@ public:
       //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
       EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
       m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
-      LOG(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
+      LOG_N(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
       // TODO : can we use malloc here?  We only need realloc if we need to keep the existing data
       void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer2, m_cThreadByteBufferCapacity2);
       if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
@@ -148,17 +148,17 @@ public:
    }
 
    ~CachedInteractionThreadResources() {
-      LOG(TraceLevelInfo, "Entered ~CachedInteractionThreadResources");
+      LOG_0(TraceLevelInfo, "Entered ~CachedInteractionThreadResources");
 
       free(m_aThreadByteBuffer1);
 
-      LOG(TraceLevelInfo, "Exited ~CachedInteractionThreadResources");
+      LOG_0(TraceLevelInfo, "Exited ~CachedInteractionThreadResources");
    }
 
    EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-         LOG(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+         LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
          // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory in the old slot or it can be moved
          void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
          if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {

@@ -15,7 +15,7 @@
 #include "InitializeResiduals.h"
 
 EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
@@ -24,14 +24,14 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cInstances * cVectorLength;
 
    if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
       return nullptr;
    }
 
@@ -48,12 +48,12 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_
       }
    }
 
-   LOG(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
    return aResidualErrors;
 }
 
 EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData) {
-   LOG(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
    EBM_ASSERT(nullptr != aFeatures);
@@ -62,19 +62,19 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
    if(IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)) {
       // we're checking this early instead of checking it inside our loop
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)");
       return nullptr;
    }
    const size_t cSubBytesData = sizeof(StorageDataTypeCore) * cInstances;
 
    if(IsMultiplyError(sizeof(void *), cFeatures)) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(void *), cFeatures)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(void *), cFeatures)");
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cFeatures;
    StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
-      LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
@@ -84,7 +84,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
    do {
       StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cSubBytesData));
       if(nullptr == pInputDataTo) {
-         LOG(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
+         LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
       }
       *paInputDataTo = pInputDataTo;
@@ -106,7 +106,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       ++pFeature;
    } while(pFeatureEnd != pFeature);
 
-   LOG(TraceLevelInfo, "Exited DataSetByFeature::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -128,7 +128,7 @@ DataSetByFeature::DataSetByFeature(const size_t cFeatures, const FeatureCore * c
 }
 
 DataSetByFeature::~DataSetByFeature() {
-   LOG(TraceLevelInfo, "Entered ~DataSetByFeature");
+   LOG_0(TraceLevelInfo, "Entered ~DataSetByFeature");
 
    FractionalDataType * aResidualErrors = const_cast<FractionalDataType *>(m_aResidualErrors);
    free(aResidualErrors);
@@ -144,5 +144,5 @@ DataSetByFeature::~DataSetByFeature() {
       free(const_cast<StorageDataTypeCore * *>(m_aaInputData));
    }
 
-   LOG(TraceLevelInfo, "Exited ~DataSetByFeature");
+   LOG_0(TraceLevelInfo, "Exited ~DataSetByFeature");
 }

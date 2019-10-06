@@ -63,12 +63,12 @@ public:
       EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless
 
       if(IsMultiplyError(cVectorLength, k_initialValueCapacity)) {
-         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
+         LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(cVectorLength, k_initialValueCapacity)");
          return nullptr;
       }
       const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
       if(IsMultiplyError(sizeof(TValues), cValueCapacity)) {
-         LOG(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(TValues), cValueCapacity)");
+         LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(TValues), cValueCapacity)");
          return nullptr;
       }
       const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
@@ -77,7 +77,7 @@ public:
       const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
       SegmentedTensor * const pSegmentedRegion = static_cast<SegmentedTensor *>(malloc(cBytesSegmentedRegion));
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
-         LOG(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
+         LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
       }
       memset(pSegmentedRegion, 0, cBytesSegmentedRegion); // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to only free pointers that had non-initialized garbage inside of them
@@ -89,7 +89,7 @@ public:
 
       TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
-         LOG(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
+         LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
          return nullptr;
       }
@@ -105,7 +105,7 @@ public:
             pDimension->cDivisionCapacity = k_initialDivisionCapacity;
             TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
             if(UNLIKELY(nullptr == aDivisions)) {
-               LOG(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
+               LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
                Free(pSegmentedRegion); // free everything!
                return nullptr;
             }
@@ -159,14 +159,14 @@ public:
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
          if(IsAddError(cDivisions, cDivisions >> 1)) {
-            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
+            LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
             return true;
          }
          size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1); // just increase it by 50% since we don't expect to grow our divisions often after an initial period, and realloc takes some of the cost of growing away
-         LOG(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
+         LOG_N(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
 
          if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
-            LOG(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)");
+            LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)");
             return true;
          }
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
@@ -174,7 +174,7 @@ public:
          if(UNLIKELY(nullptr == aNewDivisions)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-            LOG(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
+            LOG_0(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
             return true;
          }
          pDimension->aDivisions = aNewDivisions;
@@ -189,14 +189,14 @@ public:
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
          if(IsAddError(cValues, cValues >> 1)) {
-            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
+            LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
             return true;
          }
          size_t cNewValueCapacity = cValues + (cValues >> 1); // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
-         LOG(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
+         LOG_N(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
 
          if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
-            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(TValues), cNewValueCapacity)");
+            LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(TValues), cNewValueCapacity)");
             return true;
          }
          size_t cBytes = sizeof(TValues) * cNewValueCapacity;
@@ -204,7 +204,7 @@ public:
          if(UNLIKELY(nullptr == aNewValues)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-            LOG(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
+            LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity nullptr == aNewValues");
             return true;
          }
          m_aValues = aNewValues;
@@ -223,14 +223,14 @@ public:
          EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
-            LOG(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
+            LOG_0(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
          EBM_ASSERT(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
          memcpy(m_aDimensions[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
-         LOG(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
+         LOG_0(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
          return true;
       }
       EBM_ASSERT(!IsMultiplyError(sizeof(TValues), cValues)); // we're copying this memory, so multiplication can't overflow
@@ -322,7 +322,7 @@ public:
    }
 
    bool Expand(const size_t * const acDivisionsPlusOne) {
-      LOG(TraceLevelVerbose, "Entered Expand");
+      LOG_0(TraceLevelVerbose, "Entered Expand");
 
       EBM_ASSERT(1 <= m_cDimensions); // you can't really expand something with zero dimensions
       EBM_ASSERT(nullptr != acDivisionsPlusOne);
@@ -332,7 +332,7 @@ public:
       EBM_ASSERT(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
-         LOG(TraceLevelVerbose, "Exited Expand");
+         LOG_0(TraceLevelVerbose, "Exited Expand");
          return false;
       }
 
@@ -372,12 +372,12 @@ public:
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
       if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-         LOG(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
+         LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
-         LOG(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
+         LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
          return true;
       }
 
@@ -471,7 +471,7 @@ public:
          }
 
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
-            LOG(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
+            LOG_0(TraceLevelWarning, "WARNING Expand SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
 
@@ -481,7 +481,7 @@ public:
       }
 
       m_bExpanded = true;
-      LOG(TraceLevelVerbose, "Exited Expand");
+      LOG_0(TraceLevelVerbose, "Exited Expand");
       return false;
    }
 
@@ -594,12 +594,12 @@ public:
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
       if(IsMultiplyError(cNewValues, m_cVectorLength)) {
-         LOG(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
+         LOG_0(TraceLevelWarning, "WARNING Add IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
       if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
-         LOG(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
+         LOG_0(TraceLevelWarning, "WARNING Add EnsureValueCapacity(cNewValues * m_cVectorLength)");
          return true;
       }
 
@@ -715,7 +715,7 @@ public:
          
          // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
          if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
-            LOG(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
+            LOG_0(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
             return true;
          }
          
