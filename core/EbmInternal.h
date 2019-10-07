@@ -13,6 +13,7 @@
 #define UNUSED(x) (void)(x)
 
 // here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
+// disabling warnings with _Pragma detailed info here https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code
 
 #if defined(__clang__) // compiler type
 
@@ -34,9 +35,10 @@
 
 #elif defined(__SUNPRO_CC) // compiler type (Oracle Developer Studio)
 
-// I don't see a way to push/pop the error messages, so we may have to disable them for the entire program.  I can live with that for an oddball compiler
-// https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code
-// example: #pragma error_messages(off,symdeprecated,symdeprecated2)
+// The Oracle compiler doesn't seem to have a way to push/pop error messages, but they do have the concept of the "default" which acts as a pop for the specific warning that we turned on/off
+// Since we can only default on previously changed warnings, we need to have matching warnings off/default sets, so use WARNING_DEFAULT_* 
+// example: WARNING_DISABLE_SOMETHING   _Pragma("error_messages(off,something1,something2)")
+// example: WARNING_DEFAULT_SOMETHING   _Pragma("error_messages(default,something1,something2)")
 
 #define WARNING_PUSH
 #define WARNING_POP

@@ -8,6 +8,9 @@
 # https://cran.r-project.org/web/checks/check_summary_by_package.html#summary_by_package
 # https://cran.r-project.org/web/checks/check_flavors.html
 
+# we can test our package against many different systesm with:
+# https://builder.r-hub.io
+
 # S3 data structures
 
 ebm_feature <- function(count_bins, has_missing = FALSE, feature_type = "ordinal") {
