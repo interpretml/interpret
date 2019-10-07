@@ -20,11 +20,22 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
+#ifdef EBMCORE_R
+#define EBMCORE_IMPORT_EXPORT_INCLUDE
+#define EBMCORE_IMPORT_EXPORT_BODY
+#else // EBMCORE_R
 #define EBMCORE_IMPORT_EXPORT_INCLUDE
 #define EBMCORE_IMPORT_EXPORT_BODY __attribute__ ((visibility ("default")))
+#endif // EBMCORE_R
+
 #define EBMCORE_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
+
+#ifdef EBMCORE_R
+#define EBMCORE_IMPORT_EXPORT_INCLUDE
+#define EBMCORE_IMPORT_EXPORT_BODY
+#else // EBMCORE_R
 
 #ifdef EBMCORE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
@@ -35,6 +46,8 @@ extern "C" {
 #define EBMCORE_IMPORT_EXPORT_INCLUDE __declspec(dllimport)
 #define EBMCORE_IMPORT_EXPORT_BODY
 #endif // EBMCORE_EXPORTS
+
+#endif // EBMCORE_R
 
 #ifdef _WIN64
 // _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64

@@ -1238,11 +1238,12 @@ extern "C" {
       { NULL, NULL, 0 }
    };
 
-#ifdef _WIN32
-   __declspec(dllexport)
-#endif  // _WIN32
-   void R_init_interpret(DllInfo * dllInfo) {
+   void R_init_interpret(DllInfo * info) {
       R_registerRoutines(dllInfo, NULL, g_exposedFunctions, NULL, NULL);
       R_useDynamicSymbols(dllInfo, FALSE);
    }
+
+   //void R_unload_interpret(DllInfo * info) {
+   // Not Used.  fill in later if necessary
+   //}
 }
