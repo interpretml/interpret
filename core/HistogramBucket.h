@@ -218,7 +218,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
    const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pFeatureCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
+   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
 
    size_t cItemsRemaining;
 

@@ -683,7 +683,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
+      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
 
       FractionalDataType rootMeanSquareError = 0;
       size_t cItemsRemaining;

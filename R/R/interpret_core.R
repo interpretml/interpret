@@ -8,6 +8,10 @@
 # https://cran.r-project.org/web/checks/check_summary_by_package.html#summary_by_package
 # https://cran.r-project.org/web/checks/check_flavors.html
 
+# if archived, it will appear in:
+# https://cran-archive.r-project.org/web/checks/2019-10-07_check_results_interpret.html
+# https://cran.r-project.org/src/contrib/Archive/
+
 # we can test our package against many different systesm with:
 # https://builder.r-hub.io
 
