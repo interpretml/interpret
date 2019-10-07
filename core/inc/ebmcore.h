@@ -20,17 +20,20 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
-#define EBMCORE_IMPORT_EXPORT __attribute__ ((visibility ("default")))
+#define EBMCORE_IMPORT_EXPORT_INCLUDE
+#define EBMCORE_IMPORT_EXPORT_BODY __attribute__ ((visibility ("default")))
 #define EBMCORE_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
 
 #ifdef EBMCORE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
-#define EBMCORE_IMPORT_EXPORT
+#define EBMCORE_IMPORT_EXPORT_INCLUDE
+#define EBMCORE_IMPORT_EXPORT_BODY
 #else // EBMCORE_EXPORTS
 // __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
-#define EBMCORE_IMPORT_EXPORT __declspec(dllimport)
+#define EBMCORE_IMPORT_EXPORT_INCLUDE __declspec(dllimport)
+#define EBMCORE_IMPORT_EXPORT_BODY
 #endif // EBMCORE_EXPORTS
 
 #ifdef _WIN64
@@ -88,8 +91,8 @@ const signed char TraceLevelVerbose = 4;
 // all our logging messages are pure ASCII (127 values), and therefore also UTF-8
 typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
+EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
+EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
 // - I initially considered storing our model files as negated logits [storing them as (0 - mathematical_logit)], but that's a bad choice because:
@@ -166,7 +169,7 @@ EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char 
 //       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.  I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
    IntegerDataType randomSeed, 
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
@@ -183,7 +186,7 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    const FractionalDataType * validationPredictorScores, 
    IntegerDataType countInnerBags
 );
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
    IntegerDataType randomSeed, 
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
@@ -201,7 +204,7 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    const FractionalDataType * validationPredictorScores, 
    IntegerDataType countInnerBags
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination, 
    FractionalDataType learningRate, 
@@ -211,13 +214,13 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateMo
    const FractionalDataType * validationWeights, 
    FractionalDataType * gainReturn
 );
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination, 
    const FractionalDataType * modelFeatureCombinationUpdateTensor,
    FractionalDataType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
@@ -227,20 +230,20 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
    const FractionalDataType * validationWeights,
    FractionalDataType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
+EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(
+EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeTraining(
    PEbmTraining ebmTraining
 );
 
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
    IntegerDataType countInstances, 
@@ -248,7 +251,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    const IntegerDataType * binnedData, 
    const FractionalDataType * predictorScores
 );
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
    IntegerDataType countTargetClasses, 
@@ -257,13 +260,13 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    const IntegerDataType * binnedData, 
    const FractionalDataType * predictorScores
 );
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction, 
    IntegerDataType countFeaturesInCombination, 
    const IntegerDataType * featureIndexes, 
    FractionalDataType * interactionScoreReturn
 );
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(
+EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
 );
 

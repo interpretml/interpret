@@ -935,7 +935,7 @@ EbmTrainingState * AllocateCoreTraining(const IntegerDataType randomSeed, const 
    return pEbmTrainingState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
    IntegerDataType randomSeed,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
@@ -958,7 +958,7 @@ EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTraining
    return pEbmTraining;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
+EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
    IntegerDataType randomSeed,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
@@ -1138,7 +1138,7 @@ EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombination
 static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessages = 10;
 
 // TODO : we can make GenerateModelFeatureCombinationUpdate callable by multiple threads so that this step could be parallelized before making a decision and applying one of the updates.  Right now we're accessing scratch space in the pEbmTrainingState object, but we can move that to a thread resident object.  Do do this, we would need to have our caller allocate our tensor, but that is a manageable operation
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
@@ -1302,7 +1302,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveApplyModelFeatureCombinationUpdate<k
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogApplyModelFeatureCombinationUpdateParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination,
    const FractionalDataType * modelFeatureCombinationUpdateTensor,
@@ -1360,7 +1360,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatu
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
@@ -1395,7 +1395,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
    return ApplyModelFeatureCombinationUpdate(ebmTraining, indexFeatureCombination, pModelFeatureCombinationUpdateTensor, validationMetricReturn);
 }
 
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination
 ) {
@@ -1428,7 +1428,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrent
    return pRet;
 }
 
-EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
+EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination
 ) {
@@ -1461,7 +1461,7 @@ EBMCORE_IMPORT_EXPORT FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestMod
    return pRet;
 }
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeTraining(
+EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeTraining(
    PEbmTraining ebmTraining
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));

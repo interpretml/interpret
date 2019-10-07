@@ -18,13 +18,13 @@ constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameter
 signed char g_traceLevel = TraceLevelOff;
 LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
+EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(nullptr != logMessageFunction);
    assert(nullptr == g_pLogMessageFunc); /* "SetLogMessageFunction should only be called once" */
    g_pLogMessageFunc = logMessageFunction;
 }
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
+EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
    assert(TraceLevelOff <= traceLevel);
    assert(traceLevel <= TraceLevelVerbose);
    assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */

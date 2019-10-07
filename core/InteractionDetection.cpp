@@ -60,7 +60,7 @@ EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, con
    return pEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
+EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
    IntegerDataType countInstances,
@@ -74,7 +74,7 @@ EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInter
    return pEbmInteraction;
 }
 
-EBMCORE_IMPORT_EXPORT PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
+EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
    IntegerDataType countTargetClasses,
@@ -141,7 +141,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction,
    IntegerDataType countFeaturesInCombination,
    const IntegerDataType * featureIndexes,
@@ -257,7 +257,7 @@ EBMCORE_IMPORT_EXPORT IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionS
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT void EBMCORE_CALLING_CONVENTION FreeInteraction(
+EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
