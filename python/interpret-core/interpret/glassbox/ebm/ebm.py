@@ -336,7 +336,6 @@ class BaseCoreEBM(BaseEstimator):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -357,7 +356,6 @@ class BaseCoreEBM(BaseEstimator):
         self.data_n_episodes = data_n_episodes
         self.early_stopping_tolerance = early_stopping_tolerance
         self.early_stopping_run_length = early_stopping_run_length
-        self.use_residuals_for_fast = use_residuals_for_fast
 
         # Arguments for internal EBM.
         self.feature_step_n_inner_bags = feature_step_n_inner_bags
@@ -410,7 +408,6 @@ class BaseCoreEBM(BaseEstimator):
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
-        # TODO: Refactor following into top-level functions for Base Core EBM.
         main_attr_indices = [[x] for x in range(len(self.attributes_))]
         main_attr_sets = EBMUtils.gen_attribute_sets(main_attr_indices)
         with closing(
@@ -431,23 +428,6 @@ class BaseCoreEBM(BaseEstimator):
             # Train main effects
             self._fit_main(native_ebm, main_attr_sets)
 
-        training_scores = self.decision_function(X_train) if self.use_residuals_for_fast else None
-        validation_scores = self.decision_function(X_val) if self.use_residuals_for_fast else None
-        with closing(
-                NativeEBM(
-                    self.attributes_,
-                    main_attr_sets,
-                    X_train,
-                    y_train,
-                    X_val,
-                    y_val,
-                    num_inner_bags=self.feature_step_n_inner_bags,
-                    num_classification_states=self.n_classes_,
-                    model_type=model_type,
-                    training_scores=training_scores,
-                    validation_scores=validation_scores,
-                )
-        ) as native_ebm:
             # Build interaction terms
             self.inter_indices_, self.inter_scores_ = self._build_interactions(native_ebm)
 
@@ -635,7 +615,6 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -655,7 +634,6 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
             data_n_episodes=data_n_episodes,
             early_stopping_tolerance=early_stopping_tolerance,
             early_stopping_run_length=early_stopping_run_length,
-            use_residuals_for_fast=use_residuals_for_fast,
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
@@ -688,7 +666,6 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -708,7 +685,6 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
             data_n_episodes=data_n_episodes,
             early_stopping_tolerance=early_stopping_tolerance,
             early_stopping_run_length=early_stopping_run_length,
-            use_residuals_for_fast=use_residuals_for_fast,
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
@@ -744,7 +720,6 @@ class BaseEBM(BaseEstimator):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -776,7 +751,6 @@ class BaseEBM(BaseEstimator):
         self.data_n_episodes = data_n_episodes
         self.early_stopping_tolerance = early_stopping_tolerance
         self.early_stopping_run_length = early_stopping_run_length
-        self.use_residuals_for_fast = use_residuals_for_fast
 
         # Arguments for internal EBM.
         self.feature_step_n_inner_bags = feature_step_n_inner_bags
@@ -830,7 +804,6 @@ class BaseEBM(BaseEstimator):
                 data_n_episodes=self.data_n_episodes,
                 early_stopping_tolerance=self.early_stopping_tolerance,
                 early_stopping_run_length=self.early_stopping_run_length,
-                use_residuals_for_fast=self.use_residuals_for_fast,
                 # Native
                 feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                 learning_rate=self.learning_rate,
@@ -852,7 +825,6 @@ class BaseEBM(BaseEstimator):
                 data_n_episodes=self.data_n_episodes,
                 early_stopping_tolerance=self.early_stopping_tolerance,
                 early_stopping_run_length=self.early_stopping_run_length,
-                use_residuals_for_fast=self.use_residuals_for_fast,
                 # Native
                 feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                 learning_rate=self.learning_rate,
@@ -1308,7 +1280,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -1338,7 +1309,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             data_n_episodes=data_n_episodes,
             early_stopping_tolerance=early_stopping_tolerance,
             early_stopping_run_length=early_stopping_run_length,
-            use_residuals_for_fast=use_residuals_for_fast,
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
@@ -1390,7 +1360,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         data_n_episodes=2000,
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
-        use_residuals_for_fast=True,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
@@ -1420,7 +1389,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             data_n_episodes=data_n_episodes,
             early_stopping_tolerance=early_stopping_tolerance,
             early_stopping_run_length=early_stopping_run_length,
-            use_residuals_for_fast=use_residuals_for_fast,
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
