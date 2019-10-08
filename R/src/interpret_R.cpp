@@ -1239,8 +1239,8 @@ extern "C" {
    };
 
    void R_init_interpret(DllInfo * info) {
-      R_registerRoutines(dllInfo, NULL, g_exposedFunctions, NULL, NULL);
-      R_useDynamicSymbols(dllInfo, FALSE);
+      R_registerRoutines(info, NULL, g_exposedFunctions, NULL, NULL);
+      R_useDynamicSymbols(info, FALSE);
    }
 
    //void R_unload_interpret(DllInfo * info) {
