@@ -906,8 +906,10 @@ class BaseEBM(BaseEstimator):
             main_indices = [[x] for x in range(len(self.attributes_))]
         elif(isinstance(self.main_attr, list) and all(isinstance(x, int) for x in self.main_attr)):
             main_indices = [[x] for x in self.main_attr]
-        else:
-            raise RuntimeError("Argument 'main_attr' has invalid value")
+        else:  # pragma: no cover
+            msg = "Argument 'main_attr' has invalid value (valid values are 'all'|list<int>): {}".format(self.main_attr)
+            raise RuntimeError(msg)
+
         self.attribute_sets_ = EBMUtils.gen_attribute_sets(main_indices)
         self.attribute_sets_.extend(EBMUtils.gen_attribute_sets(pair_indices))
 
