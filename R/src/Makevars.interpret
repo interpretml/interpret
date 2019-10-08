@@ -3,5 +3,6 @@ ROOTDIR=../../
 CXX_STD = CXX11
 
 PKG_CPPFLAGS= -Icore -Icore/inc -DEBMCORE_R
+PKG_CXXFLAGS=$(CXX_VISIBILITY)
 
 OBJECTS = interpret_R.o core/DataSetByFeature.o core/DataSetByFeatureCombination.o core/InteractionDetection.o core/Logging.o core/SamplingWithReplacement.o core/Training.o

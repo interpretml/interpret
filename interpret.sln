@@ -31,8 +31,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4C
 	ProjectSection(SolutionItems) = preProject
 		R\build_R.bat = R\build_R.bat
 		R\DESCRIPTION = R\DESCRIPTION
+		R\src\interpret-win.def = R\src\interpret-win.def
 		R\R\interpret_core.R = R\R\interpret_core.R
 		R\src\interpret_R.cpp = R\src\interpret_R.cpp
+		R\src\Makevars = R\src\Makevars
 		R\src\Makevars.interpret = R\src\Makevars.interpret
 		R\NAMESPACE = R\NAMESPACE
 	EndProjectSection

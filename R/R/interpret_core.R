@@ -12,7 +12,7 @@
 # https://cran-archive.r-project.org/web/checks/2019-10-07_check_results_interpret.html
 # https://cran.r-project.org/src/contrib/Archive/
 
-# we can test our package against many different systesm with:
+# we can test our package against many different systems with:
 # https://builder.r-hub.io
 
 # S3 data structures
@@ -50,7 +50,7 @@ initialize_training_regression <- function(random_seed, features, feature_combin
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
-   ebm_training <- .Call("InitializeTrainingRegression_R", random_seed, features, feature_combinations, feature_combination_indexes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
+   ebm_training <- .Call(InitializeTrainingRegression_R, random_seed, features, feature_combinations, feature_combination_indexes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
    if(is.null(ebm_training)) {
       stop("error in InitializeTrainingRegression_R")
    }
@@ -75,7 +75,7 @@ initialize_training_classification <- function(random_seed, features, feature_co
    }
    count_inner_bags <- as.integer(count_inner_bags)
 
-   ebm_training <- .Call("InitializeTrainingClassification_R", random_seed, features, feature_combinations, feature_combination_indexes, count_target_classes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
+   ebm_training <- .Call(InitializeTrainingClassification_R, random_seed, features, feature_combinations, feature_combination_indexes, count_target_classes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
    if(is.null(ebm_training)) {
       stop("error in InitializeTrainingClassification_R")
    }
@@ -95,7 +95,7 @@ training_step <- function(ebm_training, index_feature_combination, learning_rate
       validation_weights <- as.double(validation_weights)
    }
 
-   validation_metric <- .Call("TrainingStep_R", ebm_training, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
+   validation_metric <- .Call(TrainingStep_R, ebm_training, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
    if(is.null(validation_metric)) {
       stop("error in TrainingStep_R")
    }
@@ -106,7 +106,7 @@ get_current_model_feature_combination <- function(ebm_training, index_feature_co
    stopifnot(class(ebm_training) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
 
-   model_feature_combination_tensor <- .Call("GetCurrentModelFeatureCombination_R", ebm_training, index_feature_combination)
+   model_feature_combination_tensor <- .Call(GetCurrentModelFeatureCombination_R, ebm_training, index_feature_combination)
    if(is.null(model_feature_combination_tensor)) {
       stop("error in GetCurrentModelFeatureCombination_R")
    }
@@ -117,7 +117,7 @@ get_best_model_feature_combination <- function(ebm_training, index_feature_combi
    stopifnot(class(ebm_training) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
 
-   model_feature_combination_tensor <- .Call("GetBestModelFeatureCombination_R", ebm_training, index_feature_combination)
+   model_feature_combination_tensor <- .Call(GetBestModelFeatureCombination_R, ebm_training, index_feature_combination)
    if(is.null(model_feature_combination_tensor)) {
       stop("error in GetBestModelFeatureCombination_R")
    }
@@ -135,7 +135,7 @@ initialize_interaction_regression <- function(features, targets, binned_data, pr
       predictor_scores <- as.double(predictor_scores)
    }
 
-   ebm_interaction <- .Call("InitializeInteractionRegression_R", features, targets, binned_data, predictor_scores)
+   ebm_interaction <- .Call(InitializeInteractionRegression_R, features, targets, binned_data, predictor_scores)
    if(is.null(ebm_interaction)) {
       stop("error in InitializeInteractionRegression_R")
    }
@@ -151,7 +151,7 @@ initialize_interaction_classification <- function(features, count_target_classes
       predictor_scores <- as.double(predictor_scores)
    }
 
-   ebm_interaction <- .Call("InitializeInteractionClassification_R", features, count_target_classes, targets, binned_data, predictor_scores)
+   ebm_interaction <- .Call(InitializeInteractionClassification_R, features, count_target_classes, targets, binned_data, predictor_scores)
    if(is.null(ebm_interaction)) {
       stop("error in InitializeInteractionClassification_R")
    }
@@ -162,7 +162,7 @@ get_interaction_score <- function(ebm_interaction, feature_indexes) {
    stopifnot(class(ebm_interaction) == "externalptr")
    feature_indexes <- as.double(feature_indexes)
 
-   interaction_score <- .Call("GetInteractionScore_R", ebm_interaction, feature_indexes)
+   interaction_score <- .Call(GetInteractionScore_R, ebm_interaction, feature_indexes)
    if(is.null(interaction_score)) {
       stop("error in GetInteractionScore_R")
    }
