@@ -67,7 +67,9 @@ class MorrisSensitivity(ExplainerMixin):
 
         samples = self.sampler.sample()
         problem = self.sampler.gen_problem_from_data(self.data, self.feature_names)
-        analysis = morris.analyze(problem, samples, self.predict_fn(samples).astype(float))
+        analysis = morris.analyze(
+            problem, samples, self.predict_fn(samples).astype(float)
+        )
 
         mu = analysis["mu"]
         mu_star = analysis["mu_star"]

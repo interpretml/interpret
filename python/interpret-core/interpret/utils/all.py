@@ -329,7 +329,7 @@ def autogen_schema(X, ordinal_max_items=2, feature_names=None, feature_types=Non
             X = X.infer_objects()
         except AttributeError:
             for k in list(X):
-                X[k] = pd.to_numeric(X[k], errors='ignore')
+                X[k] = pd.to_numeric(X[k], errors="ignore")
 
     if isinstance(X, NDFrame):
         for name, col_dtype in zip(X.dtypes.index, X.dtypes):

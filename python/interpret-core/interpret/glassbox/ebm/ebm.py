@@ -410,9 +410,11 @@ class BaseCoreEBM(BaseEstimator):
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
-        if(isinstance(self.main_attr, str) and self.main_attr == "all"):
+        if isinstance(self.main_attr, str) and self.main_attr == "all":
             main_attr_indices = [[x] for x in range(len(self.attributes_))]
-        elif(isinstance(self.main_attr, list) and all(isinstance(x, int) for x in self.main_attr)):
+        elif isinstance(self.main_attr, list) and all(
+            isinstance(x, int) for x in self.main_attr
+        ):
             main_attr_indices = [[x] for x in self.main_attr]
         else:
             raise RuntimeError("Argument 'main_attr' has invalid value")
@@ -436,7 +438,9 @@ class BaseCoreEBM(BaseEstimator):
             self._fit_main(native_ebm, main_attr_sets)
 
             # Build interaction terms
-            self.inter_indices_, self.inter_scores_ = self._build_interactions(native_ebm)
+            self.inter_indices_, self.inter_scores_ = self._build_interactions(
+                native_ebm
+            )
 
         self.staged_fit_interactions(X, y, self.inter_indices_)
 
@@ -902,12 +906,16 @@ class BaseEBM(BaseEstimator):
         self.attributes_ = EBMUtils.gen_attributes(
             self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
         )
-        if(isinstance(self.main_attr, str) and self.main_attr == "all"):
+        if isinstance(self.main_attr, str) and self.main_attr == "all":
             main_indices = [[x] for x in range(len(self.attributes_))]
-        elif(isinstance(self.main_attr, list) and all(isinstance(x, int) for x in self.main_attr)):
+        elif isinstance(self.main_attr, list) and all(
+            isinstance(x, int) for x in self.main_attr
+        ):
             main_indices = [[x] for x in self.main_attr]
         else:  # pragma: no cover
-            msg = "Argument 'main_attr' has invalid value (valid values are 'all'|list<int>): {}".format(self.main_attr)
+            msg = "Argument 'main_attr' has invalid value (valid values are 'all'|list<int>): {}".format(
+                self.main_attr
+            )
             raise RuntimeError(msg)
 
         self.attribute_sets_ = EBMUtils.gen_attribute_sets(main_indices)
