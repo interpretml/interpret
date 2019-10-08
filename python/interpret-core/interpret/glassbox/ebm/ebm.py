@@ -1054,6 +1054,8 @@ class BaseEBM(BaseEstimator):
         if name is None:
             name = gen_name_from_class(self)
 
+        check_is_fitted(self, "has_fitted_")
+
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
@@ -1178,6 +1180,8 @@ class BaseEBM(BaseEstimator):
         # Values are the model graph score per respective attribute set.
         if name is None:
             name = gen_name_from_class(self)
+
+        check_is_fitted(self, "has_fitted_")
 
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
         instances = self.preprocessor_.transform(X)
