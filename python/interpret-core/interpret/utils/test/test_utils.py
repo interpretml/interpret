@@ -12,6 +12,14 @@ def fixture_feat_val_list():
     return [("race", 3), ("age", -2), ("gender", 1)]
 
 
+def test_unify_fails_on_missing():
+    orig_data = np.array([[1, 2], [3, np.nan]])
+    orig_labels = np.array([0, 1])
+
+    with pytest.raises(ValueError):
+        unify_data(orig_data, orig_labels)
+
+
 def test_unify_list_data():
     orig_data = [[1, 2], [3, 4]]
     orig_labels = [0, 0]
