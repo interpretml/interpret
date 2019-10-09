@@ -21,8 +21,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		CHANGELOG.md = CHANGELOG.md
 		CONTRIBUTING.md = CONTRIBUTING.md
 		README.md = README.md
-		tests\core\test_core_api.bat = tests\core\test_core_api.bat
-		tests\core\test_core_api.sh = tests\core\test_core_api.sh
 	EndProjectSection
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "python", "python\interpret-core\python.pyproj", "{ED16326F-19C9-4360-A976-E11E0979B790}"
@@ -30,12 +28,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4CFD-AE75-710460EF590D}"
 	ProjectSection(SolutionItems) = preProject
 		R\build_R.bat = R\build_R.bat
+		R\cran_lic.txt = R\cran_lic.txt
 		R\DESCRIPTION = R\DESCRIPTION
-		R\src\interpret-win.def = R\src\interpret-win.def
-		R\R\interpret_core.R = R\R\interpret_core.R
-		R\src\interpret_R.cpp = R\src\interpret_R.cpp
-		R\src\Makevars = R\src\Makevars
-		R\src\Makevars.interpret = R\src\Makevars.interpret
 		R\NAMESPACE = R\NAMESPACE
 	EndProjectSection
 EndProject
@@ -51,6 +45,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB5
 		R\man\initialize_training_classification.Rd = R\man\initialize_training_classification.Rd
 		R\man\initialize_training_regression.Rd = R\man\initialize_training_regression.Rd
 		R\man\training_step.Rd = R\man\training_step.Rd
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4AB7-9961-C4635B88C1B8}"
+	ProjectSection(SolutionItems) = preProject
+		R\R\interpret_core.R = R\R\interpret_core.R
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{589FA769-174B-43F0-9665-8F310F4C3E5A}"
+	ProjectSection(SolutionItems) = preProject
+		R\src\interpret-win.def = R\src\interpret-win.def
+		R\src\interpret_R.cpp = R\src\interpret_R.cpp
+		R\src\Makevars = R\src\Makevars
+		R\src\Makevars.interpret = R\src\Makevars.interpret
 	EndProjectSection
 EndProject
 Global
@@ -88,6 +95,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{3939C139-57E9-4CFD-AE75-710460EF590D} = {F5894036-AD18-466C-825A-9347FA61CF2D}
 		{B695C21B-DB54-4A5C-9968-2A94829CB1CB} = {3939C139-57E9-4CFD-AE75-710460EF590D}
+		{71DB2E08-9023-4AB7-9961-C4635B88C1B8} = {3939C139-57E9-4CFD-AE75-710460EF590D}
+		{589FA769-174B-43F0-9665-8F310F4C3E5A} = {3939C139-57E9-4CFD-AE75-710460EF590D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A1DD85D3-F373-45AE-B998-4F7E1ADF40DC}

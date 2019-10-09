@@ -242,6 +242,10 @@ EXIT /B 0
   <ItemGroup>
     <ClInclude Include="PrecompiledHeaderTestCoreApi.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="test_core_api.bat" />
+    <None Include="test_core_api.sh" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
