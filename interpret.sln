@@ -25,7 +25,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		tests\core\test_core_api.sh = tests\core\test_core_api.sh
 	EndProjectSection
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "python", "python\python.pyproj", "{ED16326F-19C9-4360-A976-E11E0979B790}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "python", "python\interpret-core\python.pyproj", "{ED16326F-19C9-4360-A976-E11E0979B790}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4CFD-AE75-710460EF590D}"
 	ProjectSection(SolutionItems) = preProject
