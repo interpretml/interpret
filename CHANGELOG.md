@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.18] - 2019-10-09
+### Added
+- Added "main_attr" argument to EBM models. Can now select a subset of features to train main effects on.
+- Added AzureML notebook VM detection for visualizations (switches to inline).
+### Fixed
+- Missing values now correctly throw exceptions on explainers.
+- Major visualization fix for pairwise interaction heatmaps from EBM.
+- Corrected inline visualization height in Notebooks.
+### Changed
+- Various internal C++ fixes.
+- New error messages around EBM if the model isn't fitted before calling explain_*.
+
 ## [v0.1.17] - 2019-09-24
 ### Fixed
 - Morris sensitivity now works for both predict and predict_proba on scikit models.
@@ -203,6 +215,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.18]: https://github.com/microsoft/interpret/releases/tag/v0.1.18
 [v0.1.17]: https://github.com/microsoft/interpret/releases/tag/v0.1.17
 [v0.1.16]: https://github.com/microsoft/interpret/releases/tag/v0.1.16
 [v0.1.15]: https://github.com/microsoft/interpret/releases/tag/v0.1.15

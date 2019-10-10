@@ -25,7 +25,7 @@ if __name__ == '__main__':
         (interpret_core_setup, 'version = "{}"'),
         (interpret_setup, 'version = "{}"'),
         (interpret_core_version, '__version__ = "{}"'),
-        (interpret_inline_version, 'version: "{}"')
+        (interpret_inline_version, '  "version": "{}",')
     ]
     for target_path, target_format in targets:
         new_lines = []
