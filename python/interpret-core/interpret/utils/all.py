@@ -298,10 +298,10 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
 
     # NOTE: Until missing handling is introduced, all methods will fail at data unification stage if present.
     new_data_has_na = (
-        True if new_data is not None and np.isnan(new_data).any() else False
+        True if new_data is not None and pd.isnull(new_data).any() else False
     )
     new_labels_has_na = (
-        True if new_labels is not None and np.isnan(new_labels).any() else False
+        True if new_labels is not None and pd.isnull(new_labels).any() else False
     )
 
     if new_data_has_na or new_labels_has_na:

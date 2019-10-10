@@ -90,7 +90,15 @@ def _detect_databricks():
 
 
 def is_cloud_env(detected):
-    cloud_env = ["databricks", "azure", "azureml_vm", "kaggle", "sagemaker", "binder", "colab"]
+    cloud_env = [
+        "databricks",
+        "azure",
+        "azureml_vm",
+        "kaggle",
+        "sagemaker",
+        "binder",
+        "colab",
+    ]
     if len(set(cloud_env).intersection(detected)) != 0:
         return True
     else:
