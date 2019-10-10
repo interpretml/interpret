@@ -73,8 +73,12 @@ def _detect_kaggle():
     return os.path.exists("/kaggle/input")
 
 
-def _detect_azure():
+def _detect_azure_notebook():
     return "AZURE_NOTEBOOKS_HOST" in os.environ
+
+
+def _detect_azureml_notebook_vm():
+    return "AZUREML_NB_PATH" in os.environ
 
 
 def _detect_vscode():
@@ -86,7 +90,7 @@ def _detect_databricks():
 
 
 def is_cloud_env(detected):
-    cloud_env = ["databricks", "azure", "kaggle", "sagemaker", "binder", "colab"]
+    cloud_env = ["databricks", "azure", "azureml_vm", "kaggle", "sagemaker", "binder", "colab"]
     if len(set(cloud_env).intersection(detected)) != 0:
         return True
     else:
@@ -98,7 +102,8 @@ class EnvironmentDetector:
         self.checks = {
             "databricks": _detect_databricks,
             "vscode": _detect_vscode,
-            "azure": _detect_azure,
+            "azure": _detect_azure_notebook,
+            "azureml_vm": _detect_azureml_notebook_vm,
             "kaggle": _detect_kaggle,
             "sagemaker": _detect_sagemaker,
             "binder": _detect_binder,
