@@ -1,2 +1,11 @@
-#TODO COPY THIS FROM Makevars.interpret
-# THIS FILE IS ONLY USED WHEN using devtools::install_github('microsoft/interpret',subdir='R')
+# Makevars and Makevars.interpret need to be identical files, except the COREDIR variable which indicates where to get the core C++ files
+# Makevars needs to be named that exactly because it will get loaded from devtools::install_github and devtools will want it to be that name.  When being installed from devtools, we can refer to .cpp and .h files wherever they are in the repo, so we use the COREDIR to point to them
+# Makevars.interpret is the CRAN version of Makevars.  When the interpret_*.tar.gz is created the Makevars.interpret file gets copied as Makevars into the R building directory
+
+COREDIR=../../core
+
+CXX_STD = CXX11
+PKG_CPPFLAGS= -I$(COREDIR) -I$(COREDIR)/inc -DEBMCORE_R
+PKG_CXXFLAGS=$(CXX_VISIBILITY)
+
+OBJECTS = interpret_R.o $(COREDIR)/DataSetByFeature.o $(COREDIR)/DataSetByFeatureCombination.o $(COREDIR)/InteractionDetection.o $(COREDIR)/Logging.o $(COREDIR)/SamplingWithReplacement.o $(COREDIR)/Training.o
