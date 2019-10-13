@@ -121,7 +121,7 @@ public:
       if(LIKELY(nullptr != pSegmentedRegion)) {
          free(pSegmentedRegion->m_aValues);
          if(LIKELY(0 != pSegmentedRegion->m_cDimensionsMax)) {
-            DimensionInfo * pDimensionInfo = &pSegmentedRegion->m_aDimensions[0];
+            DimensionInfo * pDimensionInfo = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
             const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSegmentedRegion->m_cDimensionsMax];
             do {
                free(pDimensionInfo->aDivisions);

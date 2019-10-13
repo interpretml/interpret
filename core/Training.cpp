@@ -447,7 +447,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pFeatureCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
+   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       size_t cItemsRemaining;
@@ -730,7 +730,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
       size_t cItemsRemaining;
 
-      const FractionalDataType * const pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pValidationPredictorScores + cVectorLength * (static_cast<ptrdiff_t>(cInstances) - cItemsPerBitPackDataUnit);
+      const FractionalDataType * const pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pValidationPredictorScores + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
 
       FractionalDataType sumLogLoss = 0;
       while(pValidationPredictorScores < pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
