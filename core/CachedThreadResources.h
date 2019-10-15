@@ -5,6 +5,7 @@
 #ifndef CACHED_THREAD_RESOURCES_H
 #define CACHED_THREAD_RESOURCES_H
 
+#include <vector>
 #include <queue>
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t

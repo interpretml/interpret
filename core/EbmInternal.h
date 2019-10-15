@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef TRANSPARENT_ML_CORE_INTERNAL_H
-#define TRANSPARENT_ML_CORE_INTERNAL_H
+#ifndef EBM_INTERNAL_H
+#define EBM_INTERNAL_H
 
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
@@ -272,4 +272,4 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
 static constexpr ptrdiff_t k_iZeroResidual = -1;
 static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
-#endif // TRANSPARENT_ML_CORE_INTERNAL_H
+#endif // EBM_INTERNAL_H

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef DATA_SET_INTERNAL_H
-#define DATA_SET_INTERNAL_H
+#ifndef DATA_SET_BY_FEATURE_H
+#define DATA_SET_BY_FEATURE_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -48,4 +48,4 @@ public:
    }
 };
 
-#endif // DATA_SET_INTERNAL_H
+#endif // DATA_SET_BY_FEATURE_H

@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef PREDICTION_STATISTICS_H
-#define PREDICTION_STATISTICS_H
+#ifndef HISTOGRAM_BUCKET_VECTOR_ENTRY_H
+#define HISTOGRAM_BUCKET_VECTOR_ENTRY_H
 
 #include <type_traits> // std::is_pod
 
@@ -77,4 +77,4 @@ struct HistogramBucketVectorEntry<false> final {
 static_assert(std::is_pod<HistogramBucketVectorEntry<false>>::value, "HistogramBucketVectorEntry will be more efficient as a POD as we make potentially large arrays of them!");
 static_assert(std::is_pod<HistogramBucketVectorEntry<true>>::value, "HistogramBucketVectorEntry will be more efficient as a POD as we make potentially large arrays of them!");
 
-#endif // PREDICTION_STATISTICS_H
+#endif // HISTOGRAM_BUCKET_VECTOR_ENTRY_H

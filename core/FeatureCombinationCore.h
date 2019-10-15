@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef ATTRIBUTE_COMBINATION_H
-#define ATTRIBUTE_COMBINATION_H
+#ifndef FEATURE_COMBINATION_CORE_H
+#define FEATURE_COMBINATION_CORE_H
 
 #include <string.h> // memset
 #include <stddef.h> // size_t, ptrdiff_t
@@ -101,4 +101,4 @@ public:
 static FeatureCombinationCheck DEBUG_FeatureCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
 #endif // NDEBUG
 
-#endif // ATTRIBUTE_COMBINATION_H
+#endif // FEATURE_COMBINATION_CORE_H

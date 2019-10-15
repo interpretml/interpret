@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef BINNED_BUCKET_H
-#define BINNED_BUCKET_H
+#ifndef HISTOGRAM_BUCKET_H
+#define HISTOGRAM_BUCKET_H
 
 #include <type_traits> // std::is_pod
 #include <string.h> // memset
@@ -501,4 +501,4 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    return cFinalItems;
 }
 
-#endif // BINNED_BUCKET_H
+#endif // HISTOGRAM_BUCKET_H

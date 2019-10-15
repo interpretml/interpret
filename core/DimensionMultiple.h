@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef MULTI_DIMENSIONAL_TRAINING_H
-#define MULTI_DIMENSIONAL_TRAINING_H
+#ifndef DIMENSION_MULTIPLE_H
+#define DIMENSION_MULTIPLE_H
 
 #include <type_traits> // std::is_pod
 #include <stddef.h> // size_t, ptrdiff_t
@@ -1889,4 +1889,4 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
    return false;
 }
 
-#endif // MULTI_DIMENSIONAL_TRAINING_H
+#endif // DIMENSION_MULTIPLE_H

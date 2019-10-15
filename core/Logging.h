@@ -6,7 +6,6 @@
 #define LOGGING_H
 
 #include <assert.h>
-#include <tuple>
 
 #include "ebmcore.h" // LOG_MESSAGE_FUNCTION
 #include "EbmInternal.h" // UNLIKELY

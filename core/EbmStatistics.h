@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef STATISTICS_H
-#define STATISTICS_H
+#ifndef EBM_STATISTICS_H
+#define EBM_STATISTICS_H
 
 #include <cmath> // log, exp, sqrt, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
 #include <stddef.h> // size_t, ptrdiff_t
@@ -126,4 +126,4 @@ public:
    }
 };
 
-#endif // STATISTICS_H
+#endif // EBM_STATISTICS_H

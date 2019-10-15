@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef DATA_SET_ATTRIBUTE_COMBINATION_H
-#define DATA_SET_ATTRIBUTE_COMBINATION_H
+#ifndef DATA_SET_BY_FEATURE_COMBINATION_H
+#define DATA_SET_BY_FEATURE_COMBINATION_H
 
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -68,4 +68,4 @@ public:
    }
 };
 
-#endif // DATA_SET_ATTRIBUTE_COMBINATION_H
+#endif // DATA_SET_BY_FEATURE_COMBINATION_H

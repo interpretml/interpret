@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef ATTRIBUTE_INTERNAL_H
-#define ATTRIBUTE_INTERNAL_H
+#ifndef FEATURE_CORE_H
+#define FEATURE_CORE_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -28,4 +28,4 @@ public:
    }
 };
 
-#endif // ATTRIBUTE_INTERNAL_H
+#endif // FEATURE_CORE_H

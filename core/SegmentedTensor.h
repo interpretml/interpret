@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef SEGMENTED_REGION_H
-#define SEGMENTED_REGION_H
+#ifndef SEGMENTED_TENSOR_H
+#define SEGMENTED_TENSOR_H
 
 // TODO : check for multiplication overflows within this class (we could overflow in several parts)
 // TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
@@ -823,4 +823,4 @@ public:
 // SegmentedRegion must be a POD, which it will be if both our D and V types are PODs and SegmentedRegion<char, char> is a POD
 static_assert(std::is_pod<SegmentedTensor<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
-#endif // SEGMENTED_REGION_H
+#endif // SEGMENTED_TENSOR_H
