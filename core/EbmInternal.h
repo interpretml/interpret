@@ -11,6 +11,9 @@
 
 #define INVALID_POINTER (reinterpret_cast<void *>(~size_t { 0 }))
 #define UNUSED(x) (void)(x)
+// UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
+// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are POD structures (even if declared as classes), so accessing that memory is legal.
+// this MACRO turns an array reference into a pointer to the same type of object, which resolves any UBSAN warnings
 #define ARRAY_TO_POINTER(x) (reinterpret_cast<typename std::remove_all_extents<decltype(x)>::type *>(reinterpret_cast<void *>(x)))
 
 // here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
@@ -36,7 +39,7 @@
 
 #elif defined(__SUNPRO_CC) // compiler type (Oracle Developer Studio)
 
-// The Oracle compiler doesn't seem to have a way to push/pop error messages, but they do have the concept of the "default" which acts as a pop for the specific warning that we turned on/off
+// The Oracle Developer Studio compiler doesn't seem to have a way to push/pop warning/error messages, but they do have the concept of the "default" which acts as a pop for the specific warning that we turn on/off
 // Since we can only default on previously changed warnings, we need to have matching warnings off/default sets, so use WARNING_DEFAULT_* 
 // example: WARNING_DISABLE_SOMETHING   _Pragma("error_messages(off,something1,something2)")
 // example: WARNING_DEFAULT_SOMETHING   _Pragma("error_messages(default,something1,something2)")

@@ -2173,6 +2173,66 @@ TEST_CASE("Test Rehydration, training, multiclass") {
    }
 }
 
+TEST_CASE("Test data bit packing extremes, training") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(k_learningTypeRegression);
+            test.AddFeatures({ FeatureTest(cBins) });
+            test.AddFeatureCombinations({ { 0 } });
+
+            std::vector<RegressionInstance> trainingInstances;
+            std::vector<RegressionInstance> validationInstances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               trainingInstances.push_back(RegressionInstance(7, { cBins - 1 }));
+               validationInstances.push_back(RegressionInstance(8, { cBins - 1 }));
+            }
+            test.AddTrainingInstances(trainingInstances);
+            test.AddValidationInstances(validationInstances);
+            test.InitializeTraining();
+
+            FractionalDataType validationMetric = test.Train(0);
+            CHECK_APPROX(validationMetric, 7.93);
+            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(modelValue, 0.07);
+         }
+      }
+   }
+}
+
+TEST_CASE("Test data bit packing extremes, interaction") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(k_learningTypeRegression);
+            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
+
+            std::vector<RegressionInstance> instances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               instances.push_back(RegressionInstance(7, { 0, cBins - 1 }));
+            }
+            test.AddInteractionInstances(instances);
+            test.InitializeInteraction();
+
+            FractionalDataType metric = test.InteractionScore({ 0, 1 });
+            if(cBins == 1) {
+               CHECK_APPROX(metric, 0);
+            } else {
+               CHECK_APPROX(metric, 49 * cInstances);
+            }
+         }
+      }
+   }
+}
+
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
    UNUSED(traceLevel);
    // don't display the message, but we want to test all our messages, so have them call us here
