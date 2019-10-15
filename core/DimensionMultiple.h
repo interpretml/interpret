@@ -45,12 +45,12 @@ void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningT
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we've allocated this, so it should fit
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
-   pRet->template Zero<compilerLearningTypeOrCountTargetClasses>(runtimeLearningTypeOrCountTargetClasses);
+   pRet->Zero(cVectorLength);
 
    while(true) {
       const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
-      pRet->template Add<compilerLearningTypeOrCountTargetClasses>(*pHistogramBucket, runtimeLearningTypeOrCountTargetClasses);
+      pRet->Add(*pHistogramBucket, cVectorLength);
 
       size_t iDimension = 0;
       size_t valueMultipleLoop = 1;
@@ -442,7 +442,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
             EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
          }
          for(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pDimensionalCur = pFastTotalStateInitialize->pDimensionalCur; pBucketAuxiliaryBuildZone != pDimensionalCur; pDimensionalCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pDimensionalCur, 1)) {
-            pDimensionalCur->template AssertZero<compilerLearningTypeOrCountTargetClasses>(runtimeLearningTypeOrCountTargetClasses);
+            pDimensionalCur->AssertZero(cVectorLength);
          }
 #endif // NDEBUG
 
@@ -470,7 +470,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       do {
          --iDimension;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAddTo = fastTotalState[iDimension].pDimensionalCur;
-         pAddTo->template Add<compilerLearningTypeOrCountTargetClasses>(*pAddPrev, runtimeLearningTypeOrCountTargetClasses);
+         pAddTo->Add(*pAddPrev, cVectorLength);
          pAddPrev = pAddTo;
          pAddTo = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAddTo, 1);
          if(pAddTo == fastTotalState[iDimension].pDimensionalWrap) {
@@ -478,7 +478,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          }
          fastTotalState[iDimension].pDimensionalCur = pAddTo;
       } while(0 != iDimension);
-      pHistogramBucket->template Copy<compilerLearningTypeOrCountTargetClasses>(*pAddPrev, runtimeLearningTypeOrCountTargetClasses);
+      pHistogramBucket->Copy(*pAddPrev, cVectorLength);
 
 #ifndef NDEBUG
       if(nullptr != aHistogramBucketsDebugCopy && nullptr != pDebugBucket) {
@@ -742,7 +742,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-      pRet->template Copy<compilerLearningTypeOrCountTargetClasses>(*pHistogramBucket, runtimeLearningTypeOrCountTargetClasses);
+      pRet->Copy(*pHistogramBucket, cVectorLength);
       return;
    }
 
@@ -787,7 +787,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeTCore);
 
-   pRet->template Zero<compilerLearningTypeOrCountTargetClasses>(runtimeLearningTypeOrCountTargetClasses);
+   pRet->Zero(cVectorLength);
 
    size_t permuteVector = 0;
    do {
@@ -807,11 +807,11 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->template Subtract<compilerLearningTypeOrCountTargetClasses>(*pHistogramBucket, runtimeLearningTypeOrCountTargetClasses);
+         pRet->Subtract(*pHistogramBucket, cVectorLength);
       } else {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-         pRet->template Add<compilerLearningTypeOrCountTargetClasses>(*pHistogramBucket, runtimeLearningTypeOrCountTargetClasses);
+         pRet->Add(*pHistogramBucket, cVectorLength);
       }
       ++permuteVector;
    } while(LIKELY(0 == (permuteVector >> cAllBits)));
@@ -1141,10 +1141,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             cutFirst1LowBest = cutSecond1LowBest;
             cutFirst1HighBest = cutSecond1HighBest;
 
-            pTotals1LowLowBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals2LowLowBest, runtimeLearningTypeOrCountTargetClasses);
-            pTotals1LowHighBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals2LowHighBest, runtimeLearningTypeOrCountTargetClasses);
-            pTotals1HighLowBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals2HighLowBest, runtimeLearningTypeOrCountTargetClasses);
-            pTotals1HighHighBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals2HighHighBest, runtimeLearningTypeOrCountTargetClasses);
+            pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cVectorLength);
+            pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cVectorLength);
+            pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cVectorLength);
+            pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cVectorLength);
          }
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
@@ -1193,10 +1193,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             cutFirst2LowBest = cutSecond2LowBest;
             cutFirst2HighBest = cutSecond2HighBest;
 
-            pTotals2LowLowBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals1LowLowBestInner, runtimeLearningTypeOrCountTargetClasses);
-            pTotals2LowHighBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals1LowHighBestInner, runtimeLearningTypeOrCountTargetClasses);
-            pTotals2HighLowBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals1HighLowBestInner, runtimeLearningTypeOrCountTargetClasses);
-            pTotals2HighHighBest->template Copy<compilerLearningTypeOrCountTargetClasses>(*pTotals1HighHighBestInner, runtimeLearningTypeOrCountTargetClasses);
+            pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cVectorLength);
+            pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cVectorLength);
+            pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cVectorLength);
+            pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cVectorLength);
 
             bCutFirst2 = true;
          }

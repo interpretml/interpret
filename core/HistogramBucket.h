@@ -73,53 +73,35 @@ public:
    ActiveDataType bucketValue;
    HistogramBucketVectorEntry<bClassification> aHistogramBucketVectorEntry[1];
 
-   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
-   template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
+   EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       cInstancesInBucket += other.cInstancesInBucket;
-      const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].Add(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
-   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
-   template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
+
+   EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       cInstancesInBucket -= other.cInstancesInBucket;
-      const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].Subtract(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
-   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
-   template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
-      const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+
+   EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
 
-   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
-   template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void Zero(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
-      const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   EBM_INLINE void Zero(const size_t cVectorLength) {
+      EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
       memset(this, 0, cBytesPerHistogramBucket);
    }
 
-   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
-   template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-   EBM_INLINE void AssertZero(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) const {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
+   EBM_INLINE void AssertZero(const size_t cVectorLength) const {
+      UNUSED(cVectorLength);
 #ifndef NDEBUG
-      const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
       EBM_ASSERT(0 == cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          aHistogramBucketVectorEntry[iVector].AssertZero();
