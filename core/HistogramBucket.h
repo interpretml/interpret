@@ -45,18 +45,18 @@ EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
    return sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
 }
 template<bool bClassification>
-EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bClassification> * const aHistogramBuckets, const ptrdiff_t iBin) {
+EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, HistogramBucket<bClassification> * const aHistogramBuckets, const size_t iBin) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 template<bool bClassification>
-EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bClassification> * const aHistogramBuckets, const ptrdiff_t iBin) {
+EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(const size_t cBytesPerHistogramBucket, const HistogramBucket<bClassification> * const aHistogramBuckets, const size_t iBin) {
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * static_cast<ptrdiff_t>(cBytesPerHistogramBucket));
+   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
-#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_aHistogramBuckets, MACRO_aHistogramBucketsEnd) (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_aHistogramBuckets) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
+#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
 template<bool bClassification>
 class HistogramBucket final {
@@ -73,6 +73,7 @@ public:
    ActiveDataType bucketValue;
    HistogramBucketVectorEntry<bClassification> aHistogramBucketVectorEntry[1];
 
+   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
@@ -82,6 +83,7 @@ public:
          aHistogramBucketVectorEntry[iVector].Add(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
+   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
@@ -91,6 +93,7 @@ public:
          aHistogramBucketVectorEntry[iVector].Subtract(other.aHistogramBucketVectorEntry[iVector]);
       }
    }
+   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
@@ -100,6 +103,7 @@ public:
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
 
+   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void Zero(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses) == bClassification, "regression types must match");
@@ -109,6 +113,7 @@ public:
       memset(this, 0, cBytesPerHistogramBucket);
    }
 
+   // TODO : pass in the cVectorLength directly AND remove compilerLearningTypeOrCountTargetClasses.  Since this is inlined, if cVectorLength is a constexpr, then it will get optimized down, and if cVectorLength is a runtime value, then we won't need to recompute cVectorLength from runtimeLearningTypeOrCountTargetClasses each time
    template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
    EBM_INLINE void AssertZero(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) const {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);

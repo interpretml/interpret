@@ -172,33 +172,32 @@ static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary
 // TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
 
-// TODO : add a MinusOneSizet const (size_t)(-1) -> turn most ptrdiff_t into size_t and use this constant where we just need a single negative number
-// TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
-// we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
+// TODO : add a MinusOneSizet const (size_t)(-1) -> turn most ptrdiff_t into size_t and use this constant where we just need a single negative number.  we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
 typedef ptrdiff_t ActiveDataType;
 
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
-constexpr EBM_INLINE bool IsRegression(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
-   return k_Regression == compilerLearningTypeOrCountTargetClasses;
+constexpr EBM_INLINE bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) {
+   return k_Regression == learningTypeOrCountTargetClasses;
 }
-constexpr EBM_INLINE bool IsClassification(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
-   return 0 <= compilerLearningTypeOrCountTargetClasses;
+constexpr EBM_INLINE bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+   return 0 <= learningTypeOrCountTargetClasses;
 }
-constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t compilerLearningTypeOrCountTargetClasses) {
+constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+   UNUSED(learningTypeOrCountTargetClasses);
 #ifdef EXPAND_BINARY_LOGITS
    return false;
 #else // EXPAND_BINARY_LOGITS
-   return 2 == compilerLearningTypeOrCountTargetClasses;
+   return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   // this will work for anything except if compilerLearningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t learningTypeOrCountTargetClasses) {
+   // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
-   return runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
+   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
 #else // EXPAND_BINARY_LOGITS
-   return runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
+   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -249,8 +248,6 @@ constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPac
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-// TODO : also check for places where to convert a size_t into a ptrdiff_t and check for overflow there throughout our code
-// TODO : there are many places that could be overflowing multiplication.  We need to look for places where this might happen
 constexpr EBM_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2

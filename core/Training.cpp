@@ -430,7 +430,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
                constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
                if(bZeroingResiduals) {
-                  pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+                  *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
                }
                pTrainingPredictorScores += cVectorLength;
                ++pTargetData;
@@ -567,7 +567,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                // means the numerator and denominator are multiplied by the same constant, which cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
                constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
                if(bZeroingResiduals) {
-                  pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
+                  *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
                }
             }
             pTrainingPredictorScores += cVectorLength;
@@ -895,7 +895,7 @@ void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const
          do {
             const IntegerDataType target = *pTarget;
             EBM_ASSERT(0 <= target);
-            EBM_ASSERT((IsNumberConvertable<ptrdiff_t, IntegerDataType>(target))); // data must be lower than runtimeLearningTypeOrCountTargetClasses and runtimeLearningTypeOrCountTargetClasses fits into a size_t which we checked earlier
+            EBM_ASSERT((IsNumberConvertable<ptrdiff_t, IntegerDataType>(target))); // data must be lower than runtimeLearningTypeOrCountTargetClasses and runtimeLearningTypeOrCountTargetClasses fits into a ptrdiff_t which we checked earlier
             EBM_ASSERT(static_cast<ptrdiff_t>(target) < runtimeLearningTypeOrCountTargetClasses);
             ++pTarget;
          } while(pTargetEnd != pTarget);
@@ -1129,7 +1129,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
          //   pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          //}
 
-         constexpr bool bDividing = bExpandBinaryLogits && 2 == compilerLearningTypeOrCountTargetClasses;
+         constexpr bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == compilerLearningTypeOrCountTargetClasses;
          if(bDividing) {
             pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero / 2);
          } else {

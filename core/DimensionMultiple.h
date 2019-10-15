@@ -373,7 +373,21 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 
 
 
-
+// TODO : ALL OF THE BELOW!
+//- D is the number of dimensions
+//- N is the number of cases per dimension(assume all dimensions have the same number of cases for simplicity)
+//- we currently have one N^D memory region which allows us to calculate the total from any point to any corner in at worst 2 ^ D operations.If we had 2 ^ D memory spaces and were willing to construct them, then we could calculate the total from any point to any corner in 1 operation.If we made a second total region which had the totals from any point to the(1, 1, ..., 1, 1) corner, then we could calculate any point to corer in sqrt(2 ^ D), which is A LOT BETTER and it only takes twice as much memory.For an 8 dimensional space we would need 16 operations instead of 256!
+//- to implement an algorithm that uses the(0, 0, ..., 0, 0) totals volume and the(1, 1, ..., 1, 1) volume, just see whether the input vector has more zeros or 1's and then choose the end point that is closest.
+//- we can calculate the total from any arbitrary start and end point(instead of just a point to a corner) if we set the end point as the end and iterate through ALL permutations of all #'s of bits.  There doesn't seem to be any simplification that allows us to handle less than the full combinatoral exploration, even if we constructed a totals for each possible 2 ^ D corner
+//- we can calculate the totals dynamically at the same time that we sweep the splitting space for splits.The simplest sweep would be to look at each region from a point to each corner and choose the best split that isolates one of those corners instead of splitting at different poiints in each dimension.If we did the simplest possible thing, then our algorithm would be 2 ^ D*N^D*D OR(2 * N) ^ D*D.If we wanted the more complicated splits, then we might need to first build a totals so that we could determine the "tube totals" and then we could sweep the tube and have the costs on both sides of the split
+//- IMEDIATE TASKS :
+//- get point to corner working for N - dimensional to(0, 0, ..., 0, 0)
+//- get splitting working for N - dimensional
+//- have a look at our final dimensionality.Is the totals calculation the bottleneck, or the point to corner totals function ?
+//- I think I understand the costs of all implementations of point to corner computation, so don't implement the (1,1,...,1,1) to point algorithm yet.. try implementing the more optimized totals calculation (with more memory).  After we have the optimized totals calculation, then try to re-do the splitting code to do splitting at the same time as totals calculation.  If that isn't better than our existing stuff, then optimzie the point to corner calculation code
+//- implement a function that calcualtes the total of any volume using just the(0, 0, ..., 0, 0) totals ..as a debugging function.We might use this for trying out more complicated splits where we allow 2 splits on some axies
+// TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
+// TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 template<bool bClassification>
 struct FastTotalState {
    HistogramBucket<bClassification> * pDimensionalCur;
@@ -382,7 +396,6 @@ struct FastTotalState {
    size_t iCur;
    size_t cBins;
 };
-
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
 void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombinationCore * const pFeatureCombination, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBucketAuxiliaryBuildZone
 #ifndef NDEBUG
@@ -416,10 +429,18 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 
          pFastTotalStateInitialize->pDimensionalFirst = pBucketAuxiliaryBuildZone;
          pFastTotalStateInitialize->pDimensionalCur = pBucketAuxiliaryBuildZone;
+         // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 item past the end of the array
          pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, multiply);
 
 #ifndef NDEBUG
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, -1), aHistogramBucketsEndDebug);
+         if(pFastTotalStateEnd == pFastTotalStateInitialize + 1) {
+            // this is the last iteration, so pBucketAuxiliaryBuildZone should normally point to the memory address one byte past the legal buffer (normally aHistogramBucketsEndDebug), 
+            // BUT in rare cases we allocate more memory for the BucketAuxiliaryBuildZone than we use in this function, so the only thing that we can guarantee is that we're equal or less than aHistogramBucketsEndDebug
+            EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) <= aHistogramBucketsEndDebug);
+         } else {
+            // if this isn't the last iteration, then we'll actually be using this memory, so the entire bucket had better be useable
+            EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
+         }
          for(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pDimensionalCur = pFastTotalStateInitialize->pDimensionalCur; pBucketAuxiliaryBuildZone != pDimensionalCur; pDimensionalCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pDimensionalCur, 1)) {
             pDimensionalCur->template AssertZero<compilerLearningTypeOrCountTargetClasses>(runtimeLearningTypeOrCountTargetClasses);
          }
@@ -445,7 +466,9 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAddPrev = pHistogramBucket;
-      for(ptrdiff_t iDimension = cDimensions - 1; 0 <= iDimension ; --iDimension) {
+      size_t iDimension = cDimensions;
+      do {
+         --iDimension;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAddTo = fastTotalState[iDimension].pDimensionalCur;
          pAddTo->template Add<compilerLearningTypeOrCountTargetClasses>(*pAddPrev, runtimeLearningTypeOrCountTargetClasses);
          pAddPrev = pAddTo;
@@ -454,7 +477,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
             pAddTo = fastTotalState[iDimension].pDimensionalFirst;
          }
          fastTotalState[iDimension].pDimensionalCur = pAddTo;
-      }
+      } while(0 != iDimension);
       pHistogramBucket->template Copy<compilerLearningTypeOrCountTargetClasses>(*pAddPrev, runtimeLearningTypeOrCountTargetClasses);
 
 #ifndef NDEBUG
@@ -499,195 +522,176 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 }
 
 
-struct CurrentIndexAndCountBins {
-   ptrdiff_t multipliedIndexCur;
-   ptrdiff_t multipleTotal;
-};
-
-// TODO : ALL OF THE BELOW!
-//- D is the number of dimensions
-//- N is the number of cases per dimension(assume all dimensions have the same number of cases for simplicity)
-//- when we construct the initial D - dimensional totals, our current algorithm is N^D * 2 ^ (D - 1).We can probably reduce this to N^D * D with a lot of side memory that records the cost of going each direction
-//- the above algorithm gives us small slices of work, so it probably can't help us make the next step of calculating the total regional space from a point to a corner any faster since the slices only give us 1 step away and we'd have to iterate through all the slices to get a larger region
-//- we currently have one N^D memory region which allows us to calculate the total from any point to any corner in at worst 2 ^ D operations.If we had 2 ^ D memory spaces and were willing to construct them, then we could calculate the total from any point to any corner in 1 operation.If we made a second total region which had the totals from any point to the(1, 1, ..., 1, 1) corner, then we could calculate any point to corer in sqrt(2 ^ D), which is A LOT BETTER and it only takes twice as much memory.For an 8 dimensional space we would need 16 operations instead of 256!
-//- to implement an algorithm that uses the(0, 0, ..., 0, 0) totals volume and the(1, 1, ..., 1, 1) volume, just see whether the input vector has more zeros or 1's and then choose the end point that is closest.
-//- we can calculate the total from any arbitrary start and end point(instead of just a point to a corner) if we set the end point as the end and iterate through ALL permutations of all #'s of bits.  There doesn't seem to be any simplification that allows us to handle less than the full combinatoral exploration, even if we constructed a totals for each possible 2 ^ D corner
-//- if we succeed(with extra memory) to turn the totals construction algorithm into a N^D*D algorithm, then we might be able to use that to calculate the totals dynamically at the same time that we sweep the splitting space for splits.The simplest sweep would be to look at each region from a point to each corner and choose the best split that isolates one of those corners instead of splitting at different poiints in each dimension.If we did the simplest possible thing, then our algorithm would be 2 ^ D*N^D*D OR(2 * N) ^ D*D.If we wanted the more complicated splits, then we might need to first build a totals so that we could determine the "tube totals" and then we could sweep the tube and have the costs on both sides of the split
-//- IMEDIATE TASKS :
-//- get point to corner working for N - dimensional to(0, 0, ..., 0, 0)
-//- get splitting working for N - dimensional
-//- have a look at our final dimensionality.Is the totals calculation the bottleneck, or the point to corner totals function ?
-//- I think I understand the costs of all implementations of point to corner computation, so don't implement the (1,1,...,1,1) to point algorithm yet.. try implementing the more optimized totals calculation (with more memory).  After we have the optimized totals calculation, then try to re-do the splitting code to do splitting at the same time as totals calculation.  If that isn't better than our existing stuff, then optimzie the point to corner calculation code
-//- implement a function that calcualtes the total of any volume using just the(0, 0, ..., 0, 0) totals ..as a debugging function.We might use this for trying out more complicated splits where we allow 2 splits on some axies
-
-// TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
-// TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombinationCore * const pFeatureCombination
-#ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
-) {
-   LOG_0(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
-
-   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
-
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
-   EBM_ASSERT(1 <= cDimensions);
-
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
-
-   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
-   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-   ptrdiff_t multipleTotalInitialize = -1;
-   {
-      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
-      EBM_ASSERT(1 <= cDimensions);
-      do {
-         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
-         multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureCombinationEntry->m_pFeature->m_cBins);
-         pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
-         ++pFeatureCombinationEntry;
-         ++pCurrentIndexAndCountBinsInitialize;
-      } while(LIKELY(pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize));
-   }
-
-   // TODO: If we have a compiler cVectorLength, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
-   // TODO: can we put HistogramBucket object onto the stack in other places too?
-   // we reserved 1 extra space for these when we binned our buckets
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, -multipleTotalInitialize);
-   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pPrevious, aHistogramBucketsEndDebug);
-
-#ifndef NDEBUG
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
-   pPrevious->AssertZero();
-#endif //NDEBUG
-
-   static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
-   EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
-   EBM_ASSERT(2 <= cDimensions);
-   const size_t permuteVectorEnd = size_t { 1 } << (cDimensions - 1);
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucket = aHistogramBuckets;
-   
-   ptrdiff_t multipliedIndexCur0 = 0;
-   const ptrdiff_t multipleTotal0 = currentIndexAndCountBins[0].multipleTotal;
-
-   goto skip_intro;
-
-   CurrentIndexAndCountBins * pCurrentIndexAndCountBins;
-   ptrdiff_t multipliedIndexCur;
-   while(true) {
-      pCurrentIndexAndCountBins->multipliedIndexCur = multipliedIndexCur;
-
-   skip_intro:
-      
-      // TODO: We're currently reducing the work by a factor of 2 by keeping the pPrevious values.  I think I could reduce the work by annohter factor of 2 if I maintained a 1 dimensional array of previous values for the 2nd dimension.  I think I could reduce by annohter factor of 2 by maintaininng a two dimensional space of previous values, etc..  At the end I think I can remove the combinatorial treatment by adding about the same order of memory as our existing totals space, which is a great tradeoff because then we can figure out a cell by looping N times for N dimensions instead of 2^N!
-      //       After we're solved that, I think I can use the resulting intermediate work to avoid the 2^N work in the region totals function that uses our work (this is speculative)
-      //       I think instead of storing the totals in the N^D space, I'll end up storing the previous values for the 1st dimension, or maybe I need to keep both.  Or maybe I can eliminate a huge amount of memory in the last dimension by doing a tiny bit of extra work.  I don't know yet.
-      //       
-      // TODO: before doing the above, I think I want to take what I have and extract a 2-dimensional and 3-dimensional specializations since these don't need the extra complexity.  Especially for 2-D where I don't even need to keep the previous value
-
-      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
-
-      const size_t cInstancesInBucket = pHistogramBucket->cInstancesInBucket + pPrevious->cInstancesInBucket;
-      pHistogramBucket->cInstancesInBucket = cInstancesInBucket;
-      pPrevious->cInstancesInBucket = cInstancesInBucket;
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         const FractionalDataType sumResidualError = pHistogramBucket->aHistogramBucketVectorEntry[iVector].sumResidualError + pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError;
-         pHistogramBucket->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
-         pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
-
-         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-            const FractionalDataType sumDenominator = pHistogramBucket->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + pPrevious->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
-            pHistogramBucket->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
-            pPrevious->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
-         }
-      }
-
-      size_t permuteVector = 1;
-      do {
-         ptrdiff_t offsetPointer = 0;
-         unsigned int evenOdd = 0;
-         size_t permuteVectorDestroy = permuteVector;
-         // skip the first one since we preserve the total from the previous run instead of adding all the -1 values
-         const CurrentIndexAndCountBins * pCurrentIndexAndCountBinsLoop = &currentIndexAndCountBins[1];
-         EBM_ASSERT(0 != permuteVectorDestroy);
-         do {
-            // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
-            if(UNLIKELY(0 != ((0 == pCurrentIndexAndCountBinsLoop->multipliedIndexCur ? 1 : 0) & permuteVectorDestroy))) {
-               goto skip_combination;
-            }
-            offsetPointer = UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? pCurrentIndexAndCountBinsLoop[-1].multipleTotal + offsetPointer : offsetPointer;
-            evenOdd ^= permuteVectorDestroy; // flip least significant bit if the dimension bit is set
-            ++pCurrentIndexAndCountBinsLoop;
-            permuteVectorDestroy >>= 1;
-            // this (0 != permuteVectorDestroy) condition is somewhat unpredictable because for low dimensions or for low permutations it exits after just a few loops
-            // it might be tempting to try and eliminate the loop by templating it and hardcoding the number of iterations based on the number of dimensions, but that would probably
-            // be a bad choice because we can exit this loop early when the permutation number is low, and on average that eliminates more than half of the loop iterations
-            // the cost of a branch misprediction is probably equal to one complete loop above, but we're reducing it by more than that, and keeping the code more compact by not 
-            // exploding the amount of code based on the number of possible dimensions
-         } while(LIKELY(0 != permuteVectorDestroy));
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), aHistogramBucketsEndDebug);
-         if(UNPREDICTABLE(0 != (1 & evenOdd))) {
-            pHistogramBucket->Add(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
-         } else {
-            pHistogramBucket->Subtract(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
-         }
-      skip_combination:
-         ++permuteVector;
-      } while(LIKELY(permuteVectorEnd != permuteVector));
-
-#ifndef NDEBUG
-      size_t aiStart[k_cDimensionsMax];
-      size_t aiLast[k_cDimensionsMax];
-      ptrdiff_t multipleTotalDebug = -1;
-      for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
-         aiStart[iDebugDimension] = 0;
-         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
-         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
-      }
-      GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, runtimeLearningTypeOrCountTargetClasses, pDebugBucket);
-      EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
-#endif // NDEBUG
-
-      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
-      pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
-
-      // TODO: we are putting storage that would exist in our array from the innermost loop into registers (multipliedIndexCur0 & multipleTotal0).  We can probably do this in many other places as well that use this pattern of indexing via an array
-
-      --multipliedIndexCur0;
-      if(LIKELY(multipliedIndexCur0 != multipleTotal0)) {
-         goto skip_intro;
-      }
-
-      pPrevious->Zero(runtimeLearningTypeOrCountTargetClasses);
-      multipliedIndexCur0 = 0;
-      pCurrentIndexAndCountBins = &currentIndexAndCountBins[1];
-      ptrdiff_t multipleTotal = multipleTotal0;
-      while(true) {
-         multipliedIndexCur = pCurrentIndexAndCountBins->multipliedIndexCur + multipleTotal;
-         multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
-         if(LIKELY(multipliedIndexCur != multipleTotal)) {
-            break;
-         }
-
-         pCurrentIndexAndCountBins->multipliedIndexCur = 0;
-         ++pCurrentIndexAndCountBins;
-         if(UNLIKELY(pCurrentIndexAndCountBinsEnd == pCurrentIndexAndCountBins)) {
-#ifndef NDEBUG
-            free(pDebugBucket);
-#endif // NDEBUG
-            return;
-         }
-      }
-   }
-
-   LOG_0(TraceLevelVerbose, "Exited BuildFastTotalsZeroMemoryIncrease");
-}
+//struct CurrentIndexAndCountBins {
+//   ptrdiff_t multipliedIndexCur;
+//   ptrdiff_t multipleTotal;
+//};
+//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
+//void BuildFastTotalsZeroMemoryIncrease(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombinationCore * const pFeatureCombination
+//#ifndef NDEBUG
+//   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
+//#endif // NDEBUG
+//) {
+//   LOG_0(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
+//
+//   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
+//
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+//   EBM_ASSERT(1 <= cDimensions);
+//
+//   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+//   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+//
+//   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
+//   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
+//   ptrdiff_t multipleTotalInitialize = -1;
+//   {
+//      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
+//      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+//      EBM_ASSERT(1 <= cDimensions);
+//      do {
+//         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
+//         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+//         multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureCombinationEntry->m_pFeature->m_cBins);
+//         pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
+//         ++pFeatureCombinationEntry;
+//         ++pCurrentIndexAndCountBinsInitialize;
+//      } while(LIKELY(pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize));
+//   }
+//
+//   // TODO: If we have a compiler cVectorLength, we could put the pPrevious object into our stack since it would have a defined size.  We could then eliminate having to access it through a pointer and we'd just access through the stack pointer
+//   // TODO: can we put HistogramBucket object onto the stack in other places too?
+//   // we reserved 1 extra space for these when we binned our buckets
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pPrevious = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, -multipleTotalInitialize);
+//   ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pPrevious, aHistogramBucketsEndDebug);
+//
+//#ifndef NDEBUG
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
+//   pPrevious->AssertZero();
+//#endif //NDEBUG
+//
+//   static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
+//   EBM_ASSERT(cDimensions < k_cBitsForSizeTCore);
+//   EBM_ASSERT(2 <= cDimensions);
+//   const size_t permuteVectorEnd = size_t { 1 } << (cDimensions - 1);
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucket = aHistogramBuckets;
+//   
+//   ptrdiff_t multipliedIndexCur0 = 0;
+//   const ptrdiff_t multipleTotal0 = currentIndexAndCountBins[0].multipleTotal;
+//
+//   goto skip_intro;
+//
+//   CurrentIndexAndCountBins * pCurrentIndexAndCountBins;
+//   ptrdiff_t multipliedIndexCur;
+//   while(true) {
+//      pCurrentIndexAndCountBins->multipliedIndexCur = multipliedIndexCur;
+//
+//   skip_intro:
+//      
+//      // TODO: We're currently reducing the work by a factor of 2 by keeping the pPrevious values.  I think I could reduce the work by annohter factor of 2 if I maintained a 1 dimensional array of previous values for the 2nd dimension.  I think I could reduce by annohter factor of 2 by maintaininng a two dimensional space of previous values, etc..  At the end I think I can remove the combinatorial treatment by adding about the same order of memory as our existing totals space, which is a great tradeoff because then we can figure out a cell by looping N times for N dimensions instead of 2^N!
+//      //       After we're solved that, I think I can use the resulting intermediate work to avoid the 2^N work in the region totals function that uses our work (this is speculative)
+//      //       I think instead of storing the totals in the N^D space, I'll end up storing the previous values for the 1st dimension, or maybe I need to keep both.  Or maybe I can eliminate a huge amount of memory in the last dimension by doing a tiny bit of extra work.  I don't know yet.
+//      //       
+//      // TODO: before doing the above, I think I want to take what I have and extract a 2-dimensional and 3-dimensional specializations since these don't need the extra complexity.  Especially for 2-D where I don't even need to keep the previous value
+//
+//      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
+//
+//      const size_t cInstancesInBucket = pHistogramBucket->cInstancesInBucket + pPrevious->cInstancesInBucket;
+//      pHistogramBucket->cInstancesInBucket = cInstancesInBucket;
+//      pPrevious->cInstancesInBucket = cInstancesInBucket;
+//      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//         const FractionalDataType sumResidualError = pHistogramBucket->aHistogramBucketVectorEntry[iVector].sumResidualError + pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError;
+//         pHistogramBucket->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
+//         pPrevious->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualError;
+//
+//         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+//            const FractionalDataType sumDenominator = pHistogramBucket->aHistogramBucketVectorEntry[iVector].GetSumDenominator() + pPrevious->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
+//            pHistogramBucket->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
+//            pPrevious->aHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator);
+//         }
+//      }
+//
+//      size_t permuteVector = 1;
+//      do {
+//         ptrdiff_t offsetPointer = 0;
+//         unsigned int evenOdd = 0;
+//         size_t permuteVectorDestroy = permuteVector;
+//         // skip the first one since we preserve the total from the previous run instead of adding all the -1 values
+//         const CurrentIndexAndCountBins * pCurrentIndexAndCountBinsLoop = &currentIndexAndCountBins[1];
+//         EBM_ASSERT(0 != permuteVectorDestroy);
+//         do {
+//            // even though our index is multiplied by the total bins until this point, we only care about the zero bin, and zero multiplied by anything is zero
+//            if(UNLIKELY(0 != ((0 == pCurrentIndexAndCountBinsLoop->multipliedIndexCur ? 1 : 0) & permuteVectorDestroy))) {
+//               goto skip_combination;
+//            }
+//            offsetPointer = UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? pCurrentIndexAndCountBinsLoop[-1].multipleTotal + offsetPointer : offsetPointer;
+//            evenOdd ^= permuteVectorDestroy; // flip least significant bit if the dimension bit is set
+//            ++pCurrentIndexAndCountBinsLoop;
+//            permuteVectorDestroy >>= 1;
+//            // this (0 != permuteVectorDestroy) condition is somewhat unpredictable because for low dimensions or for low permutations it exits after just a few loops
+//            // it might be tempting to try and eliminate the loop by templating it and hardcoding the number of iterations based on the number of dimensions, but that would probably
+//            // be a bad choice because we can exit this loop early when the permutation number is low, and on average that eliminates more than half of the loop iterations
+//            // the cost of a branch misprediction is probably equal to one complete loop above, but we're reducing it by more than that, and keeping the code more compact by not 
+//            // exploding the amount of code based on the number of possible dimensions
+//         } while(LIKELY(0 != permuteVectorDestroy));
+//         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), aHistogramBucketsEndDebug);
+//         if(UNPREDICTABLE(0 != (1 & evenOdd))) {
+//            pHistogramBucket->Add(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//         } else {
+//            pHistogramBucket->Subtract(*GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, offsetPointer), runtimeLearningTypeOrCountTargetClasses);
+//         }
+//      skip_combination:
+//         ++permuteVector;
+//      } while(LIKELY(permuteVectorEnd != permuteVector));
+//
+//#ifndef NDEBUG
+//      size_t aiStart[k_cDimensionsMax];
+//      size_t aiLast[k_cDimensionsMax];
+//      ptrdiff_t multipleTotalDebug = -1;
+//      for(size_t iDebugDimension = 0; iDebugDimension < cDimensions; ++iDebugDimension) {
+//         aiStart[iDebugDimension] = 0;
+//         aiLast[iDebugDimension] = static_cast<size_t>((0 == iDebugDimension ? multipliedIndexCur0 : currentIndexAndCountBins[iDebugDimension].multipliedIndexCur) / multipleTotalDebug);
+//         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
+//      }
+//      GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, runtimeLearningTypeOrCountTargetClasses, pDebugBucket);
+//      EBM_ASSERT(pDebugBucket->cInstancesInBucket == pHistogramBucket->cInstancesInBucket);
+//#endif // NDEBUG
+//
+//      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
+//      pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
+//
+//      // TODO: we are putting storage that would exist in our array from the innermost loop into registers (multipliedIndexCur0 & multipleTotal0).  We can probably do this in many other places as well that use this pattern of indexing via an array
+//
+//      --multipliedIndexCur0;
+//      if(LIKELY(multipliedIndexCur0 != multipleTotal0)) {
+//         goto skip_intro;
+//      }
+//
+//      pPrevious->Zero(runtimeLearningTypeOrCountTargetClasses);
+//      multipliedIndexCur0 = 0;
+//      pCurrentIndexAndCountBins = &currentIndexAndCountBins[1];
+//      ptrdiff_t multipleTotal = multipleTotal0;
+//      while(true) {
+//         multipliedIndexCur = pCurrentIndexAndCountBins->multipliedIndexCur + multipleTotal;
+//         multipleTotal = pCurrentIndexAndCountBins->multipleTotal;
+//         if(LIKELY(multipliedIndexCur != multipleTotal)) {
+//            break;
+//         }
+//
+//         pCurrentIndexAndCountBins->multipliedIndexCur = 0;
+//         ++pCurrentIndexAndCountBins;
+//         if(UNLIKELY(pCurrentIndexAndCountBinsEnd == pCurrentIndexAndCountBins)) {
+//#ifndef NDEBUG
+//            free(pDebugBucket);
+//#endif // NDEBUG
+//            return;
+//         }
+//      }
+//   }
+//
+//   LOG_0(TraceLevelVerbose, "Exited BuildFastTotalsZeroMemoryIncrease");
+//}
 
 
 
@@ -787,7 +791,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 
    size_t permuteVector = 0;
    do {
-      ptrdiff_t offsetPointer = startingOffset;
+      size_t offsetPointer = startingOffset;
       size_t evenOdd = cAllBits;
       size_t permuteVectorDestroy = permuteVector;
       const TotalsDimension * pTotalsDimensionLoop = &totalsDimension[0];
@@ -799,6 +803,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  Since the number of iterations will remain constant, we can use templates to move this check out of both loop to the completely non-looped outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
       const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, offsetPointer);
+      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pHistogramBucket.  We can pass in a bool that indicates if we should take the negation value or the original at each step (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
