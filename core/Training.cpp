@@ -370,19 +370,19 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
       const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
       if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
-         while(pResidualErrorEnd != pResidualError) {
+         do {
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             *pResidualError = residualError;
             ++pResidualError;
-         }
+         } while(pResidualErrorEnd != pResidualError);
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FractionalDataType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
          const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
          if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FractionalDataType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
-            while(pResidualErrorEnd != pResidualError) {
+            do {
                StorageDataTypeCore targetData = *pTargetData;
                // TODO : because there is only one bin for a zero feature feature combination, we can move the fetch of smallChangeToPredictorScores outside of our loop so that the code doesn't have this dereference each loop
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
@@ -393,10 +393,10 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                ++pResidualError;
                ++pTrainingPredictorScores;
                ++pTargetData;
-            }
+            } while(pResidualErrorEnd != pResidualError);
          } else {
             const FractionalDataType * pValues = aModelFeatureCombinationUpdateTensor;
-            while(pResidualErrorEnd != pResidualError) {
+            do {
                StorageDataTypeCore targetData = *pTargetData;
                FractionalDataType sumExp = 0;
                size_t iVector1 = 0;
@@ -434,7 +434,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                }
                pTrainingPredictorScores += cVectorLength;
                ++pTargetData;
-            }
+            } while(pResidualErrorEnd != pResidualError);
          }
       }
       LOG_0(TraceLevelVerbose, "Exited TrainingSetTargetFeatureLoop - Zero dimensions");
@@ -447,9 +447,9 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pFeatureCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
+      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
       size_t cItemsRemaining;
       while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
          cItemsRemaining = cItemsPerBitPackDataUnit;
@@ -487,6 +487,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
       FractionalDataType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
       const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
+      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
       size_t cItemsRemaining;
 
       while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
@@ -616,13 +617,13 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
 
          FractionalDataType rootMeanSquareError = 0;
-         while(pResidualErrorEnd != pResidualError) {
+         do {
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
             rootMeanSquareError += residualError * residualError;
             *pResidualError = residualError;
             ++pResidualError;
-         }
+         } while(pResidualErrorEnd != pResidualError);
 
          rootMeanSquareError /= pValidationSet->GetCountInstances();
          LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
@@ -637,7 +638,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          FractionalDataType sumLogLoss = 0;
          if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FractionalDataType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
-            while(pValidationPredictionEnd != pValidationPredictorScores) {
+            do {
                StorageDataTypeCore targetData = *pTargetData;
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
                const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
@@ -645,10 +646,10 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossBinaryclass(validationPredictorScores, targetData);
                ++pValidationPredictorScores;
                ++pTargetData;
-            }
+            } while(pValidationPredictionEnd != pValidationPredictorScores);
          } else {
             const FractionalDataType * pValues = aModelFeatureCombinationUpdateTensor;
-            while(pValidationPredictionEnd != pValidationPredictorScores) {
+            do {
                StorageDataTypeCore targetData = *pTargetData;
                FractionalDataType sumExp = 0;
                size_t iVector = 0;
@@ -668,7 +669,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably even more expensive than an unconditional branch
                sumLogLoss += EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(sumExp, pValidationPredictorScores - cVectorLength, targetData);
                ++pTargetData;
-            }
+            } while(pValidationPredictionEnd != pValidationPredictorScores);
          }
          LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
          return sumLogLoss;

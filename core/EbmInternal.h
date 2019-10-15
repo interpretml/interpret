@@ -234,7 +234,6 @@ constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataTypeCore>();
-constexpr size_t k_cCountItemsBitPackedMax = k_cBitsForStorageType; // if each item is a bit, then the number of items will equal the number of bits
 
 constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;

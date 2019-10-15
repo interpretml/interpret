@@ -205,7 +205,11 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
+   EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -217,12 +221,19 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
    const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pFeatureCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
+
    // this shouldn't overflow since we're accessing existing memory
-   const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
+   const FractionalDataType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+   const FractionalDataType * pResidualErrorExit = pResidualErrorTrueEnd;
+   size_t cItemsRemaining = cInstances;
+   if(cInstances <= cItemsPerBitPackDataUnit) {
+      goto one_last_loop;
+   }
+   pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+   EBM_ASSERT(pResidualError < pResidualErrorExit);
+   EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
-   size_t cItemsRemaining;
-
-   while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
+   do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
@@ -283,19 +294,21 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
          --cItemsRemaining;
       } while(0 != cItemsRemaining);
-   }
-   const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
-   if(pResidualError < pResidualErrorEnd) {
+   } while(pResidualErrorExit != pResidualError);
+
+   // first time through?
+   if(pResidualErrorTrueEnd != pResidualError) {
       LOG_0(TraceLevelVerbose, "Handling last BinDataSetTraining loop");
 
-      // first time through?
-      EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
-      cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
+      EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+      cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
       EBM_ASSERT(0 < cItemsRemaining);
       EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+
+      pResidualErrorExit = pResidualErrorTrueEnd;
+
       goto one_last_loop;
    }
-   EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
    LOG_0(TraceLevelVerbose, "Exited BinDataSetTraining");
 }
