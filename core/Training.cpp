@@ -442,16 +442,29 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    }
 
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
+   EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
    const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pFeatureCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
-      size_t cItemsRemaining;
-      while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
+      // this shouldn't overflow since we're accessing existing memory
+      const FractionalDataType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FractionalDataType * pResidualErrorExit = pResidualErrorTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackDataUnit) {
+         goto one_last_loop_regression;
+      }
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      EBM_ASSERT(pResidualError < pResidualErrorExit);
+      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+
+      do {
          cItemsRemaining = cItemsPerBitPackDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
@@ -471,26 +484,36 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      }
-      const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
-      if(pResidualError < pResidualErrorEnd) {
-         // first time through?
-         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
-         cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
+      } while(pResidualErrorExit != pResidualError);
+
+      // first time through?
+      if(pResidualErrorTrueEnd != pResidualError) {
+         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+
+         pResidualErrorExit = pResidualErrorTrueEnd;
+
          goto one_last_loop_regression;
       }
-      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    } else {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       FractionalDataType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
       const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
 
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
-      size_t cItemsRemaining;
+      // this shouldn't overflow since we're accessing existing memory
+      const FractionalDataType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FractionalDataType * pResidualErrorExit = pResidualErrorTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackDataUnit) {
+         goto one_last_loop_classification;
+      }
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      EBM_ASSERT(pResidualError < pResidualErrorExit);
+      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
-      while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
+      do {
          cItemsRemaining = cItemsPerBitPackDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
@@ -554,17 +577,19 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      }
-      const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
-      if(pResidualError < pResidualErrorEnd) {
-         // first time through?
-         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
-         cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
+      } while(pResidualErrorExit != pResidualError);
+
+      // first time through?
+      if(pResidualErrorTrueEnd != pResidualError) {
+         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+
+         pResidualErrorExit = pResidualErrorTrueEnd;
+
          goto one_last_loop_classification;
       }
-      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
    }
    LOG_0(TraceLevelVerbose, "Exited TrainingSetTargetFeatureLoop");
 }
@@ -678,17 +703,30 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
    }
 
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
+   EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
    const StorageDataTypeCore * pInputData = pValidationSet->GetDataPointer(pFeatureCombination);
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-      FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
-      const FractionalDataType * const pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pResidualError + (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
-
       FractionalDataType rootMeanSquareError = 0;
-      size_t cItemsRemaining;
-      while(pResidualError < pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
+      FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
+
+      // this shouldn't overflow since we're accessing existing memory
+      const FractionalDataType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FractionalDataType * pResidualErrorExit = pResidualErrorTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackDataUnit) {
+         goto one_last_loop_regression;
+      }
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      EBM_ASSERT(pResidualError < pResidualErrorExit);
+      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+
+      do {
          cItemsRemaining = cItemsPerBitPackDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
@@ -709,32 +747,42 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      }
-      const FractionalDataType * const pResidualErrorEnd = pResidualErrorLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
-      if(pResidualError < pResidualErrorEnd) {
-         // first time through?
-         EBM_ASSERT(0 == (pResidualErrorEnd - pResidualError) % cVectorLength);
-         cItemsRemaining = (pResidualErrorEnd - pResidualError) / cVectorLength;
+      } while(pResidualErrorExit != pResidualError);
+
+      // first time through?
+      if(pResidualErrorTrueEnd != pResidualError) {
+         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+
+         pResidualErrorExit = pResidualErrorTrueEnd;
+
          goto one_last_loop_regression;
       }
-      EBM_ASSERT(pResidualError == pResidualErrorEnd); // after our second iteration we should have finished everything!
 
       rootMeanSquareError /= pValidationSet->GetCountInstances();
       LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
       return sqrt(rootMeanSquareError);
    } else {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      FractionalDataType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
-      const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
-
-      size_t cItemsRemaining;
-
-      const FractionalDataType * const pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete = pValidationPredictorScores + static_cast<ptrdiff_t>(cVectorLength) * (static_cast<ptrdiff_t>(cInstances) - static_cast<ptrdiff_t>(cItemsPerBitPackDataUnit));
-
       FractionalDataType sumLogLoss = 0;
-      while(pValidationPredictorScores < pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete) {
+
+      const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
+      FractionalDataType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
+
+      // this shouldn't overflow since we're accessing existing memory
+      const FractionalDataType * const pValidationPredictorScoresTrueEnd = pValidationPredictorScores + cVectorLength * cInstances;
+      const FractionalDataType * pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackDataUnit) {
+         goto one_last_loop_classification;
+      }
+      pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      EBM_ASSERT(pValidationPredictorScores < pValidationPredictorScoresExit);
+      EBM_ASSERT(pValidationPredictorScoresExit < pValidationPredictorScoresTrueEnd);
+
+      do {
          cItemsRemaining = cItemsPerBitPackDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
@@ -780,18 +828,19 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
             --cItemsRemaining;
          } while(0 != cItemsRemaining);
-      }
+      } while(pValidationPredictorScoresExit != pValidationPredictorScores);
 
-      const FractionalDataType * const pValidationPredictorScoresEnd = pValidationPredictorScoresLastItemWhereNextLoopCouldDoFullLoopOrLessAndComplete + cVectorLength * cItemsPerBitPackDataUnit;
-      if(pValidationPredictorScores < pValidationPredictorScoresEnd) {
-         // first time through?
-         EBM_ASSERT(0 == (pValidationPredictorScoresEnd - pValidationPredictorScores) % cVectorLength);
-         cItemsRemaining = (pValidationPredictorScoresEnd - pValidationPredictorScores) / cVectorLength;
+      // first time through?
+      if(pValidationPredictorScoresTrueEnd != pValidationPredictorScores) {
+         EBM_ASSERT(0 == (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) % cVectorLength);
+         cItemsRemaining = (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
          EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+
+         pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
+
          goto one_last_loop_classification;
       }
-      EBM_ASSERT(pValidationPredictorScores == pValidationPredictorScoresEnd); // after our second iteration we should have finished everything!
 
       LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
       return sumLogLoss;
