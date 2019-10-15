@@ -2227,7 +2227,7 @@ TEST_CASE("Test data bit packing extremes, training, binary") {
             test.InitializeTraining();
 
             FractionalDataType validationMetric = test.Train(0);
-            CHECK_APPROX(validationMetric, cInstances * 0.70319717972663420);
+            CHECK_APPROX(validationMetric, 0.70319717972663420);
             FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
             CHECK_APPROX(modelValue, -0.02);
          }

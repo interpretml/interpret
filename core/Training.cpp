@@ -697,7 +697,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             } while(pValidationPredictionEnd != pValidationPredictorScores);
          }
          LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
-         return sumLogLoss;
+         return sumLogLoss /= pValidationSet->GetCountInstances();
       }
       EBM_ASSERT(false);
    }
@@ -843,7 +843,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
       }
 
       LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
-      return sumLogLoss;
+      return sumLogLoss /= pValidationSet->GetCountInstances();
    }
 }
 

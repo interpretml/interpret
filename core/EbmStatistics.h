@@ -121,7 +121,7 @@ public:
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
-      // TODO: is there any way to avoid doing the negation below, like changing sumExp or what we store in memory?
+      // TODO: avoid doing the negation below.  Also, can we optimize further?
       return -std::log(std::exp(aValidationLogWeight[binnedActualValue]) / sumExp);
    }
 };
