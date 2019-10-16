@@ -725,15 +725,15 @@ public:
             return true;
          }
          
-         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[cOriginalDivisionsBeforeSetting] - 1;
-         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[pDimension2Cur->cDivisions] - 1;
-         TDivisions * pTopCur = &pDimension1Cur->aDivisions[cNewDivisions] - 1;
+         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[cOriginalDivisionsBeforeSetting];
+         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[pDimension2Cur->cDivisions];
+         TDivisions * pTopCur = &pDimension1Cur->aDivisions[cNewDivisions];
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedTensors have zero divisions.  We allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur); // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
-            EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur); // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
+            EBM_ASSERT(pDimension1Cur->aDivisions <= pTopCur);
+            EBM_ASSERT(pDimension1Cur->aDivisions <= p1Cur);
+            EBM_ASSERT(pDimension2Cur->aDivisions <= p2Cur);
             EBM_ASSERT(p1Cur <= pTopCur);
             EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions));
 
@@ -741,25 +741,27 @@ public:
                // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
                break;
             }
-            // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays.  Adding diffDivisions to a pointer that references an index in pDimension1Cur->aDivisions turns it into a pointer indexed from pDimension2Cur->aDivisions.  They both point to TValues items, so we can cross reference them this way
+            // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays
             if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions))) {
-               EBM_ASSERT(pDimension1Cur->aDivisions <= pTopCur);
+               EBM_ASSERT(pDimension1Cur->aDivisions < pTopCur);
                // direct copy the remaining divisions.  There should be at least one
-               memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, (static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) + size_t { 1 }) * sizeof(TDivisions));
+               memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) * sizeof(TDivisions));
                break;
             }
 
-            const TDivisions d1 = *p1Cur;
-            const TDivisions d2 = *p2Cur;
+            const TDivisions * const p1CurMinusOne = p1Cur - 1;
+            const TDivisions * const p2CurMinusOne = p2Cur - 1;
 
-            // p1Cur and p2Cur might reach the element 1 item before the start of our true data, BUT we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
-            p1Cur = UNPREDICTABLE(d2 <= d1) ? p1Cur - 1 : p1Cur;
-            p2Cur = UNPREDICTABLE(d1 <= d2) ? p2Cur - 1 : p2Cur;
+            const TDivisions d1 = *p1CurMinusOne;
+            const TDivisions d2 = *p2CurMinusOne;
+
+            p1Cur = UNPREDICTABLE(d2 <= d1) ? p1CurMinusOne : p1Cur;
+            p2Cur = UNPREDICTABLE(d1 <= d2) ? p2CurMinusOne : p2Cur;
 
             const TDivisions d = UNPREDICTABLE(d1 <= d2) ? d2 : d1;
 
-            *pTopCur = d;
             --pTopCur; // if we move one or both pointers, we just added annother unique one
+            *pTopCur = d;
          }
          ++pDimension1Cur;
          ++pDimension2Cur;
