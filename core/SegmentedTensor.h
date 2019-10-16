@@ -31,7 +31,7 @@ class SegmentedTensor final {
 
    struct DimensionInfoStackExpand {
       const TDivisions * pDivision1;
-      ptrdiff_t iDivision2;
+      size_t iDivision2;
       size_t cNewDivisions;
    };
 
@@ -326,11 +326,11 @@ public:
       } while(pEnd != pCur);
    }
 
-   bool Expand(const size_t * const acDivisionsPlusOne) {
+   bool Expand(const size_t * const acValuesPerDimension) {
       LOG_0(TraceLevelVerbose, "Entered Expand");
 
       EBM_ASSERT(1 <= m_cDimensions); // you can't really expand something with zero dimensions
-      EBM_ASSERT(nullptr != acDivisionsPlusOne);
+      EBM_ASSERT(nullptr != acValuesPerDimension);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
       // TODO : see if we can change this back to size_t somehow.  I remember we got negative numbers some places either here or in the Add function and that why I used ptrdiff_t, but if it's just -1, then we can still use size_t.
@@ -348,7 +348,7 @@ public:
 
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfoStackExpand * const pDimensionInfoStackEnd = &aDimensionInfoStackExpand[m_cDimensions];
-      const size_t * pcDivisionsPlusOne = acDivisionsPlusOne;
+      const size_t * pcValuesPerDimension = acValuesPerDimension;
 
       size_t cValues1 = 1;
       size_t cNewValues = 1;
@@ -360,19 +360,18 @@ public:
 
          EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
          cValues1 *= cDivisions1 + 1;
-         const TDivisions * const p1End = &pDimensionFirst1->aDivisions[cDivisions1];
 
-         pDimensionInfoStackFirst->pDivision1 = p1End - 1;
-         const size_t cDivisionsPlusOne = *pcDivisionsPlusOne;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cDivisionsPlusOne)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
-         cNewValues *= cDivisionsPlusOne;
-         const size_t maxDivision = cDivisionsPlusOne - 2;
+         pDimensionInfoStackFirst->pDivision1 = &pDimensionFirst1->aDivisions[cDivisions1];
+         const size_t cValuesPerDimension = *pcValuesPerDimension;
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
+         cNewValues *= cValuesPerDimension;
+         const size_t cNewDivisions = cValuesPerDimension - 1;
 
-         pDimensionInfoStackFirst->iDivision2 = maxDivision;
-         pDimensionInfoStackFirst->cNewDivisions = maxDivision; // maxDivision can be a negative number, but I think it isn't used below if it's negative, so converting it to size_t is ok here
+         pDimensionInfoStackFirst->iDivision2 = cNewDivisions;
+         pDimensionInfoStackFirst->cNewDivisions = cNewDivisions;
 
          ++pDimensionFirst1;
-         ++pcDivisionsPlusOne;
+         ++pcValuesPerDimension;
          ++pDimensionInfoStackFirst;
       } while(pDimensionInfoStackEnd != pDimensionInfoStackFirst);
 
@@ -391,10 +390,8 @@ public:
 
       EBM_ASSERT(cValues1 <= cNewValues);
       EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1];
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1];
-
-      const TValues * const aValuesEnd = aValues - 1;
+      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1];
+      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues];
 
       // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
       // first do the values because we need to refer to the old divisions when making decisions about where to move next
@@ -402,16 +399,16 @@ public:
          const TValues * pValue1Move = pValue1;
          const TValues * const pValueTopEnd = pValueTop - m_cVectorLength;
          do {
-            *pValueTop = *pValue1Move;
             --pValue1Move;
             --pValueTop;
+            *pValueTop = *pValue1Move;
          } while(pValueTopEnd != pValueTop);
 
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
          // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
-         if(UNLIKELY(aValuesEnd == pValueTop)) {
+         if(UNLIKELY(aValues == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
          }
@@ -423,26 +420,29 @@ public:
 
          while(true) {
             const TDivisions * const pDivision1 = pDimensionInfoStackSecond->pDivision1;
-            ptrdiff_t iDivision2 = pDimensionInfoStackSecond->iDivision2;
+            size_t iDivision2 = pDimensionInfoStackSecond->iDivision2;
 
             TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
 
-            if(UNPREDICTABLE(aDivisions1 <= pDivision1)) {
-               EBM_ASSERT(0 <= iDivision2);
-               const TDivisions d1 = *pDivision1;
+            if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
+               EBM_ASSERT(0 < iDivision2);
 
-               const size_t change1 = UNPREDICTABLE(iDivision2 <= d1) ? 1 : 0;
-               pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
-               // this doesn't need to be checked since change1 is either 0 or 1
-               // TODO: let's use a conditional here since it's either zero or 1
-               pValue1 -= change1 * multiplication1;
+               const TDivisions * const pDivision1MinusOne = pDivision1 - 1;
 
-               pDimensionInfoStackSecond->iDivision2 = iDivision2 - 1;
+
+               const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
+
+               --iDivision2;
+
+               const bool bMove = UNPREDICTABLE(iDivision2 <= d1);
+               pDimensionInfoStackSecond->pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
+               pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
+
+               pDimensionInfoStackSecond->iDivision2 = iDivision2;
                break;
             } else {
-               if(UNPREDICTABLE(0 <= iDivision2)) {
-                  --iDivision2;
-                  pDimensionInfoStackSecond->iDivision2 = iDivision2;
+               if(UNPREDICTABLE(0 < iDivision2)) {
+                  pDimensionInfoStackSecond->iDivision2 = iDivision2 - 1;
                   break;
                } else {
                   pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
@@ -454,7 +454,7 @@ public:
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
 
-                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[static_cast<ptrdiff_t>(cDivisions1) - 1];
+                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1];
                   pDimensionInfoStackSecond->iDivision2 = pDimensionInfoStackSecond->cNewDivisions;
 
                   ++pDimensionSecond1;
@@ -465,11 +465,11 @@ public:
          }
       }
 
-      EBM_ASSERT(pValueTop == m_aValues - 1);
-      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength - 1);
+      EBM_ASSERT(pValueTop == m_aValues);
+      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
 
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         const size_t cDivisions = acDivisionsPlusOne[iDimension] - 1;
+         const size_t cDivisions = acValuesPerDimension[iDimension] - 1;
 
          if(cDivisions == m_aDimensions[iDimension].cDivisions) {
             continue;
