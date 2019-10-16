@@ -1402,7 +1402,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModel
       LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureCombinationUpdate returned %" IntegerDataTypePrintf, ret);
    }
    if(nullptr != validationMetricReturn) {
-      EBM_ASSERT(0 <= *validationMetricReturn); // both log loss and RMSE need to be above zero
+      EBM_ASSERT(std::isnan(*validationMetricReturn) || 0 <= *validationMetricReturn); // both log loss and RMSE need to be above zero
       LOG_COUNTED_N(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *validationMetricReturn);
    } else {
       LOG_COUNTED_0(&pEbmTrainingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer.");

@@ -173,7 +173,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
          // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
       } while(iVector < cVectorLength);
 
-      EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+      EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || std::isnan(residualTotalDebug) || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
    }
    LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
