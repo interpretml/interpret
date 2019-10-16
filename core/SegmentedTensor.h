@@ -562,8 +562,8 @@ public:
          TDivisions * const p1End = &p1Cur[cDivisions1];
          TDivisions * const p2End = &p2Cur[cDivisions2];
 
-         pDimensionInfoStackFirst->pDivision1 = p1End - 1;
-         pDimensionInfoStackFirst->pDivision2 = p2End - 1;
+         pDimensionInfoStackFirst->pDivision1 = p1End;
+         pDimensionInfoStackFirst->pDivision2 = p2End;
 
          size_t cNewSingleDimensionDivisions = 0;
 
@@ -653,18 +653,21 @@ public:
             TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
             TDivisions * const aDivisions2 = pDimensionSecond2->aDivisions;
 
-            if(UNPREDICTABLE(aDivisions1 <= pDivision1)) {
-               if(UNPREDICTABLE(aDivisions2 <= pDivision2)) {
-                  const TDivisions d1 = *pDivision1;
-                  const TDivisions d2 = *pDivision2;
+            if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
+               if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
+                  const TDivisions * const pDivision1MinusOne = pDivision1 - 1;
+                  const TDivisions * const pDivision2MinusOne = pDivision2 - 1;
 
-                  const size_t change1 = UNPREDICTABLE(d2 <= d1) ? 1 : 0;
-                  pDimensionInfoStackSecond->pDivision1 = pDivision1 - change1;
-                  pValue1 -= change1 * multiplication1;
+                  const TDivisions d1 = *pDivision1MinusOne;
+                  const TDivisions d2 = *pDivision2MinusOne;
 
-                  const size_t change2 = UNPREDICTABLE(d1 <= d2) ? 1 : 0;
-                  pDimensionInfoStackSecond->pDivision2 = pDivision2 - change2;
-                  pValue2 -= change2 * multiplication2;
+                  const bool bMove1 = UNPREDICTABLE(d2 <= d1);
+                  pDimensionInfoStackSecond->pDivision1 = bMove1 ? pDivision1MinusOne : pDivision1;
+                  pValue1 = bMove1 ? pValue1 - multiplication1 : pValue1;
+
+                  const bool bMove2 = UNPREDICTABLE(d1 <= d2);
+                  pDimensionInfoStackSecond->pDivision2 = bMove2 ? pDivision2MinusOne : pDivision2;
+                  pValue2 = bMove2 ? pValue2 - multiplication2 : pValue2;
                   break;
                } else {
                   pValue1 -= multiplication1;
@@ -672,7 +675,7 @@ public:
                   break;
                }
             } else {
-               if(UNPREDICTABLE(aDivisions2 <= pDivision2)) {
+               if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
                   pValue2 -= multiplication2;
                   pDimensionInfoStackSecond->pDivision2 = pDivision2 - 1;
                   break;
@@ -691,8 +694,8 @@ public:
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                   pValue2 += multiplication2; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
 
-                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1] - 1; // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 if cDivisions1 is zero is not undefined behavior
-                  pDimensionInfoStackSecond->pDivision2 = &aDivisions2[cDivisions2] - 1; // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 if cDivisions1 is zero is not undefined behavior
+                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1];
+                  pDimensionInfoStackSecond->pDivision2 = &aDivisions2[cDivisions2];
                   ++pDimensionSecond1;
                   ++pDimensionSecond2;
                   ++pDimensionInfoStackSecond;
