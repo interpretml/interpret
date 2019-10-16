@@ -184,9 +184,8 @@ constexpr EBM_INLINE bool IsClassification(const ptrdiff_t learningTypeOrCountTa
    return 0 <= learningTypeOrCountTargetClasses;
 }
 constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
-   UNUSED(learningTypeOrCountTargetClasses);
 #ifdef EXPAND_BINARY_LOGITS
-   return false;
+   return UNUSED(learningTypeOrCountTargetClasses), false;
 #else // EXPAND_BINARY_LOGITS
    return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
