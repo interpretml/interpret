@@ -542,7 +542,7 @@ public:
       const DimensionInfo * pDimensionFirst2 = rhs.m_aDimensions;
 
       DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
-      const DimensionInfoStack * const pDimensionInfoStackEnd = &pDimensionInfoStackFirst[m_cDimensions];
+      const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
 
       size_t cValues1 = 1;
       size_t cValues2 = 1;
@@ -573,11 +573,11 @@ public:
                // check the other array first.  Most of the time the other array will be shorter since we'll be adding
                // a sequence of Segmented lines and our main line will be in *this, and there will be more segments in general for
                // a line that is added to a lot
-               cNewSingleDimensionDivisions += p1End - p1Cur;
+               cNewSingleDimensionDivisions += static_cast<size_t>(p1End - p1Cur);
                break;
             }
             if(UNLIKELY(p1End == p1Cur)) {
-               cNewSingleDimensionDivisions += p2End - p2Cur;
+               cNewSingleDimensionDivisions += static_cast<size_t>(p2End - p2Cur);
                break;
             }
             ++cNewSingleDimensionDivisions; // if we move one or both pointers, we just added annother unique one
@@ -608,16 +608,14 @@ public:
          return true;
       }
 
-      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2 - 1];  // we're accessing allocated memory, so it can't overflow
+      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
       const DimensionInfo * const aDimension2 = rhs.m_aDimensions;
 
       TValues * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = m_aDimensions;
 
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1 - 1]; // we're accessing allocated memory, so it can't overflow
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues - 1]; // we're accessing allocated memory, so it can't overflow
-
-      const TValues * const aValuesEnd = aValues - 1;
+      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
+      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
 
       // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
       // first do the values because we need to refer to the old divisions when making decisions about where to move next
@@ -626,17 +624,17 @@ public:
          const TValues * pValue2Move = pValue2;
          const TValues * const pValueTopEnd = pValueTop - m_cVectorLength;
          do {
-            *pValueTop = *pValue1Move + *pValue2Move;
             --pValue1Move;
             --pValue2Move;
             --pValueTop;
+            *pValueTop = *pValue1Move + *pValue2Move;
          } while(pValueTopEnd != pValueTop);
 
          // For a single dimensional SegmentedRegion checking here is best.  
          // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
          // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
          // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
-         if(UNLIKELY(aValuesEnd == pValueTop)) {
+         if(UNLIKELY(aValues == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
          }
@@ -693,8 +691,8 @@ public:
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                   pValue2 += multiplication2; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
 
-                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[static_cast<ptrdiff_t>(cDivisions1) - 1];
-                  pDimensionInfoStackSecond->pDivision2 = &aDivisions2[static_cast<ptrdiff_t>(cDivisions2) - 1];
+                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1] - 1; // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 if cDivisions1 is zero is not undefined behavior
+                  pDimensionInfoStackSecond->pDivision2 = &aDivisions2[cDivisions2] - 1; // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 if cDivisions1 is zero is not undefined behavior
                   ++pDimensionSecond1;
                   ++pDimensionSecond2;
                   ++pDimensionInfoStackSecond;
@@ -704,9 +702,9 @@ public:
          }
       }
 
-      EBM_ASSERT(pValueTop == m_aValues - 1);
-      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength - 1);
-      EBM_ASSERT(pValue2 == rhs.m_aValues + m_cVectorLength - 1);
+      EBM_ASSERT(pValueTop == m_aValues);
+      EBM_ASSERT(pValue1 == m_aValues + m_cVectorLength);
+      EBM_ASSERT(pValue2 == rhs.m_aValues + m_cVectorLength);
 
       // now finally do the divisions
 
@@ -724,34 +722,34 @@ public:
             return true;
          }
          
-         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[static_cast<ptrdiff_t>(cOriginalDivisionsBeforeSetting) - 1];
-         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[static_cast<ptrdiff_t>(pDimension2Cur->cDivisions) - 1];
-         TDivisions * pTopCur = &pDimension1Cur->aDivisions[static_cast<ptrdiff_t>(cNewDivisions) - 1];
-         const ptrdiff_t diffDivisions = reinterpret_cast<char *>(pDimension2Cur->aDivisions) - reinterpret_cast<char *>(pDimension1Cur->aDivisions); // these arrays are not guaranteed to be aligned with each other, so convert to byte pointers
+         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[cOriginalDivisionsBeforeSetting] - 1;
+         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[pDimension2Cur->cDivisions] - 1;
+         TDivisions * pTopCur = &pDimension1Cur->aDivisions[cNewDivisions] - 1;
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedTensors have zero divisions
-            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur);
-            EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur);
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= pTopCur); // -1 can happen if both our SegmentedTensors have zero divisions.  We allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
+            EBM_ASSERT(&pDimension1Cur->aDivisions[-1] <= p1Cur); // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
+            EBM_ASSERT(&pDimension2Cur->aDivisions[-1] <= p2Cur); // we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
             EBM_ASSERT(p1Cur <= pTopCur);
-            EBM_ASSERT(reinterpret_cast<const char *>(p2Cur) <= reinterpret_cast<const char *>(pTopCur) + diffDivisions);
+            EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions));
 
             if(UNLIKELY(pTopCur == p1Cur)) {
                // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
                break;
             }
             // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays.  Adding diffDivisions to a pointer that references an index in pDimension1Cur->aDivisions turns it into a pointer indexed from pDimension2Cur->aDivisions.  They both point to TValues items, so we can cross reference them this way
-            if(UNLIKELY(reinterpret_cast<const char *>(pTopCur) + diffDivisions == reinterpret_cast<const char *>(p2Cur))) {
+            if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions))) {
                EBM_ASSERT(pDimension1Cur->aDivisions <= pTopCur);
                // direct copy the remaining divisions.  There should be at least one
-               memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, (pTopCur - pDimension1Cur->aDivisions + 1) * sizeof(TDivisions));
+               memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, (static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) + size_t { 1 }) * sizeof(TDivisions));
                break;
             }
 
             const TDivisions d1 = *p1Cur;
             const TDivisions d2 = *p2Cur;
 
+            // p1Cur and p2Cur might reach the element 1 item before the start of our true data, BUT we allocate aDivisions WITH 1 extra element BEFORE the start of the array, so indexing -1 is not undefined behavior
             p1Cur = UNPREDICTABLE(d2 <= d1) ? p1Cur - 1 : p1Cur;
             p2Cur = UNPREDICTABLE(d1 <= d2) ? p2Cur - 1 : p2Cur;
 

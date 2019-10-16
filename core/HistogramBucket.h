@@ -132,7 +132,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = &pHistogramBucketEntry->aHistogramBucketVectorEntry[0];
-   while(pResidualErrorEnd != pResidualError) {
+   do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
       // this loop gets about 10 times slower if you use a proper pseudo random number generator like std::default_random_engine
@@ -174,7 +174,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
       } while(iVector < cVectorLength);
 
       EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || std::isnan(residualTotalDebug) || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
-   }
+   } while(pResidualErrorEnd != pResidualError);
    LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
 
