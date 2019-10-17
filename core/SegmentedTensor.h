@@ -52,7 +52,7 @@ public:
    size_t m_cDimensions;
    TValues * m_aValues;
    bool m_bExpanded;
-   // TODO : I lean towards leaving this alone since pointers to SegmentedTensors instead of having an array of compact objects seems fine, but i should look over and consider changing this to eliminate dynamic allocation and replace it with k_cDimensionsMax
+   // use the "struct hack" since Flexible array member method is not available in C++
    DimensionInfo m_aDimensions[1];
 
    EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
@@ -95,7 +95,7 @@ public:
       memset(aValues, 0, sizeof(TValues) * cVectorLength); // we checked for cVectorLength * k_initialValueCapacity * sizeof(TValues), and 1 <= k_initialValueCapacity, so sizeof(TValues) * cVectorLength can't overflow
 
       if(0 != cDimensionsMax) {
-         DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
+         DimensionInfo * pDimension = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
          size_t iDimension = 0;
          do {
             EBM_ASSERT(0 == pDimension->cDivisions);
@@ -118,7 +118,7 @@ public:
       if(LIKELY(nullptr != pSegmentedRegion)) {
          free(pSegmentedRegion->m_aValues);
          if(LIKELY(0 != pSegmentedRegion->m_cDimensionsMax)) {
-            DimensionInfo * pDimensionInfo = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
+            const DimensionInfo * pDimensionInfo = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
             const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSegmentedRegion->m_cDimensionsMax];
             do {
                free(pDimensionInfo->aDivisions);
@@ -136,7 +136,7 @@ public:
 
    EBM_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
-      return &m_aDimensions[iDimension].aDivisions[0];
+      return &ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions[0];
    }
 
    EBM_INLINE TValues * GetValuePointer() {
@@ -145,7 +145,7 @@ public:
 
    EBM_INLINE void Reset() {
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         m_aDimensions[iDimension].cDivisions = 0;
+         ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions = 0;
       }
       // we only need to set the base case to zero
       // this can't overflow since we previously allocated this memory
@@ -155,7 +155,7 @@ public:
 
    EBM_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
       EBM_ASSERT(iDimension < m_cDimensions);
-      DimensionInfo * const pDimension = &m_aDimensions[iDimension];
+      DimensionInfo * const pDimension = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
       EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
       if(UNLIKELY(pDimension->cDivisionCapacity < cDivisions)) {
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
@@ -220,7 +220,7 @@ public:
 
       size_t cValues = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         const DimensionInfo * const pDimension = &rhs.m_aDimensions[iDimension];
+         const DimensionInfo * const pDimension = &ARRAY_TO_POINTER_CONST(rhs.m_aDimensions)[iDimension];
          size_t cDivisions = pDimension->cDivisions;
          EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
@@ -229,7 +229,7 @@ public:
             return true;
          }
          EBM_ASSERT(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
-         memcpy(m_aDimensions[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
+         memcpy(ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
          LOG_0(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
@@ -246,7 +246,7 @@ public:
 //      if(0 == m_cDimensions) {
 //         return &m_aValues[0]; // there are no dimensions, and only 1 value
 //      }
-//      const DimensionInfo * pDimension = m_aDimensions;
+//      const DimensionInfo * pDimension = ARRAY_TO_POINTER(m_aDimensions);
 //      const TDivisions * pDivisionValue = aDivisionValue;
 //      const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
 //      size_t iValue = 0;
@@ -310,8 +310,8 @@ public:
    EBM_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         EBM_ASSERT(!IsMultiplyError(cValues, m_aDimensions[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
-         cValues *= m_aDimensions[iDimension].cDivisions + 1;
+         EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
+         cValues *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1;
       }
 
       TValues * pCur = &m_aValues[0];
@@ -340,7 +340,7 @@ public:
       EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
       DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
 
-      const DimensionInfo * pDimensionFirst1 = m_aDimensions;
+      const DimensionInfo * pDimensionFirst1 = ARRAY_TO_POINTER(m_aDimensions);
 
       DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
       const DimensionInfoStackExpand * const pDimensionInfoStackEnd = &aDimensionInfoStackExpand[m_cDimensions];
@@ -383,7 +383,7 @@ public:
       }
 
       TValues * const aValues = m_aValues;
-      const DimensionInfo * const aDimension1 = m_aDimensions;
+      const DimensionInfo * const aDimension1 = ARRAY_TO_POINTER(m_aDimensions);
 
       EBM_ASSERT(cValues1 <= cNewValues);
       EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
@@ -467,7 +467,7 @@ public:
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const size_t cDivisions = acValuesPerDimension[iDimension] - 1;
 
-         if(cDivisions == m_aDimensions[iDimension].cDivisions) {
+         if(cDivisions == ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions) {
             continue;
          }
 
@@ -477,7 +477,7 @@ public:
          }
 
          for(size_t iDivision = 0; iDivision < cDivisions; ++iDivision) {
-            m_aDimensions[iDimension].aDivisions[iDivision] = iDivision;
+            ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions[iDivision] = iDivision;
          }
       }
 
@@ -491,7 +491,7 @@ public:
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          // this can't overflow since we've already allocated them!
-         cItems *= m_aDimensions[iDimension].cDivisions + 1;
+         cItems *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1;
       }
 
       const TValues * pFromValue = aFromValues;
@@ -534,8 +534,8 @@ public:
          // TODO: the existing code below works, but handle this differently (we can do it more efficiently)
       }
 
-      const DimensionInfo * pDimensionFirst1 = m_aDimensions;
-      const DimensionInfo * pDimensionFirst2 = rhs.m_aDimensions;
+      const DimensionInfo * pDimensionFirst1 = ARRAY_TO_POINTER(m_aDimensions);
+      const DimensionInfo * pDimensionFirst2 = ARRAY_TO_POINTER_CONST(rhs.m_aDimensions);
 
       DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
       const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
@@ -605,10 +605,10 @@ public:
       }
 
       const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
-      const DimensionInfo * const aDimension2 = rhs.m_aDimensions;
+      const DimensionInfo * const aDimension2 = ARRAY_TO_POINTER_CONST(rhs.m_aDimensions);
 
       TValues * const aValues = m_aValues;
-      const DimensionInfo * const aDimension1 = m_aDimensions;
+      const DimensionInfo * const aDimension1 = ARRAY_TO_POINTER(m_aDimensions);
 
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
       TValues * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
@@ -775,8 +775,8 @@ public:
 
       size_t cValues = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         const DimensionInfo * const pDimension1 = &m_aDimensions[iDimension];
-         const DimensionInfo * const pDimension2 = &rhs.m_aDimensions[iDimension];
+         const DimensionInfo * const pDimension1 = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
+         const DimensionInfo * const pDimension2 = &ARRAY_TO_POINTER(rhs.m_aDimensions)[iDimension];
 
          size_t cDivisions = pDimension1->cDivisions;
          if(cDivisions != pDimension2->cDivisions) {

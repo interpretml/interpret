@@ -49,8 +49,8 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryBest = pCachedThreadResources->m_aSumHistogramBucketVectorEntryBest;
    FractionalDataType BEST_nodeSplittingScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FractionalDataType sumResidualErrorLeft = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
-      const FractionalDataType sumResidualErrorRight = pTreeNode->aHistogramBucketVectorEntry[iVector].sumResidualError - sumResidualErrorLeft;
+      const FractionalDataType sumResidualErrorLeft = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->aHistogramBucketVectorEntry)[iVector].sumResidualError;
+      const FractionalDataType sumResidualErrorRight = ARRAY_TO_POINTER_CONST(pTreeNode->aHistogramBucketVectorEntry)[iVector].sumResidualError - sumResidualErrorLeft;
 
       BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
 
@@ -58,7 +58,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
       aSumHistogramBucketVectorEntryBest[iVector].sumResidualError = sumResidualErrorLeft;
       aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         FractionalDataType sumDenominator1 = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator();
+         FractionalDataType sumDenominator1 = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
          aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(sumDenominator1);
          aSumHistogramBucketVectorEntryBest[iVector].SetSumDenominator(sumDenominator1);
       }
@@ -77,10 +77,10 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
       FractionalDataType nodeSplittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-            aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+            aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
          }
 
-         const FractionalDataType CHANGE_sumResidualError = pHistogramBucketEntryCur->aHistogramBucketVectorEntry[iVector].sumResidualError;
+         const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->aHistogramBucketVectorEntry)[iVector].sumResidualError;
          const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].sumResidualError + CHANGE_sumResidualError;
          const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
 
@@ -118,17 +118,17 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
 
    FractionalDataType originalParentScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      pLeftChild->aHistogramBucketVectorEntry[iVector].sumResidualError = aSumHistogramBucketVectorEntryBest[iVector].sumResidualError;
+      ARRAY_TO_POINTER(pLeftChild->aHistogramBucketVectorEntry)[iVector].sumResidualError = aSumHistogramBucketVectorEntryBest[iVector].sumResidualError;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         pLeftChild->aHistogramBucketVectorEntry[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryBest[iVector].GetSumDenominator());
+         ARRAY_TO_POINTER(pLeftChild->aHistogramBucketVectorEntry)[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryBest[iVector].GetSumDenominator());
       }
 
-      const FractionalDataType sumResidualErrorParent = pTreeNode->aHistogramBucketVectorEntry[iVector].sumResidualError;
+      const FractionalDataType sumResidualErrorParent = ARRAY_TO_POINTER(pTreeNode->aHistogramBucketVectorEntry)[iVector].sumResidualError;
       originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParent);
 
-      pRightChild->aHistogramBucketVectorEntry[iVector].sumResidualError = sumResidualErrorParent - aSumHistogramBucketVectorEntryBest[iVector].sumResidualError;
+      ARRAY_TO_POINTER(pRightChild->aHistogramBucketVectorEntry)[iVector].sumResidualError = sumResidualErrorParent - aSumHistogramBucketVectorEntryBest[iVector].sumResidualError;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         pRightChild->aHistogramBucketVectorEntry[iVector].SetSumDenominator(pTreeNode->aHistogramBucketVectorEntry[iVector].GetSumDenominator() - aSumHistogramBucketVectorEntryBest[iVector].GetSumDenominator());
+         ARRAY_TO_POINTER(pRightChild->aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pTreeNode->aHistogramBucketVectorEntry)[iVector].GetSumDenominator() - aSumHistogramBucketVectorEntryBest[iVector].GetSumDenominator());
       }
    }
 
@@ -223,7 +223,7 @@ retry_with_bigger_tree_node_children_array:
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRootTreeNode->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast, aHistogramBucketsEndDebug);
    pRootTreeNode->SetInstances(cInstancesTotal);
 
-   memcpy(&pRootTreeNode->aHistogramBucketVectorEntry[0], aSumHistogramBucketVectorEntry, cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)); // copying existing mem
+   memcpy(ARRAY_TO_POINTER(pRootTreeNode->aHistogramBucketVectorEntry), aSumHistogramBucketVectorEntry, cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)); // copying existing mem
 
    ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRootTreeNode, pCachedThreadResources, AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesPerTreeNode), runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
@@ -252,13 +252,13 @@ retry_with_bigger_tree_node_children_array:
 
       FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-         aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pLeftChild->aHistogramBucketVectorEntry[0].sumResidualError, pLeftChild->GetInstances());
-         aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pRightChild->aHistogramBucketVectorEntry[0].sumResidualError, pRightChild->GetInstances());
+         aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->aHistogramBucketVectorEntry)[0].sumResidualError, pLeftChild->GetInstances());
+         aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->aHistogramBucketVectorEntry)[0].sumResidualError, pRightChild->GetInstances());
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            aValues[iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pLeftChild->aHistogramBucketVectorEntry[iVector].sumResidualError, pLeftChild->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
-            aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pRightChild->aHistogramBucketVectorEntry[iVector].sumResidualError, pRightChild->aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+            aValues[iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->aHistogramBucketVectorEntry)[iVector].sumResidualError, ARRAY_TO_POINTER_CONST(pLeftChild->aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+            aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->aHistogramBucketVectorEntry)[iVector].sumResidualError, ARRAY_TO_POINTER_CONST(pRightChild->aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
          }
       }
 
@@ -412,7 +412,7 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compile
 
    BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
 
-   const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = &pHistogramBucket->aHistogramBucketVectorEntry[0];
+   const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucket->aHistogramBucketVectorEntry);
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].sumResidualError, pHistogramBucket->cInstancesInBucket);
       FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
@@ -436,7 +436,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
    LOG_0(TraceLevelVerbose, "Entered TrainSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
-   size_t cTotalBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cBins;
+   size_t cTotalBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
@@ -472,7 +472,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = pCachedThreadResources->m_aSumHistogramBucketVectorEntry;
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
-   size_t cHistogramBuckets = pFeatureCombination->m_FeatureCombinationEntry[0].m_pFeature->m_cBins;
+   size_t cHistogramBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
    EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
    size_t cInstancesTotal;
    cHistogramBuckets = CompressHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(pTrainingSet, cHistogramBuckets, aHistogramBuckets, &cInstancesTotal, aSumHistogramBucketVectorEntry, runtimeLearningTypeOrCountTargetClasses

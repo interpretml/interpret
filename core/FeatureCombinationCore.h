@@ -26,6 +26,7 @@ public:
    unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
+   // use the "struct hack" since Flexible array member method is not available in C++
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
    EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {

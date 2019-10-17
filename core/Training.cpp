@@ -87,7 +87,7 @@ SegmentedTensor<ActiveDataType, FractionalDataType> ** EbmTrainingState::Initial
          size_t acDivisionIntegersEnd[k_cDimensionsMax];
          size_t iDimension = 0;
          do {
-            acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
+            acDivisionIntegersEnd[iDimension] = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
             ++iDimension;
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
@@ -245,7 +245,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
             } else {
                EBM_ASSERT(nullptr != featureCombinationIndexes);
                size_t cTensorBins = 1;
-               FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+               FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
                do {
                   const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
                   EBM_ASSERT(0 <= indexFeatureInterop);
@@ -1145,7 +1145,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = pFeatureCombination->m_FeatureCombinationEntry[iDimension].m_pFeature->m_cBins;
+         acDivisionIntegersEnd[iDimension] = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmTrainingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {

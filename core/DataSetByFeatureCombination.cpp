@@ -183,7 +183,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);

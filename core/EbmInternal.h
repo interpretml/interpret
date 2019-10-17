@@ -16,6 +16,7 @@
 // We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are POD structures (even if declared as classes), so accessing that memory is legal.
 // this MACRO turns an array reference into a pointer to the same type of object, which resolves any UBSAN warnings
 #define ARRAY_TO_POINTER(x) (reinterpret_cast<typename std::remove_all_extents<decltype(x)>::type *>(reinterpret_cast<void *>(x)))
+#define ARRAY_TO_POINTER_CONST(x) (reinterpret_cast<const typename std::remove_all_extents<decltype(x)>::type *>(reinterpret_cast<const void *>(x)))
 
 // here's how to detect the compiler type for a variety of compilers -> https://sourceforge.net/p/predef/wiki/Compilers/
 // disabling warnings with _Pragma detailed info here https://stackoverflow.com/questions/3378560/how-to-disable-gcc-warnings-for-a-few-lines-of-code

@@ -69,6 +69,7 @@ public:
    };
 
    TreeNodeDataUnion m_UNION;
+   // use the "struct hack" since Flexible array member method is not available in C++
    HistogramBucketVectorEntry<true> aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -107,6 +108,7 @@ public:
    TreeNodeDataUnion m_UNION;
 
    size_t m_cInstances;
+   // use the "struct hack" since Flexible array member method is not available in C++
    HistogramBucketVectorEntry<false> aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -162,7 +164,7 @@ public:
          FractionalDataType * const pValuesNext = pValuesCur + cVectorLength;
          *ppValues = pValuesNext;
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = &this->aHistogramBucketVectorEntry[0];
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER_CONST(this->aHistogramBucketVectorEntry);
          do {
             FractionalDataType smallChangeToModel;
             if(bClassification) {
