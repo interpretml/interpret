@@ -5,9 +5,6 @@
 #ifndef SEGMENTED_TENSOR_H
 #define SEGMENTED_TENSOR_H
 
-// TODO : check for multiplication overflows within this class (we could overflow in several parts)
-// TODO : try and make this work with size_t instead of needing ptrdiff_t as we currently do
-
 #include <string.h> // memset
 #include <type_traits> // std::is_pod
 #include <stdlib.h> // malloc, realloc, free
@@ -95,7 +92,7 @@ public:
       }
       pSegmentedRegion->m_aValues = aValues;
       // we only need to set the base case to zero, not our entire initial allocation
-      memset(aValues, 0, sizeof(TValues) * cVectorLength);
+      memset(aValues, 0, sizeof(TValues) * cVectorLength); // we checked for cVectorLength * k_initialValueCapacity * sizeof(TValues), and 1 <= k_initialValueCapacity, so sizeof(TValues) * cVectorLength can't overflow
 
       if(0 != cDimensionsMax) {
          DimensionInfo * pDimension = &pSegmentedRegion->m_aDimensions[0];
@@ -244,71 +241,71 @@ public:
       return false;
    }
 
-#ifndef NDEBUG
-   EBM_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
-      if(0 == m_cDimensions) {
-         return &m_aValues[0]; // there are no dimensions, and only 1 value
-      }
-      const DimensionInfo * pDimension = m_aDimensions;
-      const TDivisions * pDivisionValue = aDivisionValue;
-      const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
-      size_t iValue = 0;
-      size_t valueMultiple = m_cVectorLength;
-
-      if(m_bExpanded) {
-         while(true) {
-            const TDivisions d = *pDivisionValue;
-            EBM_ASSERT(!IsMultiplyError(d, valueMultiple)); // we're accessing existing memory, so it can't overflow
-            size_t addValue = d * valueMultiple;
-            EBM_ASSERT(!IsAddError(addValue, iValue)); // we're accessing existing memory, so it can't overflow
-            iValue += addValue;
-            ++pDivisionValue;
-            if(pDivisionValueEnd == pDivisionValue) {
-               break;
-            }
-            const size_t cDivisions = pDimension->cDivisions;
-            EBM_ASSERT(1 <= cDivisions); // since we're expanded we should have at least one division and two values
-            EBM_ASSERT(!IsMultiplyError(cDivisions + 1, valueMultiple)); // we're accessing existing memory, so it can't overflow
-            valueMultiple *= cDivisions + 1;
-            ++pDimension;
-         }
-      } else {
-         // TODO: this code is no longer executed because we always expand our models now.  We can probably get rid of it, but I'm leaving it here for a while to decide if there are really no use cases
-         do {
-            const size_t cDivisions = pDimension->cDivisions;
-            if(LIKELY(0 != cDivisions)) {
-               const TDivisions * const aDivisions = pDimension->aDivisions;
-               const TDivisions d = *pDivisionValue;
-               ptrdiff_t high = cDivisions - 1;
-               ptrdiff_t middle;
-               ptrdiff_t low = 0;
-               TDivisions midVal;
-               do {
-                  middle = (low + high) >> 1;
-                  midVal = aDivisions[middle];
-                  if(UNLIKELY(midVal == d)) {
-                     // this happens just once during our descent, so it's less likely than continuing searching
-                     goto no_check;
-                  }
-                  high = UNPREDICTABLE(midVal < d) ? high : middle - 1;
-                  low = UNPREDICTABLE(midVal < d) ? middle + 1 : low;
-               } while(LIKELY(low <= high));
-               middle = UNPREDICTABLE(midVal < d) ? middle + 1 : middle;
-            no_check:
-               EBM_ASSERT(!IsMultiplyError(middle, valueMultiple)); // we're accessing existing memory, so it can't overflow
-               ptrdiff_t addValue = middle * valueMultiple;
-               EBM_ASSERT(!IsAddError(iValue, addValue)); // we're accessing existing memory, so it can't overflow
-               iValue += addValue;
-               EBM_ASSERT(!IsMultiplyError(valueMultiple, cDivisions + 1)); // we're accessing existing memory, so it can't overflow
-               valueMultiple *= cDivisions + 1;
-            }
-            ++pDimension;
-            ++pDivisionValue;
-         } while(pDivisionValueEnd != pDivisionValue);
-      }
-      return &m_aValues[iValue];
-   }
-#endif // NDEBUG
+//#ifndef NDEBUG
+//   EBM_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+//      if(0 == m_cDimensions) {
+//         return &m_aValues[0]; // there are no dimensions, and only 1 value
+//      }
+//      const DimensionInfo * pDimension = m_aDimensions;
+//      const TDivisions * pDivisionValue = aDivisionValue;
+//      const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
+//      size_t iValue = 0;
+//      size_t valueMultiple = m_cVectorLength;
+//
+//      if(m_bExpanded) {
+//         while(true) {
+//            const TDivisions d = *pDivisionValue;
+//            EBM_ASSERT(!IsMultiplyError(d, valueMultiple)); // we're accessing existing memory, so it can't overflow
+//            size_t addValue = d * valueMultiple;
+//            EBM_ASSERT(!IsAddError(addValue, iValue)); // we're accessing existing memory, so it can't overflow
+//            iValue += addValue;
+//            ++pDivisionValue;
+//            if(pDivisionValueEnd == pDivisionValue) {
+//               break;
+//            }
+//            const size_t cDivisions = pDimension->cDivisions;
+//            EBM_ASSERT(1 <= cDivisions); // since we're expanded we should have at least one division and two values
+//            EBM_ASSERT(!IsMultiplyError(cDivisions + 1, valueMultiple)); // we're accessing existing memory, so it can't overflow
+//            valueMultiple *= cDivisions + 1;
+//            ++pDimension;
+//         }
+//      } else {
+//         // TODO: this code is no longer executed because we always expand our models now.  We can probably get rid of it, but I'm leaving it here for a while to decide if there are really no use cases
+//         do {
+//            const size_t cDivisions = pDimension->cDivisions;
+//            if(LIKELY(0 != cDivisions)) {
+//               const TDivisions * const aDivisions = pDimension->aDivisions;
+//               const TDivisions d = *pDivisionValue;
+//               ptrdiff_t high = cDivisions - 1;
+//               ptrdiff_t middle;
+//               ptrdiff_t low = 0;
+//               TDivisions midVal;
+//               do {
+//                  middle = (low + high) >> 1;
+//                  midVal = aDivisions[middle];
+//                  if(UNLIKELY(midVal == d)) {
+//                     // this happens just once during our descent, so it's less likely than continuing searching
+//                     goto no_check;
+//                  }
+//                  high = UNPREDICTABLE(midVal < d) ? high : middle - 1;
+//                  low = UNPREDICTABLE(midVal < d) ? middle + 1 : low;
+//               } while(LIKELY(low <= high));
+//               middle = UNPREDICTABLE(midVal < d) ? middle + 1 : middle;
+//            no_check:
+//               EBM_ASSERT(!IsMultiplyError(middle, valueMultiple)); // we're accessing existing memory, so it can't overflow
+//               ptrdiff_t addValue = middle * valueMultiple;
+//               EBM_ASSERT(!IsAddError(iValue, addValue)); // we're accessing existing memory, so it can't overflow
+//               iValue += addValue;
+//               EBM_ASSERT(!IsMultiplyError(valueMultiple, cDivisions + 1)); // we're accessing existing memory, so it can't overflow
+//               valueMultiple *= cDivisions + 1;
+//            }
+//            ++pDimension;
+//            ++pDivisionValue;
+//         } while(pDivisionValueEnd != pDivisionValue);
+//      }
+//      return &m_aValues[iValue];
+//   }
+//#endif // NDEBUG
 
    EBM_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
@@ -334,7 +331,7 @@ public:
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
       // TODO : see if we can change this back to size_t somehow.  I remember we got negative numbers some places either here or in the Add function and that why I used ptrdiff_t, but if it's just -1, then we can still use size_t.
-      EBM_ASSERT(std::numeric_limits<ptrdiff_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<ptrdiff_t>::min() == std::numeric_limits<TDivisions>::min());
+      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<size_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
          LOG_0(TraceLevelVerbose, "Exited Expand");
@@ -358,12 +355,12 @@ public:
       do {
          const size_t cDivisions1 = pDimensionFirst1->cDivisions;
 
-         EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // this is accessing existing memory, so it can't overflow
          cValues1 *= cDivisions1 + 1;
 
          pDimensionInfoStackFirst->pDivision1 = &pDimensionFirst1->aDivisions[cDivisions1];
          const size_t cValuesPerDimension = *pcValuesPerDimension;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));  // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cValuesPerDimension;
          const size_t cNewDivisions = cValuesPerDimension - 1;
 
@@ -379,9 +376,10 @@ public:
          LOG_0(TraceLevelWarning, "WARNING Expand IsMultiplyError(cNewValues, m_cVectorLength)");
          return true;
       }
+      const size_t cVectoredNewValues = cNewValues * m_cVectorLength;
       // call EnsureValueCapacity before using the m_aValues pointer since m_aValues might change inside EnsureValueCapacity
-      if(UNLIKELY(EnsureValueCapacity(cNewValues * m_cVectorLength))) {
-         LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cNewValues * m_cVectorLength))");
+      if(UNLIKELY(EnsureValueCapacity(cVectoredNewValues))) {
+         LOG_0(TraceLevelWarning, "WARNING Expand EnsureValueCapacity(cVectoredNewValues))");
          return true;
       }
 
@@ -391,7 +389,7 @@ public:
       EBM_ASSERT(cValues1 <= cNewValues);
       EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1];
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues];
+      TValues * pValueTop = &aValues[cVectoredNewValues];
 
       // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
       // first do the values because we need to refer to the old divisions when making decisions about where to move next
@@ -428,7 +426,6 @@ public:
                EBM_ASSERT(0 < iDivision2);
 
                const TDivisions * const pDivision1MinusOne = pDivision1 - 1;
-
 
                const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
 
@@ -556,8 +553,8 @@ public:
          const size_t cDivisions2 = pDimensionFirst2->cDivisions;
          TDivisions * p2Cur = pDimensionFirst2->aDivisions;
 
-         cValues1 *= cDivisions1 + 1;
-         cValues2 *= cDivisions2 + 1;
+         cValues1 *= cDivisions1 + 1; // this can't overflow since we're counting existing allocated memory
+         cValues2 *= cDivisions2 + 1; // this can't overflow since we're counting existing allocated memory
 
          TDivisions * const p1End = &p1Cur[cDivisions1];
          TDivisions * const p2End = &p2Cur[cDivisions2];
@@ -589,7 +586,7 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->cNewDivisions = cNewSingleDimensionDivisions;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;
@@ -768,7 +765,6 @@ public:
          ++pDimensionInfoStackCur;
          ++iDimension;
       } while(iDimension != m_cDimensions);
-
       return false;
    }
 

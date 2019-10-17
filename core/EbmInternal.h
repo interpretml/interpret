@@ -172,9 +172,7 @@ static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary
 
 // TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
-
-// TODO : add a MinusOneSizet const (size_t)(-1) -> turn most ptrdiff_t into size_t and use this constant where we just need a single negative number.  we get a signed/unsigned mismatch if we use size_t in SegmentedRegion because we use whole numbers there
-typedef ptrdiff_t ActiveDataType;
+typedef size_t ActiveDataType;
 
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;
