@@ -15,6 +15,8 @@
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
 // We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are POD structures (even if declared as classes), so accessing that memory is legal.
 // this MACRO turns an array reference into a pointer to the same type of object, which resolves any UBSAN warnings
+
+// TODO : the const and non-const macros can probably be unified
 #define ARRAY_TO_POINTER(x) (reinterpret_cast<typename std::remove_all_extents<decltype(x)>::type *>(reinterpret_cast<void *>(x)))
 #define ARRAY_TO_POINTER_CONST(x) (reinterpret_cast<const typename std::remove_all_extents<decltype(x)>::type *>(reinterpret_cast<const void *>(x)))
 

@@ -12,7 +12,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCore.h"
 
-class FeatureCombinationCore final {
+struct FeatureCombinationCore final {
 public:
 
    struct FeatureCombinationEntry {
@@ -27,6 +27,7 @@ public:
    unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    // use the "struct hack" since Flexible array member method is not available in C++
+   // m_FeatureCombinationEntry must be the last item in this struct
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
    EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {

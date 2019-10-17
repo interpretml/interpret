@@ -14,7 +14,7 @@
 #include "HistogramBucket.h"
 
 template<bool bClassification>
-class TreeNode;
+struct TreeNode;
 
 template<bool bClassification>
 EBM_INLINE size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
@@ -39,10 +39,10 @@ EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassific
 }
 
 template<bool bClassification>
-class TreeNodeData;
+struct TreeNodeData;
 
 template<>
-class TreeNodeData<true> {
+struct TreeNodeData<true> {
    // classification version of the TreeNodeData
 
 public:
@@ -70,6 +70,7 @@ public:
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
+   // aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<true> aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -81,7 +82,7 @@ public:
 };
 
 template<>
-class TreeNodeData<false> {
+struct TreeNodeData<false> {
    // regression version of the TreeNodeData
 public:
 
@@ -109,6 +110,7 @@ public:
 
    size_t m_cInstances;
    // use the "struct hack" since Flexible array member method is not available in C++
+   // aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<false> aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -120,7 +122,9 @@ public:
 };
 
 template<bool bClassification>
-class TreeNode final : public TreeNodeData<bClassification> {
+struct TreeNode final : public TreeNodeData<bClassification> {
+   // this struct CANNOT have any data in it.  All data MUST be put into TreeNodeData.  TreeNodeData uses the "struct hack", which means that it has a variable sized data array at the end that would overwrite any data that we put here
+
 public:
 
    EBM_INLINE bool IsSplittable(size_t cInstancesRequiredForParentSplitMin) const {

@@ -19,7 +19,9 @@
 // I think we'll find that using size_t as TDivisions is as performant or better than using anything else, so it may be a moot point, in which case leave it as hard coded types and just make all TDivisions size_t, even for mains
 // for pairs and triplicates, we already know that the dimensionality aspect requires us to have common division types since we don't want char/short SegmentedRegion classes and all the combinatorial options that would allow
 template<typename TDivisions, typename TValues>
-class SegmentedTensor final {
+struct SegmentedTensor final {
+private:
+
    struct DimensionInfoStack {
       const TDivisions * pDivision1;
       const TDivisions * pDivision2;
@@ -53,6 +55,7 @@ public:
    TValues * m_aValues;
    bool m_bExpanded;
    // use the "struct hack" since Flexible array member method is not available in C++
+   // m_aDimensions must be the last item in this struct
    DimensionInfo m_aDimensions[1];
 
    EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {

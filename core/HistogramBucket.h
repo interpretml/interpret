@@ -34,7 +34,7 @@
 // any dimensions with only 1 bin don't count since you would just be multiplying by 1 for each such dimension
 
 template<bool bClassification>
-class HistogramBucket;
+struct HistogramBucket;
 
 template<bool bClassification>
 EBM_INLINE bool GetHistogramBucketSizeOverflow(const size_t cVectorLength) {
@@ -59,7 +59,7 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(co
 #define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
 template<bool bClassification>
-class HistogramBucket final {
+struct HistogramBucket final {
 public:
 
    size_t cInstancesInBucket;
@@ -72,6 +72,7 @@ public:
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
    ActiveDataType bucketValue;
    // use the "struct hack" since Flexible array member method is not available in C++
+   // aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<bClassification> aHistogramBucketVectorEntry[1];
 
    EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
