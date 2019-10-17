@@ -330,7 +330,6 @@ public:
       EBM_ASSERT(nullptr != acValuesPerDimension);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
-      // TODO : see if we can change this back to size_t somehow.  I remember we got negative numbers some places either here or in the Add function and that why I used ptrdiff_t, but if it's just -1, then we can still use size_t.
       EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<size_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
