@@ -48,21 +48,21 @@ struct TreeNodeData<true> {
 public:
 
    struct BeforeExaminationForPossibleSplitting {
-      const HistogramBucket<true> * pHistogramBucketEntryFirst;
-      const HistogramBucket<true> * pHistogramBucketEntryLast;
-      size_t cInstances;
+      const HistogramBucket<true> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<true> * m_pHistogramBucketEntryLast;
+      size_t m_cInstances;
    };
 
    struct AfterExaminationForPossibleSplitting {
-      TreeNode<true> * pTreeNodeChildren;
-      FractionalDataType splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
-      ActiveDataType divisionValue;
+      TreeNode<true> * m_pTreeNodeChildren;
+      FractionalDataType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      ActiveDataType m_divisionValue;
    };
 
    union TreeNodeDataUnion {
       // we can save precious L1 cache space by keeping only what we need
-      BeforeExaminationForPossibleSplitting beforeExaminationForPossibleSplitting;
-      AfterExaminationForPossibleSplitting afterExaminationForPossibleSplitting;
+      BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
+      AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
 
       static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
       static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
@@ -71,13 +71,13 @@ public:
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
-   HistogramBucketVectorEntry<true> aHistogramBucketVectorEntry[1];
+   HistogramBucketVectorEntry<true> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
-      return m_UNION.beforeExaminationForPossibleSplitting.cInstances;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances;
    }
    EBM_INLINE void SetInstances(size_t cInstances) {
-      m_UNION.beforeExaminationForPossibleSplitting.cInstances = cInstances;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances = cInstances;
    }
 };
 
@@ -87,20 +87,20 @@ struct TreeNodeData<false> {
 public:
 
    struct BeforeExaminationForPossibleSplitting {
-      const HistogramBucket<false> * pHistogramBucketEntryFirst;
-      const HistogramBucket<false> * pHistogramBucketEntryLast;
+      const HistogramBucket<false> * m_pHistogramBucketEntryFirst;
+      const HistogramBucket<false> * m_pHistogramBucketEntryLast;
    };
 
    struct AfterExaminationForPossibleSplitting {
-      TreeNode<false> * pTreeNodeChildren;
-      FractionalDataType splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
-      ActiveDataType divisionValue;
+      TreeNode<false> * m_pTreeNodeChildren;
+      FractionalDataType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      ActiveDataType m_divisionValue;
    };
 
    union TreeNodeDataUnion {
       // we can save precious L1 cache space by keeping only what we need
-      BeforeExaminationForPossibleSplitting beforeExaminationForPossibleSplitting;
-      AfterExaminationForPossibleSplitting afterExaminationForPossibleSplitting;
+      BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
+      AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
 
       static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
       static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
@@ -111,7 +111,7 @@ public:
    size_t m_cInstances;
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
-   HistogramBucketVectorEntry<false> aHistogramBucketVectorEntry[1];
+   HistogramBucketVectorEntry<false> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
       return m_cInstances;
@@ -128,26 +128,26 @@ struct TreeNode final : public TreeNodeData<bClassification> {
 public:
 
    EBM_INLINE bool IsSplittable(size_t cInstancesRequiredForParentSplitMin) const {
-      return this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryLast != this->m_UNION.beforeExaminationForPossibleSplitting.pHistogramBucketEntryFirst && cInstancesRequiredForParentSplitMin <= this->GetInstances();
+      return this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast != this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst && cInstancesRequiredForParentSplitMin <= this->GetInstances();
    }
 
    EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
-      EBM_ASSERT(this->m_UNION.afterExaminationForPossibleSplitting.splitGain <= 0);
-      return this->m_UNION.afterExaminationForPossibleSplitting.splitGain;
+      EBM_ASSERT(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0);
+      return this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 
    EBM_INLINE void SPLIT_THIS_NODE() {
-      this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    }
 
    EBM_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
-      // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.afterExaminationForPossibleSplitting.splitGain and the m_UNION.beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
-      this->m_UNION.afterExaminationForPossibleSplitting.splitGain = FractionalDataType { 0 };
+      // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FractionalDataType { 0 };
    }
 
    EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
-      return std::isnan(this->m_UNION.afterExaminationForPossibleSplitting.splitGain);
+      return std::isnan(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
    }
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
@@ -157,24 +157,24 @@ public:
       if(UNPREDICTABLE(WAS_THIS_NODE_SPLIT())) {
          EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
          const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
-         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(this->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(this->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
          pLeftChild->Flatten(ppDivisions, ppValues, cVectorLength);
-         **ppDivisions = this->m_UNION.afterExaminationForPossibleSplitting.divisionValue;
+         **ppDivisions = this->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
          ++(*ppDivisions);
-         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(this->m_UNION.afterExaminationForPossibleSplitting.pTreeNodeChildren, cBytesPerTreeNode);
+         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(this->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
          pRightChild->Flatten(ppDivisions, ppValues, cVectorLength);
       } else {
          FractionalDataType * pValuesCur = *ppValues;
          FractionalDataType * const pValuesNext = pValuesCur + cVectorLength;
          *ppValues = pValuesNext;
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER_CONST(this->aHistogramBucketVectorEntry);
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER_CONST(this->m_aHistogramBucketVectorEntry);
          do {
             FractionalDataType smallChangeToModel;
             if(bClassification) {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pHistogramBucketVectorEntry->sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
             } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->sumResidualError, this->GetInstances());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, this->GetInstances());
             }
             *pValuesCur = smallChangeToModel;
 

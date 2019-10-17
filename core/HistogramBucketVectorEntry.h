@@ -18,31 +18,31 @@ template<>
 struct HistogramBucketVectorEntry<true> final {
    // classification version of the HistogramBucketVectorEntry class
 
-   FractionalDataType sumResidualError;
+   FractionalDataType m_sumResidualError;
    // TODO: for single features, we probably want to just do a single pass of the data and collect our sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
-   FractionalDataType sumDenominator;
+   FractionalDataType m_sumDenominator;
 
    EBM_INLINE FractionalDataType GetSumDenominator() const {
-      return sumDenominator;
+      return m_sumDenominator;
    }
    EBM_INLINE void SetSumDenominator(FractionalDataType sumDenominatorSet) {
-      sumDenominator = sumDenominatorSet;
+      m_sumDenominator = sumDenominatorSet;
    }
    EBM_INLINE void Add(const HistogramBucketVectorEntry<true> & other) {
-      sumResidualError += other.sumResidualError;
-      sumDenominator += other.sumDenominator;
+      m_sumResidualError += other.m_sumResidualError;
+      m_sumDenominator += other.m_sumDenominator;
    }
    EBM_INLINE void Subtract(const HistogramBucketVectorEntry<true> & other) {
-      sumResidualError -= other.sumResidualError;
-      sumDenominator -= other.sumDenominator;
+      m_sumResidualError -= other.m_sumResidualError;
+      m_sumDenominator -= other.m_sumDenominator;
    }
    EBM_INLINE void Copy(const HistogramBucketVectorEntry<true> & other) {
-      sumResidualError = other.sumResidualError;
-      sumDenominator = other.sumDenominator;
+      m_sumResidualError = other.m_sumResidualError;
+      m_sumDenominator = other.m_sumDenominator;
    }
    EBM_INLINE void AssertZero() const {
-      EBM_ASSERT(0 == sumResidualError);
-      EBM_ASSERT(0 == sumDenominator);
+      EBM_ASSERT(0 == m_sumResidualError);
+      EBM_ASSERT(0 == m_sumDenominator);
    }
 };
 
@@ -50,7 +50,7 @@ template<>
 struct HistogramBucketVectorEntry<false> final {
    // regression version of the HistogramBucketVectorEntry class
 
-   FractionalDataType sumResidualError;
+   FractionalDataType m_sumResidualError;
 
    EBM_INLINE FractionalDataType GetSumDenominator() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
@@ -61,16 +61,16 @@ struct HistogramBucketVectorEntry<false> final {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
    EBM_INLINE void Add(const HistogramBucketVectorEntry<false> & other) {
-      sumResidualError += other.sumResidualError;
+      m_sumResidualError += other.m_sumResidualError;
    }
    EBM_INLINE void Subtract(const HistogramBucketVectorEntry<false> & other) {
-      sumResidualError -= other.sumResidualError;
+      m_sumResidualError -= other.m_sumResidualError;
    }
    EBM_INLINE void Copy(const HistogramBucketVectorEntry<false> & other) {
-      sumResidualError = other.sumResidualError;
+      m_sumResidualError = other.m_sumResidualError;
    }
    EBM_INLINE void AssertZero() const {
-      EBM_ASSERT(0 == sumResidualError);
+      EBM_ASSERT(0 == m_sumResidualError);
    }
 };
 

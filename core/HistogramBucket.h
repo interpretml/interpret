@@ -62,7 +62,7 @@ template<bool bClassification>
 struct HistogramBucket final {
 public:
 
-   size_t cInstancesInBucket;
+   size_t m_cInstancesInBucket;
    // TODO : we really want to eliminate this bucketValue at some point.  When doing the mains, if we change our algorithm so that we don't compress the arrays afterwards then we don't need it as the index is == to the bucketValue.
    // The compresson step is actually really unnessary because we can pre-compress our data when we get it to ensure that there are no missing bin values.  The only way there could be a bin with an instance count of zero then
    // would be if a value is not in a particular sampling set, which should be quite rare.
@@ -70,22 +70,22 @@ public:
    // if we remove this bucketValue then it will slightly change our results because buckets where there are zeros are ambiguous in terms of choosing a split point.  We should remove this value as late as possible so that we preserve our comparison data sets over a longer
    // period of time
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
-   ActiveDataType bucketValue;
+   ActiveDataType m_bucketValue;
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
-   HistogramBucketVectorEntry<bClassification> aHistogramBucketVectorEntry[1];
+   HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      cInstancesInBucket += other.cInstancesInBucket;
+      m_cInstancesInBucket += other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER(aHistogramBucketVectorEntry)[iVector].Add(ARRAY_TO_POINTER_CONST(other.aHistogramBucketVectorEntry)[iVector]);
+         ARRAY_TO_POINTER(m_aHistogramBucketVectorEntry)[iVector].Add(ARRAY_TO_POINTER_CONST(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
    EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      cInstancesInBucket -= other.cInstancesInBucket;
+      m_cInstancesInBucket -= other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER(aHistogramBucketVectorEntry)[iVector].Subtract(ARRAY_TO_POINTER_CONST(other.aHistogramBucketVectorEntry)[iVector]);
+         ARRAY_TO_POINTER(m_aHistogramBucketVectorEntry)[iVector].Subtract(ARRAY_TO_POINTER_CONST(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
@@ -104,9 +104,9 @@ public:
    EBM_INLINE void AssertZero(const size_t cVectorLength) const {
       UNUSED(cVectorLength);
 #ifndef NDEBUG
-      EBM_ASSERT(0 == cInstancesInBucket);
+      EBM_ASSERT(0 == m_cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER_CONST(aHistogramBucketVectorEntry)[iVector].AssertZero();
+         ARRAY_TO_POINTER_CONST(m_aHistogramBucketVectorEntry)[iVector].AssertZero();
       }
 #endif // NDEBUG
    }
@@ -133,7 +133,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
    // this shouldn't overflow since we're accessing existing memory
    const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucketEntry->aHistogramBucketVectorEntry);
+   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
       // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -144,7 +144,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
 
       const size_t cOccurences = *pCountOccurrences;
       ++pCountOccurrences;
-      pHistogramBucketEntry->cInstancesInBucket += cOccurences;
+      pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
       const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
 
 #ifndef NDEBUG
@@ -162,7 +162,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
 #ifndef NDEBUG
          residualTotalDebug += residualError;
 #endif // NDEBUG
-         pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
+         pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
             const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
@@ -245,9 +245,9 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
-         pHistogramBucketEntry->cInstancesInBucket += cOccurences;
+         pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
          const FractionalDataType cFloatOccurences = static_cast<FractionalDataType>(cOccurences);
-         HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucketEntry->aHistogramBucketVectorEntry);
+         HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
          size_t iVector = 0;
 
 #ifndef NDEBUG
@@ -264,7 +264,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
 #ifndef NDEBUG
             residualTotalDebug += residualError;
 #endif // NDEBUG
-            pHistogramBucketVectorEntry[iVector].sumResidualError += cFloatOccurences * residualError;
+            pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
                const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
@@ -395,14 +395,14 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
  
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntry = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
-      pHistogramBucketEntry->cInstancesInBucket += 1;
+      pHistogramBucketEntry->m_cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FractionalDataType residualError = *pResidualError;
-         ARRAY_TO_POINTER(pHistogramBucketEntry->aHistogramBucketVectorEntry)[iVector].sumResidualError += residualError;
+         ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError += residualError;
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
             const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
-            ARRAY_TO_POINTER(pHistogramBucketEntry->aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pHistogramBucketEntry->aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + denominator);
+            ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + denominator);
          }
          ++pResidualError;
       }
@@ -439,23 +439,23 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    ActiveDataType iBucket = 0;
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-      if(UNLIKELY(0 == pCopyFrom->cInstancesInBucket)) {
+      if(UNLIKELY(0 == pCopyFrom->m_cInstancesInBucket)) {
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyTo = pCopyFrom;
          goto skip_first_check;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-            if(LIKELY(0 != pCopyFrom->cInstancesInBucket)) {
+            if(LIKELY(0 != pCopyFrom->m_cInstancesInBucket)) {
 #ifndef NDEBUG
-               cInstancesTotalDebug += pCopyFrom->cInstancesInBucket;
+               cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
 #endif // NDEBUG
                ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyTo, aHistogramBucketsEndDebug);
                memcpy(pCopyTo, pCopyFrom, cBytesPerHistogramBucket);
 
                for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->aHistogramBucketVectorEntry)[iVector]);
+                  aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
                }
 
-               pCopyTo->bucketValue = static_cast<ActiveDataType>(iBucket);
+               pCopyTo->m_bucketValue = static_cast<ActiveDataType>(iBucket);
                pCopyTo = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyTo, 1);
             }
             skip_first_check:
@@ -467,13 +467,13 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
          break;
       }
 #ifndef NDEBUG
-      cInstancesTotalDebug += pCopyFrom->cInstancesInBucket;
+      cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
 #endif // NDEBUG
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->aHistogramBucketVectorEntry)[iVector]);
+         aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
       }
 
-      pCopyFrom->bucketValue = static_cast<ActiveDataType>(iBucket);
+      pCopyFrom->m_bucketValue = static_cast<ActiveDataType>(iBucket);
 
       ++iBucket;
       pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);

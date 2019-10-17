@@ -23,15 +23,15 @@ struct SegmentedTensor final {
 private:
 
    struct DimensionInfoStack {
-      const TDivisions * pDivision1;
-      const TDivisions * pDivision2;
-      size_t cNewDivisions;
+      const TDivisions * m_pDivision1;
+      const TDivisions * m_pDivision2;
+      size_t m_cNewDivisions;
    };
 
    struct DimensionInfoStackExpand {
-      const TDivisions * pDivision1;
-      size_t iDivision2;
-      size_t cNewDivisions;
+      const TDivisions * m_pDivision1;
+      size_t m_iDivision2;
+      size_t m_cNewDivisions;
    };
 
    // TODO : is this still required after we do tree splitting by pairs??
@@ -43,9 +43,9 @@ private:
 public:
 
    struct DimensionInfo {
-      size_t cDivisions;
-      TDivisions * aDivisions;
-      size_t cDivisionCapacity;
+      size_t m_cDivisions;
+      TDivisions * m_aDivisions;
+      size_t m_cDivisionCapacity;
    };
 
    size_t m_cValueCapacity;
@@ -101,15 +101,15 @@ public:
          DimensionInfo * pDimension = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
          size_t iDimension = 0;
          do {
-            EBM_ASSERT(0 == pDimension->cDivisions);
-            pDimension->cDivisionCapacity = k_initialDivisionCapacity;
+            EBM_ASSERT(0 == pDimension->m_cDivisions);
+            pDimension->m_cDivisionCapacity = k_initialDivisionCapacity;
             TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
             if(UNLIKELY(nullptr == aDivisions)) {
                LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
                Free(pSegmentedRegion); // free everything!
                return nullptr;
             }
-            pDimension->aDivisions = aDivisions;
+            pDimension->m_aDivisions = aDivisions;
             ++pDimension;
             ++iDimension;
          } while(iDimension < cDimensionsMax);
@@ -124,7 +124,7 @@ public:
             const DimensionInfo * pDimensionInfo = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
             const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSegmentedRegion->m_cDimensionsMax];
             do {
-               free(pDimensionInfo->aDivisions);
+               free(pDimensionInfo->m_aDivisions);
                ++pDimensionInfo;
             } while(pDimensionInfoEnd != pDimensionInfo);
          }
@@ -139,7 +139,7 @@ public:
 
    EBM_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
-      return &ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions[0];
+      return &ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions[0];
    }
 
    EBM_INLINE TValues * GetValuePointer() {
@@ -148,7 +148,7 @@ public:
 
    EBM_INLINE void Reset() {
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions = 0;
+         ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions = 0;
       }
       // we only need to set the base case to zero
       // this can't overflow since we previously allocated this memory
@@ -159,8 +159,8 @@ public:
    EBM_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
       EBM_ASSERT(iDimension < m_cDimensions);
       DimensionInfo * const pDimension = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
-      EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
-      if(UNLIKELY(pDimension->cDivisionCapacity < cDivisions)) {
+      EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->m_cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+      if(UNLIKELY(pDimension->m_cDivisionCapacity < cDivisions)) {
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
          if(IsAddError(cDivisions, cDivisions >> 1)) {
@@ -175,17 +175,17 @@ public:
             return true;
          }
          size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
-         TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->aDivisions, cBytes));
+         TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->m_aDivisions, cBytes));
          if(UNLIKELY(nullptr == aNewDivisions)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
             LOG_0(TraceLevelWarning, "WARNING SetCountDivisions nullptr == aNewDivisions");
             return true;
          }
-         pDimension->aDivisions = aNewDivisions;
-         pDimension->cDivisionCapacity = cNewDivisionCapacity;
+         pDimension->m_aDivisions = aNewDivisions;
+         pDimension->m_cDivisionCapacity = cNewDivisionCapacity;
       } // never shrink our array unless the user chooses to Trim()
-      pDimension->cDivisions = cDivisions;
+      pDimension->m_cDivisions = cDivisions;
       return false;
    }
 
@@ -224,7 +224,7 @@ public:
       size_t cValues = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const DimensionInfo * const pDimension = &ARRAY_TO_POINTER_CONST(rhs.m_aDimensions)[iDimension];
-         size_t cDivisions = pDimension->cDivisions;
+         size_t cDivisions = pDimension->m_cDivisions;
          EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're copying this memory, so multiplication can't overflow
          cValues *= (cDivisions + 1);
          if(UNLIKELY(SetCountDivisions(iDimension, cDivisions))) {
@@ -232,7 +232,7 @@ public:
             return true;
          }
          EBM_ASSERT(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
-         memcpy(ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions, pDimension->aDivisions, sizeof(TDivisions) * cDivisions);
+         memcpy(ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions, pDimension->m_aDivisions, sizeof(TDivisions) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
          LOG_0(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
@@ -266,7 +266,7 @@ public:
 //            if(pDivisionValueEnd == pDivisionValue) {
 //               break;
 //            }
-//            const size_t cDivisions = pDimension->cDivisions;
+//            const size_t cDivisions = pDimension->m_cDivisions;
 //            EBM_ASSERT(1 <= cDivisions); // since we're expanded we should have at least one division and two values
 //            EBM_ASSERT(!IsMultiplyError(cDivisions + 1, valueMultiple)); // we're accessing existing memory, so it can't overflow
 //            valueMultiple *= cDivisions + 1;
@@ -275,9 +275,9 @@ public:
 //      } else {
 //         // TODO: this code is no longer executed because we always expand our models now.  We can probably get rid of it, but I'm leaving it here for a while to decide if there are really no use cases
 //         do {
-//            const size_t cDivisions = pDimension->cDivisions;
+//            const size_t cDivisions = pDimension->m_cDivisions;
 //            if(LIKELY(0 != cDivisions)) {
-//               const TDivisions * const aDivisions = pDimension->aDivisions;
+//               const TDivisions * const aDivisions = pDimension->m_aDivisions;
 //               const TDivisions d = *pDivisionValue;
 //               ptrdiff_t high = cDivisions - 1;
 //               ptrdiff_t middle;
@@ -313,8 +313,8 @@ public:
    EBM_INLINE void Multiply(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1)); // we're accessing existing memory, so it can't overflow
-         cValues *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1;
+         EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1)); // we're accessing existing memory, so it can't overflow
+         cValues *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1;
       }
 
       TValues * pCur = &m_aValues[0];
@@ -355,19 +355,19 @@ public:
       EBM_ASSERT(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
-         const size_t cDivisions1 = pDimensionFirst1->cDivisions;
+         const size_t cDivisions1 = pDimensionFirst1->m_cDivisions;
 
          EBM_ASSERT(!IsMultiplyError(cValues1, cDivisions1 + 1)); // this is accessing existing memory, so it can't overflow
          cValues1 *= cDivisions1 + 1;
 
-         pDimensionInfoStackFirst->pDivision1 = &pDimensionFirst1->aDivisions[cDivisions1];
+         pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
          const size_t cValuesPerDimension = *pcValuesPerDimension;
          EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));  // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cValuesPerDimension;
          const size_t cNewDivisions = cValuesPerDimension - 1;
 
-         pDimensionInfoStackFirst->iDivision2 = cNewDivisions;
-         pDimensionInfoStackFirst->cNewDivisions = cNewDivisions;
+         pDimensionInfoStackFirst->m_iDivision2 = cNewDivisions;
+         pDimensionInfoStackFirst->m_cNewDivisions = cNewDivisions;
 
          ++pDimensionFirst1;
          ++pcValuesPerDimension;
@@ -419,10 +419,10 @@ public:
          size_t multiplication1 = m_cVectorLength;
 
          while(true) {
-            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->pDivision1;
-            size_t iDivision2 = pDimensionInfoStackSecond->iDivision2;
+            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
+            size_t iDivision2 = pDimensionInfoStackSecond->m_iDivision2;
 
-            TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
+            TDivisions * const aDivisions1 = pDimensionSecond1->m_aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
                EBM_ASSERT(0 < iDivision2);
@@ -434,27 +434,27 @@ public:
                --iDivision2;
 
                const bool bMove = UNPREDICTABLE(iDivision2 <= d1);
-               pDimensionInfoStackSecond->pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
+               pDimensionInfoStackSecond->m_pDivision1 = bMove ? pDivision1MinusOne : pDivision1;
                pValue1 = bMove ? pValue1 - multiplication1 : pValue1;
 
-               pDimensionInfoStackSecond->iDivision2 = iDivision2;
+               pDimensionInfoStackSecond->m_iDivision2 = iDivision2;
                break;
             } else {
                if(UNPREDICTABLE(0 < iDivision2)) {
-                  pDimensionInfoStackSecond->iDivision2 = iDivision2 - 1;
+                  pDimensionInfoStackSecond->m_iDivision2 = iDivision2 - 1;
                   break;
                } else {
                   pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
 
-                  const size_t cDivisions1 = pDimensionSecond1->cDivisions;
+                  const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
 
                   EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
                   multiplication1 *= 1 + cDivisions1;
 
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
 
-                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1];
-                  pDimensionInfoStackSecond->iDivision2 = pDimensionInfoStackSecond->cNewDivisions;
+                  pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
+                  pDimensionInfoStackSecond->m_iDivision2 = pDimensionInfoStackSecond->m_cNewDivisions;
 
                   ++pDimensionSecond1;
                   ++pDimensionInfoStackSecond;
@@ -470,7 +470,7 @@ public:
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          const size_t cDivisions = acValuesPerDimension[iDimension] - 1;
 
-         if(cDivisions == ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions) {
+         if(cDivisions == ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions) {
             continue;
          }
 
@@ -480,7 +480,7 @@ public:
          }
 
          for(size_t iDivision = 0; iDivision < cDivisions; ++iDivision) {
-            ARRAY_TO_POINTER(m_aDimensions)[iDimension].aDivisions[iDivision] = iDivision;
+            ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions[iDivision] = iDivision;
          }
       }
 
@@ -494,7 +494,7 @@ public:
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          // this can't overflow since we've already allocated them!
-         cItems *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].cDivisions + 1;
+         cItems *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1;
       }
 
       const TValues * pFromValue = aFromValues;
@@ -550,10 +550,10 @@ public:
       EBM_ASSERT(0 < m_cDimensions);
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
-         const size_t cDivisions1 = pDimensionFirst1->cDivisions;
-         TDivisions * p1Cur = pDimensionFirst1->aDivisions;
-         const size_t cDivisions2 = pDimensionFirst2->cDivisions;
-         TDivisions * p2Cur = pDimensionFirst2->aDivisions;
+         const size_t cDivisions1 = pDimensionFirst1->m_cDivisions;
+         TDivisions * p1Cur = pDimensionFirst1->m_aDivisions;
+         const size_t cDivisions2 = pDimensionFirst2->m_cDivisions;
+         TDivisions * p2Cur = pDimensionFirst2->m_aDivisions;
 
          cValues1 *= cDivisions1 + 1; // this can't overflow since we're counting existing allocated memory
          cValues2 *= cDivisions2 + 1; // this can't overflow since we're counting existing allocated memory
@@ -561,8 +561,8 @@ public:
          TDivisions * const p1End = &p1Cur[cDivisions1];
          TDivisions * const p2End = &p2Cur[cDivisions2];
 
-         pDimensionInfoStackFirst->pDivision1 = p1End;
-         pDimensionInfoStackFirst->pDivision2 = p2End;
+         pDimensionInfoStackFirst->m_pDivision1 = p1End;
+         pDimensionInfoStackFirst->m_pDivision2 = p2End;
 
          size_t cNewSingleDimensionDivisions = 0;
 
@@ -587,7 +587,7 @@ public:
             p1Cur = UNPREDICTABLE(d1 <= d2) ? p1Cur + 1 : p1Cur;
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
-         pDimensionInfoStackFirst->cNewDivisions = cNewSingleDimensionDivisions;
+         pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
          EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
@@ -646,11 +646,11 @@ public:
          size_t multiplication2 = m_cVectorLength;
 
          while(true) {
-            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->pDivision1;
-            const TDivisions * const pDivision2 = pDimensionInfoStackSecond->pDivision2;
+            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
+            const TDivisions * const pDivision2 = pDimensionInfoStackSecond->m_pDivision2;
 
-            TDivisions * const aDivisions1 = pDimensionSecond1->aDivisions;
-            TDivisions * const aDivisions2 = pDimensionSecond2->aDivisions;
+            TDivisions * const aDivisions1 = pDimensionSecond1->m_aDivisions;
+            TDivisions * const aDivisions2 = pDimensionSecond2->m_aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
                if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
@@ -661,29 +661,29 @@ public:
                   const TDivisions d2 = *pDivision2MinusOne;
 
                   const bool bMove1 = UNPREDICTABLE(d2 <= d1);
-                  pDimensionInfoStackSecond->pDivision1 = bMove1 ? pDivision1MinusOne : pDivision1;
+                  pDimensionInfoStackSecond->m_pDivision1 = bMove1 ? pDivision1MinusOne : pDivision1;
                   pValue1 = bMove1 ? pValue1 - multiplication1 : pValue1;
 
                   const bool bMove2 = UNPREDICTABLE(d1 <= d2);
-                  pDimensionInfoStackSecond->pDivision2 = bMove2 ? pDivision2MinusOne : pDivision2;
+                  pDimensionInfoStackSecond->m_pDivision2 = bMove2 ? pDivision2MinusOne : pDivision2;
                   pValue2 = bMove2 ? pValue2 - multiplication2 : pValue2;
                   break;
                } else {
                   pValue1 -= multiplication1;
-                  pDimensionInfoStackSecond->pDivision1 = pDivision1 - 1;
+                  pDimensionInfoStackSecond->m_pDivision1 = pDivision1 - 1;
                   break;
                }
             } else {
                if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
                   pValue2 -= multiplication2;
-                  pDimensionInfoStackSecond->pDivision2 = pDivision2 - 1;
+                  pDimensionInfoStackSecond->m_pDivision2 = pDivision2 - 1;
                   break;
                } else {
                   pValue1 -= multiplication1; // put us before the beginning.  We'll add the full row first
                   pValue2 -= multiplication2; // put us before the beginning.  We'll add the full row first
 
-                  const size_t cDivisions1 = pDimensionSecond1->cDivisions;
-                  const size_t cDivisions2 = pDimensionSecond2->cDivisions;
+                  const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
+                  const size_t cDivisions2 = pDimensionSecond2->m_cDivisions;
 
                   EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're accessing allocated memory, so it can't overflow
                   multiplication1 *= 1 + cDivisions1;
@@ -693,8 +693,8 @@ public:
                   pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
                   pValue2 += multiplication2; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
 
-                  pDimensionInfoStackSecond->pDivision1 = &aDivisions1[cDivisions1];
-                  pDimensionInfoStackSecond->pDivision2 = &aDivisions2[cDivisions2];
+                  pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
+                  pDimensionInfoStackSecond->m_pDivision2 = &aDivisions2[cDivisions2];
                   ++pDimensionSecond1;
                   ++pDimensionSecond2;
                   ++pDimensionInfoStackSecond;
@@ -715,8 +715,8 @@ public:
       const DimensionInfo * pDimension2Cur = aDimension2;
       size_t iDimension = 0;
       do {
-         const size_t cNewDivisions = pDimensionInfoStackCur->cNewDivisions;
-         const size_t cOriginalDivisionsBeforeSetting = pDimension1Cur->cDivisions;
+         const size_t cNewDivisions = pDimensionInfoStackCur->m_cNewDivisions;
+         const size_t cOriginalDivisionsBeforeSetting = pDimension1Cur->m_cDivisions;
          
          // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
          if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
@@ -724,27 +724,27 @@ public:
             return true;
          }
          
-         const TDivisions * p1Cur = &pDimension1Cur->aDivisions[cOriginalDivisionsBeforeSetting];
-         const TDivisions * p2Cur = &pDimension2Cur->aDivisions[pDimension2Cur->cDivisions];
-         TDivisions * pTopCur = &pDimension1Cur->aDivisions[cNewDivisions];
+         const TDivisions * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];
+         const TDivisions * p2Cur = &pDimension2Cur->m_aDivisions[pDimension2Cur->m_cDivisions];
+         TDivisions * pTopCur = &pDimension1Cur->m_aDivisions[cNewDivisions];
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
          while(true) {
-            EBM_ASSERT(pDimension1Cur->aDivisions <= pTopCur);
-            EBM_ASSERT(pDimension1Cur->aDivisions <= p1Cur);
-            EBM_ASSERT(pDimension2Cur->aDivisions <= p2Cur);
+            EBM_ASSERT(pDimension1Cur->m_aDivisions <= pTopCur);
+            EBM_ASSERT(pDimension1Cur->m_aDivisions <= p1Cur);
+            EBM_ASSERT(pDimension2Cur->m_aDivisions <= p2Cur);
             EBM_ASSERT(p1Cur <= pTopCur);
-            EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions));
+            EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions));
 
             if(UNLIKELY(pTopCur == p1Cur)) {
                // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
                break;
             }
-            // pTopCur is an index above pDimension1Cur->aDivisions.  p2Cur is an index above pDimension2Cur->aDivisions.  We want to decide if they are at the same index above their respective arrays
-            if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->aDivisions))) {
-               EBM_ASSERT(pDimension1Cur->aDivisions < pTopCur);
+            // pTopCur is an index above pDimension1Cur->m_aDivisions.  p2Cur is an index above pDimension2Cur->m_aDivisions.  We want to decide if they are at the same index above their respective arrays
+            if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions))) {
+               EBM_ASSERT(pDimension1Cur->m_aDivisions < pTopCur);
                // direct copy the remaining divisions.  There should be at least one
-               memcpy(pDimension1Cur->aDivisions, pDimension2Cur->aDivisions, static_cast<size_t>(pTopCur - pDimension1Cur->aDivisions) * sizeof(TDivisions));
+               memcpy(pDimension1Cur->m_aDivisions, pDimension2Cur->m_aDivisions, static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(TDivisions));
                break;
             }
 
@@ -781,8 +781,8 @@ public:
          const DimensionInfo * const pDimension1 = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
          const DimensionInfo * const pDimension2 = &ARRAY_TO_POINTER(rhs.m_aDimensions)[iDimension];
 
-         size_t cDivisions = pDimension1->cDivisions;
-         if(cDivisions != pDimension2->cDivisions) {
+         size_t cDivisions = pDimension1->m_cDivisions;
+         if(cDivisions != pDimension2->m_cDivisions) {
             return false;
          }
 
@@ -790,8 +790,8 @@ public:
             EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
             cValues *= cDivisions + 1;
 
-            const TDivisions * pD1Cur = pDimension1->aDivisions;
-            const TDivisions * pD2Cur = pDimension2->aDivisions;
+            const TDivisions * pD1Cur = pDimension1->m_aDivisions;
+            const TDivisions * pD2Cur = pDimension2->m_aDivisions;
             const TDivisions * const pD1End = pD1Cur + cDivisions;
             do {
                if(UNLIKELY(*pD1Cur != *pD2Cur)) {
