@@ -104,7 +104,6 @@ public:
       return m_aThreadByteBuffer1;
    }
 
-   // TODO : we can probably avoid redoing any tree growing IF realloc doesn't move the memory since all the internal pointers would still be valid in that case
    EBM_INLINE bool GrowThreadByteBuffer2(const size_t cByteBoundaries) {
       // by adding cByteBoundaries and shifting our existing size, we do 2 things:
       //   1) we ensure that if we have zero size, we'll get some size that we'll get a non-zero size after the shift
@@ -112,7 +111,8 @@ public:
       EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
       m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
       LOG_N(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
-      // TODO : can we use malloc here?  We only need realloc if we need to keep the existing data
+      // TODO : use malloc here.  our tree objects have internal pointers, so we're going to dispose of our work anyways
+      // There is no way to check if the array was re-allocated or not without invoking undefined behavior, so we don't get a benefit if the array can be resized with realloc
       void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer2, m_cThreadByteBufferCapacity2);
       if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.

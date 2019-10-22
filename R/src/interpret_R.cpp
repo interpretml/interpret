@@ -11,10 +11,7 @@
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
-// TODO: remove visibility to internal functions that don't need visibiliy -> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Controlling-visibility
-// TODO: Improve calling speed (see section 5.4.1 Speed considerations) https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines
 // TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate before calling the R error or warning functions
-// todo: use our define in the compilation scrips in the larger program to determine if we're being compiled in R in our larger program (or USING_R, which might be set by R's compilation scripts and therefore be always defined at compilation time)
 
 EBM_INLINE bool IsSingleDoubleVector(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {

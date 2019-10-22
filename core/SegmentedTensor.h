@@ -6,18 +6,14 @@
 #define SEGMENTED_TENSOR_H
 
 #include <string.h> // memset
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// TODO : after we've optimized a lot more and fit into the python wrapper and we've completely solved the bucketing, consider making SegmentedRegion with variable types that we can switch
-// we could put make TDivisions and TValues conditioned on individual functions and tread our allocated memory as a pool of variable types.   We cache SegmentedTensors right now for different types
-// but they could all be shared into one class that get morphed.  We're currently getting some type safety that we wouldn't though otherwise, so hold off on this change until we can performance check
-// I think we'll find that using size_t as TDivisions is as performant or better than using anything else, so it may be a moot point, in which case leave it as hard coded types and just make all TDivisions size_t, even for mains
-// for pairs and triplicates, we already know that the dimensionality aspect requires us to have common division types since we don't want char/short SegmentedRegion classes and all the combinatorial options that would allow
+// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FractionalDataType, so we don't need something generic which just complicates reading the code later for no benefit to this project
 template<typename TDivisions, typename TValues>
 struct SegmentedTensor final {
 private:
@@ -273,7 +269,7 @@ public:
 //            ++pDimension;
 //         }
 //      } else {
-//         // TODO: this code is no longer executed because we always expand our models now.  We can probably get rid of it, but I'm leaving it here for a while to decide if there are really no use cases
+//         DO: this code is no longer executed because we always expand our models now.  We can probably get rid of it, but I'm leaving it here for a while to decide if there are really no use cases
 //         do {
 //            const size_t cDivisions = pDimension->m_cDivisions;
 //            if(LIKELY(0 != cDivisions)) {
@@ -818,10 +814,9 @@ public:
    }
 #endif // NDEBUG
 
-   static_assert(std::is_pod<TDivisions>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
-   static_assert(std::is_pod<TValues>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
+   static_assert(std::is_standard_layout<TDivisions>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
+   static_assert(std::is_standard_layout<TValues>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
-// SegmentedRegion must be a POD, which it will be if both our D and V types are PODs and SegmentedRegion<char, char> is a POD
-static_assert(std::is_pod<SegmentedTensor<char, char>>::value, "SegmentedRegion must be POD (Plain Old Data).  We use realloc, which isn't compatible with using complex classes.  Interop data must also be PODs.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(std::is_standard_layout<SegmentedTensor<ActiveDataType, FractionalDataType>>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_TENSOR_H

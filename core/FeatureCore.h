@@ -15,9 +15,7 @@ class FeatureCore final {
 public:
    const size_t m_cBins;
    const size_t m_iFeatureData;
-   // TODO : implement feature to handle m_featureType
    const FeatureTypeCore m_featureType;
-   // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
    EBM_INLINE FeatureCore(const size_t cBins, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)

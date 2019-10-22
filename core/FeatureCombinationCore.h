@@ -84,7 +84,7 @@ public:
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
    }
 };
-static_assert(std::is_pod<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
+static_assert(std::is_standard_layout<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout data is probably undefined as to what the space after gets filled with");
 
 // these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, and constexpr needs the size before constexpr
 constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {

@@ -14,7 +14,6 @@
 #include "FeatureCombinationCore.h"
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
-// TODO: rename this to DataSetByFeatureCombination
 class DataSetByFeatureCombination final {
    FractionalDataType * const m_aResidualErrors;
    FractionalDataType * const m_aPredictorScores;
@@ -52,9 +51,8 @@ public:
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   // TODO: we can change this to take the m_iInputData value directly, which we get from the user! (this also applies to the other dataset)
-   // TODO: rename this to GetInputDataPointer
-   EBM_INLINE const StorageDataTypeCore * GetDataPointer(const FeatureCombinationCore * const pFeatureCombination) const {
+   // TODO: we can change this to take the m_iInputData value directly, which we get from a loop index
+   EBM_INLINE const StorageDataTypeCore * GetInputDataPointer(const FeatureCombinationCore * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
       EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);

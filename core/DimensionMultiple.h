@@ -5,7 +5,7 @@
 #ifndef DIMENSION_MULTIPLE_H
 #define DIMENSION_MULTIPLE_H
 
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE
@@ -116,7 +116,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
 //void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombination * const pFeatureCombination) {
-//   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
+//   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -132,7 +132,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //   }
 //   EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
-//   TODO : technically, adding cBytesPerHistogramBucket could overflow so we should handle that instead of asserting
+//   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerHistogramBucket could overflow so we should handle that instead of asserting
 //   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerHistogramBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug + cBytesPerHistogramBucket));
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = nullptr;
@@ -170,7 +170,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //
 //   skip_intro:
 //
-//      // TODO : I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
+//      DO : I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
 //
 //      size_t permuteVector = 1;
 //      do {
@@ -187,7 +187,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //               pTargetHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTargetHistogramBucket, multiplyDimension);
 //               bPositive = !bPositive;
 //            }
-//            // TODO: can we eliminate the multiplication by storing the multiples instead of the cBins?
+//            DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> can we eliminate the multiplication by storing the multiples instead of the cBins?
 //            multiplyDimension *= pCurrentIndexAndCountBins->m_cBins;
 //            ++pCurrentIndexAndCountBins;
 //            permuteVectorDestroy >>= 1;
@@ -245,7 +245,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
 //void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombination * const pFeatureCombination) {
-//   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
+//   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -261,7 +261,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //   }
 //   EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket)); // we're accessing allocated memory, so this should work
 //   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
-//   TODO : technically, adding cBytesPerHistogramBucket could overflow so we should handle that instead of asserting
+//   DO : ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> technically, adding cBytesPerHistogramBucket could overflow so we should handle that instead of asserting
 //   EBM_ASSERT(IsAddError(cBytesBufferDebug, cBytesPerHistogramBucket)); // we're just allocating one extra bucket.  If we can't add these two numbers then we shouldn't have been able to allocate the array that we're copying from
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug + cBytesPerHistogramBucket));
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = nullptr;
@@ -301,7 +301,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //
 //   skip_intro:
 //
-//      // TODO : I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
+//      DO : I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> I think this code below can be made more efficient by storing the sum of all the items in the 0th dimension where we don't subtract the 0th dimension then when we go to sum up the next set we can eliminate half the work!
 //
 //      size_t permuteVector = 1;
 //      do {
@@ -388,6 +388,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //- implement a function that calcualtes the total of any volume using just the(0, 0, ..., 0, 0) totals ..as a debugging function.We might use this for trying out more complicated splits where we allow 2 splits on some axies
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
+// TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 template<bool bClassification>
 struct FastTotalState {
    HistogramBucket<bClassification> * m_pDimensionalCur;
@@ -534,7 +535,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 //) {
 //   LOG_0(TraceLevelVerbose, "Entered BuildFastTotalsZeroMemoryIncrease");
 //
-//   // TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
+//   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
 //   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
 //   EBM_ASSERT(1 <= cDimensions);
@@ -802,6 +803,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          ++pTotalsDimensionLoop;
          // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  Since the number of iterations will remain constant, we can use templates to move this check out of both loop to the completely non-looped outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
+      // TODO : eliminate this multiplication of cBytesPerHistogramBucket by offsetPointer by multiplying both the startingOffset and the m_cLast & m_cIncrement values by cBytesPerHistogramBucket.  We can eliminate this multiplication each loop!
       const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, offsetPointer);
       // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pHistogramBucket.  We can pass in a bool that indicates if we should take the negation value or the original at each step (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
@@ -901,7 +903,7 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
-// TODO: consider adding controls to disallow cuts that would leave too few cases in a region
+// TODO: consider adding controls to disallow cuts that would leave too few cases in a region (use the same minimum number of cases paraemter as the mains)
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
@@ -1056,9 +1058,9 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
    //}
    //size_t aiDimensionPermutationBest[k_cDimensionsMax];
 
-   //// TODO this is a fixed length that we should make variable!
-   //size_t aTODOSplits[1000000];
-   //size_t aTODOSplitsBest[1000000];
+   // DO this is a fixed length that we should make variable!
+   //size_t aDOSplits[1000000];
+   //size_t aDOSplitsBest[1000000];
 
    //do {
    //   size_t aiDimensions[k_cDimensionsMax];
@@ -1454,7 +1456,7 @@ WARNING_POP
 //   size_t aiLast[k_cDimensionsMax];
 //
 //   if(2 == cDimensions) {
-//      // TODO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
+//      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
 //      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket * ));
 //
 //      const size_t cBinsDimension1 = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
@@ -1698,7 +1700,7 @@ WARNING_POP
 //
 //      free(aDynamicHistogramBuckets);
 //   } else {
-//      // TODO: handle this better
+//      DO: handle this better
 //#ifndef NDEBUG
 //      EBM_ASSERT(false); // we only support pairs currently
 //      free(aHistogramBucketsDebugCopy);
@@ -1715,7 +1717,7 @@ WARNING_POP
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
 bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
-   // TODO : we NEVER use the denominator term when calculating interaction scores, but we're calculating it and it's taking precious memory.  We should eliminate the denominator term HERE in our datastructures!!!
+   // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can use the denominator as part of the gain function!!!
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
 
@@ -1777,7 +1779,6 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   // TODO : we don't seem to use the denmoninator in HistogramBucketVectorEntry, so we could remove that variable for classification
    
    // TODO : use the fancy recursive binner that we use in the training version of this function
    BinDataSetInteraction<compilerLearningTypeOrCountTargetClasses>(aHistogramBuckets, pFeatureCombination, pDataSet, runtimeLearningTypeOrCountTargetClasses

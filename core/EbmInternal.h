@@ -13,7 +13,7 @@
 #define INVALID_POINTER (reinterpret_cast<void *>(~uintptr_t { 0 }))
 #define UNUSED(x) (void)(x)
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
-// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are POD structures (even if declared as classes), so accessing that memory is legal.
+// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are standard layout structures (even if declared as classes), so accessing that memory is legal.
 // this MACRO turns an array reference into a pointer to the same type of object, which resolves any UBSAN warnings
 
 // TODO : the const and non-const macros can probably be unified
@@ -110,13 +110,14 @@ WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 
 template<typename TTo, typename TFrom>
 constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
-   // TODO: this function won't work for some floats and doubles.  For example, if you had just a bit more than the maximum integer in a double, it might round down properly, but this function will say that it won't.
-
    // the general rules of conversion are as follows:
    // calling std::numeric_limits<?>::max() returns an item of that type
    // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.  Undefined behavior results from overflowing negative integers, but we don't add or subtract.
    // C/C++ uses value preserving instead of sign preserving.  Generally, if you have two integer numbers that you're comparing then if one type can be converted into the other with no loss in range then that the smaller range integer is converted into the bigger range integer
    // if one type can't cover the entire range of the other, then items are converted to UNSIGNED values.  This is probably the most dangerous thing for us to deal with
+
+   static_assert(std::is_integral<TTo>::value, "TTo must be integral");
+   static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");
 
    static_assert(std::numeric_limits<TTo>::is_specialized, "TTo must be specialized");
    static_assert(std::numeric_limits<TFrom>::is_specialized, "TFrom must be specialized");
@@ -168,12 +169,10 @@ enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 // 16  => 5.12%
 // 8   => 5.34%
 // 4   => 8.31%
-// TODO: increase this up to something like 16.  I have decreased it to 2 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
-// TODO: BUT DON'T CHANGE THIS VALUE FROM 2 UNTIL WE HAVE RESOLVED THE ISSUE OF Removing compilerLearningTypeOrCountTargetClasses from the main template of SegmentedRegion (using a template on just the Add function would be ok)
-constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 3;
+// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
+constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
 static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
 
-// TODO : eliminate this typedef.. we bitpack our memory now, so we'll always want to use the biggest chunk of memory possible, which will be size_t
 typedef size_t StorageDataTypeCore;
 typedef size_t ActiveDataType;
 
@@ -228,7 +227,6 @@ constexpr size_t CountBitsRequiredPositiveMax() {
 
 constexpr size_t k_cBitsForSizeTCore = CountBitsRequiredPositiveMax<size_t>();
 // it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
-// TODO : we should check at startup if there are equal to or less than these number of dimensions, otherwise return an error.  I don't think we want to wait until we try allocating the memory to discover that we can't do it
 // TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
@@ -266,7 +264,7 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    return num1 + num2 < num1;
 }
 
-// TODO : keep this constant, but make it global and compile out the costs... we want to document that it's possible and how, but we have tested it and found it's worse
+// TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
 static constexpr ptrdiff_t k_iZeroResidual = -1;
 static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 

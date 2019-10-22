@@ -5,7 +5,7 @@
 #ifndef HISTOGRAM_BUCKET_H
 #define HISTOGRAM_BUCKET_H
 
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 #include <string.h> // memset
 #include <stddef.h> // size_t, ptrdiff_t
 #include <cmath> // abs
@@ -110,12 +110,9 @@ public:
       }
 #endif // NDEBUG
    }
-
-   static_assert(std::is_pod<ActiveDataType>::value, "HistogramBucket will be more efficient as a POD as we make potentially large arrays of them!");
 };
 
-static_assert(std::is_pod<HistogramBucket<false>>::value, "HistogramBucket will be more efficient as a POD as we make potentially large arrays of them!");
-static_assert(std::is_pod<HistogramBucket<true>>::value, "HistogramBucket will be more efficient as a POD as we make potentially large arrays of them!");
+static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_standard_layout<HistogramBucket<true>>::value, "HistogramBucket will be more efficient as a standard layout class as we make potentially large arrays of them!");
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
@@ -208,7 +205,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
-   const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetDataPointer(pFeatureCombination);
+   const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
    const FractionalDataType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
 
    // this shouldn't overflow since we're accessing existing memory
@@ -382,7 +379,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
       do {
          const FeatureCore * const pInputFeature = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
          const size_t cBins = pInputFeature->m_cBins;
-         const StorageDataTypeCore * pInputData = pDataSet->GetDataPointer(pInputFeature);
+         const StorageDataTypeCore * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
          pInputData += iInstance;
          StorageDataTypeCore iBinOriginal = *pInputData;
          EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(iBinOriginal)));

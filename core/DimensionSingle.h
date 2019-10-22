@@ -5,7 +5,7 @@
 #ifndef DIMENSION_SINGLE_H
 #define DIMENSION_SINGLE_H
 
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE
@@ -398,14 +398,14 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compile
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket));
    if(UNLIKELY(nullptr == pHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainZeroDimensional nullptr == pHistogramBucket");
+      LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
       return true;
    }
    memset(pHistogramBucket, 0, cBytesPerHistogramBucket);
@@ -440,14 +440,14 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      // TODO : move this to initialization where we execute it only once (it needs to be in the feature combination loop though)
-      LOG_0(TraceLevelWarning, "WARNING TODO fill this in");
+      // TODO : move this to initialization where we execute it only once
+      LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;

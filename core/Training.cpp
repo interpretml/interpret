@@ -384,7 +384,6 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
             const FractionalDataType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
             do {
                StorageDataTypeCore targetData = *pTargetData;
-               // TODO : because there is only one bin for a zero feature feature combination, we can move the fetch of smallChangeToPredictorScores outside of our loop so that the code doesn't have this dereference each loop
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                const FractionalDataType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
                *pTrainingPredictorScores = trainingPredictorScore;
@@ -449,7 +448,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-   const StorageDataTypeCore * pInputData = pTrainingSet->GetDataPointer(pFeatureCombination);
+   const StorageDataTypeCore * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
    FractionalDataType * pResidualError = pTrainingSet->GetResidualPointer();
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
@@ -682,7 +681,6 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                   const FractionalDataType smallChangeToPredictorScores = pValues[iVector];
                   // this will apply a small fix to our existing validationPredictorScores, either positive or negative, whichever is needed
 
-                  // TODO : this is no longer a prediction for multiclass.  It is a weight.  Change all instances of this naming. -> validationLogWeight
                   const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
                   *pValidationPredictorScores = validationPredictorScores;
                   sumExp += std::exp(validationPredictorScores);
@@ -709,7 +707,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-   const StorageDataTypeCore * pInputData = pValidationSet->GetDataPointer(pFeatureCombination);
+   const StorageDataTypeCore * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
       FractionalDataType rootMeanSquareError = 0;
@@ -810,7 +808,6 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
                   const FractionalDataType smallChangeToPredictorScores = pValues[iVector];
                   // this will apply a small fix to our existing validationPredictorScores, either positive or negative, whichever is needed
 
-                  // TODO : this is no longer a prediction for multiclass.  It is a weight.  Change all instances of this naming. -> validationLogWeight
                   const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
                   *pValidationPredictorScores = validationPredictorScores;
                   sumExp += std::exp(validationPredictorScores);
@@ -921,9 +918,9 @@ EbmTrainingState * AllocateCoreTraining(const IntegerDataType randomSeed, const 
    EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingTargets);
    EBM_ASSERT(0 == countTrainingInstances || 0 == countFeatures || nullptr != trainingBinnedData);
    // trainingPredictorScores can be null
-   EBM_ASSERT(0 <= countValidationInstances); // TODO: change this to make it possible to be 0 if the user doesn't want a validation set
-   EBM_ASSERT(0 == countValidationInstances || nullptr != validationTargets); // TODO: change this to make it possible to have no validation set
-   EBM_ASSERT(0 == countValidationInstances || 0 == countFeatures || nullptr != validationBinnedData); // TODO: change this to make it possible to have no validation set
+   EBM_ASSERT(0 <= countValidationInstances);
+   EBM_ASSERT(0 == countValidationInstances || nullptr != validationTargets);
+   EBM_ASSERT(0 == countValidationInstances || 0 == countFeatures || nullptr != validationBinnedData);
    // validationPredictorScores can be null
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 

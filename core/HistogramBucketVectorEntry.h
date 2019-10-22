@@ -5,7 +5,7 @@
 #ifndef HISTOGRAM_BUCKET_VECTOR_ENTRY_H
 #define HISTOGRAM_BUCKET_VECTOR_ENTRY_H
 
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 
 #include "ebmcore.h" // FractionalDataType
 #include "EbmInternal.h" // EBM_INLINE
@@ -19,7 +19,7 @@ struct HistogramBucketVectorEntry<true> final {
    // classification version of the HistogramBucketVectorEntry class
 
    FractionalDataType m_sumResidualError;
-   // TODO: for single features, we probably want to just do a single pass of the data and collect our sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
+   // TODO: for single features, we probably want to just do a single pass of the data and collect our m_sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
    FractionalDataType m_sumDenominator;
 
    EBM_INLINE FractionalDataType GetSumDenominator() const {
@@ -73,8 +73,6 @@ struct HistogramBucketVectorEntry<false> final {
       EBM_ASSERT(0 == m_sumResidualError);
    }
 };
-
-static_assert(std::is_pod<HistogramBucketVectorEntry<false>>::value, "HistogramBucketVectorEntry will be more efficient as a POD as we make potentially large arrays of them!");
-static_assert(std::is_pod<HistogramBucketVectorEntry<true>>::value, "HistogramBucketVectorEntry will be more efficient as a POD as we make potentially large arrays of them!");
+static_assert(std::is_standard_layout<HistogramBucketVectorEntry<false>>::value && std::is_standard_layout<HistogramBucketVectorEntry<true>>::value, "HistogramBucketVectorEntry will be more efficient as a standard layout class as we make potentially large arrays of them!");
 
 #endif // HISTOGRAM_BUCKET_VECTOR_ENTRY_H

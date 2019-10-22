@@ -5,7 +5,7 @@
 #ifndef TREE_NODE_H
 #define TREE_NODE_H
 
-#include <type_traits> // std::is_pod
+#include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE
@@ -64,8 +64,8 @@ public:
       BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
       AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
 
-      static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
-      static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be standard layout classes if we are going to use it in a union!");
+      static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be standard layout classes if we are going to use it in a union!");
    };
 
    TreeNodeDataUnion m_UNION;
@@ -102,8 +102,8 @@ public:
       BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
       AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
 
-      static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be POD (Plain Old Data) if we are going to use it in a union!");
-      static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be POD (Plain Old Data) if we are going to use it in a union!");
+      static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value, "BeforeSplit must be a standard layout class if we are going to use it in a union!");
+      static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value, "AfterSplit must be a standard layout class if we are going to use it in a union!");
    };
 
    TreeNodeDataUnion m_UNION;
@@ -183,10 +183,7 @@ public:
          } while(pValuesNext != pValuesCur);
       }
    }
-
-   static_assert(std::is_pod<ActiveDataType>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 };
-static_assert(std::is_pod<TreeNode<false>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
-static_assert(std::is_pod<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
+static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
 
 #endif // TREE_NODE_H

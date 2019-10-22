@@ -762,7 +762,6 @@ public:
       return validationMetricReturn;
    }
 
-   // TODO : change this so that we first call GetCurrentModelExpanded OR GetBestModelExpanded, which will return a tensor expanded as needed THEN  we call an indexing function if desired
    FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -1256,7 +1255,7 @@ TEST_CASE("negative learning rate, training, multiclass") {
 }
 
 TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") {
-   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1276,7 +1275,7 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") 
 }
 
 TEST_CASE("zero countTreeSplitsMax, training, regression") {
-   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1296,6 +1295,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
 }
 
 
+// TODO: decide what to do with this test
 //TEST_CASE("infinite target training set, training, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
