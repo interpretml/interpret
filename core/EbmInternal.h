@@ -10,8 +10,6 @@
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
 
-// TODO : remove INVALID_POINTER, since there is no portable way to get a pointer that has all the upper bits, and using it is undefined behavior too!
-#define INVALID_POINTER (reinterpret_cast<void *>(~uintptr_t { 0 }))
 #define UNUSED(x) (void)(x)
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
 // We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are standard layout structures (even if declared as classes), so accessing that memory is legal.

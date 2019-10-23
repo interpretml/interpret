@@ -22,13 +22,17 @@ class DataSetByFeatureCombination final {
    const size_t m_cInstances;
    const size_t m_cFeatureCombinations;
 
+   const bool m_bAllocateResidualErrors;
+   const bool m_bAllocatePredictorScores;
+   const bool m_bAllocateTargetData;
+
 public:
 
    DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || nullptr == m_aPredictorScores || nullptr == m_aTargetData || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
+      return (m_bAllocateResidualErrors && nullptr == m_aResidualErrors) || (m_bAllocatePredictorScores && nullptr == m_aPredictorScores) || (m_bAllocateTargetData && nullptr == m_aTargetData) || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
    }
 
    EBM_INLINE FractionalDataType * GetResidualPointer() {
@@ -40,10 +44,6 @@ public:
       return m_aResidualErrors;
    }
    EBM_INLINE FractionalDataType * GetPredictorScores() {
-      EBM_ASSERT(nullptr != m_aPredictorScores);
-      return m_aPredictorScores;
-   }
-   EBM_INLINE const FractionalDataType * GetPredictorScores() const {
       EBM_ASSERT(nullptr != m_aPredictorScores);
       return m_aPredictorScores;
    }

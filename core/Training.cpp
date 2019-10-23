@@ -336,7 +336,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
          EBM_ASSERT(IsClassification(m_runtimeLearningTypeOrCountTargetClasses));
          if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
             if(0 != cTrainingInstances) {
-               InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), 2);
+               InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });
             }
          } else {
             if(0 != cTrainingInstances) {
