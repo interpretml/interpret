@@ -5,7 +5,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <inttypes.h> // any of the fixed size types like int64_t
 #include <limits> // numeric_limits
-#include <type_traits> // std::is_standard_layout
+#include <type_traits> // std::is_standard_layout, std::is_integral
 #include <stdlib.h> // malloc, realloc, free
 #include <string.h> // memset
 #include <new> // std::nothrow

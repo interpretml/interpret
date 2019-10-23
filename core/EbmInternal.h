@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <type_traits> // is_integral
 
 // TODO : remove INVALID_POINTER, since there is no portable way to get a pointer that has all the upper bits, and using it is undefined behavior too!
 #define INVALID_POINTER (reinterpret_cast<void *>(~uintptr_t { 0 }))
