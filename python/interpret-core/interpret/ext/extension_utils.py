@@ -4,6 +4,8 @@
 import logging
 import pkg_resources
 import re
+from warnings import warn
+
 
 module_logger = logging.getLogger(__name__)
 
@@ -60,8 +62,9 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
             setattr(current_module, extension_class_name, extension_class)
 
         except Exception as e:  # pragma: no cover
-            module_logger.warning(
-                "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
-                    extension_key, entrypoint, e
-                )
+            msg = "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
+                extension_key, entrypoint, e
             )
+            module_logger.warning(msg)
+
+            warn(msg)
