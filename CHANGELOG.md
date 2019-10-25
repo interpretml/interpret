@@ -7,6 +7,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ## [v0.1.19] - 2019-10-25
 ### Changed
 - Changed classification metric exposed between C++/python for EBMs to log loss for future public use.
+- Warnings provided when extensions error on load.
 ### Fixed
 - Package joblib added to interpret-core as "required" extra.
 - Compiler fixes for Oracle Developer Studio.
