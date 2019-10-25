@@ -16,7 +16,7 @@ jobs:
       /bin/sh ./build.sh
 #      sudo apt-get -y install g++-multilib
 #      /bin/sh ./build.sh -32bit
-    condition: in(variables['image.name'], 'ubuntu')
+    condition: in(variables['image.name'], 'ubuntu-18.04')
     displayName: 'Building/moving native code (linux).'
   - script: |
       /bin/sh ./build.sh -32bit
