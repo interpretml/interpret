@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef ATTRIBUTE_INTERNAL_H
-#define ATTRIBUTE_INTERNAL_H
+#ifndef FEATURE_CORE_H
+#define FEATURE_CORE_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -15,9 +15,7 @@ class FeatureCore final {
 public:
    const size_t m_cBins;
    const size_t m_iFeatureData;
-   // TODO : implement feature to handle m_featureType
    const FeatureTypeCore m_featureType;
-   // TODO : implement feature to handle m_bMissing
    const bool m_bMissing;
 
    EBM_INLINE FeatureCore(const size_t cBins, const size_t iFeatureData, const FeatureTypeCore featureType, const bool bMissing)
@@ -28,4 +26,4 @@ public:
    }
 };
 
-#endif // ATTRIBUTE_INTERNAL_H
+#endif // FEATURE_CORE_H

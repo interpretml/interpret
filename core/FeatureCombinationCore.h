@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef ATTRIBUTE_COMBINATION_H
-#define ATTRIBUTE_COMBINATION_H
+#ifndef FEATURE_COMBINATION_CORE_H
+#define FEATURE_COMBINATION_CORE_H
 
 #include <string.h> // memset
 #include <stddef.h> // size_t, ptrdiff_t
@@ -12,7 +12,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCore.h"
 
-class FeatureCombinationCore final {
+struct FeatureCombinationCore final {
 public:
 
    struct FeatureCombinationEntry {
@@ -26,6 +26,8 @@ public:
    unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
+   // use the "struct hack" since Flexible array member method is not available in C++
+   // m_FeatureCombinationEntry must be the last item in this struct
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
    EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
@@ -82,7 +84,7 @@ public:
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
    }
 };
-static_assert(std::is_pod<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-POD data is probably undefined as to what the space after gets filled with");
+static_assert(std::is_standard_layout<FeatureCombinationCore>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout data is probably undefined as to what the space after gets filled with");
 
 // these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, and constexpr needs the size before constexpr
 constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {
@@ -101,4 +103,4 @@ public:
 static FeatureCombinationCheck DEBUG_FeatureCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
 #endif // NDEBUG
 
-#endif // ATTRIBUTE_COMBINATION_H
+#endif // FEATURE_COMBINATION_CORE_H

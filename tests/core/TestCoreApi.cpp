@@ -272,12 +272,12 @@ class TestApi {
          // binary classification
 #ifdef EXPAND_BINARY_LOGITS
          if(m_iZeroClassificationLogit < 0) {
-            return aScores[iScore];
+            return aScores[iTargetClassOrZero];
          } else {
-            if(m_iZeroClassificationLogit == iScore) {
+            if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
                return FractionalDataType { 0 };
             } else {
-               return aScores[iScore] - aScores[m_iZeroClassificationLogit];
+               return aScores[iTargetClassOrZero] - aScores[m_iZeroClassificationLogit];
             }
          }
 #else // EXPAND_BINARY_LOGITS
@@ -299,18 +299,18 @@ class TestApi {
          // multiclass
 #ifdef REDUCE_MULTICLASS_LOGITS
          if(m_iZeroClassificationLogit < 0) {
-            if(0 == iScore) {
+            if(0 == iTargetClassOrZero) {
                return FractionalDataType { 0 };
             } else {
-               return aScores[iScore - 1];
+               return aScores[iTargetClassOrZero - 1];
             }
          } else {
-            if(m_iZeroClassificationLogit == iScore) {
+            if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
                return FractionalDataType { 0 };
-            } else if(m_iZeroClassificationLogit < iScore) {
-               return aScores[iScore - 1];
+            } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iTargetClassOrZero) {
+               return aScores[iTargetClassOrZero - 1];
             } else {
-               return aScores[iScore];
+               return aScores[iTargetClassOrZero];
             }
          }
 #else // REDUCE_MULTICLASS_LOGITS
@@ -499,7 +499,7 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_trainingPredictionScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                        m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -655,7 +655,7 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_validationPredictionScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                        m_validationPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -762,7 +762,6 @@ public:
       return validationMetricReturn;
    }
 
-   // TODO : change this so that we first call GetCurrentModelExpanded OR GetBestModelExpanded, which will return a tensor expanded as needed THEN  we call an indexing function if desired
    FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -911,7 +910,7 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_interactionPredictionScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                        m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
@@ -1081,7 +1080,7 @@ TEST_CASE("zero learning rate, training, regression") {
 }
 
 TEST_CASE("zero learning rate, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
@@ -1169,7 +1168,7 @@ TEST_CASE("negative learning rate, training, regression") {
 }
 
 TEST_CASE("negative learning rate, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
@@ -1197,11 +1196,20 @@ TEST_CASE("negative learning rate, training, binary") {
          }
       }
    }
+#ifdef EXPAND_BINARY_LOGITS
+   CHECK(std::isnan(validationMetric));
+#else // EXPAND_BINARY_LOGITS
    CHECK(std::isinf(validationMetric));
+#endif // EXPAND_BINARY_LOGITS
+
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
+#ifdef EXPAND_BINARY_LOGITS
+   CHECK(std::isnan(modelValue));
+#else // EXPAND_BINARY_LOGITS
    CHECK_APPROX(modelValue, 16785686302.358746);
+#endif // EXPAND_BINARY_LOGITS
 }
 
 TEST_CASE("negative learning rate, training, multiclass") {
@@ -1247,7 +1255,7 @@ TEST_CASE("negative learning rate, training, multiclass") {
 }
 
 TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") {
-   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1267,7 +1275,7 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") 
 }
 
 TEST_CASE("zero countTreeSplitsMax, training, regression") {
-   // TODO : move this into our tests that iterate many loops and compare output for no splitting.  AND also loop this 
+   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1287,6 +1295,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
 }
 
 
+// TODO: decide what to do with this test
 //TEST_CASE("infinite target training set, training, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
@@ -1322,7 +1331,7 @@ TEST_CASE("Zero training instances, training, regression") {
 }
 
 TEST_CASE("Zero training instances, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
@@ -1388,7 +1397,7 @@ TEST_CASE("Zero validation instances, training, regression") {
 }
 
 TEST_CASE("Zero validation instances, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
@@ -1467,7 +1476,7 @@ TEST_CASE("Zero interaction instances, interaction, regression") {
 }
 
 TEST_CASE("Zero interaction instances, interaction, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddInteractionInstances(std::vector<ClassificationInstance> {});
    test.InitializeInteraction();
@@ -1666,7 +1675,7 @@ TEST_CASE("zero FeatureCombinations, training, regression") {
 }
 
 TEST_CASE("zero FeatureCombinations, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({});
    test.AddTrainingInstances({ ClassificationInstance(1, {}) });
@@ -1720,7 +1729,7 @@ TEST_CASE("FeatureCombination with zero features, training, regression") {
 }
 
 TEST_CASE("FeatureCombination with zero features, training, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
@@ -1807,7 +1816,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, regression") {
 }
 
 TEST_CASE("FeatureCombination with zero features, interaction, binary") {
-   TestApi test = TestApi(2);
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddInteractionInstances({ ClassificationInstance(0, {}) });
    test.InitializeInteraction();
@@ -1866,21 +1875,21 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
 }
 
 TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, training, binary") {
-   TestApi testZeroFeaturesInCombination = TestApi(2);
+   TestApi testZeroFeaturesInCombination = TestApi(2, 0);
    testZeroFeaturesInCombination.AddFeatures({});
    testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
    testZeroFeaturesInCombination.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testZeroFeaturesInCombination.AddValidationInstances({ ClassificationInstance(0, {}) });
    testZeroFeaturesInCombination.InitializeTraining();
 
-   TestApi testOneState = TestApi(2);
+   TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.InitializeTraining();
 
-   TestApi testTwoStates = TestApi(2);
+   TestApi testTwoStates = TestApi(2, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
@@ -2047,8 +2056,8 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, regr
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with one feature with one state, interaction, Binary") {
-   TestApi test = TestApi(2);
+TEST_CASE("FeatureCombination with one feature with one state, interaction, binary") {
+   TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
    test.InitializeInteraction();
@@ -2097,7 +2106,7 @@ TEST_CASE("Test Rehydration, training, regression") {
 }
 
 TEST_CASE("Test Rehydration, training, binary") {
-   TestApi testContinuous = TestApi(2);
+   TestApi testContinuous = TestApi(2, 0);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureCombinations({ {} });
    testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
@@ -2111,7 +2120,7 @@ TEST_CASE("Test Rehydration, training, binary") {
    FractionalDataType modelValueContinuous;
    FractionalDataType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestApi testRestart = TestApi(2);
+      TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
       testRestart.AddFeatureCombinations({ {} });
       testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
@@ -2172,6 +2181,132 @@ TEST_CASE("Test Rehydration, training, multiclass") {
       CHECK_APPROX(modelValueContinuous, model2);
    }
 }
+
+TEST_CASE("Test data bit packing extremes, training, regression") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(k_learningTypeRegression);
+            test.AddFeatures({ FeatureTest(cBins) });
+            test.AddFeatureCombinations({ { 0 } });
+
+            std::vector<RegressionInstance> trainingInstances;
+            std::vector<RegressionInstance> validationInstances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               trainingInstances.push_back(RegressionInstance(7, { cBins - 1 }));
+               validationInstances.push_back(RegressionInstance(8, { cBins - 1 }));
+            }
+            test.AddTrainingInstances(trainingInstances);
+            test.AddValidationInstances(validationInstances);
+            test.InitializeTraining();
+
+            FractionalDataType validationMetric = test.Train(0);
+            CHECK_APPROX(validationMetric, 7.93);
+            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(modelValue, 0.07);
+         }
+      }
+   }
+}
+
+TEST_CASE("Test data bit packing extremes, training, binary") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(2, 0);
+            test.AddFeatures({ FeatureTest(cBins) });
+            test.AddFeatureCombinations({ { 0 } });
+
+            std::vector<ClassificationInstance> trainingInstances;
+            std::vector<ClassificationInstance> validationInstances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               trainingInstances.push_back(ClassificationInstance(0, { cBins - 1 }));
+               validationInstances.push_back(ClassificationInstance(1, { cBins - 1 }));
+            }
+            test.AddTrainingInstances(trainingInstances);
+            test.AddValidationInstances(validationInstances);
+            test.InitializeTraining();
+
+            FractionalDataType validationMetric = test.Train(0);
+            CHECK_APPROX(validationMetric, 0.70319717972663420);
+            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
+            CHECK_APPROX(modelValue, -0.02);
+         }
+      }
+   }
+}
+
+TEST_CASE("Test data bit packing extremes, interaction, regression") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(k_learningTypeRegression);
+            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
+
+            std::vector<RegressionInstance> instances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               instances.push_back(RegressionInstance(7, { 0, cBins - 1 }));
+            }
+            test.AddInteractionInstances(instances);
+            test.InitializeInteraction();
+
+            FractionalDataType metric = test.InteractionScore({ 0, 1 });
+            if(cBins == 1) {
+               CHECK_APPROX(metric, 0);
+            } else {
+               CHECK_APPROX(metric, 49 * cInstances);
+            }
+         }
+      }
+   }
+}
+
+TEST_CASE("Test data bit packing extremes, interaction, binary") {
+   for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
+      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
+      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
+         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+            TestApi test = TestApi(2, 0);
+            test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
+
+            std::vector<ClassificationInstance> instances;
+            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+               instances.push_back(ClassificationInstance(1, { 0, cBins - 1 }));
+            }
+            test.AddInteractionInstances(instances);
+            test.InitializeInteraction();
+
+            FractionalDataType metric = test.InteractionScore({ 0, 1 });
+            if(cBins == 1) {
+               CHECK_APPROX(metric, 0);
+            } else {
+#ifdef EXPAND_BINARY_LOGITS
+               // TODO : check if it's surprising that our interaction score doubles when we change a binary classification with 1 logit to a binary classification with 2 logits
+               CHECK_APPROX(metric, 0.5 * cInstances);
+#else // EXPAND_BINARY_LOGITS
+               CHECK_APPROX(metric, 0.25 * cInstances);
+#endif // EXPAND_BINARY_LOGITS
+            }
+         }
+      }
+   }
+}
+
 
 void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
    UNUSED(traceLevel);

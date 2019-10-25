@@ -216,7 +216,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
    pFeatureCombination->Initialize(cFeaturesInCombination, 0);
 
    pFeatureCombinationIndex = featureIndexes; // restart from the start
-   FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+   FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
    do {
       const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);

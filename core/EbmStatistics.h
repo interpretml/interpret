@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef STATISTICS_H
-#define STATISTICS_H
+#ifndef EBM_STATISTICS_H
+#define EBM_STATISTICS_H
 
 #include <cmath> // log, exp, sqrt, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
 #include <stddef.h> // size_t, ptrdiff_t
@@ -121,9 +121,9 @@ public:
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
-      // TODO: is there any way to avoid doing the negation below, like changing sumExp or what we store in memory?
+      // TODO: avoid doing the negation below.  Also, can we optimize further?
       return -std::log(std::exp(aValidationLogWeight[binnedActualValue]) / sumExp);
    }
 };
 
-#endif // STATISTICS_H
+#endif // EBM_STATISTICS_H

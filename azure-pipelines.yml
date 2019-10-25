@@ -4,28 +4,29 @@ jobs:
     matrix:
       Linux:
         image.name: 'ubuntu-16.04'
-      Windows:
-        image.name: 'windows-2019'
       Mac:
         image.name: 'macOS-10.13'
+      Windows:
+        image.name: 'windows-2019'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
   steps:
   - script: |
+      sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-    displayName: 'Install prereq for linux.'
-    condition: in(variables['image.name'], 'ubuntu-16.04')
+      /bin/sh ./build.sh -32bit
+    condition: startsWith(variables['image.name'], 'ubuntu')
+    displayName: 'Building native code (Linux)'
   - script: |
-      chmod +x build.sh
-      ./build.sh -32bit
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
-    displayName: 'Building/moving native code (linux/mac).'
+      /bin/sh ./build.sh -32bit
+    condition: startsWith(variables['image.name'], 'macOS')
+    displayName: 'Building native code (Mac)'
   - script: |
-      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      build.bat -32bit
-    condition: in(variables['image.name'], 'windows-2019')
-    displayName: 'Building/moving native code. (win)'
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      .\build.bat -32bit
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'Building native code (Windows)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -34,6 +35,7 @@ jobs:
       targetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Move binary to staging'
   - task: PublishBuildArtifacts@1
+    condition: succeeded()
     inputs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)
       artifactName: native-$(image.name)
@@ -45,10 +47,10 @@ jobs:
     matrix:
       Linux:
         image.name: 'ubuntu-16.04'
-      Windows:
-        image.name: 'windows-2019'
       Mac:
         image.name: 'macOS-10.13'
+      Windows:
+        image.name: 'windows-2019'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
@@ -59,6 +61,7 @@ jobs:
       downloadType: 'specific'
     displayName: 'Download build artifacts'
   - task: CopyFiles@2
+    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebmcore_*'
@@ -66,18 +69,20 @@ jobs:
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - script: |
+      sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-    displayName: 'Install prereq for linux.'
-    condition: in(variables['image.name'], 'ubuntu-16.04')
+      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+    condition: startsWith(variables['image.name'], 'ubuntu')
+    displayName: 'Testing native code (Linux)'
   - script: |
       /bin/sh ./tests/core/test_core_api.sh -nobuildcore
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
-    displayName: 'Testing native code (linux/mac).'
+    condition: startsWith(variables['image.name'], 'macOS')
+    displayName: 'Testing native code (Mac)'
   - script: |
-      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\tests\core\test_core_api.bat -nobuildcore
-    condition: in(variables['image.name'], 'windows-2019')
-    displayName: 'Testing native code. (win)'
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'Testing native code (Windows)'
 
 - job: 'Build_JS_Inline'
   pool:
@@ -98,10 +103,11 @@ jobs:
       targetFolder: '$(Build.ArtifactStagingDirectory)'
     displayName: 'Move assets to staging'
   - task: PublishBuildArtifacts@1
+    condition: succeeded()
     inputs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)
       artifactName: interpret-inline-bundle
-    displayName: 'Publish interpret inline library'
+    displayName: 'Publish interpret-inline.js library'
 
 - job: 'Build_Package'
   dependsOn: ['Build_Native', 'Build_JS_Inline']
@@ -114,25 +120,29 @@ jobs:
       downloadType: 'specific'
     displayName: 'Download build artifacts'
   - task: UsePythonVersion@0
+    condition: succeeded()
     inputs:
       versionSpec: '3.6'
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
+    condition: succeeded()
     displayName: 'Install tools'
   - task: CopyFiles@2
+    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebmcore_*'
+      contents: '**/lib_ebmcore_*_x64*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
   - task: CopyFiles@2
+    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
-    displayName: 'Move Interpret inline to Python layer'
+    displayName: 'Move interpret-inline.js to Python layer'
   - script: python setup.py bdist_wheel -d ../../staging
     condition: succeeded()
     workingDirectory: 'python/interpret-core'
@@ -149,6 +159,7 @@ jobs:
       targetFolder: '$(Build.ArtifactStagingDirectory)/wheel'
     displayName: 'Move wheel for Build Artifact'
   - task: PublishBuildArtifacts@1
+    condition: succeeded()
     inputs:
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/wheel'
       artifactName: 'wheel'
@@ -176,9 +187,9 @@ jobs:
       WindowsPython37:
         python.version: '3.7'
         image.name: 'windows-2019'
-#      MacPython35:
-#        python.version: '3.5'
-#        image.name: 'macOS-10.13'
+      MacPython35:
+        python.version: '3.5'
+        image.name: 'macOS-10.13'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.13'
@@ -195,6 +206,7 @@ jobs:
       downloadType: 'specific'
     displayName: 'Download build artifacts'
   - task: CopyFiles@2
+    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/lib_ebmcore_*'
@@ -202,6 +214,7 @@ jobs:
       flattenFolders: true
     displayName: 'Move binary to Python layer'
   - task: CopyFiles@2
+    condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       contents: '**/interpret-inline.js'
@@ -209,43 +222,37 @@ jobs:
       flattenFolders: true
     displayName: 'Move Interpret inline to Python layer'
   - task: UsePythonVersion@0
+    condition: succeeded()
     inputs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
   - script: python -m pip install --upgrade pip setuptools wheel
+    condition: succeeded()
     displayName: 'Install tools'
-  - script: |
-      python -m pip install numpy scipy
+  - script: python -m pip install numpy scipy
+    condition: succeeded()
     workingDirectory: python/interpret-core
     displayName: 'Install numpy/scipy first for mis-specified pip packages.'
   - script: |
       mkdir -p ~/.matplotlib
       echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
-    condition: in(variables['image.name'], 'macOS-10.13')
+    condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Matplotlib patch for mac.'
-  - script: |
-      python -m pip install -r dev-requirements.txt
+  - script: python -m pip install -r dev-requirements.txt
+    condition: succeeded()
     workingDirectory: python/interpret-core
-    displayName: 'Install requirements (Windows)'
-    condition: in(variables['image.name'], 'windows-2019')
-  - script: |
-      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
-      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
-      python -m pip install -r dev-requirements.txt
-    workingDirectory: python/interpret-core
-    displayName: 'Install requirements (Non-Windows)'
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    displayName: 'Install requirements (Linux/Mac/Windows)'
   - script: |
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: in(variables['image.name'], 'windows-2019')
+    condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Run pytest (Windows)'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
-    displayName: 'Run pytest (Non-Windows)'
+    condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
+    displayName: 'Run pytest (Linux/Mac)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
@@ -257,13 +264,11 @@ jobs:
       codeCoverageTool: Cobertura
       summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
       reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
-    condition: in(variables['image.name'], 'windows-2019')
+    condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
-  dependsOn:
-  - 'Test'
-  - 'Test_Native'
+  dependsOn: ['Test_Native', 'Test']
   pool:
     vmImage: 'ubuntu-16.04'
   steps:

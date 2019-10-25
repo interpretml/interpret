@@ -11,7 +11,7 @@
 #include "EbmInternal.h" // EBM_INLINE & UNLIKLEY
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
-#include "DataSetByFeatureCombination.h" // we use an iterator which requires a full definition.  TODO : in the future we'll be eliminating the iterator, so check back here to see if we can eliminate this include file
+#include "DataSetByFeatureCombination.h"
 #include "SamplingWithReplacement.h"
 
 SamplingWithReplacement::~SamplingWithReplacement() {

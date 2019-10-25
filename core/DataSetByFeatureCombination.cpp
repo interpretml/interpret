@@ -183,7 +183,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);
@@ -263,28 +263,25 @@ free_all:
 }
 
 DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength)
-   : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FractionalDataType *>(INVALID_POINTER))
-   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FractionalDataType *>(INVALID_POINTER))
-   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(INVALID_POINTER))
+   : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FractionalDataType *>(nullptr))
+   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FractionalDataType *>(nullptr))
+   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(nullptr))
    , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
    , m_cInstances(cInstances)
-   , m_cFeatureCombinations(cFeatureCombinations) {
-
+   , m_cFeatureCombinations(cFeatureCombinations) 
+   , m_bAllocateResidualErrors(bAllocateResidualErrors)
+   , m_bAllocatePredictorScores(bAllocatePredictorScores)
+   , m_bAllocateTargetData(bAllocateTargetData) {
    EBM_ASSERT(0 < cInstances);
 }
 
 DataSetByFeatureCombination::~DataSetByFeatureCombination() {
    LOG_0(TraceLevelInfo, "Entered ~DataSetByFeatureCombination");
 
-   if(INVALID_POINTER != m_aResidualErrors) {
-      free(m_aResidualErrors);
-   }
-   if(INVALID_POINTER != m_aPredictorScores) {
-      free(m_aPredictorScores);
-   }
-   if(INVALID_POINTER != m_aTargetData) {
-      free(const_cast<StorageDataTypeCore *>(m_aTargetData));
-   }
+   free(m_aResidualErrors);
+   free(m_aPredictorScores);
+   free(const_cast<StorageDataTypeCore *>(m_aTargetData));
+
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(0 < m_cFeatureCombinations);
       const StorageDataTypeCore * const * paInputData = m_aaInputData;

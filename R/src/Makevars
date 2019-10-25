@@ -5,7 +5,7 @@
 COREDIR=../../core
 
 CXX_STD = CXX11
-PKG_CPPFLAGS= -I$(COREDIR) -I$(COREDIR)/inc -DEBMCORE_R
+PKG_CPPFLAGS= -I$(COREDIR) -I$(COREDIR)/inc -DEBMCORE_R -DEBMCORE_EXPORTS
 PKG_CXXFLAGS=$(CXX_VISIBILITY)
 
 OBJECTS = interpret_R.o $(COREDIR)/DataSetByFeature.o $(COREDIR)/DataSetByFeatureCombination.o $(COREDIR)/InteractionDetection.o $(COREDIR)/Logging.o $(COREDIR)/SamplingWithReplacement.o $(COREDIR)/Training.o

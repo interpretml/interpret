@@ -5,11 +5,11 @@
 #ifndef EBMCORE_H
 #define EBMCORE_H
 
+#include <inttypes.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
-
-#include <inttypes.h>
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
@@ -20,31 +20,31 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
-#ifdef EBMCORE_R
-#define EBMCORE_IMPORT_EXPORT_INCLUDE
-#define EBMCORE_IMPORT_EXPORT_BODY
+#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
+#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
+#define EBMCORE_IMPORT_EXPORT_BODY extern
 #else // EBMCORE_R
-#define EBMCORE_IMPORT_EXPORT_INCLUDE
-#define EBMCORE_IMPORT_EXPORT_BODY __attribute__ ((visibility ("default")))
+#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
+#define EBMCORE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
 #endif // EBMCORE_R
 
 #define EBMCORE_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
 
-#ifdef EBMCORE_R
-#define EBMCORE_IMPORT_EXPORT_INCLUDE
-#define EBMCORE_IMPORT_EXPORT_BODY
+#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
+#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
+#define EBMCORE_IMPORT_EXPORT_BODY extern
 #else // EBMCORE_R
 
 #ifdef EBMCORE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
-#define EBMCORE_IMPORT_EXPORT_INCLUDE
-#define EBMCORE_IMPORT_EXPORT_BODY
+#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
+#define EBMCORE_IMPORT_EXPORT_BODY extern
 #else // EBMCORE_EXPORTS
 // __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
-#define EBMCORE_IMPORT_EXPORT_INCLUDE __declspec(dllimport)
-#define EBMCORE_IMPORT_EXPORT_BODY
+#define EBMCORE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
+#define EBMCORE_IMPORT_EXPORT_BODY extern
 #endif // EBMCORE_EXPORTS
 
 #endif // EBMCORE_R
@@ -62,11 +62,11 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-typedef struct {
+typedef struct _EbmTraining {
    // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } *PEbmTraining;
-typedef struct {
+typedef struct _EbmInteraction {
    // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } *PEbmInteraction;
@@ -84,14 +84,14 @@ typedef int64_t IntegerDataType;
 const IntegerDataType FeatureTypeOrdinal = 0;
 const IntegerDataType FeatureTypeNominal = 1;
 
-typedef struct {
+typedef struct _EbmCoreFeature {
    IntegerDataType featureType; // enums aren't standardized accross languages, so use IntegerDataType values
    IntegerDataType hasMissing;
    // TODO make the order (countBins, hasMissing, featureType).  In languages that default values countBins is the only item in this struct that can't really be defaulted, so put it at the top, as it will be in our caller's language.  hasMissing is TRUE/FALSE, so the user doesn't need to remember much there, make the featureType last since it's the most forgettable in terms of possible values
    IntegerDataType countBins;
 } EbmCoreFeature;
 
-typedef struct {
+typedef struct _EbmCoreFeatureCombination {
    IntegerDataType countFeaturesInCombination;
 } EbmCoreFeatureCombination;
 

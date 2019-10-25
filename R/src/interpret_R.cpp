@@ -11,10 +11,7 @@
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
-// TODO: remove visibility to internal functions that don't need visibiliy -> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Controlling-visibility
-// TODO: Improve calling speed (see section 5.4.1 Speed considerations) https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines
 // TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate before calling the R error or warning functions
-// todo: use our define in the compilation scrips in the larger program to determine if we're being compiled in R in our larger program (or USING_R, which might be set by R's compilation scripts and therefore be always defined at compilation time)
 
 EBM_INLINE bool IsSingleDoubleVector(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {
@@ -90,6 +87,7 @@ EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures)
    *pcFeatures = cFeatures;
 
    EbmCoreFeature * const aFeatures = reinterpret_cast<EbmCoreFeature *>(R_alloc(cFeatures, static_cast<int>(sizeof(EbmCoreFeature))));
+   // R_alloc doesn't return nullptr, so we don't need to check aFeatures
    EbmCoreFeature * pFeature = aFeatures;
    for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
       const SEXP oneFeature = VECTOR_ELT(features, iFeature);
@@ -240,6 +238,7 @@ EbmCoreFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombina
    *pcFeatureCombinations = cFeatureCombinations;
 
    EbmCoreFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmCoreFeatureCombination *>(R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmCoreFeatureCombination))));
+   // R_alloc doesn't return nullptr, so we don't need to check aFeatureCombinations
    EbmCoreFeatureCombination * pFeatureCombination = aFeatureCombinations;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
       const SEXP oneFeatureCombination = VECTOR_ELT(featureCombinations, iFeatureCombination);
@@ -321,28 +320,29 @@ size_t CountFeatureCombinationsIndexes(const size_t cFeatureCombinations, const 
    return cFeatureCombinationsIndexes;
 }
 
-IntegerDataType * ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems) {
+bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntegerDataType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
    if(REALSXP != TYPEOF(items)) {
       LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes REALSXP != TYPEOF(items)");
-      return nullptr;
+      return true;
    }
    const R_xlen_t countItemsR = xlength(items);
    if(!IsNumberConvertable<size_t, R_xlen_t>(countItemsR)) {
       LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<size_t, R_xlen_t>(countItemsR)");
-      return nullptr;
+      return true;
    }
    const size_t cItems = static_cast<size_t>(countItemsR);
    if(!IsNumberConvertable<IntegerDataType, size_t>(cItems)) {
       LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<IntegerDataType, size_t>(cItems)");
-      return nullptr;
+      return true;
    }
    *pcItems = cItems;
 
-   IntegerDataType * aItems = static_cast<IntegerDataType *>(INVALID_POINTER);
+   IntegerDataType * aItems = nullptr;
    if(0 != cItems) {
       aItems = reinterpret_cast<IntegerDataType *>(R_alloc(cItems, static_cast<int>(sizeof(IntegerDataType))));
+      // R_alloc doesn't return nullptr, so we don't need to check aItems
       IntegerDataType * pItem = aItems;
       const IntegerDataType * const pItemEnd = aItems + cItems;
       const double * pOriginal = REAL(items);
@@ -350,38 +350,40 @@ IntegerDataType * ConvertDoublesToIndexes(const SEXP items, size_t * const pcIte
          const double val = *pOriginal;
          if(!IsDoubleToIntegerDataTypeIndexValid(val)) {
             LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsDoubleToIntegerDataTypeIndexValid(val)");
-            return nullptr;
+            return true;
          }
          *pItem = static_cast<IntegerDataType>(val);
          ++pItem;
          ++pOriginal;
       } while(pItemEnd != pItem);
    }
-   return aItems;
+   *pRet = aItems;
+   return false;
 }
 
-FractionalDataType * ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems) {
+bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const FractionalDataType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
    if(REALSXP != TYPEOF(items)) {
-      LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes REALSXP != TYPEOF(items)");
-      return nullptr;
+      LOG_0(TraceLevelError, "ERROR ConvertDoublesToDoubles REALSXP != TYPEOF(items)");
+      return true;
    }
    const R_xlen_t countItemsR = xlength(items);
    if(!IsNumberConvertable<size_t, R_xlen_t>(countItemsR)) {
-      LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<size_t, R_xlen_t>(countItemsR)");
-      return nullptr;
+      LOG_0(TraceLevelError, "ERROR ConvertDoublesToDoubles !IsNumberConvertable<size_t, R_xlen_t>(countItemsR)");
+      return true;
    }
    const size_t cItems = static_cast<size_t>(countItemsR);
    if(!IsNumberConvertable<IntegerDataType, size_t>(cItems)) {
-      LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<IntegerDataType, size_t>(cItems)");
-      return nullptr;
+      LOG_0(TraceLevelError, "ERROR ConvertDoublesToDoubles !IsNumberConvertable<IntegerDataType, size_t>(cItems)");
+      return true;
    }
    *pcItems = cItems;
 
-   FractionalDataType * aItems = static_cast<FractionalDataType *>(INVALID_POINTER);
+   FractionalDataType * aItems = nullptr;
    if(0 != cItems) {
       aItems = reinterpret_cast<FractionalDataType *>(R_alloc(cItems, static_cast<int>(sizeof(FractionalDataType))));
+      // R_alloc doesn't return nullptr, so we don't need to check aItems
       FractionalDataType * pItem = aItems;
       const FractionalDataType * const pItemEnd = aItems + cItems;
       const double * pOriginal = REAL(items);
@@ -392,7 +394,8 @@ FractionalDataType * ConvertDoublesToDoubles(const SEXP items, size_t * const pc
          ++pOriginal;
       } while(pItemEnd != pItem);
    }
-   return aItems;
+   *pRet = aItems;
+   return false;
 }
 
 SEXP InitializeTrainingRegression_R(
@@ -450,8 +453,8 @@ SEXP InitializeTrainingRegression_R(
    }
 
    size_t cFeatureCombinationsIndexesActual;
-   IntegerDataType * const aFeatureCombinationIndexes = ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual);
-   if(nullptr == aFeatureCombinationIndexes) {
+   const IntegerDataType * aFeatureCombinationIndexes;
+   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -461,16 +464,16 @@ SEXP InitializeTrainingRegression_R(
    }
 
    size_t cTrainingInstances;
-   FractionalDataType * const aTrainingTargets = ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances);
-   if(nullptr == aTrainingTargets) {
+   const FractionalDataType * aTrainingTargets;
+   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countTrainingTargets = static_cast<IntegerDataType>(cTrainingInstances);
 
    size_t cTrainingBinnedData;
-   IntegerDataType * const aTrainingBinnedData = ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData);
-   if(nullptr == aTrainingBinnedData) {
+   const IntegerDataType * aTrainingBinnedData;
+   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -483,11 +486,10 @@ SEXP InitializeTrainingRegression_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aTrainingPredictorScores = nullptr;
+   const FractionalDataType * aTrainingPredictorScores = nullptr;
    if(NILSXP != TYPEOF(trainingPredictorScores)) {
       size_t cTrainingPredictorScores;
-      aTrainingPredictorScores = ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores);
-      if(nullptr == aTrainingPredictorScores) {
+      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -498,16 +500,16 @@ SEXP InitializeTrainingRegression_R(
    }
 
    size_t cValidationInstances;
-   FractionalDataType * const aValidationTargets = ConvertDoublesToDoubles(validationTargets, &cValidationInstances);
-   if(nullptr == aValidationTargets) {
+   const FractionalDataType * aValidationTargets;
+   if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countValidationTargets = static_cast<IntegerDataType>(cValidationInstances);
 
    size_t cValidationBinnedData;
-   IntegerDataType * const aValidationBinnedData = ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData);
-   if(nullptr == aValidationBinnedData) {
+   const IntegerDataType * aValidationBinnedData;
+   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -520,11 +522,10 @@ SEXP InitializeTrainingRegression_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aValidationPredictorScores = nullptr;
+   const FractionalDataType * aValidationPredictorScores = nullptr;
    if(NILSXP != TYPEOF(validationPredictorScores)) {
       size_t cValidationPredictorScores;
-      aValidationPredictorScores = ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores);
-      if(nullptr == aValidationPredictorScores) {
+      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -617,8 +618,8 @@ SEXP InitializeTrainingClassification_R(
    }
 
    size_t cFeatureCombinationsIndexesActual;
-   IntegerDataType * const aFeatureCombinationIndexes = ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual);
-   if(nullptr == aFeatureCombinationIndexes) {
+   const IntegerDataType * aFeatureCombinationIndexes;
+   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -644,16 +645,16 @@ SEXP InitializeTrainingClassification_R(
    const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cTrainingInstances;
-   IntegerDataType * const aTrainingTargets = ConvertDoublesToIndexes(trainingTargets, &cTrainingInstances);
-   if(nullptr == aTrainingTargets) {
+   const IntegerDataType * aTrainingTargets;
+   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countTrainingTargets = static_cast<IntegerDataType>(cTrainingInstances);
 
    size_t cTrainingBinnedData;
-   IntegerDataType * const aTrainingBinnedData = ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData);
-   if(nullptr == aTrainingBinnedData) {
+   const IntegerDataType * aTrainingBinnedData;
+   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -666,11 +667,10 @@ SEXP InitializeTrainingClassification_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aTrainingPredictorScores = nullptr;
+   const FractionalDataType * aTrainingPredictorScores = nullptr;
    if(NILSXP != TYPEOF(trainingPredictorScores)) {
       size_t cTrainingPredictorScores;
-      aTrainingPredictorScores = ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores);
-      if(nullptr == aTrainingPredictorScores) {
+      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -685,16 +685,16 @@ SEXP InitializeTrainingClassification_R(
    }
 
    size_t cValidationInstances;
-   IntegerDataType * const aValidationTargets = ConvertDoublesToIndexes(validationTargets, &cValidationInstances);
-   if(nullptr == aValidationTargets) {
+   const IntegerDataType * aValidationTargets;
+   if(ConvertDoublesToIndexes(validationTargets, &cValidationInstances, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countValidationTargets = static_cast<IntegerDataType>(cValidationInstances);
 
    size_t cValidationBinnedData;
-   IntegerDataType * const aValidationBinnedData = ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData);
-   if(nullptr == aValidationBinnedData) {
+   const IntegerDataType * aValidationBinnedData;
+   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -707,11 +707,10 @@ SEXP InitializeTrainingClassification_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aValidationPredictorScores = nullptr;
+   const FractionalDataType * aValidationPredictorScores = nullptr;
    if(NILSXP != TYPEOF(validationPredictorScores)) {
       size_t cValidationPredictorScores;
-      aValidationPredictorScores = ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores);
-      if(nullptr == aValidationPredictorScores) {
+      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -1035,16 +1034,16 @@ SEXP InitializeInteractionRegression_R(
    const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cInstances;
-   FractionalDataType * const aTargets = ConvertDoublesToDoubles(targets, &cInstances);
-   if(nullptr == aTargets) {
+   const FractionalDataType * aTargets;
+   if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
 
    size_t cBinnedData;
-   IntegerDataType * const aBinnedData = ConvertDoublesToIndexes(binnedData, &cBinnedData);
-   if(nullptr == aBinnedData) {
+   const IntegerDataType * aBinnedData;
+   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -1057,11 +1056,10 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aPredictorScores = nullptr;
+   const FractionalDataType * aPredictorScores = nullptr;
    if(NILSXP != TYPEOF(predictorScores)) {
       size_t cPredictorScores;
-      aPredictorScores = ConvertDoublesToDoubles(predictorScores, &cPredictorScores);
-      if(nullptr == aPredictorScores) {
+      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -1124,16 +1122,16 @@ SEXP InitializeInteractionClassification_R(
    const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cInstances;
-   IntegerDataType * const aTargets = ConvertDoublesToIndexes(targets, &cInstances);
-   if(nullptr == aTargets) {
+   const IntegerDataType * aTargets;
+   if(ConvertDoublesToIndexes(targets, &cInstances, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
    const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
 
    size_t cBinnedData;
-   IntegerDataType * const aBinnedData = ConvertDoublesToIndexes(binnedData, &cBinnedData);
-   if(nullptr == aBinnedData) {
+   const IntegerDataType * aBinnedData;
+   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
@@ -1146,11 +1144,10 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   FractionalDataType * aPredictorScores = nullptr;
+   const FractionalDataType * aPredictorScores = nullptr;
    if(NILSXP != TYPEOF(predictorScores)) {
       size_t cPredictorScores;
-      aPredictorScores = ConvertDoublesToDoubles(predictorScores, &cPredictorScores);
-      if(nullptr == aPredictorScores) {
+      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
          // we've already logged any errors
          return R_NilValue;
       }
@@ -1197,8 +1194,8 @@ SEXP GetInteractionScore_R(
    }
 
    size_t cFeaturesInCombination;
-   IntegerDataType * const aFeatureIndexes = ConvertDoublesToIndexes(featureIndexes, &cFeaturesInCombination);
-   if(nullptr == aFeatureIndexes) {
+   const IntegerDataType * aFeatureIndexes;
+   if(ConvertDoublesToIndexes(featureIndexes, &cFeaturesInCombination, &aFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
