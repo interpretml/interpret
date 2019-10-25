@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{a647bdd9-8305-4ee3-af8f-c2f88e3e5053}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>conftest.py</StartupFile>
+    <StartupFile>interpret\develop.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
