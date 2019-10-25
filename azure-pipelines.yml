@@ -231,9 +231,9 @@ jobs:
     displayName: 'Install requirements (Windows)'
     condition: startsWith(variables['image.name'], 'windows')
   - script: |
+      python -m pip install -r dev-requirements.txt
 #      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
 #      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
-      python -m pip install -r dev-requirements.txt
     workingDirectory: python/interpret-core
     displayName: 'Install requirements (Linux/Mac)'
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
