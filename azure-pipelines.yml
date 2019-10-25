@@ -13,14 +13,15 @@ jobs:
     vmImage: '$(image.name)'
   steps:
   - script: |
-      sudo apt-get -y install g++-multilib
-    displayName: 'Install prereq for linux.'
-    condition: in(variables['image.name'], 'ubuntu-18.04')
+      /bin/sh ./build.sh
+#      sudo apt-get -y install g++-multilib
+#      /bin/sh ./build.sh -32bit
+    condition: in(variables['image.name'], 'ubuntu')
+    displayName: 'Building/moving native code (linux).'
   - script: |
-      chmod +x build.sh
-      ./build.sh -32bit
-    condition: in(variables['image.name'], 'ubuntu-18.04', 'macOS-10.13')
-    displayName: 'Building/moving native code (linux/mac).'
+      /bin/sh ./build.sh -32bit
+    condition: in(variables['image.name'], 'macOS-10.13')
+    displayName: 'Building/moving native code (mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       build.bat -32bit
@@ -65,14 +66,15 @@ jobs:
       targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
-  - script: |
-      sudo apt-get -y install g++-multilib
-    displayName: 'Install prereq for linux.'
-    condition: in(variables['image.name'], 'ubuntu-16.04')
+#  - script: |
+#      sudo apt-get -y install g++-multilib
+#      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+#    condition: in(variables['image.name'], 'ubuntu-16.04')
+#    displayName: 'Testing native code (linux).'
   - script: |
       /bin/sh ./tests/core/test_core_api.sh -nobuildcore
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
-    displayName: 'Testing native code (linux/mac).'
+    condition: in(variables['image.name'], 'macOS-10.13')
+    displayName: 'Testing native code (mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\tests\core\test_core_api.bat -nobuildcore
