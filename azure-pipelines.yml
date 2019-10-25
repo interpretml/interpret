@@ -3,7 +3,7 @@ jobs:
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
       Windows:
         image.name: 'windows-2019'
       Mac:
@@ -15,11 +15,11 @@ jobs:
   - script: |
       sudo apt-get -y install g++-multilib
     displayName: 'Install prereq for linux.'
-    condition: in(variables['image.name'], 'ubuntu-16.04')
+    condition: in(variables['image.name'], 'ubuntu-18.04')
   - script: |
       chmod +x build.sh
       ./build.sh -32bit
-    condition: in(variables['image.name'], 'ubuntu-16.04', 'macOS-10.13')
+    condition: in(variables['image.name'], 'ubuntu-18.04', 'macOS-10.13')
     displayName: 'Building/moving native code (linux/mac).'
   - script: |
       set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
