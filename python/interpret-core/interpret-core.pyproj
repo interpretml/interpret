@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{ed16326f-19c9-4360-a976-e11e0979b790}</ProjectGuid>
+    <ProjectGuid>{a647bdd9-8305-4ee3-af8f-c2f88e3e5053}</ProjectGuid>
     <ProjectHome />
     <StartupFile>conftest.py</StartupFile>
     <SearchPath />
@@ -11,7 +11,9 @@
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
+    <InterpreterId>CondaEnv|CondaEnv|testenv</InterpreterId>
+    <TestFramework>Pytest</TestFramework>
+    <IsWindowsApplication>False</IsWindowsApplication>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -25,6 +27,8 @@
     <Content Include="interpret\visual\assets\favicon.ico" />
     <Content Include="interpret\visual\assets\udash.css" />
     <Content Include="interpret\visual\assets\udash.js" />
+    <Content Include="js\src\index.js" />
+    <Content Include="js\webpack.config.js" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -44,14 +48,24 @@
     <Compile Include="interpret\data\response.py" />
     <Compile Include="interpret\data\__init__.py" />
     <Compile Include="interpret\develop.py" />
-    <Compile Include="interpret\ext\blackbox\example_blackbox_explainer_ext.py" />
     <Compile Include="interpret\ext\blackbox\__init__.py" />
+    <Compile Include="interpret\ext\data\__init__.py" />
+    <Compile Include="interpret\ext\examples.py" />
+    <Compile Include="interpret\ext\extension.py" />
     <Compile Include="interpret\ext\extension_utils.py" />
+    <Compile Include="interpret\ext\glassbox\__init__.py" />
+    <Compile Include="interpret\ext\greybox\__init__.py" />
+    <Compile Include="interpret\ext\perf\__init__.py" />
+    <Compile Include="interpret\ext\provider\__init__.py" />
+    <Compile Include="interpret\ext\test\test_examples.py" />
+    <Compile Include="interpret\ext\test\__init__.py" />
     <Compile Include="interpret\ext\__init__.py" />
     <Compile Include="interpret\glassbox\decisiontree.py" />
     <Compile Include="interpret\glassbox\ebm\ebm.py" />
     <Compile Include="interpret\glassbox\ebm\internal.py" />
+    <Compile Include="interpret\glassbox\ebm\postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\test_ebm.py" />
+    <Compile Include="interpret\glassbox\ebm\test\test_postprocessing.py" />
     <Compile Include="interpret\glassbox\ebm\test\__init__.py" />
     <Compile Include="interpret\glassbox\ebm\utils.py" />
     <Compile Include="interpret\glassbox\ebm\__init__.py" />
@@ -61,28 +75,44 @@
     <Compile Include="interpret\glassbox\test\test_linear.py" />
     <Compile Include="interpret\glassbox\test\__init__.py" />
     <Compile Include="interpret\glassbox\__init__.py" />
+    <Compile Include="interpret\greybox\shaptree.py" />
+    <Compile Include="interpret\greybox\test\test_treeinterpreter.py" />
+    <Compile Include="interpret\greybox\test\__init__.py" />
+    <Compile Include="interpret\greybox\treeinterpreter.py" />
+    <Compile Include="interpret\greybox\__init__.py" />
     <Compile Include="interpret\perf\curve.py" />
     <Compile Include="interpret\perf\regression.py" />
     <Compile Include="interpret\perf\__init__.py" />
+    <Compile Include="interpret\provider\compute.py" />
+    <Compile Include="interpret\provider\test\test_providers.py" />
+    <Compile Include="interpret\provider\test\__init__.py" />
+    <Compile Include="interpret\provider\visualize.py" />
+    <Compile Include="interpret\provider\__init__.py" />
     <Compile Include="interpret\test\test_develop.py" />
     <Compile Include="interpret\test\test_example_notebooks.py" />
     <Compile Include="interpret\test\test_explainers.py" />
+    <Compile Include="interpret\test\test_ext.py" />
     <Compile Include="interpret\test\test_extension_utils.py" />
-    <Compile Include="interpret\test\test_ext_blackbox.py" />
     <Compile Include="interpret\test\test_interactive.py" />
+    <Compile Include="interpret\test\test_mli_interop.py" />
     <Compile Include="interpret\test\test_selenium.py" />
     <Compile Include="interpret\test\utils.py" />
     <Compile Include="interpret\test\__init__.py" />
     <Compile Include="interpret\utils\all.py" />
-    <Compile Include="interpret\utils\distributed.py" />
+    <Compile Include="interpret\utils\environment.py" />
+    <Compile Include="interpret\utils\shap.py" />
+    <Compile Include="interpret\utils\test\test_environment.py" />
     <Compile Include="interpret\utils\test\test_utils.py" />
     <Compile Include="interpret\utils\test\__init__.py" />
     <Compile Include="interpret\utils\__init__.py" />
     <Compile Include="interpret\version.py" />
     <Compile Include="interpret\visual\dashboard.py" />
+    <Compile Include="interpret\visual\inline.py" />
     <Compile Include="interpret\visual\interactive.py" />
     <Compile Include="interpret\visual\plot.py" />
     <Compile Include="interpret\visual\test\test_dashboard.py" />
+    <Compile Include="interpret\visual\test\test_inline.py" />
+    <Compile Include="interpret\visual\test\test_interactive.py" />
     <Compile Include="interpret\visual\test\__init__.py" />
     <Compile Include="interpret\visual\udash.py" />
     <Compile Include="interpret\visual\__init__.py" />
@@ -98,17 +128,34 @@
     <Folder Include="interpret\data" />
     <Folder Include="interpret\ext" />
     <Folder Include="interpret\ext\blackbox" />
+    <Folder Include="interpret\ext\data" />
+    <Folder Include="interpret\ext\glassbox" />
+    <Folder Include="interpret\ext\greybox" />
+    <Folder Include="interpret\ext\perf" />
+    <Folder Include="interpret\ext\provider" />
+    <Folder Include="interpret\ext\test" />
     <Folder Include="interpret\glassbox" />
     <Folder Include="interpret\glassbox\ebm" />
     <Folder Include="interpret\glassbox\ebm\test" />
     <Folder Include="interpret\glassbox\test" />
+    <Folder Include="interpret\greybox" />
+    <Folder Include="interpret\greybox\test" />
     <Folder Include="interpret\perf" />
+    <Folder Include="interpret\provider" />
+    <Folder Include="interpret\provider\test" />
     <Folder Include="interpret\test" />
     <Folder Include="interpret\utils" />
     <Folder Include="interpret\utils\test" />
     <Folder Include="interpret\visual" />
     <Folder Include="interpret\visual\assets" />
     <Folder Include="interpret\visual\test" />
+    <Folder Include="js" />
+    <Folder Include="js\src" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="CondaEnv|CondaEnv|testenv" />
+    <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda37-64" />
+    <InterpreterReference Include="Global|PythonCore|3.7" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>
