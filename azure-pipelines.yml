@@ -13,6 +13,8 @@ jobs:
     vmImage: '$(image.name)'
   steps:
   - script: |
+      sudo apt-get -y update
+      sudo apt-get -y install g++-multilib
       /bin/sh ./build.sh
 #      sudo apt-get -y install g++-multilib
 #      /bin/sh ./build.sh -32bit
@@ -25,8 +27,6 @@ jobs:
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\build.bat -32bit
-#      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-#      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building/moving native code. (Windows)'
   - task: CopyFiles@2
@@ -171,18 +171,18 @@ jobs:
       LinuxPython37:
         python.version: '3.7'
         image.name: 'ubuntu-16.04'
-      WindowsPython35:
-        python.version: '3.5'
-        image.name: 'windows-2019'
+#      WindowsPython35:
+#        python.version: '3.5'
+#        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
         image.name: 'windows-2019'
       WindowsPython37:
         python.version: '3.7'
         image.name: 'windows-2019'
-      MacPython35:
-        python.version: '3.5'
-        image.name: 'macOS-10.13'
+#      MacPython35:
+#        python.version: '3.5'
+#        image.name: 'macOS-10.13'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.13'
