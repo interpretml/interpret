@@ -15,9 +15,7 @@ jobs:
   - script: |
       sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-      /bin/sh ./build.sh
-#      sudo apt-get -y install g++-multilib
-#      /bin/sh ./build.sh -32bit
+      /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building/moving native code (Linux).'
   - script: |
@@ -46,8 +44,8 @@ jobs:
   dependsOn: 'Build_Native'
   strategy:
     matrix:
-#      Linux:
-#        image.name: 'ubuntu-16.04'
+      Linux:
+        image.name: 'ubuntu-16.04'
       Mac:
         image.name: 'macOS-10.13'
       Windows:
@@ -69,6 +67,7 @@ jobs:
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - script: |
+      sudo apt-get -y update
       sudo apt-get -y install g++-multilib
       /bin/sh ./tests/core/test_core_api.sh -nobuildcore
     condition: startsWith(variables['image.name'], 'ubuntu')
@@ -78,7 +77,7 @@ jobs:
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing native code (Mac).'
   - script: |
-      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\tests\core\test_core_api.bat -nobuildcore
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Testing native code. (Windows)'
@@ -180,9 +179,9 @@ jobs:
       WindowsPython37:
         python.version: '3.7'
         image.name: 'windows-2019'
-#      MacPython35:
-#        python.version: '3.5'
-#        image.name: 'macOS-10.13'
+      MacPython35:
+        python.version: '3.5'
+        image.name: 'macOS-10.13'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.13'
