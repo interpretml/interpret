@@ -23,9 +23,8 @@ jobs:
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building/moving native code (Mac).'
   - script: |
-      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\build.bat -32bit
-#      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building/moving native code. (Windows)'
   - task: CopyFiles@2
