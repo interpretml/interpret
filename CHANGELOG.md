@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.19] - 2019-10-25
+### Changed
+- Changed classification metric exposed between C++/python for EBMs to log loss for future public use.
+### Fixed
+- Package joblib added to interpret-core as "required" extra.
+- Compiler fixes for Oracle Developer Studio.
+- Removed undefined behavior in EBM for several unlikely scenarios.
+
 ## [v0.1.18] - 2019-10-09
 ### Added
 - Added "main_attr" argument to EBM models. Can now select a subset of features to train main effects on.
@@ -215,6 +223,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.19]: https://github.com/microsoft/interpret/releases/tag/v0.1.19
 [v0.1.18]: https://github.com/microsoft/interpret/releases/tag/v0.1.18
 [v0.1.17]: https://github.com/microsoft/interpret/releases/tag/v0.1.17
 [v0.1.16]: https://github.com/microsoft/interpret/releases/tag/v0.1.16
