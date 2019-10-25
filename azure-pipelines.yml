@@ -3,11 +3,11 @@ jobs:
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-18.04'
-      Windows:
-        image.name: 'windows-2019'
+        image.name: 'ubuntu-16.04'
       Mac:
         image.name: 'macOS-10.13'
+      Windows:
+        image.name: 'windows-2019'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
@@ -16,17 +16,17 @@ jobs:
       /bin/sh ./build.sh
 #      sudo apt-get -y install g++-multilib
 #      /bin/sh ./build.sh -32bit
-    condition: in(variables['image.name'], 'ubuntu-18.04')
-    displayName: 'Building/moving native code (linux).'
+    condition: startsWith(variables['image.name'], 'ubuntu')
+    displayName: 'Building/moving native code (Linux).'
   - script: |
       /bin/sh ./build.sh -32bit
-    condition: in(variables['image.name'], 'macOS-10.13')
-    displayName: 'Building/moving native code (mac).'
+    condition: startsWith(variables['image.name'], 'macOS')
+    displayName: 'Building/moving native code (Mac).'
   - script: |
-      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      build.bat -32bit
-    condition: in(variables['image.name'], 'windows-2019')
-    displayName: 'Building/moving native code. (win)'
+      .\build.bat -32bit
+#      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: 'Building/moving native code. (Windows)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -44,12 +44,12 @@ jobs:
   dependsOn: 'Build_Native'
   strategy:
     matrix:
-      Linux:
-        image.name: 'ubuntu-16.04'
-      Windows:
-        image.name: 'windows-2019'
+#      Linux:
+#        image.name: 'ubuntu-16.04'
       Mac:
         image.name: 'macOS-10.13'
+      Windows:
+        image.name: 'windows-2019'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
@@ -66,11 +66,11 @@ jobs:
       targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
-#  - script: |
-#      sudo apt-get -y install g++-multilib
-#      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
-#    condition: in(variables['image.name'], 'ubuntu-16.04')
-#    displayName: 'Testing native code (linux).'
+  - script: |
+      sudo apt-get -y install g++-multilib
+      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+    condition: in(variables['image.name'], 'ubuntu-16.04')
+    displayName: 'Testing native code (linux).'
   - script: |
       /bin/sh ./tests/core/test_core_api.sh -nobuildcore
     condition: in(variables['image.name'], 'macOS-10.13')

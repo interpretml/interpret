@@ -18,6 +18,7 @@ enc_temp_folder/
 *.egg-info/
 *.ipynb_checkpoints/
 venv/
+.pytest_cache/
 
 # General
 *.bak
