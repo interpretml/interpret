@@ -20,7 +20,7 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
-#ifdef EBMCORE_R
+#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern
 #else // EBMCORE_R
@@ -32,7 +32,7 @@ extern "C" {
 
 #elif defined(_MSC_VER) // compiler type
 
-#ifdef EBMCORE_R
+#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern
 #else // EBMCORE_R
