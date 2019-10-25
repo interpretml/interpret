@@ -23,8 +23,10 @@ jobs:
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building/moving native code (Mac).'
   - script: |
-      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\build.bat -32bit
+#      set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+#      set PATH=C:\Windows\system32\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building/moving native code. (Windows)'
   - task: CopyFiles@2
@@ -169,18 +171,18 @@ jobs:
       LinuxPython37:
         python.version: '3.7'
         image.name: 'ubuntu-16.04'
-#      WindowsPython35:
-#        python.version: '3.5'
-#        image.name: 'windows-2019'
+      WindowsPython35:
+        python.version: '3.5'
+        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
         image.name: 'windows-2019'
       WindowsPython37:
         python.version: '3.7'
         image.name: 'windows-2019'
-#      MacPython35:
-#        python.version: '3.5'
-#        image.name: 'macOS-10.13'
+      MacPython35:
+        python.version: '3.5'
+        image.name: 'macOS-10.13'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.13'
@@ -232,8 +234,6 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
   - script: |
       python -m pip install -r dev-requirements.txt
-#      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.6.9/x64/lib
-#      export LIBRARY_PATH=$LIBRARY_PATH:/opt/hostedtoolcache/Python/3.7.4/x64/lib
     workingDirectory: python/interpret-core
     displayName: 'Install requirements (Linux/Mac)'
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
