@@ -28,6 +28,12 @@ To create a development build:
 npm run build-dev
 ```
 
+## Using in python environment
+
+```sh
+  cp ../../../python/interpret-core/js/dist/bundle.js ../../../python/interpret-core/interpret/lib/interpret-inline.js
+```
+
 ## Running
 
 Open the file `dist/index.html` in your browser

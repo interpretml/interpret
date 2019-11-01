@@ -30,7 +30,7 @@ class Native:
         _fields_ = [
             # FeatureType featureType;
             ("featureType", ct.c_longlong),
-            # int64_t hasMissing;
+            # bool hasMissing;
             ("hasMissing", ct.c_longlong),
             # int64_t countBins;
             ("countBins", ct.c_longlong),
@@ -42,8 +42,6 @@ class Native:
             ("countFeaturesInCombination", ct.c_longlong)
         ]
 
-    LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
-
     # const signed char TraceLevelOff = 0;
     TraceLevelOff = 0
     # const signed char TraceLevelError = 1;
@@ -54,6 +52,8 @@ class Native:
     TraceLevelInfo = 3
     # const signed char TraceLevelVerbose = 4;
     TraceLevelVerbose = 4
+
+    LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
 
     def __init__(self, is_debug=False, log_level=None):
         self.is_debug = is_debug
@@ -85,23 +85,23 @@ class Native:
             # EbmCoreFeatureCombination * featureCombinations
             ct.POINTER(self.EbmCoreFeatureCombination),
             # int64_t * featureCombinationIndexes
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # int64_t countTrainingInstances
             ct.c_longlong,
             # double * trainingTargets
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t countValidationInstances
             ct.c_longlong,
             # double * validationTargets
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t countInnerBags
             ct.c_longlong,
         ]
@@ -119,25 +119,25 @@ class Native:
             # EbmCoreFeatureCombination * featureCombinations
             ct.POINTER(self.EbmCoreFeatureCombination),
             # int64_t * featureCombinationIndexes
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # int64_t countTargetClasses
             ct.c_longlong,
             # int64_t countTrainingInstances
             ct.c_longlong,
             # int64_t * trainingTargets
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # int64_t * trainingBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t countValidationInstances
             ct.c_longlong,
             # int64_t * validationTargets
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # int64_t * validationBinnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t countInnerBags
             ct.c_longlong,
         ]
@@ -155,15 +155,15 @@ class Native:
             # int64_t countInstancesRequiredForParentSplitMin
             ct.c_longlong,
             # double * trainingWeights
-            # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # ndpointer(dtype=ct.c_double),
             ct.c_void_p,
             # double * validationWeights
-            # ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            # ndpointer(dtype=ct.c_double),
             ct.c_void_p,
             # double * gainReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.GenerateModelFeatureCombinationUpdate.restype = ct.c_void_p
+        self.lib.GenerateModelFeatureCombinationUpdate.restype = ct.POINTER(ct.c_double)
 
         self.lib.ApplyModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
@@ -171,7 +171,7 @@ class Native:
             # int64_t indexFeatureCombination
             ct.c_longlong,
             # double * modelFeatureCombinationUpdateTensor
-            ct.c_void_p,
+            ct.POINTER(ct.c_double),
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
@@ -208,11 +208,11 @@ class Native:
             # int64_t countInstances
             ct.c_longlong,
             # int64_t * targets
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * predictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
@@ -224,11 +224,11 @@ class Native:
             # int64_t countInstances
             ct.c_longlong,
             # double * targets
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
             # int64_t * binnedData
             ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
             # double * predictorScores
-            ndpointer(dtype=ct.c_double, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_double),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
@@ -238,7 +238,7 @@ class Native:
             # int64_t countFeaturesInCombination
             ct.c_longlong,
             # int64_t * featureIndexes
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=1),
+            ndpointer(dtype=ct.c_longlong),
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
         ]
@@ -274,11 +274,13 @@ class Native:
             logging.INFO: self.TraceLevelInfo,
             logging.WARNING: self.TraceLevelWarning,
             logging.ERROR: self.TraceLevelError,
+            logging.CRITICAL: self.TraceLevelError,
             logging.NOTSET: self.TraceLevelOff,
             "DEBUG": self.TraceLevelVerbose,
             "INFO": self.TraceLevelInfo,
             "WARNING": self.TraceLevelWarning,
             "ERROR": self.TraceLevelError,
+            "CRITICAL": self.TraceLevelError,
             "NOTSET": self.TraceLevelOff,
         }
 
@@ -567,9 +569,12 @@ class NativeEBM:
         """
         # log.debug("Training step start")
 
+        if self.model_type == "classification" and self.num_classification_states <= 1:
+            raise Exception("classification requires at least 2 target states")
+
         metric_output = ct.c_double(0.0)
+        gain = ct.c_double(0.0)
         for i in range(training_step_episodes):
-            gain = ct.c_double(0.0)
             model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
                 self.model_pointer,
                 attribute_set_index,
@@ -580,8 +585,8 @@ class NativeEBM:
                 validation_weights,
                 ct.byref(gain),
             )
-            if model_update_tensor_pointer == 0:  # pragma: no cover
-                raise Exception("GenerateModelFeatureCombinationUpdate Exception")
+            if not model_update_tensor_pointer:  # pragma: no cover
+                raise MemoryError("Out of memory occured in GenerateModelFeatureCombinationUpdate")
 
             return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
                 self.model_pointer,
