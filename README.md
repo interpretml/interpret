@@ -180,7 +180,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/KDD2015FinalDraftIntelligibleModels4HealthCare_igt143e-caruanaA.pdf">Paper link</a>
   </details>
 
   <details>
@@ -199,7 +199,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="http://www.cs.cornell.edu/~yinlou/papers/lou-kdd13.pdf">Paper link</a>
   </details>
   <details>
     <summary>
@@ -217,7 +217,7 @@ We also build on top of many great packages. Please check them out!
 }
 
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://www.cs.cornell.edu/~yinlou/papers/lou-kdd12.pdf">Paper link</a>
   </details>
 
   <details>
@@ -235,7 +235,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://arxiv.org/abs/1810.09092">Paper link</a>
   </details>
 
   <details>
@@ -253,7 +253,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://arxiv.org/pdf/1710.06169">Paper link</a>
   </details>
 
   <hr/>
@@ -277,7 +277,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://arxiv.org/pdf/1602.04938.pdf">Paper link</a>
   </details>
   <hr/>
 </details>
@@ -302,7 +302,7 @@ We also build on top of many great packages. Please check them out!
  url = {http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf">Paper link</a>
   </details>
   <details>
     <summary>
@@ -317,7 +317,7 @@ We also build on top of many great packages. Please check them out!
   year={2018}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://arxiv.org/pdf/1802.03888">Paper link</a>
   </details>
   <details>
     <summary>
@@ -336,7 +336,7 @@ We also build on top of many great packages. Please check them out!
   publisher={Nature Publishing Group}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6467492/pdf/nihms-1505578.pdf">Paper link</a>
   </details>
   <hr/>
 </details>
@@ -360,7 +360,7 @@ We also build on top of many great packages. Please check them out!
   year={2017}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://www.researchgate.net/profile/Will_Usher/publication/312204236_SALib_An_open-source_Python_library_for_Sensitivity_Analysis/links/5a6b3b65aca2725b1c1c3e6c/SALib-An-open-source-Python-library-for-Sensitivity-Analysis.pdf">Paper link</a>
   </details>
   <details>
     <summary>
@@ -379,7 +379,7 @@ We also build on top of many great packages. Please check them out!
   publisher={Taylor \& Francis Group}
 }
 </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://abe.ufl.edu/Faculty/jjones/ABE_5646/2010/Morris.1991%20SA%20paper.pdf">Paper link</a>
   </details>
   <hr/>
 </details>
@@ -402,7 +402,7 @@ We also build on top of many great packages. Please check them out!
   publisher={JSTOR}
 }
     </pre>
-    <a href="https://arxiv.org/pdf/1909.09223.pdf">Paper link</a>
+    <a href="https://projecteuclid.org/download/pdf_1/euclid.aos/1013203451">Paper link</a>
   </details>
   <hr/>
 </details>
