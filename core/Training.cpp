@@ -109,15 +109,15 @@ SegmentedTensor<ActiveDataType, FractionalDataType> ** EbmTrainingState::Initial
 bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores) {
    LOG_0(TraceLevelInfo, "Entered EbmTrainingState::Initialize");
    try {
-      if(IsRegression(m_runtimeLearningTypeOrCountTargetClasses)) {
-         if(m_cachedThreadResourcesUnion.regression.IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
+      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
+         if(m_cachedThreadResourcesUnion.classification.IsError()) {
+            LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
             return true;
          }
       } else {
-         EBM_ASSERT(IsClassification(m_runtimeLearningTypeOrCountTargetClasses));
-         if(m_cachedThreadResourcesUnion.classification.IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
+         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+         if(m_cachedThreadResourcesUnion.regression.IsError()) {
+            LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
             return true;
          }
       }
@@ -325,15 +325,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
          }
       }
 
-      if(IsRegression(m_runtimeLearningTypeOrCountTargetClasses)) {
-         if(0 != cTrainingInstances) {
-            InitializeResiduals<k_Regression>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), k_Regression);
-         }
-         if(0 != cValidationInstances) {
-            InitializeResiduals<k_Regression>(cValidationInstances, aValidationTargets, aValidationPredictorScores, m_pValidationSet->GetResidualPointer(), k_Regression);
-         }
-      } else {
-         EBM_ASSERT(IsClassification(m_runtimeLearningTypeOrCountTargetClasses));
+      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
             if(0 != cTrainingInstances) {
                InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });
@@ -342,6 +334,14 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
             if(0 != cTrainingInstances) {
                InitializeResiduals<k_DynamicClassification>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), m_runtimeLearningTypeOrCountTargetClasses);
             }
+         }
+      } else {
+         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+         if(0 != cTrainingInstances) {
+            InitializeResiduals<k_Regression>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), k_Regression);
+         }
+         if(0 != cValidationInstances) {
+            InitializeResiduals<k_Regression>(cValidationInstances, aValidationTargets, aValidationPredictorScores, m_pValidationSet->GetResidualPointer(), k_Regression);
          }
       }
 
@@ -876,17 +876,7 @@ static FractionalDataType ValidationSetInputFeatureLoop(const FeatureCombination
 #ifndef NDEBUG
 void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cInstances, const void * const aTargets) {
    if(0 != cInstances) {
-      if(IsRegression(runtimeLearningTypeOrCountTargetClasses)) {
-         const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
-         const FractionalDataType * const pTargetEnd = pTarget + cInstances;
-         do {
-            const FractionalDataType target = *pTarget;
-            EBM_ASSERT(!std::isnan(target));
-            EBM_ASSERT(!std::isinf(target));
-            ++pTarget;
-         } while(pTargetEnd != pTarget);
-      } else {
-         EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          const IntegerDataType * pTarget = static_cast<const IntegerDataType *>(aTargets);
          const IntegerDataType * const pTargetEnd = pTarget + cInstances;
          do {
@@ -894,6 +884,16 @@ void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const
             EBM_ASSERT(0 <= target);
             EBM_ASSERT((IsNumberConvertable<ptrdiff_t, IntegerDataType>(target))); // data must be lower than runtimeLearningTypeOrCountTargetClasses and runtimeLearningTypeOrCountTargetClasses fits into a ptrdiff_t which we checked earlier
             EBM_ASSERT(static_cast<ptrdiff_t>(target) < runtimeLearningTypeOrCountTargetClasses);
+            ++pTarget;
+         } while(pTargetEnd != pTarget);
+      } else {
+         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+         const FractionalDataType * pTarget = static_cast<const FractionalDataType *>(aTargets);
+         const FractionalDataType * const pTargetEnd = pTarget + cInstances;
+         do {
+            const FractionalDataType target = *pTarget;
+            EBM_ASSERT(!std::isnan(target));
+            EBM_ASSERT(!std::isinf(target));
             ++pTarget;
          } while(pTargetEnd != pTarget);
       }
@@ -982,29 +982,6 @@ EbmTrainingState * AllocateCoreTraining(const IntegerDataType randomSeed, const 
    return pEbmTrainingState;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
-   IntegerDataType randomSeed,
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countFeatureCombinations,
-   const EbmCoreFeatureCombination * featureCombinations,
-   const IntegerDataType * featureCombinationIndexes,
-   IntegerDataType countTrainingInstances,
-   const FractionalDataType * trainingTargets,
-   const IntegerDataType * trainingBinnedData,
-   const FractionalDataType * trainingPredictorScores,
-   IntegerDataType countValidationInstances,
-   const FractionalDataType * validationTargets,
-   const IntegerDataType * validationBinnedData,
-   const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags
-) {
-   LOG_N(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
-   const PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
-   LOG_N(TraceLevelInfo, "Exited InitializeTrainingRegression %p", static_cast<void *>(pEbmTraining));
-   return pEbmTraining;
-}
-
 EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
    IntegerDataType randomSeed,
    IntegerDataType countFeatures,
@@ -1039,6 +1016,29 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTra
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
    const PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, runtimeLearningTypeOrCountTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeTrainingClassification %p", static_cast<void *>(pEbmTraining));
+   return pEbmTraining;
+}
+
+EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+   IntegerDataType randomSeed,
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countFeatureCombinations,
+   const EbmCoreFeatureCombination * featureCombinations,
+   const IntegerDataType * featureCombinationIndexes,
+   IntegerDataType countTrainingInstances,
+   const FractionalDataType * trainingTargets,
+   const IntegerDataType * trainingBinnedData,
+   const FractionalDataType * trainingPredictorScores,
+   IntegerDataType countValidationInstances,
+   const FractionalDataType * validationTargets,
+   const IntegerDataType * validationBinnedData,
+   const FractionalDataType * validationPredictorScores,
+   IntegerDataType countInnerBags
+) {
+   LOG_N(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
+   const PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
+   LOG_N(TraceLevelInfo, "Exited InitializeTrainingRegression %p", static_cast<void *>(pEbmTraining));
    return pEbmTraining;
 }
 
@@ -1230,10 +1230,7 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
    // validationMetricReturn can be nullptr
 
    FractionalDataType * aModelFeatureCombinationUpdateTensor;
-   if(IsRegression(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, trainingWeights, validationWeights, gainReturn);
-   } else {
-      EBM_ASSERT(IsClassification(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses));
+   if(IsClassification(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses)) {
       if(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1244,6 +1241,9 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
          return nullptr;
       }
       aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, trainingWeights, validationWeights, gainReturn);
+   } else {
+      EBM_ASSERT(IsRegression(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses));
+      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmTrainingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, trainingWeights, validationWeights, gainReturn);
    }
 
    if(nullptr != gainReturn) {
@@ -1380,10 +1380,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModel
    }
 
    IntegerDataType ret;
-   if(IsRegression(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      ret = ApplyModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmTrainingState, iFeatureCombination, modelFeatureCombinationUpdateTensor, validationMetricReturn);
-   } else {
-      EBM_ASSERT(IsClassification(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses));
+   if(IsClassification(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses)) {
       if(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
@@ -1394,6 +1391,9 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModel
          return 0;
       }
       ret = CompilerRecursiveApplyModelFeatureCombinationUpdate<2>(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmTrainingState, iFeatureCombination, modelFeatureCombinationUpdateTensor, validationMetricReturn);
+   } else {
+      EBM_ASSERT(IsRegression(pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses));
+      ret = ApplyModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmTrainingState, iFeatureCombination, modelFeatureCombinationUpdateTensor, validationMetricReturn);
    }
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureCombinationUpdate returned %" IntegerDataTypePrintf, ret);

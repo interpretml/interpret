@@ -73,39 +73,6 @@ class Native:
             # signed char traceLevel
             ct.c_char
         ]
-        self.lib.InitializeTrainingRegression.argtypes = [
-            # int64_t randomSeed
-            ct.c_longlong,
-            # int64_t countFeatures
-            ct.c_longlong,
-            # EbmCoreFeature * features
-            ct.POINTER(self.EbmCoreFeature),
-            # int64_t countFeatureCombinations
-            ct.c_longlong,
-            # EbmCoreFeatureCombination * featureCombinations
-            ct.POINTER(self.EbmCoreFeatureCombination),
-            # int64_t * featureCombinationIndexes
-            ndpointer(dtype=ct.c_longlong),
-            # int64_t countTrainingInstances
-            ct.c_longlong,
-            # double * trainingTargets
-            ndpointer(dtype=ct.c_double),
-            # int64_t * trainingBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double),
-            # int64_t countValidationInstances
-            ct.c_longlong,
-            # double * validationTargets
-            ndpointer(dtype=ct.c_double),
-            # int64_t * validationBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
-            # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double),
-            # int64_t countInnerBags
-            ct.c_longlong,
-        ]
-        self.lib.InitializeTrainingRegression.restype = ct.c_void_p
 
         self.lib.InitializeTrainingClassification.argtypes = [
             # int64_t randomSeed
@@ -142,6 +109,40 @@ class Native:
             ct.c_longlong,
         ]
         self.lib.InitializeTrainingClassification.restype = ct.c_void_p
+
+        self.lib.InitializeTrainingRegression.argtypes = [
+            # int64_t randomSeed
+            ct.c_longlong,
+            # int64_t countFeatures
+            ct.c_longlong,
+            # EbmCoreFeature * features
+            ct.POINTER(self.EbmCoreFeature),
+            # int64_t countFeatureCombinations
+            ct.c_longlong,
+            # EbmCoreFeatureCombination * featureCombinations
+            ct.POINTER(self.EbmCoreFeatureCombination),
+            # int64_t * featureCombinationIndexes
+            ndpointer(dtype=ct.c_longlong),
+            # int64_t countTrainingInstances
+            ct.c_longlong,
+            # double * trainingTargets
+            ndpointer(dtype=ct.c_double),
+            # int64_t * trainingBinnedData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * trainingPredictorScores
+            ndpointer(dtype=ct.c_double),
+            # int64_t countValidationInstances
+            ct.c_longlong,
+            # double * validationTargets
+            ndpointer(dtype=ct.c_double),
+            # int64_t * validationBinnedData
+            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            # double * validationPredictorScores
+            ndpointer(dtype=ct.c_double),
+            # int64_t countInnerBags
+            ct.c_longlong,
+        ]
+        self.lib.InitializeTrainingRegression.restype = ct.c_void_p
 
         self.lib.GenerateModelFeatureCombinationUpdate.argtypes = [
             # void * ebmTraining
@@ -460,25 +461,24 @@ class NativeEBM:
 
         return attribute_ar, attribute_sets_ar, attribute_set_indexes
 
-    def _initialize_interaction_regression(self):
-        self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
+    def _initialize_training_classification(self):
+        self.model_pointer = this.native.lib.InitializeTrainingClassification(
+            self.random_state,
             len(self.attribute_array),
             self.attribute_array,
-            self.X_train.shape[0],
-            self.y_train,
-            self.X_train_f,
-            self.training_scores,
-        )
-
-    def _initialize_interaction_classification(self):
-        self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
-            len(self.attribute_array),
-            self.attribute_array,
+            len(self.attribute_sets_array),
+            self.attribute_sets_array,
+            self.attribute_set_indexes,
             self.num_classification_states,
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
             self.training_scores,
+            self.X_val.shape[0],
+            self.y_val,
+            self.X_val_f,
+            self.validation_scores,
+            self.num_inner_bags,
         )
 
     def _initialize_training_regression(self):
@@ -500,24 +500,25 @@ class NativeEBM:
             self.num_inner_bags,
         )
 
-    def _initialize_training_classification(self):
-        self.model_pointer = this.native.lib.InitializeTrainingClassification(
-            self.random_state,
+    def _initialize_interaction_classification(self):
+        self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
             len(self.attribute_array),
             self.attribute_array,
-            len(self.attribute_sets_array),
-            self.attribute_sets_array,
-            self.attribute_set_indexes,
             self.num_classification_states,
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
             self.training_scores,
-            self.X_val.shape[0],
-            self.y_val,
-            self.X_val_f,
-            self.validation_scores,
-            self.num_inner_bags,
+        )
+
+    def _initialize_interaction_regression(self):
+        self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
+            len(self.attribute_array),
+            self.attribute_array,
+            self.X_train.shape[0],
+            self.y_train,
+            self.X_train_f,
+            self.training_scores,
         )
 
     def close(self):
@@ -569,33 +570,32 @@ class NativeEBM:
         """
         # log.debug("Training step start")
 
-        if self.model_type == "classification" and self.num_classification_states <= 1:
-            raise Exception("classification requires at least 2 target states")
-
         metric_output = ct.c_double(0.0)
-        gain = ct.c_double(0.0)
-        for i in range(training_step_episodes):
-            model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
-                self.model_pointer,
-                attribute_set_index,
-                learning_rate,
-                max_tree_splits,
-                min_cases_for_split,
-                training_weights,
-                validation_weights,
-                ct.byref(gain),
-            )
-            if not model_update_tensor_pointer:  # pragma: no cover
-                raise MemoryError("Out of memory occured in GenerateModelFeatureCombinationUpdate")
+        # for a classification problem with only 1 target value, we will always predict the answer perfectly
+        if self.model_type != "classification" or 2 <= self.num_classification_states:
+            gain = ct.c_double(0.0)
+            for i in range(training_step_episodes):
+                model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
+                    self.model_pointer,
+                    attribute_set_index,
+                    learning_rate,
+                    max_tree_splits,
+                    min_cases_for_split,
+                    training_weights,
+                    validation_weights,
+                    ct.byref(gain),
+                )
+                if not model_update_tensor_pointer:  # pragma: no cover
+                    raise MemoryError("Out of memory occured in GenerateModelFeatureCombinationUpdate")
 
-            return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
-                self.model_pointer,
-                attribute_set_index,
-                model_update_tensor_pointer,
-                ct.byref(metric_output),
-            )
-            if return_code != 0:  # pragma: no cover
-                raise Exception("ApplyModelFeatureCombinationUpdate Exception")
+                return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
+                    self.model_pointer,
+                    attribute_set_index,
+                    model_update_tensor_pointer,
+                    ct.byref(metric_output),
+                )
+                if return_code != 0:  # pragma: no cover
+                    raise Exception("ApplyModelFeatureCombinationUpdate Exception")
 
         # log.debug("Training step end")
         return metric_output.value

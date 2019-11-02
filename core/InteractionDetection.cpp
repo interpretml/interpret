@@ -60,20 +60,6 @@ EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, con
    return pEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countInstances,
-   const FractionalDataType * targets,
-   const IntegerDataType * binnedData,
-   const FractionalDataType * predictorScores
-) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(countFeatures, features, k_Regression, countInstances, targets, binnedData, predictorScores));
-   LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
-   return pEbmInteraction;
-}
-
 EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
@@ -99,6 +85,20 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION Initialize
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(countFeatures, features, runtimeLearningTypeOrCountTargetClasses, countInstances, targets, binnedData, predictorScores));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
+   return pEbmInteraction;
+}
+
+EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
+   IntegerDataType countFeatures,
+   const EbmCoreFeature * features,
+   IntegerDataType countInstances,
+   const FractionalDataType * targets,
+   const IntegerDataType * binnedData,
+   const FractionalDataType * predictorScores
+) {
+   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countInstances=%" IntegerDataTypePrintf ", targets=%p, binnedData=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(targets), static_cast<const void *>(binnedData), static_cast<const void *>(predictorScores));
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(countFeatures, features, k_Regression, countInstances, targets, binnedData, predictorScores));
+   LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
