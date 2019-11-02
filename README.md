@@ -235,7 +235,7 @@ We also build on top of many great packages. Please check them out!
   organization={ACM}
 }
 </pre>
-    <a href="https://arxiv.org/abs/1810.09092">Paper link</a>
+    <a href="https://arxiv.org/pdf/1810.09092.pdf">Paper link</a>
   </details>
 
   <details>
@@ -360,7 +360,7 @@ We also build on top of many great packages. Please check them out!
   year={2017}
 }
 </pre>
-    <a href="https://www.researchgate.net/profile/Will_Usher/publication/312204236_SALib_An_open-source_Python_library_for_Sensitivity_Analysis/links/5a6b3b65aca2725b1c1c3e6c/SALib-An-open-source-Python-library-for-Sensitivity-Analysis.pdf">Paper link</a>
+    <a href="https://www.researchgate.net/profile/Will_Usher/publication/312204236_SALib_An_open-source_Python_library_for_Sensitivity_Analysis/links/5ac732d64585151e80a39547/SALib-An-open-source-Python-library-for-Sensitivity-Analysis.pdf?origin=publication_detail">Paper link</a>
   </details>
   <details>
     <summary>
