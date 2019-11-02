@@ -407,6 +407,65 @@ We also build on top of many great packages. Please check them out!
   <hr/>
 </details>
 
+
+
+<details>
+  <summary><strong>Open Source Software</strong></summary>
+  <hr/>
+  <details>
+    <summary>
+      <em>"Scikit-learn: Machine learning in Python" (F. Pedregosa et al. 2011)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{pedregosa2011scikit,
+  title={Scikit-learn: Machine learning in Python},
+  author={Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and Blondel, Mathieu and Prettenhofer, Peter and Weiss, Ron and Dubourg, Vincent and others},
+  journal={Journal of machine learning research},
+  volume={12},
+  number={Oct},
+  pages={2825--2830},
+  year={2011}
+}
+</pre>
+    <a href="http://www.jmlr.org/papers/volume12/pedregosa11a/pedregosa11a.pdf">Paper link</a>
+  </details>
+<details>
+    <summary>
+      <em>"Collaborative data science" (Plotly Technologies Inc. 2015)</em>
+    </summary>
+    <br/>
+    <pre>
+@online{plotly, 
+  author = {Plotly Technologies Inc.}, 
+  title = {Collaborative data science}, 
+  publisher = {Plotly Technologies Inc.}, 
+  address = {Montreal, QC}, 
+  year = {2015}, 
+  url = {https://plot.ly} }
+  </pre>
+    <a href="https://plot.ly">Link</a>
+</details>
+<details>
+    <summary>
+      <em>"Joblib: running python function as pipeline jobs" (G. Varoquaux and O. Grisel 2009)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{varoquaux2009joblib,
+  title={Joblib: running python function as pipeline jobs},
+  author={Varoquaux, Ga{\"e}l and Grisel, O},
+  journal={packages. python. org/joblib},
+  year={2009}
+}
+  </pre>
+    <a href="https://joblib.readthedocs.io/en/latest/">Link</a>
+</details>
+  
+  
+  <hr/>
+</details>
+
 ## Contact us
 
 There are multiple ways to get in touch:
