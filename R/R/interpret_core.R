@@ -8,6 +8,10 @@
 # https://cran.r-project.org/web/checks/check_summary_by_package.html#summary_by_package
 # https://cran.r-project.org/web/checks/check_flavors.html
 
+# incoming status:
+# https://cransays.itsalocke.com/articles/dashboard.html
+# ftp://cran.r-project.org/incoming/
+
 # if archived, it will appear in:
 # https://cran-archive.r-project.org/web/checks/2019-10-07_check_results_interpret.html
 # https://cran.r-project.org/src/contrib/Archive/
