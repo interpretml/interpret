@@ -329,7 +329,7 @@ class NativeEBM:
 
     def __init__(
         self,
-        attributes,
+        features,
         feature_combinations,
         X_train,
         y_train,
@@ -347,9 +347,9 @@ class NativeEBM:
         """ Initializes internal wrapper for EBM C code.
 
         Args:
-            attributes: List of attributes represented individually as
+            features: List of features represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
-            feature_combinations: List of attribute sets represented as
+            feature_combinations: List of feature combinations represented as
                 a dictionary of keys ('n_attributes', 'attributes')
             X_train: Training design matrix as 2-D ndarray.
             y_train: Training response as 1-D ndarray.
@@ -373,10 +373,10 @@ class NativeEBM:
         log.info("Allocation start")
 
         # Store args
-        self.attributes = attributes
+        self.features = features
         self.feature_combinations = feature_combinations
-        self.attribute_array, self.feature_combinations_array, self.feature_combination_indexes = self._convert_attribute_info_to_c(
-            attributes, feature_combinations
+        self.feature_array, self.feature_combinations_array, self.feature_combination_indexes = self._convert_feature_info_to_c(
+            features, feature_combinations
         )
 
         self.X_train = X_train
@@ -434,16 +434,16 @@ class NativeEBM:
 
         log.info("Allocation end")
 
-    def _convert_attribute_info_to_c(self, attributes, feature_combinations):
-        # Create C form of attributes
-        attribute_ar = (this.native.EbmCoreFeature * len(attributes))()
-        for idx, attribute in enumerate(attributes):
-            if attribute["type"] == "categorical":
-                attribute_ar[idx].featureType = this.native.FeatureTypeNominal
+    def _convert_feature_info_to_c(self, features, feature_combinations):
+        # Create C form of features
+        feature_ar = (this.native.EbmCoreFeature * len(features))()
+        for idx, feature in enumerate(features):
+            if feature["type"] == "categorical":
+                feature_ar[idx].featureType = this.native.FeatureTypeNominal
             else:
-                attribute_ar[idx].featureType = this.native.FeatureTypeOrdinal
-            attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
-            attribute_ar[idx].countBins = attribute["n_bins"]
+                feature_ar[idx].featureType = this.native.FeatureTypeOrdinal
+            feature_ar[idx].hasMissing = 1 * feature["has_missing"]
+            feature_ar[idx].countBins = feature["n_bins"]
 
         feature_combination_indexes = []
         feature_combinations_ar = (
@@ -454,18 +454,18 @@ class NativeEBM:
                 "n_attributes"
             ]
 
-            for attr_idx in feature_combination["attributes"]:
-                feature_combination_indexes.append(attr_idx)
+            for feature_idx in feature_combination["attributes"]:
+                feature_combination_indexes.append(feature_idx)
 
         feature_combination_indexes = np.array(feature_combination_indexes, dtype="int64")
 
-        return attribute_ar, feature_combinations_ar, feature_combination_indexes
+        return feature_ar, feature_combinations_ar, feature_combination_indexes
 
     def _initialize_training_classification(self):
         self.model_pointer = this.native.lib.InitializeTrainingClassification(
             self.random_state,
-            len(self.attribute_array),
-            self.attribute_array,
+            len(self.feature_array),
+            self.feature_array,
             len(self.feature_combinations_array),
             self.feature_combinations_array,
             self.feature_combination_indexes,
@@ -484,8 +484,8 @@ class NativeEBM:
     def _initialize_training_regression(self):
         self.model_pointer = this.native.lib.InitializeTrainingRegression(
             self.random_state,
-            len(self.attribute_array),
-            self.attribute_array,
+            len(self.feature_array),
+            self.feature_array,
             len(self.feature_combinations_array),
             self.feature_combinations_array,
             self.feature_combination_indexes,
@@ -502,8 +502,8 @@ class NativeEBM:
 
     def _initialize_interaction_classification(self):
         self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
-            len(self.attribute_array),
-            self.attribute_array,
+            len(self.feature_array),
+            self.feature_array,
             self.num_classification_states,
             self.X_train.shape[0],
             self.y_train,
@@ -513,8 +513,8 @@ class NativeEBM:
 
     def _initialize_interaction_regression(self):
         self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
-            len(self.attribute_array),
-            self.attribute_array,
+            len(self.feature_array),
+            self.feature_array,
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
@@ -528,14 +528,14 @@ class NativeEBM:
         this.native.lib.FreeInteraction(self.interaction_pointer)
         log.info("Deallocation end")
 
-    def fast_interaction_score(self, attribute_index_tuple):
-        """ Provides score for an attribute interaction. Higher is better."""
+    def fast_interaction_score(self, feature_index_tuple):
+        """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
         this.native.lib.GetInteractionScore(
             self.interaction_pointer,
-            len(attribute_index_tuple),
-            np.array(attribute_index_tuple, dtype=np.int64),
+            len(feature_index_tuple),
+            np.array(feature_index_tuple, dtype=np.int64),
             ct.byref(score),
         )
         log.info("Fast interaction score end")
@@ -556,7 +556,7 @@ class NativeEBM:
             by growing a shallow decision tree.
 
         Args:
-            feature_combination_index: The index for the attribute set
+            feature_combination_index: The index for the feature combination
                 to train on.
             training_step_episodes: Number of episodes to train feature step.
             learning_rate: Learning rate as a float.
@@ -603,11 +603,11 @@ class NativeEBM:
     def _get_feature_combination_shape(self, feature_combination_index):
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        attr_idxs = []
+        feature_idxs = []
         feature_combination = self.feature_combinations[feature_combination_index]
-        for _, attr_idx in enumerate(feature_combination["attributes"]):
-            n_bins = self.attributes[attr_idx]["n_bins"]
-            attr_idxs.append(attr_idx)
+        for _, feature_idx in enumerate(feature_combination["attributes"]):
+            n_bins = self.features[feature_idx]["n_bins"]
+            feature_idxs.append(feature_idx)
             dimensions.append(n_bins)
 
         # TODO: Remove once we check that this works
@@ -622,10 +622,10 @@ class NativeEBM:
 
     def get_best_model(self, feature_combination_index):
         """ Returns best model/function according to validation set
-            for a given attribute set.
+            for a given feature combination.
 
         Args:
-            feature_combination_index: The index for the attribute set.
+            feature_combination_index: The index for the feature combination.
 
         Returns:
             An ndarray that represents the model.
@@ -640,10 +640,10 @@ class NativeEBM:
 
     def get_current_model(self, feature_combination_index):
         """ Returns current model/function according to validation set
-            for a given attribute set.
+            for a given feature combination.
 
         Args:
-            feature_combination_index: The index for the attribute set.
+            feature_combination_index: The index for the feature combination.
 
         Returns:
             An ndarray that represents the model.

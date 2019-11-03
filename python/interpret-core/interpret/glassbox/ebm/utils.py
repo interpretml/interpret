@@ -17,12 +17,12 @@ log = logging.getLogger(__name__)
 # TODO: Clean up
 class EBMUtils:
     @staticmethod
-    def gen_attributes(col_types, col_n_bins):
-        # Create Python form of attributes
+    def gen_features(col_types, col_n_bins):
+        # Create Python form of features
         # Undocumented.
-        attributes = [None] * len(col_types)
-        for col_idx, _ in enumerate(attributes):
-            attributes[col_idx] = {
+        features = [None] * len(col_types)
+        for col_idx, _ in enumerate(features):
+            features[col_idx] = {
                 # NOTE: Ordinal only handled at native, override.
                 # 'type': col_types[col_idx],
                 "type": "continuous",
@@ -30,12 +30,12 @@ class EBMUtils:
                 "has_missing": False,
                 "n_bins": col_n_bins[col_idx],
             }
-        return attributes
+        return features
 
     @staticmethod
-    def gen_feature_combinations(attribute_indices):
-        feature_combinations = [None] * len(attribute_indices)
-        for i, indices in enumerate(attribute_indices):
+    def gen_feature_combinations(feature_indices):
+        feature_combinations = [None] * len(feature_indices)
+        for i, indices in enumerate(feature_indices):
             feature_combination = {"n_attributes": len(indices), "attributes": indices}
             feature_combinations[i] = feature_combination
         return feature_combinations
@@ -51,12 +51,12 @@ class EBMUtils:
             tensor = model_feature_combinations[set_idx]
 
             # Get the current column(s) to process
-            attr_idxs = feature_combination["attributes"]
+            feature_idxs = feature_combination["attributes"]
 
             # TODO: Double check that this works
-            attr_idxs = list(reversed(attr_idxs))
+            feature_idxs = list(reversed(feature_idxs))
 
-            sliced_X = X[:, attr_idxs]
+            sliced_X = X[:, feature_idxs]
             scores = tensor[tuple(sliced_X.T)]
 
             yield set_idx, feature_combination, scores
@@ -166,16 +166,16 @@ class EBMUtils:
         return scores
 
     @staticmethod
-    def gen_feature_name(attr_idxs, col_names):
+    def gen_feature_name(feature_idxs, col_names):
         feature_name = []
-        for attribute_index in attr_idxs:
-            feature_name.append(col_names[attribute_index])
+        for feature_index in feature_idxs:
+            feature_name.append(col_names[feature_index])
         feature_name = " x ".join(feature_name)
         return feature_name
 
     @staticmethod
-    def gen_feature_type(attr_idxs, col_types):
-        if len(attr_idxs) == 1:
-            return col_types[attr_idxs[0]]
+    def gen_feature_type(feature_idxs, col_types):
+        if len(feature_idxs) == 1:
+            return col_types[feature_idxs[0]]
         else:
             return "pairwise"

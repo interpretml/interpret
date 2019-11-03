@@ -270,52 +270,52 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         return X_new.astype(np.int64)
 
-    def get_hist_counts(self, attribute_index):
-        col_type = self.col_types_[attribute_index]
+    def get_hist_counts(self, feature_index):
+        col_type = self.col_types_[feature_index]
         if col_type == "continuous":
-            return list(self.hist_counts_[attribute_index])
+            return list(self.hist_counts_[feature_index])
         elif col_type == "categorical":
-            return list(self.col_mapping_counts_[attribute_index])
+            return list(self.col_mapping_counts_[feature_index])
         else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    def get_hist_edges(self, attribute_index):
-        col_type = self.col_types_[attribute_index]
+    def get_hist_edges(self, feature_index):
+        col_type = self.col_types_[feature_index]
         if col_type == "continuous":
-            return list(self.hist_edges_[attribute_index])
+            return list(self.hist_edges_[feature_index])
         elif col_type == "categorical":
-            map = self.col_mapping_[attribute_index]
+            map = self.col_mapping_[feature_index]
             return list(map.keys())
         else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    # def get_bin_counts(self, attribute_index):
-    #     col_type = self.col_types_[attribute_index]
+    # def get_bin_counts(self, feature_index):
+    #     col_type = self.col_types_[feature_index]
     #     if col_type == 'continuous':
-    #         return list(self.col_bin_counts_[attribute_index])
+    #         return list(self.col_bin_counts_[feature_index])
     #     elif col_type == 'categorical':
-    #         return list(self.col_mapping_counts_[attribute_index])
+    #         return list(self.col_mapping_counts_[feature_index])
     #     else:
     #         raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    def get_bin_labels(self, attribute_index):
-        """ Returns bin labels for a given attribute index.
+    def get_bin_labels(self, feature_index):
+        """ Returns bin labels for a given feature index.
 
         Args:
-            attribute_index: An integer for attribute index.
+            feature_index: An integer for feature index.
 
         Returns:
             List of labels for bins.
         """
 
-        col_type = self.col_types_[attribute_index]
+        col_type = self.col_types_[feature_index]
         if col_type == "continuous":
-            return list(self.col_bin_edges_[attribute_index])
+            return list(self.col_bin_edges_[feature_index])
         elif col_type == "ordinal":
-            map = self.col_mapping_[attribute_index]
+            map = self.col_mapping_[feature_index]
             return list(map.keys())
         elif col_type == "categorical":
-            map = self.col_mapping_[attribute_index]
+            map = self.col_mapping_[feature_index]
             return list(map.keys())
         else:  # pragma: no cover
             raise Exception("Unknown column type")
@@ -393,8 +393,8 @@ class BaseCoreEBM(BaseEstimator):
             y_val = np.empty(shape=(0,)).astype(np.int64)
         else:  # pragma: no cover
             raise Exception("Holdout_split must be between 0 and 1.")
-        # Define attributes
-        self.attributes_ = EBMUtils.gen_attributes(self.col_types, self.col_n_bins)
+        # Define features
+        self.attributes_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
         # Build EBM allocation code
         if is_classifier(self):
             model_type = "classification"
@@ -904,7 +904,7 @@ class BaseEBM(BaseEstimator):
         self.inter_indices_ = pair_indices
 
         # Average base models into one.
-        self.attributes_ = EBMUtils.gen_attributes(
+        self.attributes_ = EBMUtils.gen_features(
             self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
         )
         if isinstance(self.main_attr, str) and self.main_attr == "all":
@@ -1108,19 +1108,19 @@ class BaseEBM(BaseEstimator):
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
             errors = self.model_errors_[feature_combination_index]
-            attribute_indexes = self.attribute_sets_[feature_combination_index]["attributes"]
+            feature_indexes = self.attribute_sets_[feature_combination_index]["attributes"]
 
-            if len(attribute_indexes) == 1:
-                bin_labels = self.preprocessor_.get_bin_labels(attribute_indexes[0])
+            if len(feature_indexes) == 1:
+                bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
                 # bin_counts = self.preprocessor_.get_bin_counts(
-                #     attribute_indexes[0]
+                #     feature_indexes[0]
                 # )
                 scores = list(model_graph)
                 upper_bounds = list(model_graph + errors)
                 lower_bounds = list(model_graph - errors)
                 density_dict = {
-                    "names": self.preprocessor_.get_hist_edges(attribute_indexes[0]),
-                    "scores": self.preprocessor_.get_hist_counts(attribute_indexes[0]),
+                    "names": self.preprocessor_.get_hist_edges(feature_indexes[0]),
+                    "scores": self.preprocessor_.get_hist_counts(feature_indexes[0]),
                 }
 
                 feature_dict = {
@@ -1143,20 +1143,20 @@ class BaseEBM(BaseEstimator):
                     "lower_bounds": model_graph - errors,
                     "density": {
                         "names": self.preprocessor_.get_hist_edges(
-                            attribute_indexes[0]
+                            feature_indexes[0]
                         ),
                         "scores": self.preprocessor_.get_hist_counts(
-                            attribute_indexes[0]
+                            feature_indexes[0]
                         ),
                     },
                 }
                 data_dicts.append(data_dict)
-            elif len(attribute_indexes) == 2:
+            elif len(feature_indexes) == 2:
                 bin_labels_left = self.preprocessor_.get_bin_labels(
-                    attribute_indexes[0]
+                    feature_indexes[0]
                 )
                 bin_labels_right = self.preprocessor_.get_bin_labels(
-                    attribute_indexes[1]
+                    feature_indexes[1]
                 )
 
                 feature_dict = {
@@ -1208,7 +1208,7 @@ class BaseEBM(BaseEstimator):
 
     def explain_local(self, X, y=None, name=None):
         # Produce feature value pairs for each instance.
-        # Values are the model graph score per respective attribute set.
+        # Values are the model graph score per respective feature combination.
         if name is None:
             name = gen_name_from_class(self)
 
