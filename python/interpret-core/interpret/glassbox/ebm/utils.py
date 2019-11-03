@@ -33,7 +33,7 @@ class EBMUtils:
         return attributes
 
     @staticmethod
-    def gen_attribute_sets(attribute_indices):
+    def gen_feature_combinations(attribute_indices):
         attribute_sets = [None] * len(attribute_indices)
         for i, indices in enumerate(attribute_indices):
             attribute_set = {"n_attributes": len(indices), "attributes": indices}

@@ -331,7 +331,7 @@ class BaseCoreEBM(BaseEstimator):
         col_types=None,
         col_n_bins=None,
         # Core
-        main_attr="all",
+        main_features="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -352,7 +352,7 @@ class BaseCoreEBM(BaseEstimator):
         self.col_n_bins = col_n_bins
 
         # Arguments for EBM beyond training a feature-step.
-        self.main_attr = main_attr
+        self.main_features = main_features
         self.interactions = interactions
         self.holdout_split = holdout_split
         self.data_n_episodes = data_n_episodes
@@ -410,15 +410,16 @@ class BaseCoreEBM(BaseEstimator):
         self.attribute_sets_ = []
         self.attribute_set_models_ = []
 
-        if isinstance(self.main_attr, str) and self.main_attr == "all":
-            main_attr_indices = [[x] for x in range(len(self.attributes_))]
-        elif isinstance(self.main_attr, list) and all(
-            isinstance(x, int) for x in self.main_attr
+        if isinstance(self.main_features, str) and self.main_features == "all":
+            main_feature_indices = [[x] for x in range(len(self.attributes_))]
+        elif isinstance(self.main_features, list) and all(
+            isinstance(x, int) for x in self.main_features
         ):
-            main_attr_indices = [[x] for x in self.main_attr]
+            main_feature_indices = [[x] for x in self.main_features]
         else:
+            # TODO change this to main_features once our public interface uses "feature"
             raise RuntimeError("Argument 'main_attr' has invalid value")
-        main_feature_combinations = EBMUtils.gen_attribute_sets(main_attr_indices)
+        main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         with closing(
             NativeEBM(
                 self.attributes_,
@@ -528,7 +529,7 @@ class BaseCoreEBM(BaseEstimator):
         # Fix main, train interactions
         training_scores = self.decision_function(X_train)
         validation_scores = self.decision_function(X_val)
-        inter_feature_combinations = EBMUtils.gen_attribute_sets(inter_indices)
+        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
             NativeEBM(
                 self.attributes_,
@@ -621,7 +622,7 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
         col_types=None,
         col_n_bins=None,
         # Core
-        main_attr="all",
+        main_features="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -641,7 +642,7 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
             col_types=col_types,
             col_n_bins=col_n_bins,
             # Core
-            main_attr=main_attr,
+            main_features=main_features,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -674,7 +675,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
         col_types=None,
         col_n_bins=None,
         # Core
-        main_attr="all",
+        main_features="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -694,7 +695,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
             col_types=col_types,
             col_n_bins=col_n_bins,
             # Core
-            main_attr=main_attr,
+            main_features=main_features,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -816,7 +817,7 @@ class BaseEBM(BaseEstimator):
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
-                main_attr=self.main_attr,
+                main_features=self.main_attr,
                 interactions=self.interactions,
                 holdout_split=self.holdout_split,
                 data_n_episodes=self.data_n_episodes,
@@ -838,7 +839,7 @@ class BaseEBM(BaseEstimator):
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
-                main_attr=self.main_attr,
+                main_features=self.main_attr,
                 interactions=self.interactions,
                 holdout_split=self.holdout_split,
                 data_n_episodes=self.data_n_episodes,
@@ -918,8 +919,8 @@ class BaseEBM(BaseEstimator):
             )
             raise RuntimeError(msg)
 
-        self.attribute_sets_ = EBMUtils.gen_attribute_sets(main_indices)
-        self.attribute_sets_.extend(EBMUtils.gen_attribute_sets(pair_indices))
+        self.attribute_sets_ = EBMUtils.gen_feature_combinations(main_indices)
+        self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
 
         # Merge estimators into one.
         self.attribute_set_models_ = []
