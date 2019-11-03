@@ -635,10 +635,9 @@ class NativeEBM:
         )
         shape = self._get_attribute_set_shape(attribute_set_index)
 
-        array = make_nd_array(
-            array_p, shape, dtype=np.double, order="C", own_data=False
-        )
-        return array.copy()
+        array = make_ndarray(
+            array_p, shape, dtype=np.double)
+        return array
 
     def get_current_model(self, attribute_set_index):
         """ Returns current model/function according to validation set
@@ -655,16 +654,16 @@ class NativeEBM:
         )
         shape = self._get_attribute_set_shape(attribute_set_index)
 
-        array = make_nd_array(
-            array_p, shape, dtype=np.double, order="C", own_data=False
+        array = make_ndarray(
+            array_p, shape, dtype=np.double
         )
 
         # if self.model_type == "classification" and self.num_classification_states > 2:
         #     array = array.T.reshape(array.shape)
-        return array.copy()
+        return array
 
 
-def make_nd_array(c_pointer, shape, dtype=np.float64, order="C", own_data=True):
+def make_ndarray(c_pointer, shape, dtype):
     """ Returns an ndarray based from a C array.
 
     Code largely borrowed from:
@@ -674,26 +673,16 @@ def make_nd_array(c_pointer, shape, dtype=np.float64, order="C", own_data=True):
         c_pointer: Pointer to C array.
         shape: Shape of ndarray to form.
         dtype: Numpy data type.
-        order: C/Fortran contiguous.
-        own_data: Whether data is copied into Python space.
 
     Returns:
         An ndarray.
     """
 
     arr_size = np.prod(shape[:]) * np.dtype(dtype).itemsize
-    if sys.version_info.major >= 3:
-        buf_from_mem = ct.pythonapi.PyMemoryView_FromMemory
-        buf_from_mem.restype = ct.py_object
-        buf_from_mem.argtypes = (ct.c_void_p, ct.c_int, ct.c_int)
-        buffer = buf_from_mem(c_pointer, arr_size, 0x100)
-    # NOTE: This branch should not be called. We only support Python 3.
-    else:  # pragma: no cover
-        buf_from_mem = ct.pythonapi.PyBuffer_FromMemory
-        buf_from_mem.restype = ct.py_object
-        buffer = buf_from_mem(c_pointer, arr_size)
-    arr = np.ndarray(tuple(shape[:]), dtype, buffer, order=order)
-    if own_data and not arr.flags.owndata:
-        return arr.copy()
-    else:
-        return arr
+    buf_from_mem = ct.pythonapi.PyMemoryView_FromMemory
+    buf_from_mem.restype = ct.py_object
+    buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
+    PyBUF_READ = 0x100
+    buffer = buf_from_mem(c_pointer, arr_size, PyBUF_READ)
+    arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
+    return arr.copy()
