@@ -394,7 +394,7 @@ class BaseCoreEBM(BaseEstimator):
         else:  # pragma: no cover
             raise Exception("Holdout_split must be between 0 and 1.")
         # Define features
-        self.attributes_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
+        self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
         # Build EBM allocation code
         if is_classifier(self):
             model_type = "classification"
@@ -411,7 +411,7 @@ class BaseCoreEBM(BaseEstimator):
         self.attribute_set_models_ = []
 
         if isinstance(self.main_features, str) and self.main_features == "all":
-            main_feature_indices = [[x] for x in range(len(self.attributes_))]
+            main_feature_indices = [[x] for x in range(len(self.features_))]
         elif isinstance(self.main_features, list) and all(
             isinstance(x, int) for x in self.main_features
         ):
@@ -422,7 +422,7 @@ class BaseCoreEBM(BaseEstimator):
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         with closing(
             NativeEBM(
-                self.attributes_,
+                self.features_,
                 main_feature_combinations,
                 X_train,
                 y_train,
@@ -532,7 +532,7 @@ class BaseCoreEBM(BaseEstimator):
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
             NativeEBM(
-                self.attributes_,
+                self.features_,
                 inter_feature_combinations,
                 X_train,
                 y_train,
