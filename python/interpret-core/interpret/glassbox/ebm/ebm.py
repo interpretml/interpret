@@ -1089,9 +1089,9 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
-            errors = self.model_errors_[attribute_set_index]
-            scores = self.attribute_set_models_[attribute_set_index]
+        for feature_combination_index, attribute_set in enumerate(self.attribute_sets_):
+            errors = self.model_errors_[feature_combination_index]
+            scores = self.attribute_set_models_[feature_combination_index]
 
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
@@ -1102,12 +1102,12 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for attribute_set_index, attribute_set in enumerate(self.attribute_sets_):
-            model_graph = self.attribute_set_models_[attribute_set_index]
+        for feature_combination_index, attribute_set in enumerate(self.attribute_sets_):
+            model_graph = self.attribute_set_models_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = self.model_errors_[attribute_set_index]
-            attribute_indexes = self.attribute_sets_[attribute_set_index]["attributes"]
+            errors = self.model_errors_[feature_combination_index]
+            attribute_indexes = self.attribute_sets_[feature_combination_index]["attributes"]
 
             if len(attribute_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(attribute_indexes[0])

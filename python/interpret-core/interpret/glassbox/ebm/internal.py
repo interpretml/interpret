@@ -375,7 +375,7 @@ class NativeEBM:
         # Store args
         self.attributes = attributes
         self.attribute_sets = attribute_sets
-        self.attribute_array, self.attribute_sets_array, self.attribute_set_indexes = self._convert_attribute_info_to_c(
+        self.attribute_array, self.attribute_sets_array, self.feature_combination_indexes = self._convert_attribute_info_to_c(
             attributes, attribute_sets
         )
 
@@ -445,7 +445,7 @@ class NativeEBM:
             attribute_ar[idx].hasMissing = 1 * attribute["has_missing"]
             attribute_ar[idx].countBins = attribute["n_bins"]
 
-        attribute_set_indexes = []
+        feature_combination_indexes = []
         attribute_sets_ar = (
             this.native.EbmCoreFeatureCombination * len(attribute_sets)
         )()
@@ -455,11 +455,11 @@ class NativeEBM:
             ]
 
             for attr_idx in attribute_set["attributes"]:
-                attribute_set_indexes.append(attr_idx)
+                feature_combination_indexes.append(attr_idx)
 
-        attribute_set_indexes = np.array(attribute_set_indexes, dtype="int64")
+        feature_combination_indexes = np.array(feature_combination_indexes, dtype="int64")
 
-        return attribute_ar, attribute_sets_ar, attribute_set_indexes
+        return attribute_ar, attribute_sets_ar, feature_combination_indexes
 
     def _initialize_training_classification(self):
         self.model_pointer = this.native.lib.InitializeTrainingClassification(
@@ -468,7 +468,7 @@ class NativeEBM:
             self.attribute_array,
             len(self.attribute_sets_array),
             self.attribute_sets_array,
-            self.attribute_set_indexes,
+            self.feature_combination_indexes,
             self.num_classification_states,
             self.X_train.shape[0],
             self.y_train,
@@ -488,7 +488,7 @@ class NativeEBM:
             self.attribute_array,
             len(self.attribute_sets_array),
             self.attribute_sets_array,
-            self.attribute_set_indexes,
+            self.feature_combination_indexes,
             self.X_train.shape[0],
             self.y_train,
             self.X_train_f,
@@ -543,7 +543,7 @@ class NativeEBM:
 
     def training_step(
         self,
-        attribute_set_index,
+        feature_combination_index,
         training_step_episodes=1,
         learning_rate=0.01,
         max_tree_splits=2,
@@ -556,7 +556,7 @@ class NativeEBM:
             by growing a shallow decision tree.
 
         Args:
-            attribute_set_index: The index for the attribute set
+            feature_combination_index: The index for the attribute set
                 to train on.
             training_step_episodes: Number of episodes to train feature step.
             learning_rate: Learning rate as a float.
@@ -577,7 +577,7 @@ class NativeEBM:
             for i in range(training_step_episodes):
                 model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
                     self.model_pointer,
-                    attribute_set_index,
+                    feature_combination_index,
                     learning_rate,
                     max_tree_splits,
                     min_cases_for_split,
@@ -586,11 +586,11 @@ class NativeEBM:
                     ct.byref(gain),
                 )
                 if not model_update_tensor_pointer:  # pragma: no cover
-                    raise MemoryError("Out of memory occured in GenerateModelFeatureCombinationUpdate")
+                    raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
 
                 return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
                     self.model_pointer,
-                    attribute_set_index,
+                    feature_combination_index,
                     model_update_tensor_pointer,
                     ct.byref(metric_output),
                 )
@@ -600,11 +600,11 @@ class NativeEBM:
         # log.debug("Training step end")
         return metric_output.value
 
-    def _get_attribute_set_shape(self, attribute_set_index):
+    def _get_attribute_set_shape(self, feature_combination_index):
         # Retrieve dimensions of log odds tensor
         dimensions = []
         attr_idxs = []
-        attribute_set = self.attribute_sets[attribute_set_index]
+        attribute_set = self.attribute_sets[feature_combination_index]
         for _, attr_idx in enumerate(attribute_set["attributes"]):
             n_bins = self.attributes[attr_idx]["n_bins"]
             attr_idxs.append(attr_idx)
@@ -620,43 +620,40 @@ class NativeEBM:
         shape = tuple(dimensions)
         return shape
 
-    def get_best_model(self, attribute_set_index):
+    def get_best_model(self, feature_combination_index):
         """ Returns best model/function according to validation set
             for a given attribute set.
 
         Args:
-            attribute_set_index: The index for the attribute set.
+            feature_combination_index: The index for the attribute set.
 
         Returns:
             An ndarray that represents the model.
         """
         array_p = this.native.lib.GetBestModelFeatureCombination(
-            self.model_pointer, attribute_set_index
+            self.model_pointer, feature_combination_index
         )
-        shape = self._get_attribute_set_shape(attribute_set_index)
+        shape = self._get_attribute_set_shape(feature_combination_index)
 
-        array = make_ndarray(
-            array_p, shape, dtype=np.double)
+        array = make_ndarray(array_p, shape, dtype=np.double)
         return array
 
-    def get_current_model(self, attribute_set_index):
+    def get_current_model(self, feature_combination_index):
         """ Returns current model/function according to validation set
             for a given attribute set.
 
         Args:
-            attribute_set_index: The index for the attribute set.
+            feature_combination_index: The index for the attribute set.
 
         Returns:
             An ndarray that represents the model.
         """
         array_p = this.native.lib.GetCurrentModelFeatureCombination(
-            self.model_pointer, attribute_set_index
+            self.model_pointer, feature_combination_index
         )
-        shape = self._get_attribute_set_shape(attribute_set_index)
+        shape = self._get_attribute_set_shape(feature_combination_index)
 
-        array = make_ndarray(
-            array_p, shape, dtype=np.double
-        )
+        array = make_ndarray(array_p, shape, dtype=np.double)
 
         # if self.model_type == "classification" and self.num_classification_states > 2:
         #     array = array.T.reshape(array.shape)
@@ -684,5 +681,8 @@ def make_ndarray(c_pointer, shape, dtype):
     buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
     PyBUF_READ = 0x100
     buffer = buf_from_mem(c_pointer, arr_size, PyBUF_READ)
+    # from https://github.com/python/cpython/blob/master/Objects/memoryobject.c , PyMemoryView_FromMemory can return null
+    if not buffer:
+        raise MemoryError("Out of memory in PyMemoryView_FromMemory")
     arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
     return arr.copy()
