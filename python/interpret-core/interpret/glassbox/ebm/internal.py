@@ -603,14 +603,11 @@ class NativeEBM:
     def _get_feature_combination_shape(self, feature_combination_index):
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_idxs = []
         feature_combination = self.feature_combinations[feature_combination_index]
         for _, feature_idx in enumerate(feature_combination["attributes"]):
             n_bins = self.features[feature_idx]["n_bins"]
-            feature_idxs.append(feature_idx)
             dimensions.append(n_bins)
 
-        # TODO: Remove once we check that this works
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
@@ -630,9 +627,18 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
+
+        # for a classification problem with only 1 target value, we will always predict the answer perfectly
+        if self.model_type == "classification" and self.num_classification_states <= 1:
+            return np.ndarray((0), np.double, order="C")
+
         array_p = this.native.lib.GetBestModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
+
+        if not array_p:  # pragma: no cover
+            raise MemoryError("Out of memory in GetBestModelFeatureCombination")
+
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = make_ndarray(array_p, shape, dtype=np.double)
@@ -648,9 +654,18 @@ class NativeEBM:
         Returns:
             An ndarray that represents the model.
         """
+
+        # for a classification problem with only 1 target value, we will always predict the answer perfectly
+        if self.model_type == "classification" and self.num_classification_states <= 1:
+            return np.ndarray((0), np.double, order="C")
+
         array_p = this.native.lib.GetCurrentModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
+
+        if not array_p:  # pragma: no cover
+            raise MemoryError("Out of memory in GetCurrentModelFeatureCombination")
+
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = make_ndarray(array_p, shape, dtype=np.double)
