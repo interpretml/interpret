@@ -41,12 +41,12 @@ class EBMUtils:
         return attribute_sets
 
     @staticmethod
-    def scores_by_attrib_set(
-        X, attribute_sets, attribute_set_models, skip_attr_set_idxs=[]
+    def scores_by_feature_combination(
+        X, attribute_sets, attribute_set_models, skip_feature_combination_idxs=[]
     ):
 
         for set_idx, attribute_set in enumerate(attribute_sets):
-            if set_idx in skip_attr_set_idxs:
+            if set_idx in skip_feature_combination_idxs:
                 continue
             tensor = attribute_set_models[set_idx]
 
@@ -63,7 +63,7 @@ class EBMUtils:
 
     @staticmethod
     def decision_function(
-        X, attribute_sets, attribute_set_models, intercept, skip_attr_set_idxs=[]
+        X, attribute_sets, attribute_set_models, intercept, skip_feature_combination_idxs=[]
     ):
 
         if X.ndim == 1:
@@ -77,8 +77,8 @@ class EBMUtils:
 
         score_vector += intercept
 
-        scores_gen = EBMUtils.scores_by_attrib_set(
-            X, attribute_sets, attribute_set_models, skip_attr_set_idxs
+        scores_gen = EBMUtils.scores_by_feature_combination(
+            X, attribute_sets, attribute_set_models, skip_feature_combination_idxs
         )
         for _, _, scores in scores_gen:
             score_vector += scores
@@ -93,7 +93,7 @@ class EBMUtils:
     # Old method -- TODO: remove once tested
     # @staticmethod
     # def decision_function(
-    #     X, attribute_sets, attribute_set_models, intercept, skip_attr_set_idxs=[]
+    #     X, attribute_sets, attribute_set_models, intercept, skip_feature_combination_idxs=[]
     # ):
 
     #     if X.ndim == 1:
@@ -103,8 +103,8 @@ class EBMUtils:
     #     score_vector = np.zeros(X.shape[0])
     #     score_vector += intercept
 
-    #     scores_gen = EBMUtils.scores_by_attrib_set(
-    #         X, attribute_sets, attribute_set_models, skip_attr_set_idxs
+    #     scores_gen = EBMUtils.scores_by_feature_combination(
+    #         X, attribute_sets, attribute_set_models, skip_feature_combination_idxs
     #     )
     #     for _, _, scores in scores_gen:
     #         score_vector += scores
@@ -117,13 +117,13 @@ class EBMUtils:
     #     return score_vector
 
     @staticmethod
-    def classifier_predict_proba(X, estimator, skip_attr_set_idxs=[]):
+    def classifier_predict_proba(X, estimator, skip_feature_combination_idxs=[]):
         log_odds_vector = EBMUtils.decision_function(
             X,
             estimator.attribute_sets_,
             estimator.attribute_set_models_,
             estimator.intercept_,
-            skip_attr_set_idxs,
+            skip_feature_combination_idxs,
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -135,13 +135,13 @@ class EBMUtils:
 
     # Old method -- TODO: remove once tested
     # @staticmethod
-    # def classifier_predict_proba(X, estimator, skip_attr_set_idxs=[]):
+    # def classifier_predict_proba(X, estimator, skip_feature_combination_idxs=[]):
     #     log_odds_vector = EBMUtils.decision_function(
     #         X,
     #         estimator.attribute_sets_,
     #         estimator.attribute_set_models_,
     #         estimator.intercept_,
-    #         skip_attr_set_idxs,
+    #         skip_feature_combination_idxs,
     #     )
 
     #     # NOTE: Generalize predict when multiclass is supported.
@@ -150,18 +150,18 @@ class EBMUtils:
     #     return scores
 
     @staticmethod
-    def classifier_predict(X, estimator, skip_attr_set_idxs=[]):
-        scores = EBMUtils.classifier_predict_proba(X, estimator, skip_attr_set_idxs)
+    def classifier_predict(X, estimator, skip_feature_combination_idxs=[]):
+        scores = EBMUtils.classifier_predict_proba(X, estimator, skip_feature_combination_idxs)
         return estimator.classes_[np.argmax(scores, axis=1)]
 
     @staticmethod
-    def regressor_predict(X, estimator, skip_attr_set_idxs=[]):
+    def regressor_predict(X, estimator, skip_feature_combination_idxs=[]):
         scores = EBMUtils.decision_function(
             X,
             estimator.attribute_sets_,
             estimator.attribute_set_models_,
             estimator.intercept_,
-            skip_attr_set_idxs,
+            skip_feature_combination_idxs,
         )
         return scores
 

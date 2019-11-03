@@ -94,8 +94,8 @@ def test_prefit_ebm():
     clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, data_n_episodes=0)
     clf.fit(X, y)
 
-    for _, attrib_set_model in enumerate(clf.attribute_set_models_):
-        has_non_zero = np.any(attrib_set_model)
+    for _, model_feature_combination in enumerate(clf.attribute_set_models_):
+        has_non_zero = np.any(model_feature_combination)
         assert not has_non_zero
 
 
@@ -116,8 +116,8 @@ def valid_ebm(ebm):
     assert ebm.attribute_sets_[0]["n_attributes"] == 1
     assert ebm.attribute_sets_[0]["attributes"] == [0]
 
-    for _, attrib_set_model in enumerate(ebm.attribute_set_models_):
-        all_finite = np.isfinite(attrib_set_model).all()
+    for _, model_feature_combination in enumerate(ebm.attribute_set_models_):
+        all_finite = np.isfinite(model_feature_combination).all()
         assert all_finite
 
 

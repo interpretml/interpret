@@ -418,11 +418,11 @@ class BaseCoreEBM(BaseEstimator):
             main_attr_indices = [[x] for x in self.main_attr]
         else:
             raise RuntimeError("Argument 'main_attr' has invalid value")
-        main_attr_sets = EBMUtils.gen_attribute_sets(main_attr_indices)
+        main_feature_combinations = EBMUtils.gen_attribute_sets(main_attr_indices)
         with closing(
             NativeEBM(
                 self.attributes_,
-                main_attr_sets,
+                main_feature_combinations,
                 X_train,
                 y_train,
                 X_val,
@@ -435,7 +435,7 @@ class BaseCoreEBM(BaseEstimator):
             )
         ) as native_ebm:
             # Train main effects
-            self._fit_main(native_ebm, main_attr_sets)
+            self._fit_main(native_ebm, main_feature_combinations)
 
             # Build interaction terms
             self.inter_indices_, self.inter_scores_ = self._build_interactions(
@@ -476,16 +476,16 @@ class BaseCoreEBM(BaseEstimator):
 
         return final_indices, final_scores
 
-    def _fit_main(self, native_ebm, main_attr_sets):
+    def _fit_main(self, native_ebm, main_feature_combinations):
         log.info("Train main effects")
         self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
-            native_ebm, main_attr_sets, "Main"
+            native_ebm, main_feature_combinations, "Main"
         )
         log.debug("Main Metric: {0}".format(self.current_metric_))
-        for index, attr_set in enumerate(main_attr_sets):
+        for index, feature_combination in enumerate(main_feature_combinations):
             attribute_set_model = native_ebm.get_best_model(index)
             self.attribute_set_models_.append(attribute_set_model)
-            self.attribute_sets_.append(attr_set)
+            self.attribute_sets_.append(feature_combination)
 
         self.has_fitted_ = True
 
@@ -528,11 +528,11 @@ class BaseCoreEBM(BaseEstimator):
         # Fix main, train interactions
         training_scores = self.decision_function(X_train)
         validation_scores = self.decision_function(X_val)
-        inter_attr_sets = EBMUtils.gen_attribute_sets(inter_indices)
+        inter_feature_combinations = EBMUtils.gen_attribute_sets(inter_indices)
         with closing(
             NativeEBM(
                 self.attributes_,
-                inter_attr_sets,
+                inter_feature_combinations,
                 X_train,
                 y_train,
                 X_val,
@@ -547,13 +547,13 @@ class BaseCoreEBM(BaseEstimator):
         ) as native_ebm:
             log.info("Train interactions")
             self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm, inter_attr_sets, "Pair"
+                native_ebm, inter_feature_combinations, "Pair"
             )
             log.debug("Interaction Metric: {0}".format(self.current_metric_))
 
-            for index, attr_set in enumerate(inter_attr_sets):
+            for index, feature_combination in enumerate(inter_feature_combinations):
                 self.attribute_set_models_.append(native_ebm.get_best_model(index))
-                self.attribute_sets_.append(attr_set)
+                self.attribute_sets_.append(feature_combination)
 
         return self
 
@@ -957,7 +957,7 @@ class BaseEBM(BaseEstimator):
 
         # Mean center graphs - only for binary classification and regression
         if self.n_classes_ <= 2:
-            scores_gen = EBMUtils.scores_by_attrib_set(
+            scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.attribute_sets_, self.attribute_set_models_, []
             )
             self._attrib_set_model_means_ = []
@@ -985,7 +985,7 @@ class BaseEBM(BaseEstimator):
             self.intercept_ = postprocessed["intercepts"]
 
         # Generate overall importance
-        scores_gen = EBMUtils.scores_by_attrib_set(
+        scores_gen = EBMUtils.scores_by_feature_combination(
             X, self.attribute_sets_, self.attribute_set_models_, []
         )
         self.mean_abs_scores_ = []
@@ -1215,7 +1215,7 @@ class BaseEBM(BaseEstimator):
 
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
         instances = self.preprocessor_.transform(X)
-        scores_gen = EBMUtils.scores_by_attrib_set(
+        scores_gen = EBMUtils.scores_by_feature_combination(
             instances, self.attribute_sets_, self.attribute_set_models_
         )
 
