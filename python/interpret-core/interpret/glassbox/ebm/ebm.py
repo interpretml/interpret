@@ -484,8 +484,8 @@ class BaseCoreEBM(BaseEstimator):
         )
         log.debug("Main Metric: {0}".format(self.current_metric_))
         for index, feature_combination in enumerate(main_feature_combinations):
-            attribute_set_model = native_ebm.get_best_model(index)
-            self.attribute_set_models_.append(attribute_set_model)
+            model_feature_combination = native_ebm.get_best_model(index)
+            self.attribute_set_models_.append(model_feature_combination)
             self.attribute_sets_.append(feature_combination)
 
         self.has_fitted_ = True
@@ -516,15 +516,15 @@ class BaseCoreEBM(BaseEstimator):
             model_type = "regression"
 
         # Discard initial interactions
-        new_attribute_set_models = []
-        new_attribute_sets = []
-        for i, attribute_set in enumerate(self.attribute_sets_):
-            if attribute_set["n_attributes"] != 1:
+        new_model_feature_combinations = []
+        new_feature_combinations = []
+        for i, feature_combination in enumerate(self.attribute_sets_):
+            if feature_combination["n_attributes"] != 1:
                 continue
-            new_attribute_set_models.append(self.attribute_set_models_[i])
-            new_attribute_sets.append(self.attribute_sets_[i])
-        self.attribute_set_models_ = new_attribute_set_models
-        self.attribute_sets_ = new_attribute_sets
+            new_model_feature_combinations.append(self.attribute_set_models_[i])
+            new_feature_combinations.append(self.attribute_sets_[i])
+        self.attribute_set_models_ = new_model_feature_combinations
+        self.attribute_sets_ = new_feature_combinations
 
         # Fix main, train interactions
         training_scores = self.decision_function(X_train)
@@ -565,7 +565,7 @@ class BaseCoreEBM(BaseEstimator):
             X, self.attribute_sets_, self.attribute_set_models_, 0
         )
 
-    def _cyclic_gradient_boost(self, native_ebm, attribute_sets, name=None):
+    def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
 
         no_change_run_length = 0
         curr_metric = np.inf
@@ -580,10 +580,10 @@ class BaseCoreEBM(BaseEstimator):
                 log.debug("Sweep Index for {0}: {1}".format(name, data_episode_index))
                 log.debug("Metric: {0}".format(curr_metric))
 
-            if len(attribute_sets) == 0:
+            if len(feature_combinations) == 0:
                 log.debug("No sets to boost for {0}".format(name))
 
-            for index, attribute_set in enumerate(attribute_sets):
+            for index, feature_combination in enumerate(feature_combinations):
                 curr_metric = native_ebm.training_step(
                     index,
                     training_step_episodes=self.training_step_episodes,
@@ -946,12 +946,12 @@ class BaseEBM(BaseEstimator):
         # Extract feature names and feature types.
         self.feature_names = []
         self.feature_types = []
-        for index, attribute_set in enumerate(self.attribute_sets_):
+        for index, feature_combination in enumerate(self.attribute_sets_):
             feature_name = EBMUtils.gen_feature_name(
-                attribute_set["attributes"], self.preprocessor_.col_names_
+                feature_combination["attributes"], self.preprocessor_.col_names_
             )
             feature_type = EBMUtils.gen_feature_type(
-                attribute_set["attributes"], self.preprocessor_.col_types_
+                feature_combination["attributes"], self.preprocessor_.col_types_
             )
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
@@ -964,7 +964,7 @@ class BaseEBM(BaseEstimator):
             self._attrib_set_model_means_ = []
 
             # TODO: Clean this up before release.
-            for set_idx, attribute_set, scores in scores_gen:
+            for set_idx, feature_combination, scores in scores_gen:
                 score_mean = np.mean(scores)
 
                 self.attribute_set_models_[set_idx] = (
@@ -990,7 +990,7 @@ class BaseEBM(BaseEstimator):
             X, self.attribute_sets_, self.attribute_set_models_, []
         )
         self.mean_abs_scores_ = []
-        for set_idx, attribute_set, scores in scores_gen:
+        for set_idx, feature_combination, scores in scores_gen:
             mean_abs_score = np.mean(np.abs(scores))
             self.mean_abs_scores_.append(mean_abs_score)
 
@@ -1090,7 +1090,7 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, attribute_set in enumerate(self.attribute_sets_):
+        for feature_combination_index, feature_combination in enumerate(self.attribute_sets_):
             errors = self.model_errors_[feature_combination_index]
             scores = self.attribute_set_models_[feature_combination_index]
 
@@ -1103,7 +1103,7 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_combination_index, attribute_set in enumerate(self.attribute_sets_):
+        for feature_combination_index, feature_combination in enumerate(self.attribute_sets_):
             model_graph = self.attribute_set_models_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
@@ -1236,14 +1236,14 @@ class BaseEBM(BaseEstimator):
             }
             data_dicts.append(data_dict)
 
-        for set_idx, attribute_set, scores in scores_gen:
+        for set_idx, feature_combination, scores in scores_gen:
             for row_idx in range(n_rows):
                 feature_name = self.feature_names[set_idx]
                 data_dicts[row_idx]["names"].append(feature_name)
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
-                if attribute_set["n_attributes"] == 1:
+                if feature_combination["n_attributes"] == 1:
                     data_dicts[row_idx]["values"].append(
-                        X[row_idx, attribute_set["attributes"][0]]
+                        X[row_idx, feature_combination["attributes"][0]]
                     )
                 else:
                     data_dicts[row_idx]["values"].append("")

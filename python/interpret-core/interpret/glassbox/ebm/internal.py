@@ -330,7 +330,7 @@ class NativeEBM:
     def __init__(
         self,
         attributes,
-        attribute_sets,
+        feature_combinations,
         X_train,
         y_train,
         X_val,
@@ -349,7 +349,7 @@ class NativeEBM:
         Args:
             attributes: List of attributes represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
-            attribute_sets: List of attribute sets represented as
+            feature_combinations: List of attribute sets represented as
                 a dictionary of keys ('n_attributes', 'attributes')
             X_train: Training design matrix as 2-D ndarray.
             y_train: Training response as 1-D ndarray.
@@ -374,9 +374,9 @@ class NativeEBM:
 
         # Store args
         self.attributes = attributes
-        self.attribute_sets = attribute_sets
-        self.attribute_array, self.attribute_sets_array, self.feature_combination_indexes = self._convert_attribute_info_to_c(
-            attributes, attribute_sets
+        self.feature_combinations = feature_combinations
+        self.attribute_array, self.feature_combinations_array, self.feature_combination_indexes = self._convert_attribute_info_to_c(
+            attributes, feature_combinations
         )
 
         self.X_train = X_train
@@ -434,7 +434,7 @@ class NativeEBM:
 
         log.info("Allocation end")
 
-    def _convert_attribute_info_to_c(self, attributes, attribute_sets):
+    def _convert_attribute_info_to_c(self, attributes, feature_combinations):
         # Create C form of attributes
         attribute_ar = (this.native.EbmCoreFeature * len(attributes))()
         for idx, attribute in enumerate(attributes):
@@ -446,28 +446,28 @@ class NativeEBM:
             attribute_ar[idx].countBins = attribute["n_bins"]
 
         feature_combination_indexes = []
-        attribute_sets_ar = (
-            this.native.EbmCoreFeatureCombination * len(attribute_sets)
+        feature_combinations_ar = (
+            this.native.EbmCoreFeatureCombination * len(feature_combinations)
         )()
-        for idx, attribute_set in enumerate(attribute_sets):
-            attribute_sets_ar[idx].countFeaturesInCombination = attribute_set[
+        for idx, feature_combination in enumerate(feature_combinations):
+            feature_combinations_ar[idx].countFeaturesInCombination = feature_combination[
                 "n_attributes"
             ]
 
-            for attr_idx in attribute_set["attributes"]:
+            for attr_idx in feature_combination["attributes"]:
                 feature_combination_indexes.append(attr_idx)
 
         feature_combination_indexes = np.array(feature_combination_indexes, dtype="int64")
 
-        return attribute_ar, attribute_sets_ar, feature_combination_indexes
+        return attribute_ar, feature_combinations_ar, feature_combination_indexes
 
     def _initialize_training_classification(self):
         self.model_pointer = this.native.lib.InitializeTrainingClassification(
             self.random_state,
             len(self.attribute_array),
             self.attribute_array,
-            len(self.attribute_sets_array),
-            self.attribute_sets_array,
+            len(self.feature_combinations_array),
+            self.feature_combinations_array,
             self.feature_combination_indexes,
             self.num_classification_states,
             self.X_train.shape[0],
@@ -486,8 +486,8 @@ class NativeEBM:
             self.random_state,
             len(self.attribute_array),
             self.attribute_array,
-            len(self.attribute_sets_array),
-            self.attribute_sets_array,
+            len(self.feature_combinations_array),
+            self.feature_combinations_array,
             self.feature_combination_indexes,
             self.X_train.shape[0],
             self.y_train,
@@ -600,12 +600,12 @@ class NativeEBM:
         # log.debug("Training step end")
         return metric_output.value
 
-    def _get_attribute_set_shape(self, feature_combination_index):
+    def _get_feature_combination_shape(self, feature_combination_index):
         # Retrieve dimensions of log odds tensor
         dimensions = []
         attr_idxs = []
-        attribute_set = self.attribute_sets[feature_combination_index]
-        for _, attr_idx in enumerate(attribute_set["attributes"]):
+        feature_combination = self.feature_combinations[feature_combination_index]
+        for _, attr_idx in enumerate(feature_combination["attributes"]):
             n_bins = self.attributes[attr_idx]["n_bins"]
             attr_idxs.append(attr_idx)
             dimensions.append(n_bins)
@@ -633,7 +633,7 @@ class NativeEBM:
         array_p = this.native.lib.GetBestModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
-        shape = self._get_attribute_set_shape(feature_combination_index)
+        shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = make_ndarray(array_p, shape, dtype=np.double)
         return array
@@ -651,7 +651,7 @@ class NativeEBM:
         array_p = this.native.lib.GetCurrentModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
-        shape = self._get_attribute_set_shape(feature_combination_index)
+        shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = make_ndarray(array_p, shape, dtype=np.double)
 

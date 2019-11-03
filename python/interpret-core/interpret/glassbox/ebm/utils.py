@@ -34,24 +34,24 @@ class EBMUtils:
 
     @staticmethod
     def gen_feature_combinations(attribute_indices):
-        attribute_sets = [None] * len(attribute_indices)
+        feature_combinations = [None] * len(attribute_indices)
         for i, indices in enumerate(attribute_indices):
-            attribute_set = {"n_attributes": len(indices), "attributes": indices}
-            attribute_sets[i] = attribute_set
-        return attribute_sets
+            feature_combination = {"n_attributes": len(indices), "attributes": indices}
+            feature_combinations[i] = feature_combination
+        return feature_combinations
 
     @staticmethod
     def scores_by_feature_combination(
-        X, attribute_sets, attribute_set_models, skip_feature_combination_idxs=[]
+        X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs=[]
     ):
 
-        for set_idx, attribute_set in enumerate(attribute_sets):
+        for set_idx, feature_combination in enumerate(feature_combinations):
             if set_idx in skip_feature_combination_idxs:
                 continue
-            tensor = attribute_set_models[set_idx]
+            tensor = model_feature_combinations[set_idx]
 
             # Get the current column(s) to process
-            attr_idxs = attribute_set["attributes"]
+            attr_idxs = feature_combination["attributes"]
 
             # TODO: Double check that this works
             attr_idxs = list(reversed(attr_idxs))
@@ -59,11 +59,11 @@ class EBMUtils:
             sliced_X = X[:, attr_idxs]
             scores = tensor[tuple(sliced_X.T)]
 
-            yield set_idx, attribute_set, scores
+            yield set_idx, feature_combination, scores
 
     @staticmethod
     def decision_function(
-        X, attribute_sets, attribute_set_models, intercept, skip_feature_combination_idxs=[]
+        X, feature_combinations, model_feature_combinations, intercept, skip_feature_combination_idxs=[]
     ):
 
         if X.ndim == 1:
@@ -78,7 +78,7 @@ class EBMUtils:
         score_vector += intercept
 
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, attribute_sets, attribute_set_models, skip_feature_combination_idxs
+            X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs
         )
         for _, _, scores in scores_gen:
             score_vector += scores
@@ -93,7 +93,7 @@ class EBMUtils:
     # Old method -- TODO: remove once tested
     # @staticmethod
     # def decision_function(
-    #     X, attribute_sets, attribute_set_models, intercept, skip_feature_combination_idxs=[]
+    #     X, feature_combinations, model_feature_combinations, intercept, skip_feature_combination_idxs=[]
     # ):
 
     #     if X.ndim == 1:
@@ -104,7 +104,7 @@ class EBMUtils:
     #     score_vector += intercept
 
     #     scores_gen = EBMUtils.scores_by_feature_combination(
-    #         X, attribute_sets, attribute_set_models, skip_feature_combination_idxs
+    #         X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs
     #     )
     #     for _, _, scores in scores_gen:
     #         score_vector += scores
