@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+// to minimize confusion, we try whenever possible to use common terms with scikit-learn -> https://scikit-learn.org/stable/glossary.html
+
 #ifndef EBMCORE_H
 #define EBMCORE_H
 

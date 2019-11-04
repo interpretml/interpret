@@ -440,8 +440,10 @@ class NativeEBM:
         for idx, feature in enumerate(features):
             if feature["type"] == "categorical":
                 feature_ar[idx].featureType = this.native.FeatureTypeNominal
-            else:
+            elif feature["type"] == "continuous":
                 feature_ar[idx].featureType = this.native.FeatureTypeOrdinal
+            else:
+                raise AttributeError("Unrecognized feature[\"type\"]")
             feature_ar[idx].hasMissing = 1 * feature["has_missing"]
             feature_ar[idx].countBins = feature["n_bins"]
 
@@ -457,7 +459,7 @@ class NativeEBM:
             for feature_idx in feature_combination["attributes"]:
                 feature_combination_indexes.append(feature_idx)
 
-        feature_combination_indexes = np.array(feature_combination_indexes, dtype="int64")
+        feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
 
         return feature_ar, feature_combinations_ar, feature_combination_indexes
 
@@ -470,11 +472,11 @@ class NativeEBM:
             self.feature_combinations_array,
             self.feature_combination_indexes,
             self.num_classification_states,
-            self.X_train.shape[0],
+            len(self.y_train),
             self.y_train,
             self.X_train_f,
             self.training_scores,
-            self.X_val.shape[0],
+            len(self.y_val),
             self.y_val,
             self.X_val_f,
             self.validation_scores,
@@ -491,11 +493,11 @@ class NativeEBM:
             len(self.feature_combinations_array),
             self.feature_combinations_array,
             self.feature_combination_indexes,
-            self.X_train.shape[0],
+            len(self.y_train),
             self.y_train,
             self.X_train_f,
             self.training_scores,
-            self.X_val.shape[0],
+            len(self.y_val),
             self.y_val,
             self.X_val_f,
             self.validation_scores,
@@ -509,7 +511,7 @@ class NativeEBM:
             len(self.feature_array),
             self.feature_array,
             self.num_classification_states,
-            self.X_train.shape[0],
+            len(self.y_train),
             self.y_train,
             self.X_train_f,
             self.training_scores,
@@ -521,7 +523,7 @@ class NativeEBM:
         self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
             len(self.feature_array),
             self.feature_array,
-            self.X_train.shape[0],
+            len(self.y_train),
             self.y_train,
             self.X_train_f,
             self.training_scores,
