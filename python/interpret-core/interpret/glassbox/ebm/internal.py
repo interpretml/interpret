@@ -675,7 +675,7 @@ class NativeEBM:
         return array
 
 
-def make_ndarray(c_pointer, shape, dtype):
+def make_ndarray(c_pointer, shape, dtype, writable=False, copy_data=True):
     """ Returns an ndarray based from a C array.
 
     Code largely borrowed from:
@@ -695,9 +695,14 @@ def make_ndarray(c_pointer, shape, dtype):
     buf_from_mem.restype = ct.py_object
     buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
     PyBUF_READ = 0x100
-    buffer = buf_from_mem(c_pointer, arr_size, PyBUF_READ)
+    PyBUF_WRITE = 0x200
+    access = (PyBUF_READ | PyBUF_WRITE) if writable else PyBUF_READ
+    buffer = buf_from_mem(c_pointer, arr_size, access)
     # from https://github.com/python/cpython/blob/master/Objects/memoryobject.c , PyMemoryView_FromMemory can return null
     if not buffer:
         raise MemoryError("Out of memory in PyMemoryView_FromMemory")
     arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
-    return arr.copy()
+    if copy_data:
+        return arr.copy()
+    else:
+        return arr
