@@ -595,7 +595,7 @@ class NativeEBM:
                     ct.byref(metric_output),
                 )
                 if return_code != 0:  # pragma: no cover
-                    raise Exception("ApplyModelFeatureCombinationUpdate Exception")
+                    raise Exception("Out of memory in ApplyModelFeatureCombinationUpdate")
 
         # log.debug("Training step end")
         return metric_output.value
