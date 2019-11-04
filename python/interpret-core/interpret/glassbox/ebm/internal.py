@@ -86,25 +86,25 @@ class Native:
             # EbmCoreFeatureCombination * featureCombinations
             ct.POINTER(self.EbmCoreFeatureCombination),
             # int64_t * featureCombinationIndexes
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # int64_t countTargetClasses
             ct.c_longlong,
             # int64_t countTrainingInstances
             ct.c_longlong,
             # int64_t * trainingTargets
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * trainingBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t countValidationInstances
             ct.c_longlong,
             # int64_t * validationTargets
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * validationBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
         ]
@@ -122,23 +122,23 @@ class Native:
             # EbmCoreFeatureCombination * featureCombinations
             ct.POINTER(self.EbmCoreFeatureCombination),
             # int64_t * featureCombinationIndexes
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # int64_t countTrainingInstances
             ct.c_longlong,
             # double * trainingTargets
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * trainingBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * trainingPredictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t countValidationInstances
             ct.c_longlong,
             # double * validationTargets
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * validationBinnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * validationPredictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
         ]
@@ -156,10 +156,10 @@ class Native:
             # int64_t countInstancesRequiredForParentSplitMin
             ct.c_longlong,
             # double * trainingWeights
-            # ndpointer(dtype=ct.c_double),
+            # ndpointer(dtype=np.float64, ndim=1),
             ct.c_void_p,
             # double * validationWeights
-            # ndpointer(dtype=ct.c_double),
+            # ndpointer(dtype=np.float64, ndim=1),
             ct.c_void_p,
             # double * gainReturn
             ct.POINTER(ct.c_double),
@@ -209,11 +209,11 @@ class Native:
             # int64_t countInstances
             ct.c_longlong,
             # int64_t * targets
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * predictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
@@ -225,11 +225,11 @@ class Native:
             # int64_t countInstances
             ct.c_longlong,
             # double * targets
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * binnedData
-            ndpointer(dtype=ct.c_longlong, flags="F_CONTIGUOUS", ndim=2),
+            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
             # double * predictorScores
-            ndpointer(dtype=ct.c_double),
+            ndpointer(dtype=np.float64, ndim=1),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
@@ -239,7 +239,7 @@ class Native:
             # int64_t countFeaturesInCombination
             ct.c_longlong,
             # int64_t * featureIndexes
-            ndpointer(dtype=ct.c_longlong),
+            ndpointer(dtype=np.int64, ndim=1),
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
         ]
@@ -335,7 +335,7 @@ class NativeEBM:
         y_train,
         X_val,
         y_val,
-        model_type="regression",
+        model_type,
         num_inner_bags=0,
         num_classification_states=2,
         training_scores=None,
@@ -420,17 +420,18 @@ class NativeEBM:
         self.interaction_pointer = None
 
         # Allocate external resources
-        if self.model_type == "regression":
+        if self.model_type == "classification":
+            self.y_train = self.y_train.astype("int64")
+            self.y_val = self.y_val.astype("int64")
+            self._initialize_training_classification()
+            self._initialize_interaction_classification()
+        elif self.model_type == "regression":
             self.y_train = self.y_train.astype("float64")
             self.y_val = self.y_val.astype("float64")
             self._initialize_training_regression()
             self._initialize_interaction_regression()
-        elif self.model_type == "classification":
-            self.y_train = self.y_train.astype("int64")
-            self.y_val = self.y_val.astype("int64")
-
-            self._initialize_training_classification()
-            self._initialize_interaction_classification()
+        else:
+            raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation end")
 
