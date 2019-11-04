@@ -532,12 +532,15 @@ class NativeEBM:
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        this.native.lib.GetInteractionScore(
+        return_code = this.native.lib.GetInteractionScore(
             self.interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
             ct.byref(score),
         )
+        if return_code != 0:  # pragma: no cover
+            raise Exception("Out of memory in GetInteractionScore")
+
         log.info("Fast interaction score end")
         return score.value
 

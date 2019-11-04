@@ -106,6 +106,9 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
+   if(nullptr == pCachedThreadResources) {
+      return 1;
+   }
 
    if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
