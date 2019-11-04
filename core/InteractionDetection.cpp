@@ -265,7 +265,7 @@ EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeInteraction(
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
-   EBM_ASSERT(nullptr != pEbmInteractionState);
+   // pEbmInteractionState == nullptr is legal, just like delete/free
    delete pEbmInteractionState;
    LOG_0(TraceLevelInfo, "Exited FreeInteraction");
 }

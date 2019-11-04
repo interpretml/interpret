@@ -1513,7 +1513,7 @@ EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeTraining(
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeTraining: ebmTraining=%p", static_cast<void *>(ebmTraining));
    EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pEbmTrainingState);
+   // pEbmTrainingState == nullptr is legal, just like delete/free
    delete pEbmTrainingState;
    LOG_0(TraceLevelInfo, "Exited FreeTraining");
 }

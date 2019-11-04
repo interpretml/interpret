@@ -480,6 +480,8 @@ class NativeEBM:
             self.validation_scores,
             self.num_inner_bags,
         )
+        if not self.model_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeTrainingClassification")
 
     def _initialize_training_regression(self):
         self.model_pointer = this.native.lib.InitializeTrainingRegression(
@@ -499,6 +501,8 @@ class NativeEBM:
             self.validation_scores,
             self.num_inner_bags,
         )
+        if not self.model_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeTrainingRegression")
 
     def _initialize_interaction_classification(self):
         self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
@@ -510,6 +514,8 @@ class NativeEBM:
             self.X_train_f,
             self.training_scores,
         )
+        if not self.interaction_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeInteractionClassification")
 
     def _initialize_interaction_regression(self):
         self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
@@ -520,6 +526,8 @@ class NativeEBM:
             self.X_train_f,
             self.training_scores,
         )
+        if not self.interaction_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeInteractionRegression")
 
     def close(self):
         """ Deallocates C objects used to train EBM. """
