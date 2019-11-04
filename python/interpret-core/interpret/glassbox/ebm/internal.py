@@ -252,19 +252,20 @@ class Native:
 
     def set_logging(self, level=None):
         def native_log(trace_level, message):
-            trace_level = int(trace_level[0])
-            message = message.decode("utf-8")
+            try:
+                trace_level = int(trace_level[0])
+                message = message.decode("ascii")
 
-            if trace_level == self.TraceLevelOff:
+                if trace_level == self.TraceLevelError:
+                    log.error(message)
+                elif trace_level == self.TraceLevelWarning:
+                    log.warning(message)
+                elif trace_level == self.TraceLevelInfo:
+                    log.info(message)
+                elif trace_level == self.TraceLevelVerbose:
+                    log.debug(message)
+            except: # we're being called from C, so we can't raise exceptions
                 pass
-            elif trace_level == self.TraceLevelError:
-                log.error(message)
-            elif trace_level == self.TraceLevelWarning:
-                log.warning(message)
-            elif trace_level == self.TraceLevelInfo:
-                log.info(message)
-            elif trace_level == self.TraceLevelVerbose:
-                log.debug(message)
 
         if level is None:
             root = logging.getLogger("interpret")
