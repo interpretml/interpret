@@ -88,7 +88,7 @@ url = {http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model
 
 @article{Herman2017, doi = {10.21105/joss.00097}, url = {https://doi.org/10.21105/joss.00097}, year = {2017}, month = {jan}, publisher = {The Open Journal}, volume = {2}, number = {9}, author = {Jon Herman and Will Usher}, title = {{SALib}: An open-source Python library for Sensitivity Analysis}, journal = {The Journal of Open Source Software} }
 
-@online{plotly, author = {Plotly Technologies Inc.}, title = {Collaborative data science}, publisher = {Plotly Technologies Inc.}, address = {Montreal, QC}, year = {2015}, url = {https://plot.ly} }
+@online{plotly, author = {Plotly}, title = {Collaborative data science}, publisher = {Plotly Technologies Inc.}, address = {Montreal, QC}, year = {2015}, url = {https://plot.ly} }
 
 @article{Breiman:2001:RF:570181.570182,
  author = {Breiman, Leo},
@@ -126,4 +126,122 @@ url = {http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model
  publisher = {ACM},
  address = {New York, NY, USA},
  keywords = {large-scale machine learning},
+}
+
+@InProceedings{caruana2015intelligible,
+author = {Caruana, Rich and Koch, Paul and Lou, Yin and , Marc Sturm and Gehrke, Johannes and Elhadad, Noemie},
+title = {Intelligible Models for HealthCare: Predicting Pneumonia Risk and Hospital 30-day Readmission},
+booktitle = {KDD'15, August 10-13, 2015, Sydney, NSW, Australia},
+year = {2015},
+month = {August},
+abstract = {In machine learning often a tradeoﬀ must be made between accuracy and intelligibility. More accurate models such as boosted trees, random forests, and neural nets usually are not intelligible, but more intelligible models such as logistic regression, naive-Bayes, and single decision trees often have signiﬁcantly worse accuracy. This tradeoﬀ sometimes limits the accuracy of models that can be applied in mission-critical applications such as healthcare where being able to understand, validate, edit, and trust a learned model is important. We present two case studies where high-performance generalized additive models with pairwise interactions (GA2Ms) are applied to real healthcare problems yielding intelligible models with state-of-the-art accuracy. In the pneumonia risk prediction case study, the intelligible model uncovers surprising patterns in the data that previously had prevented complex learned models from being ﬁelded in this domain, but because it is intelligible and modular allows these patterns to be recognized and removed. In the 30day hospital readmission case study, we show that the same methods scale to large datasets containing hundreds of thousands of patients and thousands of attributes while remaining intelligible and providing accuracy comparable to the best (unintelligible) machine learning methods.},
+publisher = {ACM},
+url = {https://www.microsoft.com/en-us/research/publication/intelligible-models-healthcare-predicting-pneumonia-risk-hospital-30-day-readmission/},
+isbn = {978-1-4503-3664-2/15/08},
+edition = {KDD’15, August 10-13, 2015, Sydney, NSW, Australia},
+}
+
+@inproceedings{ahmad2018interpretable,
+  title={Interpretable machine learning in healthcare},
+  author={Ahmad, Muhammad Aurangzeb and Eckert, Carly and Teredesai, Ankur},
+  booktitle={Proceedings of the 2018 ACM International Conference on Bioinformatics, Computational Biology, and Health Informatics},
+  pages={559--560},
+  year={2018},
+  organization={ACM}
+}
+
+@inproceedings{Tan:2018:DAB:3278721.3278725,
+ author = {Tan, Sarah and Caruana, Rich and Hooker, Giles and Lou, Yin},
+ title = {Distill-and-Compare: Auditing Black-Box Models Using Transparent Model Distillation},
+ booktitle = {Proceedings of the 2018 AAAI/ACM Conference on AI, Ethics, and Society},
+ series = {AIES '18},
+ year = {2018},
+ isbn = {978-1-4503-6012-8},
+ location = {New Orleans, LA, USA},
+ pages = {303--310},
+ numpages = {8},
+ url = {http://doi.acm.org/10.1145/3278721.3278725},
+ doi = {10.1145/3278721.3278725},
+ acmid = {3278725},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {black-box models, distillation, fairness, interpretability},
+} 
+
+@inproceedings{Hohman:2019:GDP:3290605.3300809,
+ author = {Hohman, Fred and Head, Andrew and Caruana, Rich and DeLine, Robert and Drucker, Steven M.},
+ title = {Gamut: A Design Probe to Understand How Data Scientists Understand Machine Learning Models},
+ booktitle = {Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems},
+ series = {CHI '19},
+ year = {2019},
+ isbn = {978-1-4503-5970-2},
+ location = {Glasgow, Scotland Uk},
+ pages = {579:1--579:13},
+ articleno = {579},
+ numpages = {13},
+ url = {http://doi.acm.org/10.1145/3290605.3300809},
+ doi = {10.1145/3290605.3300809},
+ acmid = {3300809},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {data visualization, design probe, interactive interfaces, machine learning interpretability, visual analytics},
+}
+
+@conference{Kluyver:2016aa,
+	Author = {Thomas Kluyver and Benjamin Ragan-Kelley and Fernando P{\'e}rez and Brian Granger and Matthias Bussonnier and Jonathan Frederic and Kyle Kelley and Jessica Hamrick and Jason Grout and Sylvain Corlay and Paul Ivanov and Dami{\'a}n Avila and Safia Abdalla and Carol Willing},
+	Booktitle = {Positioning and Power in Academic Publishing: Players, Agents and Agendas},
+	Editor = {F. Loizides and B. Schmidt},
+	Organization = {IOS Press},
+	Pages = {87 - 90},
+	Title = {Jupyter Notebooks -- a publishing format for reproducible computational workflows},
+	Year = {2016}}
+	
+@inproceedings{hajek2019interpretable,
+  title={Interpretable Fuzzy Rule-Based Systems for Detecting Financial Statement Fraud},
+  author={Hajek, Petr},
+  booktitle={IFIP International Conference on Artificial Intelligence Applications and Innovations},
+  pages={425--436},
+  year={2019},
+  organization={Springer}
+}
+@article{chen2018interpretable,
+  title={An interpretable model with globally consistent explanations for credit risk},
+  author={Chen, Chaofan and Lin, Kangcheng and Rudin, Cynthia and Shaposhnik, Yaron and Wang, Sijia and Wang, Tong},
+  journal={arXiv preprint arXiv:1811.12615},
+  year={2018}
+}
+
+@article{mckinneypandas,
+  title={pandas: a Foundational Python Library for Data Analysis and Statistics},
+  author={McKinney, Wes}
+}
+
+@article{soundarajanequal,
+  title={Equal Protection Under the Algorithm: A Legal-Inspired Framework for Identifying Discrimination in Machine Learning},
+  author={Soundarajan, Sucheta and Clausen, Daniel L}
+}
+
+@article{friedman2001,
+author = "Friedman, Jerome H.",
+doi = "10.1214/aos/1013203451",
+fjournal = "The Annals of Statistics",
+journal = "Ann. Statist.",
+month = "10",
+number = "5",
+pages = "1189--1232",
+publisher = "The Institute of Mathematical Statistics",
+title = "Greedy function approximation: A gradient boosting machine.",
+url = "https://doi.org/10.1214/aos/1013203451",
+volume = "29",
+year = "2001"
+}
+@article{hastie1987generalized,
+  title={Generalized additive models: some applications},
+  author={Hastie, Trevor and Tibshirani, Robert},
+  journal={Journal of the American Statistical Association},
+  volume={82},
+  number={398},
+  pages={371--386},
+  year={1987},
+  publisher={Taylor \& Francis}
 }

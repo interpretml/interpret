@@ -2,10 +2,15 @@
 % File:    Macros for Journal of Machine Learning Research
 %      Very minor modification of macros for Journal of Artificial 
 %      Intelligence Research (jair.sty) 
+%
+% Suggestions: Submit an issue or pull request to 
+%   https://github.com/JournalMLR/jmlr-style-file
+%
 %   Last edited October 9, 2000 by Leslie Pack Kaelbling
 %   Last edited January 23, 2001 by Alex J. Smola (we should set up RCS or CVS)
 %   Last edited March 29, 2004 Erik G. Learned-Miller
 %   Last edited January 17, 2016 Charles Sutton 
+%   Last edited January 9, 2017 Charles Sutton 
 %    (We have now set up GIT, good thing that we waited for it to
 %     be invented.)
 %
@@ -242,15 +247,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Defines the pagestyle for the title page.
-%% Usage: \jmlrheading{1}{1993}{1-15}{8/93;}{9/93}
-%%                      {Jane Q. Public and A. U. Thor}
-%%        \jmlrheading{vol}{year}{pages}{Submitted}{published}{authors}
+%% Usage: \jmlrheading{1}{1993}{1-15}{8/93}{9/93}{14-115}{Jane Q. Public and A. U. Thor}
+%%        \jmlrheading{vol}{year}{pages}{Submitted date}{published date}{paper id}{authors}
+%%
+%% If your paper required revisions that were reviewed by the action editor, then indicate
+%%  this by, e.g.
+%%   \jmlrheading{1}{1993}{1-15}{8/93; Revised 10/93}{12/93}{14-115}{Jane Q. Public and A. U. Thor}
 
 \def\firstpageno#1{\setcounter{page}{#1}}
 
-\def\jmlrheading#1#2#3#4#5#6{\def\ps@jmlrtps{\let\@mkboth\@gobbletwo%
+\def\jmlrheading#1#2#3#4#5#6#7{\def\ps@jmlrtps{\let\@mkboth\@gobbletwo%
 \def\@oddhead{\scriptsize Journal of Machine Learning Research #1 (#2) #3 \hfill Submitted #4; Published #5}%
-\def\@oddfoot{\scriptsize \copyright #2 #6. \hfill}%
+\def\@oddfoot{\parbox[t]{\textwidth}{\raggedright \scriptsize \copyright #2 #7.\\[5pt] 
+License: CC-BY 4.0, see \url{https://creativecommons.org/licenses/by/4.0/}. Attribution requirements
+are provided at \url{http://jmlr.org/papers/v#1/#6.html}.\hfill}}%
+
 \def\@evenhead{}\def\@evenfoot{}}%
 \thispagestyle{jmlrtps}}
 
@@ -339,5 +350,6 @@
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{conjecture}[theorem]{Conjecture}
 \newtheorem{axiom}[theorem]{Axiom}
+
 
 
