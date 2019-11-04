@@ -38,14 +38,15 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_
    const size_t cBytes = sizeof(FractionalDataType) * cElements;
    FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
 
-   if(IsRegression(runtimeLearningTypeOrCountTargetClasses)) {
-      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression);
-   } else {
+   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
          InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 });
       } else {
          InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, runtimeLearningTypeOrCountTargetClasses);
       }
+   } else {
+      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression);
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");

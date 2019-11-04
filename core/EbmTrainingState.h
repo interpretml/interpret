@@ -32,13 +32,13 @@ union CachedThreadResourcesUnion {
    EBM_INLINE CachedThreadResourcesUnion(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       LOG_N(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
       const size_t cVectorLength = GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses);
-      if(IsRegression(runtimeLearningTypeOrCountTargetClasses)) {
-         // member classes inside a union requre explicit call to constructor
-         new(&regression) CachedTrainingThreadResources<false>(cVectorLength);
-      } else {
-         EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to constructor
          new(&classification) CachedTrainingThreadResources<true>(cVectorLength);
+      } else {
+         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+         // member classes inside a union requre explicit call to constructor
+         new(&regression) CachedTrainingThreadResources<false>(cVectorLength);
       }
       LOG_0(TraceLevelInfo, "Exited CachedThreadResourcesUnion");
    }
@@ -105,15 +105,15 @@ public:
    EBM_INLINE ~EbmTrainingState() {
       LOG_0(TraceLevelInfo, "Entered ~EbmTrainingState");
 
-      if(IsRegression(m_runtimeLearningTypeOrCountTargetClasses)) {
-         // member classes inside a union requre explicit call to destructor
-         LOG_0(TraceLevelInfo, "~EbmTrainingState identified as regression type");
-         m_cachedThreadResourcesUnion.regression.~CachedTrainingThreadResources();
-      } else {
-         EBM_ASSERT(IsClassification(m_runtimeLearningTypeOrCountTargetClasses));
+      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to destructor
          LOG_0(TraceLevelInfo, "~EbmTrainingState identified as classification type");
          m_cachedThreadResourcesUnion.classification.~CachedTrainingThreadResources();
+      } else {
+         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+         // member classes inside a union requre explicit call to destructor
+         LOG_0(TraceLevelInfo, "~EbmTrainingState identified as regression type");
+         m_cachedThreadResourcesUnion.regression.~CachedTrainingThreadResources();
       }
 
       SamplingWithReplacement::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);

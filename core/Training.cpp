@@ -277,11 +277,11 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
       LOG_0(TraceLevelInfo, "EbmTrainingState::Initialize finished feature combination processing");
 
       const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
-      const bool bRegression = IsRegression(m_runtimeLearningTypeOrCountTargetClasses);
+      const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
       LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
       if(0 != cTrainingInstances) {
-         m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, !bRegression, !bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, cVectorLength);
+         m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, cVectorLength);
          if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
             LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
             return true;
@@ -291,7 +291,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
 
       LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
       if(0 != cValidationInstances) {
-         m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(bRegression, !bRegression, !bRegression, m_cFeatureCombinations, m_apFeatureCombinations, cValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, cVectorLength);
+         m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(!bClassification, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, cVectorLength);
          if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
             LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
             return true;
@@ -312,7 +312,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
 
       EBM_ASSERT(nullptr == m_apCurrentModel);
       EBM_ASSERT(nullptr == m_apBestModel);
-      if(0 != m_cFeatureCombinations && (IsRegression(m_runtimeLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } <= m_runtimeLearningTypeOrCountTargetClasses)) {
+      if(0 != m_cFeatureCombinations && (!bClassification || ptrdiff_t { 2 } <= m_runtimeLearningTypeOrCountTargetClasses)) {
          m_apCurrentModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
          if(nullptr == m_apCurrentModel) {
             LOG_0(TraceLevelWarning, "WARNING EbmTrainingState::Initialize nullptr == m_apCurrentModel");
@@ -325,7 +325,7 @@ bool EbmTrainingState::Initialize(const IntegerDataType randomSeed, const EbmCor
          }
       }
 
-      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
             if(0 != cTrainingInstances) {
                InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });

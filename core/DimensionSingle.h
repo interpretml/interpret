@@ -176,17 +176,17 @@ bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLea
 
       // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
-      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-         FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, cInstancesTotal);
-         FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         pValues[0] = smallChangeToModel;
-      } else {
-         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
+      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
          FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
             aValues[iVector] = smallChangeToModel;
          }
+      } else {
+         EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+         FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, cInstancesTotal);
+         FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+         pValues[0] = smallChangeToModel;
       }
 
       LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
@@ -251,15 +251,15 @@ retry_with_bigger_tree_node_children_array:
       const TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
 
       FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-      if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-         aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, pLeftChild->GetInstances());
-         aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, pRightChild->GetInstances());
-      } else {
-         EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
+      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             aValues[iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
          }
+      } else {
+         EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+         aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, pLeftChild->GetInstances());
+         aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, pRightChild->GetInstances());
       }
 
       LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
@@ -413,17 +413,17 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compile
    BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
 
    const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry);
-   if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, pHistogramBucket->m_cInstancesInBucket);
-      FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-      pValues[0] = smallChangeToModel;
-   } else {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
+   if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
       FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
          aValues[iVector] = smallChangeToModel;
       }
+   } else {
+      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, pHistogramBucket->m_cInstancesInBucket);
+      FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      pValues[0] = smallChangeToModel;
    }
 
    LOG_0(TraceLevelVerbose, "Exited TrainZeroDimensional");

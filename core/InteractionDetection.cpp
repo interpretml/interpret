@@ -232,10 +232,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
    } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
    IntegerDataType ret;
-   if(IsRegression(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
-   } else {
-      EBM_ASSERT(IsClassification(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses));
+   if(IsClassification(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses)) {
       if(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
@@ -244,6 +241,9 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
          return 0;
       }
       ret = CompilerRecursiveGetInteractionScore<2>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
+   } else {
+      EBM_ASSERT(IsRegression(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses));
+      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
    }
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
