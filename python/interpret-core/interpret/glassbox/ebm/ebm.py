@@ -385,8 +385,8 @@ class BaseCoreEBM(BaseEstimator):
         elif self.holdout_split == 0:
             X_train = X
             y_train = y
-            X_val = np.empty(shape=(0, 0)).astype(np.int64)
-            y_val = np.empty(shape=(0,)).astype(np.int64)
+            X_val = np.empty(shape=(0, 0), dtype=np.int64)
+            y_val = np.empty(shape=(0), dtype=y.dtype)
         else:  # pragma: no cover
             raise Exception("Holdout_split must be between 0 and 1.")
         # Define features
