@@ -113,7 +113,6 @@ def test_ebm_synthetic_regression():
 
 
 def valid_ebm(ebm):
-    assert ebm.attribute_sets_[0]["n_attributes"] == 1
     assert ebm.attribute_sets_[0]["attributes"] == [0]
 
     for _, model_feature_combination in enumerate(ebm.attribute_set_models_):

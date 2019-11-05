@@ -515,7 +515,7 @@ class BaseCoreEBM(BaseEstimator):
         new_model_feature_combinations = []
         new_feature_combinations = []
         for i, feature_combination in enumerate(self.attribute_sets_):
-            if feature_combination["n_attributes"] != 1:
+            if len(feature_combination["attributes"]) != 1:
                 continue
             new_model_feature_combinations.append(self.attribute_set_models_[i])
             new_feature_combinations.append(self.attribute_sets_[i])
@@ -800,6 +800,7 @@ class BaseEBM(BaseEstimator):
 
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
+            y = y.astype(np.int64, casting='unsafe', copy=False)
             self.n_classes_ = len(self.classes_)
             if self.n_classes_ > 2:
                 warn("Multiclass is still experimental. Subject to change per release.")
@@ -830,6 +831,7 @@ class BaseEBM(BaseEstimator):
             )
         else:
             self.n_classes_ = -1
+            y = y.astype(np.float64, casting='unsafe', copy=False)
             proto_estimator = CoreEBMRegressor(
                 # Data
                 col_types=self.preprocessor_.col_types_,
@@ -1237,7 +1239,7 @@ class BaseEBM(BaseEstimator):
                 feature_name = self.feature_names[set_idx]
                 data_dicts[row_idx]["names"].append(feature_name)
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
-                if feature_combination["n_attributes"] == 1:
+                if len(feature_combination["attributes"]) == 1:
                     data_dicts[row_idx]["values"].append(
                         X[row_idx, feature_combination["attributes"][0]]
                     )

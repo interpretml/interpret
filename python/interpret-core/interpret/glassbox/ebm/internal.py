@@ -422,13 +422,9 @@ class NativeEBM:
 
         # Allocate external resources
         if self.model_type == "classification":
-            self.y_train = self.y_train.astype("int64")
-            self.y_val = self.y_val.astype("int64")
             self._initialize_training_classification()
             self._initialize_interaction_classification()
         elif self.model_type == "regression":
-            self.y_train = self.y_train.astype("float64")
-            self.y_val = self.y_val.astype("float64")
             self._initialize_training_regression()
             self._initialize_interaction_regression()
         else:
@@ -454,11 +450,10 @@ class NativeEBM:
             this.native.EbmCoreFeatureCombination * len(feature_combinations)
         )()
         for idx, feature_combination in enumerate(feature_combinations):
-            feature_combinations_ar[idx].countFeaturesInCombination = feature_combination[
-                "n_attributes"
-            ]
+            features_in_combination = feature_combination["attributes"]
+            feature_combinations_ar[idx].countFeaturesInCombination = len(features_in_combination)
 
-            for feature_idx in feature_combination["attributes"]:
+            for feature_idx in features_in_combination:
                 feature_combination_indexes.append(feature_idx)
 
         feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
