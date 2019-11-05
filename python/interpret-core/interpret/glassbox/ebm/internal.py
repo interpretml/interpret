@@ -399,17 +399,17 @@ class NativeEBM:
         if self.training_scores is None:
             if self.num_classification_states > 2:
                 self.training_scores = np.zeros(
-                    (X_train.shape[0], self.num_classification_states)
+                    (y_train.shape[0], self.num_classification_states)
                 ).reshape(-1)
             else:
-                self.training_scores = np.zeros(X_train.shape[0])
+                self.training_scores = np.zeros(y_train.shape[0])
         if self.validation_scores is None:
             if self.num_classification_states > 2:
                 self.validation_scores = np.zeros(
-                    (X_train.shape[0], self.num_classification_states)
+                    (y_val.shape[0], self.num_classification_states)
                 ).reshape(-1)
             else:
-                self.validation_scores = np.zeros(X_train.shape[0])
+                self.validation_scores = np.zeros(y_val.shape[0])
         self.random_state = random_state
 
         # Convert n-dim arrays ready for C.
