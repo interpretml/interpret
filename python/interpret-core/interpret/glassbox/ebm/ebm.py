@@ -369,12 +369,8 @@ class BaseCoreEBM(BaseEstimator):
         # Arguments for overall
         self.random_state = random_state
 
-    def fit(self, X, y):
-        if is_classifier(self):
-            self.classes_, y = np.unique(y, return_inverse=True)
-            self.n_classes_ = len(self.classes_)
-        else:
-            self.n_classes_ = -1
+    def fit(self, X, y, n_classes):
+        self.n_classes_ = n_classes
 
         # Split data into train/val
 
@@ -872,11 +868,11 @@ class BaseEBM(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
-        def train_model(estimator, X, y):
-            return estimator.fit(X, y)
+        def train_model(estimator, X, y, n_classes):
+            return estimator.fit(X, y, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y) for i in range(self.n_estimators)
+            (estimators[i], X, y, self.n_classes_) for i in range(self.n_estimators)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
