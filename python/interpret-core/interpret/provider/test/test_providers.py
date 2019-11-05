@@ -46,8 +46,16 @@ def test_azureml_provider():
 
 def test_auto_visualize_provider(example_explanation):
     # NOTE: We know this environment is going to use Dash.
-    provider = AutoVisualizeProvider(addr=("127.0.0.1", "7200"))
+    from ...visual.dashboard import AppRunner
+    ip = "127.0.0.1"
+    port = "7200"
+    app_runner = AppRunner(addr=(ip, port))
+    provider = AutoVisualizeProvider(app_runner=app_runner)
     provider.render(example_explanation)
+
+    # Assert that the address is passed into Dash
+    assert provider.provider.app_runner.ip == ip
+    assert provider.provider.app_runner.port == port
     provider.provider.app_runner.stop()
 
 
@@ -65,7 +73,12 @@ def test_inline_provider(example_explanation):
 
 
 def test_dash_provider(example_explanation):
-    provider = DashProvider(addr=("127.0.0.1", "7201"))
+    ip = "127.0.0.1"
+    port = "7201"
+    provider = DashProvider.from_address(addr=(ip, port))
+    assert provider.app_runner.ip == ip
+    assert provider.app_runner.port == port
+
     provider.render(example_explanation)
     link = provider.link(example_explanation)
     assert link is not None

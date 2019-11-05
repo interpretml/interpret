@@ -137,7 +137,8 @@ def show(explanation, key=-1, **kwargs):
 
         # Set default render if needed
         if this.visualize_provider is None:
-            this.visualize_provider = AutoVisualizeProvider()
+            # If the server has been initialized already, use it
+            this.visualize_provider = AutoVisualizeProvider(app_runner=this.app_runner)
 
         # Render
         this.visualize_provider.render(explanation, key=key, **kwargs)
