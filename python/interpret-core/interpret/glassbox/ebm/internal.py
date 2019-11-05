@@ -11,6 +11,8 @@ import os
 import struct
 import logging
 
+from .utils import EBMUtils
+
 log = logging.getLogger(__name__)
 
 this = sys.modules[__name__]
@@ -367,6 +369,7 @@ class NativeEBM:
         log.debug("Check if EBM lib is loaded")
         if this.native is None:
             log.info("EBM lib loading.")
+            # TODO we need to thread protect this load.  It won't fail currently, but might load multiple times 
             this.native = Native()
         else:
             log.debug("EBM lib already loaded")
@@ -388,28 +391,15 @@ class NativeEBM:
         self.num_inner_bags = num_inner_bags
         self.num_classification_states = num_classification_states
 
-        # # Set train/val scores to zeros if not passed.
-        # if isinstance(intercept, numbers.Number) or len(intercept) == 1:
-        #     score_vector = np.zeros(X.shape[0])
-        #     else:
-        # score_vector = np.zeros((X.shape[0], len(intercept)))
-
         self.training_scores = training_scores
         self.validation_scores = validation_scores
         if self.training_scores is None:
-            if self.num_classification_states > 2:
-                self.training_scores = np.zeros(
-                    (y_train.shape[0], self.num_classification_states)
-                ).reshape(-1)
-            else:
-                self.training_scores = np.zeros(y_train.shape[0])
+            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
+            self.training_scores = np.zeros(y_train.shape[0] * n_scores, dtype=np.float64, order='C')
         if self.validation_scores is None:
-            if self.num_classification_states > 2:
-                self.validation_scores = np.zeros(
-                    (y_val.shape[0], self.num_classification_states)
-                ).reshape(-1)
-            else:
-                self.validation_scores = np.zeros(y_val.shape[0])
+            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
+            self.validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
+
         self.random_state = random_state
 
         # Convert n-dim arrays ready for C.

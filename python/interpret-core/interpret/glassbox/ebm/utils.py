@@ -17,6 +17,10 @@ log = logging.getLogger(__name__)
 # TODO: Clean up
 class EBMUtils:
     @staticmethod
+    def get_count_scores_c(n_classes):
+        return 1 if n_classes <= 2 else n_classes
+
+    @staticmethod
     def gen_features(col_types, col_n_bins):
         # Create Python form of features
         # Undocumented.
