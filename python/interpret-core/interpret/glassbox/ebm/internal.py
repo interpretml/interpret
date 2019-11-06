@@ -55,21 +55,21 @@ class Native:
     # const signed char TraceLevelVerbose = 4;
     TraceLevelVerbose = 4
 
-    LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
+    _LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
 
     def __init__(self, is_debug=False, log_level=None):
         self.is_debug = is_debug
         self.log_level = log_level
 
-        self.lib = ct.cdll.LoadLibrary(self.get_ebm_lib_path(debug=is_debug))
-        self.harden_function_signatures()
-        self.set_logging(level=log_level)
+        self.lib = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
+        self._harden_function_signatures()
+        self._set_logging(level=log_level)
 
-    def harden_function_signatures(self):
+    def _harden_function_signatures(self):
         """ Adds types to function signatures. """
         self.lib.SetLogMessageFunction.argtypes = [
             # void (* fn)(signed char traceLevel, const char * message) logMessageFunction
-            self.LogFuncType
+            self._LogFuncType
         ]
         self.lib.SetTraceLevel.argtypes = [
             # signed char traceLevel
@@ -252,7 +252,7 @@ class Native:
             ct.c_void_p
         ]
 
-    def set_logging(self, level=None):
+    def _set_logging(self, level=None):
         def native_log(trace_level, message):
             try:
                 trace_level = int(trace_level[0])
@@ -288,11 +288,15 @@ class Native:
             "NOTSET": self.TraceLevelOff,
         }
 
-        self.typed_log_func = self.LogFuncType(native_log)
+        # it's critical that we put typed_log_func into self, 
+        # otherwise it will be garbage collected
+        self.typed_log_func = self._LogFuncType(native_log)
+        
         self.lib.SetLogMessageFunction(self.typed_log_func)
         self.lib.SetTraceLevel(ct.c_char(level_dict[level]))
 
-    def get_ebm_lib_path(self, debug=False):
+    @staticmethod
+    def _get_ebm_lib_path(debug=False):
         """ Returns filepath of core EBM library.
 
         Returns:
@@ -324,6 +328,69 @@ class Native:
             )
             log.error(msg)
             raise Exception(msg)
+
+    @staticmethod
+    def make_ndarray(c_pointer, shape, dtype, writable=False, copy_data=True):
+        """ Returns an ndarray based from a C array.
+
+        Code largely borrowed from:
+        https://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
+
+        Args:
+            c_pointer: Pointer to C array.
+            shape: Shape of ndarray to form.
+            dtype: Numpy data type.
+
+        Returns:
+            An ndarray.
+        """
+
+        arr_size = np.prod(shape[:]) * np.dtype(dtype).itemsize
+        buf_from_mem = ct.pythonapi.PyMemoryView_FromMemory
+        buf_from_mem.restype = ct.py_object
+        buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
+        PyBUF_READ = 0x100
+        PyBUF_WRITE = 0x200
+        access = (PyBUF_READ | PyBUF_WRITE) if writable else PyBUF_READ
+        buffer = buf_from_mem(c_pointer, arr_size, access)
+        # from https://github.com/python/cpython/blob/master/Objects/memoryobject.c , PyMemoryView_FromMemory can return null
+        if not buffer:
+            raise MemoryError("Out of memory in PyMemoryView_FromMemory")
+        arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
+        if copy_data:
+            return arr.copy()
+        else:
+            return arr
+
+    @staticmethod
+    def convert_feature_info_to_c(features, feature_combinations):
+        # Create C form of features
+        feature_ar = (this.native.EbmCoreFeature * len(features))()
+        for idx, feature in enumerate(features):
+            if feature["type"] == "categorical":
+                feature_ar[idx].featureType = this.native.FeatureTypeNominal
+            elif feature["type"] == "continuous":
+                feature_ar[idx].featureType = this.native.FeatureTypeOrdinal
+            else:
+                raise AttributeError("Unrecognized feature[\"type\"]")
+            feature_ar[idx].hasMissing = 1 * feature["has_missing"]
+            feature_ar[idx].countBins = feature["n_bins"]
+
+        feature_combination_indexes = []
+        feature_combinations_ar = (
+            this.native.EbmCoreFeatureCombination * len(feature_combinations)
+        )()
+        for idx, feature_combination in enumerate(feature_combinations):
+            features_in_combination = feature_combination["attributes"]
+            feature_combinations_ar[idx].countFeaturesInCombination = len(features_in_combination)
+
+            for feature_idx in features_in_combination:
+                feature_combination_indexes.append(feature_idx)
+
+        feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
+
+        return feature_ar, feature_combinations_ar, feature_combination_indexes
+
 
 
 class NativeEBM:
@@ -379,7 +446,7 @@ class NativeEBM:
         # Store args
         self.features = features
         self.feature_combinations = feature_combinations
-        self.feature_array, self.feature_combinations_array, self.feature_combination_indexes = self._convert_feature_info_to_c(
+        self.feature_array, self.feature_combinations_array, self.feature_combination_indexes = Native.convert_feature_info_to_c(
             features, feature_combinations
         )
 
@@ -421,34 +488,6 @@ class NativeEBM:
             raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation end")
-
-    def _convert_feature_info_to_c(self, features, feature_combinations):
-        # Create C form of features
-        feature_ar = (this.native.EbmCoreFeature * len(features))()
-        for idx, feature in enumerate(features):
-            if feature["type"] == "categorical":
-                feature_ar[idx].featureType = this.native.FeatureTypeNominal
-            elif feature["type"] == "continuous":
-                feature_ar[idx].featureType = this.native.FeatureTypeOrdinal
-            else:
-                raise AttributeError("Unrecognized feature[\"type\"]")
-            feature_ar[idx].hasMissing = 1 * feature["has_missing"]
-            feature_ar[idx].countBins = feature["n_bins"]
-
-        feature_combination_indexes = []
-        feature_combinations_ar = (
-            this.native.EbmCoreFeatureCombination * len(feature_combinations)
-        )()
-        for idx, feature_combination in enumerate(feature_combinations):
-            features_in_combination = feature_combination["attributes"]
-            feature_combinations_ar[idx].countFeaturesInCombination = len(features_in_combination)
-
-            for feature_idx in features_in_combination:
-                feature_combination_indexes.append(feature_idx)
-
-        feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
-
-        return feature_ar, feature_combinations_ar, feature_combination_indexes
 
     def _initialize_training_classification(self):
         self.model_pointer = this.native.lib.InitializeTrainingClassification(
@@ -641,7 +680,7 @@ class NativeEBM:
 
         shape = self._get_feature_combination_shape(feature_combination_index)
 
-        array = make_ndarray(array_p, shape, dtype=np.double)
+        array = Native.make_ndarray(array_p, shape, dtype=np.double)
         return array
 
     def get_current_model(self, feature_combination_index):
@@ -668,41 +707,8 @@ class NativeEBM:
 
         shape = self._get_feature_combination_shape(feature_combination_index)
 
-        array = make_ndarray(array_p, shape, dtype=np.double)
+        array = Native.make_ndarray(array_p, shape, dtype=np.double)
 
         # if self.model_type == "classification" and self.num_classification_states > 2:
         #     array = array.T.reshape(array.shape)
         return array
-
-
-def make_ndarray(c_pointer, shape, dtype, writable=False, copy_data=True):
-    """ Returns an ndarray based from a C array.
-
-    Code largely borrowed from:
-    https://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
-
-    Args:
-        c_pointer: Pointer to C array.
-        shape: Shape of ndarray to form.
-        dtype: Numpy data type.
-
-    Returns:
-        An ndarray.
-    """
-
-    arr_size = np.prod(shape[:]) * np.dtype(dtype).itemsize
-    buf_from_mem = ct.pythonapi.PyMemoryView_FromMemory
-    buf_from_mem.restype = ct.py_object
-    buf_from_mem.argtypes = (ct.c_void_p, ct.c_ssize_t, ct.c_int)
-    PyBUF_READ = 0x100
-    PyBUF_WRITE = 0x200
-    access = (PyBUF_READ | PyBUF_WRITE) if writable else PyBUF_READ
-    buffer = buf_from_mem(c_pointer, arr_size, access)
-    # from https://github.com/python/cpython/blob/master/Objects/memoryobject.c , PyMemoryView_FromMemory can return null
-    if not buffer:
-        raise MemoryError("Out of memory in PyMemoryView_FromMemory")
-    arr = np.ndarray(tuple(shape[:]), dtype, buffer, order="C")
-    if copy_data:
-        return arr.copy()
-    else:
-        return arr
