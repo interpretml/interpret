@@ -15,12 +15,30 @@ from .utils import EBMUtils
 
 log = logging.getLogger(__name__)
 
-this = sys.modules[__name__]
-this.native = None
-
-
 class Native:
     """Layer/Class responsible for native function calls."""
+    
+    _native = None
+
+    def _initialize(self, is_debug, log_level):
+        self.is_debug = is_debug
+        self.log_level = log_level
+
+        self.lib = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
+        self._harden_function_signatures()
+        self._set_logging(level=log_level)
+
+    @staticmethod
+    def get_native_singleton(is_debug=False, log_level=None):
+        log.debug("Check if EBM lib is loaded")
+        if Native._native is None:
+            log.info("EBM lib loading.")
+            native = Native()
+            native._initialize(is_debug=is_debug, log_level=log_level)
+            Native._native = native
+        else:
+            log.debug("EBM lib already loaded")
+        return Native._native
 
     # enum FeatureType : int64_t
     # Ordinal = 0
@@ -57,13 +75,8 @@ class Native:
 
     _LogFuncType = ct.CFUNCTYPE(None, ct.c_char, ct.c_char_p)
 
-    def __init__(self, is_debug=False, log_level=None):
-        self.is_debug = is_debug
-        self.log_level = log_level
-
-        self.lib = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
-        self._harden_function_signatures()
-        self._set_logging(level=log_level)
+    def __init__(self):
+        pass
 
     def _harden_function_signatures(self):
         """ Adds types to function signatures. """
@@ -365,12 +378,12 @@ class Native:
     @staticmethod
     def convert_feature_info_to_c(features, feature_combinations):
         # Create C form of features
-        feature_ar = (this.native.EbmCoreFeature * len(features))()
+        feature_ar = (Native.EbmCoreFeature * len(features))()
         for idx, feature in enumerate(features):
             if feature["type"] == "categorical":
-                feature_ar[idx].featureType = this.native.FeatureTypeNominal
+                feature_ar[idx].featureType = Native.FeatureTypeNominal
             elif feature["type"] == "continuous":
-                feature_ar[idx].featureType = this.native.FeatureTypeOrdinal
+                feature_ar[idx].featureType = Native.FeatureTypeOrdinal
             else:
                 raise AttributeError("Unrecognized feature[\"type\"]")
             feature_ar[idx].hasMissing = 1 * feature["has_missing"]
@@ -378,7 +391,7 @@ class Native:
 
         feature_combination_indexes = []
         feature_combinations_ar = (
-            this.native.EbmCoreFeatureCombination * len(feature_combinations)
+            Native.EbmCoreFeatureCombination * len(feature_combinations)
         )()
         for idx, feature_combination in enumerate(feature_combinations):
             features_in_combination = feature_combination["attributes"]
@@ -433,13 +446,8 @@ class NativeEBM:
             validation_scores: Undocumented.
             random_state: Random seed as integer.
         """
-        log.debug("Check if EBM lib is loaded")
-        if this.native is None:
-            log.info("EBM lib loading.")
-            # TODO we need to thread protect this load.  It won't fail currently, but might load multiple times 
-            this.native = Native()
-        else:
-            log.debug("EBM lib already loaded")
+
+        self.native = Native.get_native_singleton()
 
         log.info("Allocation start")
 
@@ -490,7 +498,7 @@ class NativeEBM:
         log.info("Allocation end")
 
     def _initialize_training_classification(self):
-        self.model_pointer = this.native.lib.InitializeTrainingClassification(
+        self.model_pointer = self.native.lib.InitializeTrainingClassification(
             self.random_state,
             len(self.feature_array),
             self.feature_array,
@@ -512,7 +520,7 @@ class NativeEBM:
             raise MemoryError("Out of memory in InitializeTrainingClassification")
 
     def _initialize_training_regression(self):
-        self.model_pointer = this.native.lib.InitializeTrainingRegression(
+        self.model_pointer = self.native.lib.InitializeTrainingRegression(
             self.random_state,
             len(self.feature_array),
             self.feature_array,
@@ -533,7 +541,7 @@ class NativeEBM:
             raise MemoryError("Out of memory in InitializeTrainingRegression")
 
     def _initialize_interaction_classification(self):
-        self.interaction_pointer = this.native.lib.InitializeInteractionClassification(
+        self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
             len(self.feature_array),
             self.feature_array,
             self.num_classification_states,
@@ -546,7 +554,7 @@ class NativeEBM:
             raise MemoryError("Out of memory in InitializeInteractionClassification")
 
     def _initialize_interaction_regression(self):
-        self.interaction_pointer = this.native.lib.InitializeInteractionRegression(
+        self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
             len(self.feature_array),
             self.feature_array,
             len(self.y_train),
@@ -560,15 +568,15 @@ class NativeEBM:
     def close(self):
         """ Deallocates C objects used to train EBM. """
         log.info("Deallocation start")
-        this.native.lib.FreeTraining(self.model_pointer)
-        this.native.lib.FreeInteraction(self.interaction_pointer)
+        self.native.lib.FreeTraining(self.model_pointer)
+        self.native.lib.FreeInteraction(self.interaction_pointer)
         log.info("Deallocation end")
 
     def fast_interaction_score(self, feature_index_tuple):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        return_code = this.native.lib.GetInteractionScore(
+        return_code = self.native.lib.GetInteractionScore(
             self.interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
@@ -614,7 +622,7 @@ class NativeEBM:
         if self.model_type != "classification" or 2 <= self.num_classification_states:
             gain = ct.c_double(0.0)
             for i in range(training_step_episodes):
-                model_update_tensor_pointer = this.native.lib.GenerateModelFeatureCombinationUpdate(
+                model_update_tensor_pointer = self.native.lib.GenerateModelFeatureCombinationUpdate(
                     self.model_pointer,
                     feature_combination_index,
                     learning_rate,
@@ -627,7 +635,7 @@ class NativeEBM:
                 if not model_update_tensor_pointer:  # pragma: no cover
                     raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
 
-                return_code = this.native.lib.ApplyModelFeatureCombinationUpdate(
+                return_code = self.native.lib.ApplyModelFeatureCombinationUpdate(
                     self.model_pointer,
                     feature_combination_index,
                     model_update_tensor_pointer,
@@ -671,7 +679,7 @@ class NativeEBM:
         if self.model_type == "classification" and self.num_classification_states <= 1:
             return np.ndarray((0), np.double, order="C")
 
-        array_p = this.native.lib.GetBestModelFeatureCombination(
+        array_p = self.native.lib.GetBestModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
 
@@ -698,7 +706,7 @@ class NativeEBM:
         if self.model_type == "classification" and self.num_classification_states <= 1:
             return np.ndarray((0), np.double, order="C")
 
-        array_p = this.native.lib.GetCurrentModelFeatureCombination(
+        array_p = self.native.lib.GetCurrentModelFeatureCombination(
             self.model_pointer, feature_combination_index
         )
 

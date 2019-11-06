@@ -159,7 +159,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     root.info(debug_str)
 
     # Load native libraries in debug mode if needed
-    internal.native = internal.Native(is_debug=native_debug)
+    internal.Native.get_native_singleton(is_debug=native_debug)
 
     return handler
 
