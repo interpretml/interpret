@@ -4,7 +4,8 @@
 
 from ...utils import perf_dict
 from .utils import EBMUtils
-from .internal import NativeEBM
+from .internal import NativeEBMTraining
+from .internal import NativeEBMInteraction
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
@@ -417,26 +418,38 @@ class BaseCoreEBM(BaseEstimator):
             raise RuntimeError("Argument 'main_attr' has invalid value")
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         with closing(
-            NativeEBM(
+            NativeEBMTraining(
                 self.features_,
                 main_feature_combinations,
                 X_train,
                 y_train,
                 X_val,
                 y_val,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.n_classes_,
                 model_type=model_type,
+                num_classification_states=self.n_classes_,
+                num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=None,
                 validation_scores=None,
             )
-        ) as native_ebm:
+        ) as native_ebm_training:
             # Train main effects
-            self._fit_main(native_ebm, main_feature_combinations)
+            self._fit_main(native_ebm_training, main_feature_combinations)
 
+        # TODO currently we're using None for the scores, but we should instead determine what they
+        # are after training the mains
+        with closing(
+            NativeEBMInteraction(
+                self.features_,
+                X_train,
+                y_train,
+                model_type=model_type,
+                num_classification_states=self.n_classes_,
+                scores=None,
+            )
+        ) as native_ebm_interactions:
             # Build interaction terms
             self.inter_indices_, self.inter_scores_ = self._build_interactions(
-                native_ebm
+                native_ebm_interactions
             )
 
         self.staged_fit_interactions(X, y, self.inter_indices_)
@@ -527,29 +540,29 @@ class BaseCoreEBM(BaseEstimator):
         validation_scores = self.decision_function(X_val)
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
-            NativeEBM(
+            NativeEBMTraining(
                 self.features_,
                 inter_feature_combinations,
                 X_train,
                 y_train,
                 X_val,
                 y_val,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                num_classification_states=self.n_classes_,
                 model_type=model_type,
+                num_classification_states=self.n_classes_,
+                num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
                 random_state=self.random_state,
             )
-        ) as native_ebm:
+        ) as native_ebm_training:
             log.info("Train interactions")
             self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm, inter_feature_combinations, "Pair"
+                native_ebm_training, inter_feature_combinations, "Pair"
             )
             log.debug("Interaction Metric: {0}".format(self.current_metric_))
 
             for index, feature_combination in enumerate(inter_feature_combinations):
-                self.attribute_set_models_.append(native_ebm.get_best_model(index))
+                self.attribute_set_models_.append(native_ebm_training.get_best_model(index))
                 self.attribute_sets_.append(feature_combination)
 
         return self

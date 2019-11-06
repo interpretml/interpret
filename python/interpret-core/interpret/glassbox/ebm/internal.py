@@ -376,8 +376,9 @@ class Native:
             return arr
 
     @staticmethod
-    def convert_feature_info_to_c(features, feature_combinations):
+    def convert_features_to_c(features):
         # Create C form of features
+
         feature_ar = (Native.EbmCoreFeature * len(features))()
         for idx, feature in enumerate(features):
             if feature["type"] == "categorical":
@@ -388,6 +389,12 @@ class Native:
                 raise AttributeError("Unrecognized feature[\"type\"]")
             feature_ar[idx].hasMissing = 1 * feature["has_missing"]
             feature_ar[idx].countBins = feature["n_bins"]
+
+        return feature_ar
+
+    @staticmethod
+    def convert_feature_combinations_to_c(feature_combinations):
+        # Create C form of feature_combinations
 
         feature_combination_indexes = []
         feature_combinations_ar = (
@@ -402,12 +409,12 @@ class Native:
 
         feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
 
-        return feature_ar, feature_combinations_ar, feature_combination_indexes
+        return feature_combinations_ar, feature_combination_indexes
 
 
 
-class NativeEBM:
-    """Lightweight wrapper for EBM C code.
+class NativeEBMTraining:
+    """Lightweight wrapper for EBM C training code.
     """
 
     def __init__(
@@ -419,8 +426,8 @@ class NativeEBM:
         X_val,
         y_val,
         model_type,
+        num_classification_states,
         num_inner_bags=0,
-        num_classification_states=2,
         training_scores=None,
         validation_scores=None,
         random_state=1337,
@@ -449,13 +456,15 @@ class NativeEBM:
 
         self.native = Native.get_native_singleton()
 
-        log.info("Allocation start")
+        log.info("Allocation training start")
 
         # Store args
         self.features = features
+        self.feature_array = Native.convert_features_to_c(features)
+
         self.feature_combinations = feature_combinations
-        self.feature_array, self.feature_combinations_array, self.feature_combination_indexes = Native.convert_feature_info_to_c(
-            features, feature_combinations
+        self.feature_combinations_array, self.feature_combination_indexes = Native.convert_feature_combinations_to_c(
+            feature_combinations
         )
 
         self.X_train = X_train
@@ -483,19 +492,16 @@ class NativeEBM:
 
         # Define extra properties
         self.model_pointer = None
-        self.interaction_pointer = None
 
         # Allocate external resources
         if self.model_type == "classification":
             self._initialize_training_classification()
-            self._initialize_interaction_classification()
         elif self.model_type == "regression":
             self._initialize_training_regression()
-            self._initialize_interaction_regression()
         else:
             raise AttributeError("Unrecognized model_type")
 
-        log.info("Allocation end")
+        log.info("Allocation training end")
 
     def _initialize_training_classification(self):
         self.model_pointer = self.native.lib.InitializeTrainingClassification(
@@ -540,53 +546,11 @@ class NativeEBM:
         if not self.model_pointer:  # pragma: no cover
             raise MemoryError("Out of memory in InitializeTrainingRegression")
 
-    def _initialize_interaction_classification(self):
-        self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
-            len(self.feature_array),
-            self.feature_array,
-            self.num_classification_states,
-            len(self.y_train),
-            self.y_train,
-            self.X_train_f,
-            self.training_scores,
-        )
-        if not self.interaction_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeInteractionClassification")
-
-    def _initialize_interaction_regression(self):
-        self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
-            len(self.feature_array),
-            self.feature_array,
-            len(self.y_train),
-            self.y_train,
-            self.X_train_f,
-            self.training_scores,
-        )
-        if not self.interaction_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeInteractionRegression")
-
     def close(self):
         """ Deallocates C objects used to train EBM. """
-        log.info("Deallocation start")
+        log.info("Deallocation training start")
         self.native.lib.FreeTraining(self.model_pointer)
-        self.native.lib.FreeInteraction(self.interaction_pointer)
-        log.info("Deallocation end")
-
-    def fast_interaction_score(self, feature_index_tuple):
-        """ Provides score for an feature interaction. Higher is better."""
-        log.info("Fast interaction score start")
-        score = ct.c_double(0.0)
-        return_code = self.native.lib.GetInteractionScore(
-            self.interaction_pointer,
-            len(feature_index_tuple),
-            np.array(feature_index_tuple, dtype=np.int64),
-            ct.byref(score),
-        )
-        if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in GetInteractionScore")
-
-        log.info("Fast interaction score end")
-        return score.value
+        log.info("Deallocation training end")
 
     def training_step(
         self,
@@ -720,3 +684,113 @@ class NativeEBM:
         # if self.model_type == "classification" and self.num_classification_states > 2:
         #     array = array.T.reshape(array.shape)
         return array
+
+
+class NativeEBMInteraction:
+    """Lightweight wrapper for EBM C interaction code.
+    """
+
+    def __init__(
+        self,
+        features,
+        X,
+        y,
+        model_type,
+        num_classification_states,
+        scores=None,
+    ):
+
+        # TODO: Update documentation for scores args.
+        """ Initializes internal wrapper for EBM C code.
+
+        Args:
+            features: List of features represented individually as
+                dictionary of keys ('type', 'has_missing', 'n_bins').
+            X: Training design matrix as 2-D ndarray.
+            y: Training response as 1-D ndarray.
+            model_type: 'regression'/'classification'.
+            num_classification_states: Specific to classification,
+                number of unique classes.
+            scores: Undocumented.
+        """
+
+        self.native = Native.get_native_singleton()
+
+        log.info("Allocation interaction start")
+
+        # Store args
+        self.features = features
+        self.feature_array = Native.convert_features_to_c(features)
+
+        self.X = X
+        self.y = y
+        self.model_type = model_type
+        self.num_classification_states = num_classification_states
+
+        self.scores = scores
+        if self.scores is None:
+            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
+            self.scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
+
+        # Convert n-dim arrays ready for C.
+        self.X_f = np.asfortranarray(self.X)
+
+        # Define extra properties
+        self.interaction_pointer = None
+
+        # Allocate external resources
+        if self.model_type == "classification":
+            self._initialize_interaction_classification()
+        elif self.model_type == "regression":
+            self._initialize_interaction_regression()
+        else:
+            raise AttributeError("Unrecognized model_type")
+
+        log.info("Allocation interaction end")
+
+    def _initialize_interaction_classification(self):
+        self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
+            len(self.feature_array),
+            self.feature_array,
+            self.num_classification_states,
+            len(self.y),
+            self.y,
+            self.X_f,
+            self.scores,
+        )
+        if not self.interaction_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeInteractionClassification")
+
+    def _initialize_interaction_regression(self):
+        self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
+            len(self.feature_array),
+            self.feature_array,
+            len(self.y),
+            self.y,
+            self.X_f,
+            self.scores,
+        )
+        if not self.interaction_pointer:  # pragma: no cover
+            raise MemoryError("Out of memory in InitializeInteractionRegression")
+
+    def close(self):
+        """ Deallocates C objects used to determine interactions in EBM. """
+        log.info("Deallocation interaction start")
+        self.native.lib.FreeInteraction(self.interaction_pointer)
+        log.info("Deallocation interaction end")
+
+    def fast_interaction_score(self, feature_index_tuple):
+        """ Provides score for an feature interaction. Higher is better."""
+        log.info("Fast interaction score start")
+        score = ct.c_double(0.0)
+        return_code = self.native.lib.GetInteractionScore(
+            self.interaction_pointer,
+            len(feature_index_tuple),
+            np.array(feature_index_tuple, dtype=np.int64),
+            ct.byref(score),
+        )
+        if return_code != 0:  # pragma: no cover
+            raise Exception("Out of memory in GetInteractionScore")
+
+        log.info("Fast interaction score end")
+        return score.value
