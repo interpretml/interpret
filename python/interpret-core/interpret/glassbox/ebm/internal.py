@@ -480,10 +480,6 @@ class NativeEBMTraining:
             n_scores = EBMUtils.get_count_scores_c(num_classification_states)
             validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
 
-        # Convert n-dim arrays ready for C.
-        X_train_f = np.asfortranarray(X_train)
-        X_val_f = np.asfortranarray(X_val)
-
         # Allocate external resources
         if model_type == "classification":
             self.model_pointer = self.native.lib.InitializeTrainingClassification(
@@ -496,11 +492,11 @@ class NativeEBMTraining:
                 num_classification_states,
                 len(y_train),
                 y_train,
-                X_train_f,
+                X_train,
                 training_scores,
                 len(y_val),
                 y_val,
-                X_val_f,
+                X_val,
                 validation_scores,
                 num_inner_bags,
             )
@@ -516,11 +512,11 @@ class NativeEBMTraining:
                 feature_combination_indexes,
                 len(y_train),
                 y_train,
-                X_train_f,
+                X_train,
                 training_scores,
                 len(y_val),
                 y_val,
-                X_val_f,
+                X_val,
                 validation_scores,
                 num_inner_bags,
             )
@@ -710,9 +706,6 @@ class NativeEBMInteraction:
             n_scores = EBMUtils.get_count_scores_c(num_classification_states)
             scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
 
-        # Convert n-dim arrays ready for C.
-        X_f = np.asfortranarray(X)
-
         # Allocate external resources
         if model_type == "classification":
             self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
@@ -721,7 +714,7 @@ class NativeEBMInteraction:
                 num_classification_states,
                 len(y),
                 y,
-                X_f,
+                X,
                 scores,
             )
             if not self.interaction_pointer:  # pragma: no cover
@@ -732,7 +725,7 @@ class NativeEBMInteraction:
                 feature_array,
                 len(y),
                 y,
-                X_f,
+                X,
                 scores,
             )
             if not self.interaction_pointer:  # pragma: no cover

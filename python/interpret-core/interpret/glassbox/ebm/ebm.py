@@ -416,6 +416,15 @@ class BaseCoreEBM(BaseEstimator):
         else:
             # TODO change this to main_features once our public interface uses "feature"
             raise RuntimeError("Argument 'main_attr' has invalid value")
+
+        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
+        #         push the re-ordering right to our first call to fit(..) AND stripe convert
+        #         groups of rows at once and they process them in fortran order after that
+        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
+        # AND our C code expects it in that ordering
+        X_train = np.asfortranarray(X_train)
+        X_val = np.asfortranarray(X_val)
+
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         with closing(
             NativeEBMTraining(
@@ -519,6 +528,7 @@ class BaseCoreEBM(BaseEstimator):
             random_state=self.random_state,
             stratify=y if is_classifier(self) else None,
         )
+
         if is_classifier(self):
             model_type = "classification"
         else:
@@ -538,6 +548,15 @@ class BaseCoreEBM(BaseEstimator):
         # Fix main, train interactions
         training_scores = self.decision_function(X_train)
         validation_scores = self.decision_function(X_val)
+
+        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
+        #         push the re-ordering right to our first call to fit(..) AND stripe convert
+        #         groups of rows at once and they process them in fortran order after that
+        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
+        # AND our C code expects it in that ordering
+        X_train = np.asfortranarray(X_train)
+        X_val = np.asfortranarray(X_val)
+
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
             NativeEBMTraining(
