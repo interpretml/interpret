@@ -446,13 +446,16 @@ class NativeEBMTraining:
             X_val: Validation design matrix as 2-D ndarray.
             y_val: Validation response as 1-D ndarray.
             model_type: 'regression'/'classification'.
-            num_inner_bags: Per feature training step, number of inner bags.
             num_classification_states: Specific to classification,
                 number of unique classes.
+            num_inner_bags: number of inner bags.
             training_scores: Undocumented.
             validation_scores: Undocumented.
             random_state: Random seed as integer.
         """
+
+        # first set the one thing that we will close on
+        self.model_pointer = None
 
         self.native = Native.get_native_singleton()
 
@@ -460,91 +463,73 @@ class NativeEBMTraining:
 
         # Store args
         self.features = features
-        self.feature_array = Native.convert_features_to_c(features)
+        feature_array = Native.convert_features_to_c(features)
 
         self.feature_combinations = feature_combinations
-        self.feature_combinations_array, self.feature_combination_indexes = Native.convert_feature_combinations_to_c(
+        feature_combinations_array, feature_combination_indexes = Native.convert_feature_combinations_to_c(
             feature_combinations
         )
 
-        self.X_train = X_train
-        self.y_train = y_train
-        self.X_val = X_val
-        self.y_val = y_val
         self.model_type = model_type
-        self.num_inner_bags = num_inner_bags
         self.num_classification_states = num_classification_states
 
-        self.training_scores = training_scores
-        self.validation_scores = validation_scores
-        if self.training_scores is None:
-            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
-            self.training_scores = np.zeros(y_train.shape[0] * n_scores, dtype=np.float64, order='C')
-        if self.validation_scores is None:
-            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
-            self.validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
-
-        self.random_state = random_state
+        if training_scores is None:
+            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            training_scores = np.zeros(y_train.shape[0] * n_scores, dtype=np.float64, order='C')
+        if validation_scores is None:
+            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
 
         # Convert n-dim arrays ready for C.
-        self.X_train_f = np.asfortranarray(self.X_train)
-        self.X_val_f = np.asfortranarray(self.X_val)
-
-        # Define extra properties
-        self.model_pointer = None
+        X_train_f = np.asfortranarray(X_train)
+        X_val_f = np.asfortranarray(X_val)
 
         # Allocate external resources
-        if self.model_type == "classification":
-            self._initialize_training_classification()
-        elif self.model_type == "regression":
-            self._initialize_training_regression()
+        if model_type == "classification":
+            self.model_pointer = self.native.lib.InitializeTrainingClassification(
+                random_state,
+                len(feature_array),
+                feature_array,
+                len(feature_combinations_array),
+                feature_combinations_array,
+                feature_combination_indexes,
+                num_classification_states,
+                len(y_train),
+                y_train,
+                X_train_f,
+                training_scores,
+                len(y_val),
+                y_val,
+                X_val_f,
+                validation_scores,
+                num_inner_bags,
+            )
+            if not self.model_pointer:  # pragma: no cover
+                raise MemoryError("Out of memory in InitializeTrainingClassification")
+        elif model_type == "regression":
+            self.model_pointer = self.native.lib.InitializeTrainingRegression(
+                random_state,
+                len(feature_array),
+                feature_array,
+                len(feature_combinations_array),
+                feature_combinations_array,
+                feature_combination_indexes,
+                len(y_train),
+                y_train,
+                X_train_f,
+                training_scores,
+                len(y_val),
+                y_val,
+                X_val_f,
+                validation_scores,
+                num_inner_bags,
+            )
+            if not self.model_pointer:  # pragma: no cover
+                raise MemoryError("Out of memory in InitializeTrainingRegression")
         else:
             raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation training end")
-
-    def _initialize_training_classification(self):
-        self.model_pointer = self.native.lib.InitializeTrainingClassification(
-            self.random_state,
-            len(self.feature_array),
-            self.feature_array,
-            len(self.feature_combinations_array),
-            self.feature_combinations_array,
-            self.feature_combination_indexes,
-            self.num_classification_states,
-            len(self.y_train),
-            self.y_train,
-            self.X_train_f,
-            self.training_scores,
-            len(self.y_val),
-            self.y_val,
-            self.X_val_f,
-            self.validation_scores,
-            self.num_inner_bags,
-        )
-        if not self.model_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeTrainingClassification")
-
-    def _initialize_training_regression(self):
-        self.model_pointer = self.native.lib.InitializeTrainingRegression(
-            self.random_state,
-            len(self.feature_array),
-            self.feature_array,
-            len(self.feature_combinations_array),
-            self.feature_combinations_array,
-            self.feature_combination_indexes,
-            len(self.y_train),
-            self.y_train,
-            self.X_train_f,
-            self.training_scores,
-            len(self.y_val),
-            self.y_val,
-            self.X_val_f,
-            self.validation_scores,
-            self.num_inner_bags,
-        )
-        if not self.model_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeTrainingRegression")
 
     def close(self):
         """ Deallocates C objects used to train EBM. """
@@ -680,9 +665,6 @@ class NativeEBMTraining:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-
-        # if self.model_type == "classification" and self.num_classification_states > 2:
-        #     array = array.T.reshape(array.shape)
         return array
 
 
@@ -714,64 +696,51 @@ class NativeEBMInteraction:
             scores: Undocumented.
         """
 
+        # first set the one thing that we will close on
+        self.interaction_pointer = None
+
         self.native = Native.get_native_singleton()
 
         log.info("Allocation interaction start")
 
         # Store args
-        self.features = features
-        self.feature_array = Native.convert_features_to_c(features)
+        feature_array = Native.convert_features_to_c(features)
 
-        self.X = X
-        self.y = y
-        self.model_type = model_type
-        self.num_classification_states = num_classification_states
-
-        self.scores = scores
-        if self.scores is None:
-            n_scores = EBMUtils.get_count_scores_c(self.num_classification_states)
-            self.scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
+        if scores is None:
+            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
 
         # Convert n-dim arrays ready for C.
-        self.X_f = np.asfortranarray(self.X)
-
-        # Define extra properties
-        self.interaction_pointer = None
+        X_f = np.asfortranarray(X)
 
         # Allocate external resources
-        if self.model_type == "classification":
-            self._initialize_interaction_classification()
-        elif self.model_type == "regression":
-            self._initialize_interaction_regression()
+        if model_type == "classification":
+            self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
+                len(feature_array),
+                feature_array,
+                num_classification_states,
+                len(y),
+                y,
+                X_f,
+                scores,
+            )
+            if not self.interaction_pointer:  # pragma: no cover
+                raise MemoryError("Out of memory in InitializeInteractionClassification")
+        elif model_type == "regression":
+            self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
+                len(feature_array),
+                feature_array,
+                len(y),
+                y,
+                X_f,
+                scores,
+            )
+            if not self.interaction_pointer:  # pragma: no cover
+                raise MemoryError("Out of memory in InitializeInteractionRegression")
         else:
             raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation interaction end")
-
-    def _initialize_interaction_classification(self):
-        self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
-            len(self.feature_array),
-            self.feature_array,
-            self.num_classification_states,
-            len(self.y),
-            self.y,
-            self.X_f,
-            self.scores,
-        )
-        if not self.interaction_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeInteractionClassification")
-
-    def _initialize_interaction_regression(self):
-        self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
-            len(self.feature_array),
-            self.feature_array,
-            len(self.y),
-            self.y,
-            self.X_f,
-            self.scores,
-        )
-        if not self.interaction_pointer:  # pragma: no cover
-            raise MemoryError("Out of memory in InitializeInteractionRegression")
 
     def close(self):
         """ Deallocates C objects used to determine interactions in EBM. """
