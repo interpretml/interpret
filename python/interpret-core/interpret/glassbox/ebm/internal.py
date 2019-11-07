@@ -620,9 +620,21 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self.model_type == "classification" and self.num_classification_states <= 1:
-            return np.ndarray((0), np.double, order="C")
+            # if there is only one legal state for a classification problem, then we know with 100%
+            # certainty what the result will be, and our logits for that result should be infinity
+            # since we reduce the number of logits by 1, we would get back an empty array from the C code
+            # after we expand the model for our caller, the tensor's dimensions should match
+            # the features for the feature_combination, but the last class_index should have a dimension
+            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
+            # a None value here for now and handle in the upper levels
+            #
+            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # to be 0 states.  We can probably handle this the same as having 1 state though since 
+            # any instances in any evaluations need to have a state
+
+            # TODO make sure the None value here is handled by our caller
+            return None
 
         array_p = self.native.lib.GetBestModelFeatureCombination(
             self.model_pointer, feature_combination_index
@@ -647,9 +659,21 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self.model_type == "classification" and self.num_classification_states <= 1:
-            return np.ndarray((0), np.double, order="C")
+            # if there is only one legal state for a classification problem, then we know with 100%
+            # certainty what the result will be, and our logits for that result should be infinity
+            # since we reduce the number of logits by 1, we would get back an empty array from the C code
+            # after we expand the model for our caller, the tensor's dimensions should match
+            # the features for the feature_combination, but the last class_index should have a dimension
+            # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
+            # a None value here for now and handle in the upper levels
+            #
+            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # to be 0 states.  We can probably handle this the same as having 1 state though since 
+            # any instances in any evaluations need to have a state
+
+            # TODO make sure the None value here is handled by our caller
+            return None
 
         array_p = self.native.lib.GetCurrentModelFeatureCombination(
             self.model_pointer, feature_combination_index
