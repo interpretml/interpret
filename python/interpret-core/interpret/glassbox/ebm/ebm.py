@@ -688,12 +688,13 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
 
     def predict_proba(self, X):
         check_is_fitted(self, "has_fitted_")
-        prob = EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+
         return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.classifier_predict(X, self)
+        return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
 
 class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
@@ -741,7 +742,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.regressor_predict(X, self)
+        return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
 
 
 class BaseEBM(BaseEstimator):
@@ -1007,7 +1008,7 @@ class BaseEBM(BaseEstimator):
 
         # Postprocess model graphs for multiclass
         if self.n_classes_ > 2:
-            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(x, self)
+            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(x, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
 
             postprocessed = multiclass_postprocess(
                 X, self.attribute_set_models_, binned_predict_proba, self.feature_types
@@ -1036,10 +1037,10 @@ class BaseEBM(BaseEstimator):
         # Select pairs from base models
         def score_fn(est, X, y, drop_indices):
             if is_classifier(est):
-                prob = EBMUtils.classifier_predict_proba(X, estimator, drop_indices)
+                prob = EBMUtils.classifier_predict_proba(X, estimator.attribute_sets_, estimator.attribute_set_models_, estimator.intercept_, drop_indices)
                 return -1.0 * roc_auc_score(y, prob[:, 1])
             else:
-                pred = EBMUtils.regressor_predict(X, estimator, drop_indices)
+                pred = EBMUtils.regressor_predict(X, estimator.attribute_sets_, estimator.attribute_set_models_, estimator.intercept_, drop_indices)
                 return mean_squared_error(y, pred)
 
         pair_cum_rank = Counter()
@@ -1279,9 +1280,9 @@ class BaseEBM(BaseEstimator):
                     data_dicts[row_idx]["values"].append("")
 
         if is_classifier(self):
-            scores = EBMUtils.classifier_predict_proba(instances, self)[:, 1]
+            scores = EBMUtils.classifier_predict_proba(instances, self.attribute_sets_, self.attribute_set_models_, self.intercept_)[:, 1]
         else:
-            scores = EBMUtils.regressor_predict(instances, self)
+            scores = EBMUtils.regressor_predict(instances, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
 
         perf_list = []
         for row_idx in range(n_rows):
@@ -1394,14 +1395,14 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
-        prob = EBMUtils.classifier_predict_proba(X, self)
+        prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
         return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
-        return EBMUtils.classifier_predict(X, self)
+        return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
@@ -1475,4 +1476,4 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
-        return EBMUtils.regressor_predict(X, self)
+        return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)

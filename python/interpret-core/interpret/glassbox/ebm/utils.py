@@ -93,12 +93,12 @@ class EBMUtils:
         return score_vector
 
     @staticmethod
-    def classifier_predict_proba(X, estimator, skip_feature_combination_idxs=[]):
+    def classifier_predict_proba(X, attribute_sets_, attribute_set_models_, intercept_, skip_feature_combination_idxs=[]):
         log_odds_vector = EBMUtils.decision_function(
             X,
-            estimator.attribute_sets_,
-            estimator.attribute_set_models_,
-            estimator.intercept_,
+            attribute_sets_,
+            attribute_set_models_,
+            intercept_,
             skip_feature_combination_idxs,
         )
 
@@ -110,17 +110,17 @@ class EBMUtils:
         return softmax(decision_2d)
 
     @staticmethod
-    def classifier_predict(X, estimator, skip_feature_combination_idxs=[]):
-        scores = EBMUtils.classifier_predict_proba(X, estimator, skip_feature_combination_idxs)
-        return estimator.classes_[np.argmax(scores, axis=1)]
+    def classifier_predict(X, attribute_sets_, attribute_set_models_, intercept_, classes_):
+        scores = EBMUtils.classifier_predict_proba(X, attribute_sets_, attribute_set_models_, intercept_)
+        return classes_[np.argmax(scores, axis=1)]
 
     @staticmethod
-    def regressor_predict(X, estimator, skip_feature_combination_idxs=[]):
+    def regressor_predict(X, attribute_sets_, attribute_set_models_, intercept_, skip_feature_combination_idxs=[]):
         scores = EBMUtils.decision_function(
             X,
-            estimator.attribute_sets_,
-            estimator.attribute_set_models_,
-            estimator.intercept_,
+            attribute_sets_,
+            attribute_set_models_,
+            intercept_,
             skip_feature_combination_idxs,
         )
         return scores
