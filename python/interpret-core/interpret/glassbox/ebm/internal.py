@@ -440,7 +440,7 @@ class NativeEBMTraining:
             features: List of features represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
             feature_combinations: List of feature combinations represented as
-                a dictionary of keys ('n_attributes', 'attributes')
+                a dictionary of keys ("features")
             X_train: Training design matrix as 2-D ndarray.
             y_train: Training response as 1-D ndarray.
             X_val: Validation design matrix as 2-D ndarray.

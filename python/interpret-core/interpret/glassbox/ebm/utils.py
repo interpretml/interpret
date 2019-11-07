@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 class EBMUtils:
     @staticmethod
     def get_count_scores_c(n_classes):
+        # this should reflect how the C code represents scores
         return 1 if n_classes <= 2 else n_classes
 
     @staticmethod
@@ -40,26 +41,24 @@ class EBMUtils:
     def gen_feature_combinations(feature_indices):
         feature_combinations = [None] * len(feature_indices)
         for i, indices in enumerate(feature_indices):
+            # TODO PK v.2 remove n_attributes (this is the only place it is used, but it's public)
+            # TODO PK v.2 rename all instances of "attributes" -> "features"
             feature_combination = {"n_attributes": len(indices), "attributes": indices}
             feature_combinations[i] = feature_combination
         return feature_combinations
 
     @staticmethod
     def scores_by_feature_combination(
-        X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs=[]
+        X, feature_combinations, model, skip_feature_combination_idxs=[]
     ):
-
         for set_idx, feature_combination in enumerate(feature_combinations):
             if set_idx in skip_feature_combination_idxs:
                 continue
-            tensor = model_feature_combinations[set_idx]
+            tensor = model[set_idx]
 
             # Get the current column(s) to process
             feature_idxs = feature_combination["attributes"]
-
-            # TODO: Double check that this works
             feature_idxs = list(reversed(feature_idxs))
-
             sliced_X = X[:, feature_idxs]
             scores = tensor[tuple(sliced_X.T)]
 
@@ -69,7 +68,6 @@ class EBMUtils:
     def decision_function(
         X, feature_combinations, model_feature_combinations, intercept, skip_feature_combination_idxs=[]
     ):
-
         if X.ndim == 1:
             X = X.reshape(1, X.shape[0])
 
@@ -94,32 +92,6 @@ class EBMUtils:
 
         return score_vector
 
-    # Old method -- TODO: remove once tested
-    # @staticmethod
-    # def decision_function(
-    #     X, feature_combinations, model_feature_combinations, intercept, skip_feature_combination_idxs=[]
-    # ):
-
-    #     if X.ndim == 1:
-    #         X = X.reshape(1, X.shape[0])
-
-    #     # Foreach column, add log odds per instance
-    #     score_vector = np.zeros(X.shape[0])
-    #     score_vector += intercept
-
-    #     scores_gen = EBMUtils.scores_by_feature_combination(
-    #         X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs
-    #     )
-    #     for _, _, scores in scores_gen:
-    #         score_vector += scores
-
-    #     if not np.all(np.isfinite(score_vector)):  # pragma: no cover
-    #         msg = "Non-finite values present in log odds vector."
-    #         log.error(msg)
-    #         raise Exception(msg)
-
-    #     return score_vector
-
     @staticmethod
     def classifier_predict_proba(X, estimator, skip_feature_combination_idxs=[]):
         log_odds_vector = EBMUtils.decision_function(
@@ -136,22 +108,6 @@ class EBMUtils:
         else:
             decision_2d = log_odds_vector
         return softmax(decision_2d)
-
-    # Old method -- TODO: remove once tested
-    # @staticmethod
-    # def classifier_predict_proba(X, estimator, skip_feature_combination_idxs=[]):
-    #     log_odds_vector = EBMUtils.decision_function(
-    #         X,
-    #         estimator.attribute_sets_,
-    #         estimator.attribute_set_models_,
-    #         estimator.intercept_,
-    #         skip_feature_combination_idxs,
-    #     )
-
-    #     # NOTE: Generalize predict when multiclass is supported.
-    #     prob = expit(log_odds_vector)
-    #     scores = np.vstack([1 - prob, prob]).T
-    #     return scores
 
     @staticmethod
     def classifier_predict(X, estimator, skip_feature_combination_idxs=[]):

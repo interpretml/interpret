@@ -329,8 +329,8 @@ class BaseCoreEBM(BaseEstimator):
     def __init__(
         self,
         # Data
-        col_types=None,
-        col_n_bins=None,
+        col_types,
+        col_n_bins,
         # Core
         main_features="all",
         interactions=0,
@@ -647,8 +647,8 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
     def __init__(
         self,
         # Data
-        col_types=None,
-        col_n_bins=None,
+        col_types,
+        col_n_bins,
         # Core
         main_features="all",
         interactions=0,
@@ -700,8 +700,8 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
     def __init__(
         self,
         # Data
-        col_types=None,
-        col_n_bins=None,
+        col_types,
+        col_n_bins,
         # Core
         main_features="all",
         interactions=0,
