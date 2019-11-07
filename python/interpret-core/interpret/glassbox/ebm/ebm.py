@@ -404,8 +404,8 @@ class BaseCoreEBM(BaseEstimator):
         else:
             self.intercept_ = 0
 
-        self.attribute_sets_ = []
-        self.attribute_set_models_ = []
+        self.feature_combinations_ = []
+        self.model_ = []
 
         if isinstance(self.main_features, str) and self.main_features == "all":
             main_feature_indices = [[x] for x in range(len(self.features_))]
@@ -503,8 +503,8 @@ class BaseCoreEBM(BaseEstimator):
         log.debug("Main Metric: {0}".format(self.current_metric_))
         for index, feature_combination in enumerate(main_feature_combinations):
             model_feature_combination = native_ebm.get_best_model(index)
-            self.attribute_set_models_.append(model_feature_combination)
-            self.attribute_sets_.append(feature_combination)
+            self.model_.append(model_feature_combination)
+            self.feature_combinations_.append(feature_combination)
 
         self.has_fitted_ = True
 
@@ -535,15 +535,15 @@ class BaseCoreEBM(BaseEstimator):
             model_type = "regression"
 
         # Discard initial interactions
-        new_model_feature_combinations = []
+        new_model = []
         new_feature_combinations = []
-        for i, feature_combination in enumerate(self.attribute_sets_):
+        for i, feature_combination in enumerate(self.feature_combinations_):
             if len(feature_combination["attributes"]) != 1:
                 continue
-            new_model_feature_combinations.append(self.attribute_set_models_[i])
-            new_feature_combinations.append(self.attribute_sets_[i])
-        self.attribute_set_models_ = new_model_feature_combinations
-        self.attribute_sets_ = new_feature_combinations
+            new_model.append(self.model_[i])
+            new_feature_combinations.append(self.feature_combinations_[i])
+        self.model_ = new_model
+        self.feature_combinations_ = new_feature_combinations
 
         # Fix main, train interactions
         training_scores = self.decision_function(X_train)
@@ -581,8 +581,8 @@ class BaseCoreEBM(BaseEstimator):
             log.debug("Interaction Metric: {0}".format(self.current_metric_))
 
             for index, feature_combination in enumerate(inter_feature_combinations):
-                self.attribute_set_models_.append(native_ebm_training.get_best_model(index))
-                self.attribute_sets_.append(feature_combination)
+                self.model_.append(native_ebm_training.get_best_model(index))
+                self.feature_combinations_.append(feature_combination)
 
         return self
 
@@ -590,7 +590,7 @@ class BaseCoreEBM(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         return EBMUtils.decision_function(
-            X, self.attribute_sets_, self.attribute_set_models_, 0
+            X, self.feature_combinations_, self.model_, 0
         )
 
     def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
@@ -688,13 +688,13 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
 
     def predict_proba(self, X):
         check_is_fitted(self, "has_fitted_")
-        prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+        prob = EBMUtils.classifier_predict_proba(X, self.feature_combinations_, self.model_, self.intercept_)
 
         return prob
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
+        return EBMUtils.classifier_predict(X, self.feature_combinations_, self.model_, self.intercept_, self.classes_)
 
 
 class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
@@ -742,7 +742,7 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
 
     def predict(self, X):
         check_is_fitted(self, "has_fitted_")
-        return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+        return EBMUtils.regressor_predict(X, self.feature_combinations_, self.model_, self.intercept_)
 
 
 class BaseEBM(BaseEstimator):
@@ -959,7 +959,7 @@ class BaseEBM(BaseEstimator):
         for index, _ in enumerate(self.attribute_sets_):
             log_odds_tensors = []
             for estimator in estimators:
-                log_odds_tensors.append(estimator.attribute_set_models_[index])
+                log_odds_tensors.append(estimator.model_[index])
 
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
@@ -1037,10 +1037,10 @@ class BaseEBM(BaseEstimator):
         # Select pairs from base models
         def score_fn(estimator, X, y, drop_indices):
             if is_classifier(estimator):
-                prob = EBMUtils.classifier_predict_proba(X, estimator.attribute_sets_, estimator.attribute_set_models_, estimator.intercept_, drop_indices)
+                prob = EBMUtils.classifier_predict_proba(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
                 return -1.0 * roc_auc_score(y, prob[:, 1])
             else:
-                pred = EBMUtils.regressor_predict(X, estimator.attribute_sets_, estimator.attribute_set_models_, estimator.intercept_, drop_indices)
+                pred = EBMUtils.regressor_predict(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
                 return mean_squared_error(y, pred)
 
         pair_cum_rank = Counter()

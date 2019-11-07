@@ -66,9 +66,10 @@ class EBMUtils:
 
     @staticmethod
     def decision_function(
-        X, feature_combinations, model_feature_combinations, intercept, skip_feature_combination_idxs=[]
+        X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]
     ):
         if X.ndim == 1:
+            #TODO is this ndim == 1 necessary.  When is our dimension of X not 2?
             X = X.reshape(1, X.shape[0])
 
         # Initialize empty vector for predictions
@@ -80,7 +81,7 @@ class EBMUtils:
         score_vector += intercept
 
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, feature_combinations, model_feature_combinations, skip_feature_combination_idxs
+            X, feature_combinations, model, skip_feature_combination_idxs
         )
         for _, _, scores in scores_gen:
             score_vector += scores
@@ -93,12 +94,12 @@ class EBMUtils:
         return score_vector
 
     @staticmethod
-    def classifier_predict_proba(X, attribute_sets_, attribute_set_models_, intercept_, skip_feature_combination_idxs=[]):
+    def classifier_predict_proba(X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]):
         log_odds_vector = EBMUtils.decision_function(
             X,
-            attribute_sets_,
-            attribute_set_models_,
-            intercept_,
+            feature_combinations,
+            model,
+            intercept,
             skip_feature_combination_idxs,
         )
 
@@ -110,17 +111,17 @@ class EBMUtils:
         return softmax(decision_2d)
 
     @staticmethod
-    def classifier_predict(X, attribute_sets_, attribute_set_models_, intercept_, classes_):
-        scores = EBMUtils.classifier_predict_proba(X, attribute_sets_, attribute_set_models_, intercept_)
+    def classifier_predict(X, feature_combinations, model, intercept, classes_):
+        scores = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
         return classes_[np.argmax(scores, axis=1)]
 
     @staticmethod
-    def regressor_predict(X, attribute_sets_, attribute_set_models_, intercept_, skip_feature_combination_idxs=[]):
+    def regressor_predict(X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]):
         scores = EBMUtils.decision_function(
             X,
-            attribute_sets_,
-            attribute_set_models_,
-            intercept_,
+            feature_combinations,
+            model,
+            intercept,
             skip_feature_combination_idxs,
         )
         return scores
