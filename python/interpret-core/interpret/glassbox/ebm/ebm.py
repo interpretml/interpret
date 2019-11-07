@@ -1035,8 +1035,8 @@ class BaseEBM(BaseEstimator):
 
     def _select_merged_pairs(self, estimators, X, y):
         # Select pairs from base models
-        def score_fn(est, X, y, drop_indices):
-            if is_classifier(est):
+        def score_fn(estimator, X, y, drop_indices):
+            if is_classifier(estimator):
                 prob = EBMUtils.classifier_predict_proba(X, estimator.attribute_sets_, estimator.attribute_set_models_, estimator.intercept_, drop_indices)
                 return -1.0 * roc_auc_score(y, prob[:, 1])
             else:
