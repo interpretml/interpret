@@ -414,7 +414,6 @@ class BaseCoreEBM(BaseEstimator):
         ):
             main_feature_indices = [[x] for x in self.main_features]
         else:
-            # TODO change this to main_features once our public interface uses "feature"
             raise RuntimeError("Argument 'main_attr' has invalid value")
 
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
@@ -444,7 +443,7 @@ class BaseCoreEBM(BaseEstimator):
             # Train main effects
             self._fit_main(native_ebm_training, main_feature_combinations)
 
-        # TODO currently we're using None for the scores, but we should instead determine what they
+        # TODO PK currently we're using None for the scores, but we should instead determine what they
         # are after training the mains
         with closing(
             NativeEBMInteraction(
@@ -760,24 +759,30 @@ class BaseEBM(BaseEstimator):
         holdout_size=0.15,
         scoring=None,
         # Core
+        # TODO PK v.2 change main_attr -> main_features (also look for anything with attr in it)
         main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
+        # TODO PK v.2 eliminate early_stopping_tolerance (use zero for this!)
         early_stopping_tolerance=1e-5,
         early_stopping_run_length=50,
         # Native
+        # TODO PK v.2 feature_step_n_inner_bags -> n_inner_bags
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
+        # TODO PK v.2 eliminate training_step_episodes
         training_step_episodes=1,
         max_tree_splits=2,
         min_cases_for_splits=2,
         # Overall
         n_jobs=-2,
+        # TODO PK v.2 random_state -> random_seed ??
         random_state=42,
         # Preprocessor
         binning_strategy="uniform",
     ):
+        # TODO PK sanity check all our inputs
 
         # Arguments for explainer
         self.feature_names = feature_names
@@ -815,6 +820,15 @@ class BaseEBM(BaseEstimator):
 
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
+        # TODO PK we should do some basic checks here that X and y have the same dimensions and that
+        #      they are well formed (look for NaNs, etc)
+
+        # TODO PK handle calls where X.dim == 1.  This could occur if there was only 1 feature, or if
+        #     there was only 1 instance?  We can differentiate either condition via y.dim and reshape
+        #     AND add some tests for the X.dim == 1 scenario
+
+        # TODO PK write an efficient striping converter for X that replaces unify_data for EBMs
+        # algorithm: grap N columns and convert them to rows then process those by sending them to C
         X, y, self.feature_names, _ = unify_data(
             X, y, self.feature_names, self.feature_types
         )
@@ -950,10 +964,12 @@ class BaseEBM(BaseEstimator):
             )
             raise RuntimeError(msg)
 
+        # TODO PK v.2 attribute_sets_ -> feature_combinations_
         self.attribute_sets_ = EBMUtils.gen_feature_combinations(main_indices)
         self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
 
         # Merge estimators into one.
+        # TODO PK v.2 attribute_set_models_ -> model_
         self.attribute_set_models_ = []
         self.model_errors_ = []
         for index, _ in enumerate(self.attribute_sets_):
@@ -969,6 +985,7 @@ class BaseEBM(BaseEstimator):
 
         # Get episode indexes for base estimators.
         self.main_episode_idxs_ = []
+        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
         self.inter_episode_idxs_ = []
         for estimator in estimators:
             self.main_episode_idxs_.append(estimator.main_episode_idx_)
@@ -992,6 +1009,9 @@ class BaseEBM(BaseEstimator):
             scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.attribute_sets_, self.attribute_set_models_, []
             )
+            # TODO PK v.2 _attrib_set_model_means_ -> _model_means_ 
+            # (or something else matching what this is being used for)
+            # also look for anything with attrib inside of it
             self._attrib_set_model_means_ = []
 
             # TODO: Clean this up before release.

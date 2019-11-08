@@ -633,7 +633,7 @@ class NativeEBMTraining:
             # to be 0 states.  We can probably handle this the same as having 1 state though since 
             # any instances in any evaluations need to have a state
 
-            # TODO make sure the None value here is handled by our caller
+            # TODO PK make sure the None value here is handled by our caller
             return None
 
         array_p = self.native.lib.GetBestModelFeatureCombination(
@@ -672,7 +672,7 @@ class NativeEBMTraining:
             # to be 0 states.  We can probably handle this the same as having 1 state though since 
             # any instances in any evaluations need to have a state
 
-            # TODO make sure the None value here is handled by our caller
+            # TODO PK make sure the None value here is handled by our caller
             return None
 
         array_p = self.native.lib.GetCurrentModelFeatureCombination(

@@ -69,7 +69,10 @@ class EBMUtils:
         X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]
     ):
         if X.ndim == 1:
-            #TODO is this ndim == 1 necessary.  When is our dimension of X not 2?
+            # TODO PK Is this X.ndim to handle calls to our main fit(X, y) function when the input
+            #     has only 1 feature or only 1 instance?  If so, we should probably
+            #     modify the shape there at input since there are a lot of layers between there
+            #     and here and having X.ndim == 1 would be rare and not a performance issue
             X = X.reshape(1, X.shape[0])
 
         # Initialize empty vector for predictions
