@@ -435,7 +435,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 model_type=model_type,
-                num_classification_states=self.n_classes_,
+                n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=None,
                 validation_scores=None,
@@ -452,7 +452,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_train,
                 y_train,
                 model_type=model_type,
-                num_classification_states=self.n_classes_,
+                n_classes=self.n_classes_,
                 scores=None,
             )
         ) as native_ebm_interactions:
@@ -473,7 +473,7 @@ class BaseCoreEBM(BaseEstimator):
                 x for x in combinations(range(len(self.col_types)), 2)
             ]
             for pair in interaction_indices:
-                score = native_ebm.fast_interaction_score(pair)
+                score = native_ebm.get_interaction_score(pair)
                 interaction_scores.append((pair, score))
 
             ranked_scores = list(
@@ -502,7 +502,7 @@ class BaseCoreEBM(BaseEstimator):
         )
         log.debug("Main Metric: {0}".format(self.current_metric_))
         for index, feature_combination in enumerate(main_feature_combinations):
-            model_feature_combination = native_ebm.get_best_model(index)
+            model_feature_combination = native_ebm.get_best_model_feature_combination(index)
             self.model_.append(model_feature_combination)
             self.feature_combinations_.append(feature_combination)
 
@@ -567,7 +567,7 @@ class BaseCoreEBM(BaseEstimator):
                 X_val,
                 y_val,
                 model_type=model_type,
-                num_classification_states=self.n_classes_,
+                n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
@@ -581,7 +581,7 @@ class BaseCoreEBM(BaseEstimator):
             log.debug("Interaction Metric: {0}".format(self.current_metric_))
 
             for index, feature_combination in enumerate(inter_feature_combinations):
-                self.model_.append(native_ebm_training.get_best_model(index))
+                self.model_.append(native_ebm_training.get_best_model_feature_combination(index))
                 self.feature_combinations_.append(feature_combination)
 
         return self

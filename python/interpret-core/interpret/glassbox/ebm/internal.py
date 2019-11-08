@@ -426,7 +426,7 @@ class NativeEBMTraining:
         X_val,
         y_val,
         model_type,
-        num_classification_states,
+        n_classes,
         num_inner_bags=0,
         training_scores=None,
         validation_scores=None,
@@ -446,7 +446,7 @@ class NativeEBMTraining:
             X_val: Validation design matrix as 2-D ndarray.
             y_val: Validation response as 1-D ndarray.
             model_type: 'regression'/'classification'.
-            num_classification_states: Specific to classification,
+            n_classes: Specific to classification,
                 number of unique classes.
             num_inner_bags: number of inner bags.
             training_scores: Undocumented.
@@ -471,13 +471,13 @@ class NativeEBMTraining:
         )
 
         self.model_type = model_type
-        self.num_classification_states = num_classification_states
+        self.n_classes = n_classes
 
         if training_scores is None:
-            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            n_scores = EBMUtils.get_count_scores_c(n_classes)
             training_scores = np.zeros(y_train.shape[0] * n_scores, dtype=np.float64, order='C')
         if validation_scores is None:
-            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            n_scores = EBMUtils.get_count_scores_c(n_classes)
             validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
 
         # Allocate external resources
@@ -489,7 +489,7 @@ class NativeEBMTraining:
                 len(feature_combinations_array),
                 feature_combinations_array,
                 feature_combination_indexes,
-                num_classification_states,
+                n_classes,
                 len(y_train),
                 y_train,
                 X_train,
@@ -564,7 +564,7 @@ class NativeEBMTraining:
 
         metric_output = ct.c_double(0.0)
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
-        if self.model_type != "classification" or 2 <= self.num_classification_states:
+        if self.model_type != "classification" or 2 <= self.n_classes:
             gain = ct.c_double(0.0)
             for i in range(training_step_episodes):
                 model_update_tensor_pointer = self.native.lib.GenerateModelFeatureCombinationUpdate(
@@ -603,13 +603,13 @@ class NativeEBMTraining:
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        if self.model_type == "classification" and self.num_classification_states > 2:
-            dimensions.append(self.num_classification_states)
+        if self.model_type == "classification" and self.n_classes > 2:
+            dimensions.append(self.n_classes)
 
         shape = tuple(dimensions)
         return shape
 
-    def get_best_model(self, feature_combination_index):
+    def get_best_model_feature_combination(self, feature_combination_index):
         """ Returns best model/function according to validation set
             for a given feature combination.
 
@@ -620,7 +620,7 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.num_classification_states <= 1:
+        if self.model_type == "classification" and self.n_classes <= 1:
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
@@ -648,7 +648,7 @@ class NativeEBMTraining:
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
         return array
 
-    def get_current_model(self, feature_combination_index):
+    def get_current_model_feature_combination(self, feature_combination_index):
         """ Returns current model/function according to validation set
             for a given feature combination.
 
@@ -659,7 +659,7 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.num_classification_states <= 1:
+        if self.model_type == "classification" and self.n_classes <= 1:
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
@@ -698,7 +698,7 @@ class NativeEBMInteraction:
         X,
         y,
         model_type,
-        num_classification_states,
+        n_classes,
         scores=None,
     ):
 
@@ -711,7 +711,7 @@ class NativeEBMInteraction:
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
             model_type: 'regression'/'classification'.
-            num_classification_states: Specific to classification,
+            n_classes: Specific to classification,
                 number of unique classes.
             scores: Undocumented.
         """
@@ -727,7 +727,7 @@ class NativeEBMInteraction:
         feature_array = Native.convert_features_to_c(features)
 
         if scores is None:
-            n_scores = EBMUtils.get_count_scores_c(num_classification_states)
+            n_scores = EBMUtils.get_count_scores_c(n_classes)
             scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
 
         # Allocate external resources
@@ -735,7 +735,7 @@ class NativeEBMInteraction:
             self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
                 len(feature_array),
                 feature_array,
-                num_classification_states,
+                n_classes,
                 len(y),
                 y,
                 X,
@@ -765,7 +765,7 @@ class NativeEBMInteraction:
         self.native.lib.FreeInteraction(self.interaction_pointer)
         log.info("Deallocation interaction end")
 
-    def fast_interaction_score(self, feature_index_tuple):
+    def get_interaction_score(self, feature_index_tuple):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
