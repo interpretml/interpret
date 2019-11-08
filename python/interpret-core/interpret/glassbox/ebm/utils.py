@@ -142,4 +142,6 @@ class EBMUtils:
         if len(feature_idxs) == 1:
             return col_types[feature_idxs[0]]
         else:
+            # TODO PK we should consider changing the feature type to the same " x " separator
+            # style as gen_feature_name, for human understanability
             return "pairwise"

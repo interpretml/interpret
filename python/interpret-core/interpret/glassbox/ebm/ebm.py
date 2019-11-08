@@ -750,7 +750,11 @@ class BaseEBM(BaseEstimator):
     def __init__(
         self,
         # Explainer
+        # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per 
+        # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
         feature_names=None,
+        # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per 
+        # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
         feature_types=None,
         # Data
         schema=None,

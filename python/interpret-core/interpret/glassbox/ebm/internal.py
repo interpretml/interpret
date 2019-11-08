@@ -455,23 +455,23 @@ class NativeEBMTraining:
         """
 
         # first set the one thing that we will close on
-        self.model_pointer = None
+        self._model_pointer = None
 
-        self.native = Native.get_native_singleton()
+        self._native = Native.get_native_singleton()
 
         log.info("Allocation training start")
 
         # Store args
-        self.features = features
+        self._features = features
         feature_array = Native.convert_features_to_c(features)
 
-        self.feature_combinations = feature_combinations
+        self._feature_combinations = feature_combinations
         feature_combinations_array, feature_combination_indexes = Native.convert_feature_combinations_to_c(
             feature_combinations
         )
 
-        self.model_type = model_type
-        self.n_classes = n_classes
+        self._model_type = model_type
+        self._n_classes = n_classes
 
         if training_scores is None:
             n_scores = EBMUtils.get_count_scores_c(n_classes)
@@ -482,7 +482,7 @@ class NativeEBMTraining:
 
         # Allocate external resources
         if model_type == "classification":
-            self.model_pointer = self.native.lib.InitializeTrainingClassification(
+            self._model_pointer = self._native.lib.InitializeTrainingClassification(
                 random_state,
                 len(feature_array),
                 feature_array,
@@ -500,10 +500,10 @@ class NativeEBMTraining:
                 validation_scores,
                 num_inner_bags,
             )
-            if not self.model_pointer:  # pragma: no cover
+            if not self._model_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeTrainingClassification")
         elif model_type == "regression":
-            self.model_pointer = self.native.lib.InitializeTrainingRegression(
+            self._model_pointer = self._native.lib.InitializeTrainingRegression(
                 random_state,
                 len(feature_array),
                 feature_array,
@@ -520,7 +520,7 @@ class NativeEBMTraining:
                 validation_scores,
                 num_inner_bags,
             )
-            if not self.model_pointer:  # pragma: no cover
+            if not self._model_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeTrainingRegression")
         else:
             raise AttributeError("Unrecognized model_type")
@@ -530,7 +530,7 @@ class NativeEBMTraining:
     def close(self):
         """ Deallocates C objects used to train EBM. """
         log.info("Deallocation training start")
-        self.native.lib.FreeTraining(self.model_pointer)
+        self._native.lib.FreeTraining(self._model_pointer)
         log.info("Deallocation training end")
 
     def training_step(
@@ -564,11 +564,11 @@ class NativeEBMTraining:
 
         metric_output = ct.c_double(0.0)
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
-        if self.model_type != "classification" or 2 <= self.n_classes:
+        if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
             for i in range(training_step_episodes):
-                model_update_tensor_pointer = self.native.lib.GenerateModelFeatureCombinationUpdate(
-                    self.model_pointer,
+                model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
+                    self._model_pointer,
                     feature_combination_index,
                     learning_rate,
                     max_tree_splits,
@@ -580,8 +580,8 @@ class NativeEBMTraining:
                 if not model_update_tensor_pointer:  # pragma: no cover
                     raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
 
-                return_code = self.native.lib.ApplyModelFeatureCombinationUpdate(
-                    self.model_pointer,
+                return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
+                    self._model_pointer,
                     feature_combination_index,
                     model_update_tensor_pointer,
                     ct.byref(metric_output),
@@ -595,16 +595,16 @@ class NativeEBMTraining:
     def _get_feature_combination_shape(self, feature_combination_index):
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_combination = self.feature_combinations[feature_combination_index]
+        feature_combination = self._feature_combinations[feature_combination_index]
         for _, feature_idx in enumerate(feature_combination["attributes"]):
-            n_bins = self.features[feature_idx]["n_bins"]
+            n_bins = self._features[feature_idx]["n_bins"]
             dimensions.append(n_bins)
 
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        if self.model_type == "classification" and self.n_classes > 2:
-            dimensions.append(self.n_classes)
+        if self._model_type == "classification" and self._n_classes > 2:
+            dimensions.append(self._n_classes)
 
         shape = tuple(dimensions)
         return shape
@@ -620,7 +620,7 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.n_classes <= 1:
+        if self._model_type == "classification" and self._n_classes <= 1:
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
@@ -636,8 +636,8 @@ class NativeEBMTraining:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self.native.lib.GetBestModelFeatureCombination(
-            self.model_pointer, feature_combination_index
+        array_p = self._native.lib.GetBestModelFeatureCombination(
+            self._model_pointer, feature_combination_index
         )
 
         if not array_p:  # pragma: no cover
@@ -659,7 +659,7 @@ class NativeEBMTraining:
             An ndarray that represents the model.
         """
 
-        if self.model_type == "classification" and self.n_classes <= 1:
+        if self._model_type == "classification" and self._n_classes <= 1:
             # if there is only one legal state for a classification problem, then we know with 100%
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
@@ -675,8 +675,8 @@ class NativeEBMTraining:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self.native.lib.GetCurrentModelFeatureCombination(
-            self.model_pointer, feature_combination_index
+        array_p = self._native.lib.GetCurrentModelFeatureCombination(
+            self._model_pointer, feature_combination_index
         )
 
         if not array_p:  # pragma: no cover
@@ -717,9 +717,9 @@ class NativeEBMInteraction:
         """
 
         # first set the one thing that we will close on
-        self.interaction_pointer = None
+        self._interaction_pointer = None
 
-        self.native = Native.get_native_singleton()
+        self._native = Native.get_native_singleton()
 
         log.info("Allocation interaction start")
 
@@ -732,7 +732,7 @@ class NativeEBMInteraction:
 
         # Allocate external resources
         if model_type == "classification":
-            self.interaction_pointer = self.native.lib.InitializeInteractionClassification(
+            self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
                 len(feature_array),
                 feature_array,
                 n_classes,
@@ -741,10 +741,10 @@ class NativeEBMInteraction:
                 X,
                 scores,
             )
-            if not self.interaction_pointer:  # pragma: no cover
+            if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionClassification")
         elif model_type == "regression":
-            self.interaction_pointer = self.native.lib.InitializeInteractionRegression(
+            self._interaction_pointer = self._native.lib.InitializeInteractionRegression(
                 len(feature_array),
                 feature_array,
                 len(y),
@@ -752,7 +752,7 @@ class NativeEBMInteraction:
                 X,
                 scores,
             )
-            if not self.interaction_pointer:  # pragma: no cover
+            if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")
         else:
             raise AttributeError("Unrecognized model_type")
@@ -762,15 +762,15 @@ class NativeEBMInteraction:
     def close(self):
         """ Deallocates C objects used to determine interactions in EBM. """
         log.info("Deallocation interaction start")
-        self.native.lib.FreeInteraction(self.interaction_pointer)
+        self._native.lib.FreeInteraction(self._interaction_pointer)
         log.info("Deallocation interaction end")
 
     def get_interaction_score(self, feature_index_tuple):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        return_code = self.native.lib.GetInteractionScore(
-            self.interaction_pointer,
+        return_code = self._native.lib.GetInteractionScore(
+            self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
             ct.byref(score),
