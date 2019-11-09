@@ -14,7 +14,6 @@ from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
 
 import numpy as np
-import copy
 from warnings import warn
 
 from sklearn.base import is_classifier, clone
@@ -738,6 +737,7 @@ class BaseEBM(BaseEstimator):
         )
         self.preprocessor_.fit(X)
 
+        estimators = []
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             y = y.astype(np.int64, casting='unsafe', copy=False)
@@ -749,53 +749,56 @@ class BaseEBM(BaseEstimator):
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
                 )
-
-            proto_estimator = BaseCoreEBM(
-                # Data
-                model_type="classification",
-                col_types=self.preprocessor_.col_types_,
-                col_n_bins=self.preprocessor_.col_n_bins_,
-                # Core
-                main_features=self.main_attr,
-                interactions=self.interactions,
-                holdout_split=self.holdout_split,
-                data_n_episodes=self.data_n_episodes,
-                early_stopping_tolerance=self.early_stopping_tolerance,
-                early_stopping_run_length=self.early_stopping_run_length,
-                # Native
-                feature_step_n_inner_bags=self.feature_step_n_inner_bags,
-                learning_rate=self.learning_rate,
-                training_step_episodes=self.training_step_episodes,
-                max_tree_splits=self.max_tree_splits,
-                min_cases_for_splits=self.min_cases_for_splits,
-                # Overall
-                random_state=self.random_state,
-            )
+            for i in range(self.n_estimators):
+                estimator = BaseCoreEBM(
+                    # Data
+                    model_type="classification",
+                    col_types=self.preprocessor_.col_types_,
+                    col_n_bins=self.preprocessor_.col_n_bins_,
+                    # Core
+                    main_features=self.main_attr,
+                    interactions=self.interactions,
+                    holdout_split=self.holdout_split,
+                    data_n_episodes=self.data_n_episodes,
+                    early_stopping_tolerance=self.early_stopping_tolerance,
+                    early_stopping_run_length=self.early_stopping_run_length,
+                    # Native
+                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    learning_rate=self.learning_rate,
+                    training_step_episodes=self.training_step_episodes,
+                    max_tree_splits=self.max_tree_splits,
+                    min_cases_for_splits=self.min_cases_for_splits,
+                    # Overall
+                    random_state=self.random_state + i,
+                )
+                estimators.append(estimator)
         else:
             # TODO PK v.2 eliminate n_classes and just use len(self.classes_) like scikit
             self.n_classes_ = -1
             y = y.astype(np.float64, casting='unsafe', copy=False)
-            proto_estimator = BaseCoreEBM(
-                # Data
-                model_type="regression",
-                col_types=self.preprocessor_.col_types_,
-                col_n_bins=self.preprocessor_.col_n_bins_,
-                # Core
-                main_features=self.main_attr,
-                interactions=self.interactions,
-                holdout_split=self.holdout_split,
-                data_n_episodes=self.data_n_episodes,
-                early_stopping_tolerance=self.early_stopping_tolerance,
-                early_stopping_run_length=self.early_stopping_run_length,
-                # Native
-                feature_step_n_inner_bags=self.feature_step_n_inner_bags,
-                learning_rate=self.learning_rate,
-                training_step_episodes=self.training_step_episodes,
-                max_tree_splits=self.max_tree_splits,
-                min_cases_for_splits=self.min_cases_for_splits,
-                # Overall
-                random_state=self.random_state,
-            )
+            for i in range(self.n_estimators):
+                estimator = BaseCoreEBM(
+                    # Data
+                    model_type="regression",
+                    col_types=self.preprocessor_.col_types_,
+                    col_n_bins=self.preprocessor_.col_n_bins_,
+                    # Core
+                    main_features=self.main_attr,
+                    interactions=self.interactions,
+                    holdout_split=self.holdout_split,
+                    data_n_episodes=self.data_n_episodes,
+                    early_stopping_tolerance=self.early_stopping_tolerance,
+                    early_stopping_run_length=self.early_stopping_run_length,
+                    # Native
+                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    learning_rate=self.learning_rate,
+                    training_step_episodes=self.training_step_episodes,
+                    max_tree_splits=self.max_tree_splits,
+                    min_cases_for_splits=self.min_cases_for_splits,
+                    # Overall
+                    random_state=self.random_state + i,
+                )
+                estimators.append(estimator)
 
         # Train base models for main effects, pair detection.
 
@@ -806,11 +809,6 @@ class BaseEBM(BaseEstimator):
             self.intercept_ = 0
         X_orig = X
         X = self.preprocessor_.transform(X)
-        estimators = []
-        for i in range(self.n_estimators):
-            estimator = copy.deepcopy(proto_estimator)
-            estimator.random_state = self.random_state + i
-            estimators.append(estimator)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
