@@ -69,19 +69,15 @@ class EBMUtils:
         X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]
     ):
         if X.ndim == 1:
-            # TODO PK Is this X.ndim to handle calls to our main fit(X, y) function when the input
-            #     has only 1 feature or only 1 instance?  If so, we should probably
-            #     modify the shape there at input since there are a lot of layers between there
-            #     and here and having X.ndim == 1 would be rare and not a performance issue
             X = X.reshape(1, X.shape[0])
 
         # Initialize empty vector for predictions
         if isinstance(intercept, numbers.Number) or len(intercept) == 1:
-            score_vector = np.zeros(X.shape[0])
+            score_vector = np.empty(X.shape[0])
         else:
-            score_vector = np.zeros((X.shape[0], len(intercept)))
+            score_vector = np.empty((X.shape[0], len(intercept)))
 
-        score_vector += intercept
+        np.copyto(score_vector, intercept)
 
         scores_gen = EBMUtils.scores_by_feature_combination(
             X, feature_combinations, model, skip_feature_combination_idxs
@@ -108,15 +104,22 @@ class EBMUtils:
 
         # Handle binary classification case -- softmax only works with 0s appended
         if log_odds_vector.ndim == 1:
-            decision_2d = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
-        else:
-            decision_2d = log_odds_vector
-        return softmax(decision_2d)
+            log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
+
+        return softmax(log_odds_vector)
 
     @staticmethod
-    def classifier_predict(X, feature_combinations, model, intercept, classes_):
-        scores = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
-        return classes_[np.argmax(scores, axis=1)]
+    def classifier_predict(X, feature_combinations, model, intercept, classes):
+        log_odds_vector = EBMUtils.decision_function(
+            X,
+            feature_combinations,
+            model,
+            intercept
+        )
+        if log_odds_vector.ndim == 1:
+            log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
+
+        return classes[np.argmax(log_odds_vector, axis=1)]
 
     @staticmethod
     def regressor_predict(X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]):

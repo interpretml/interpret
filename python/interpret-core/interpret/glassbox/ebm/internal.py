@@ -1,6 +1,8 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+# TODO PK convert all scores to 2-D C-CONTIGUOUS ndarray (python access wil be: score[instance_idx, class_idx]
+
 # TODO: Add unit tests for internal EBM interfacing
 import sys
 from sys import platform
@@ -579,6 +581,11 @@ class NativeEBMTraining:
                 )
                 if not model_update_tensor_pointer:  # pragma: no cover
                     raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
+
+                # TODO PK convert model_update_tensor_pointer into a view (verify that we aren't copying the data) before
+                #         passing it into ApplyModelFeatureCombinationUpdate (which we need to change to accept a view)
+                #         This will make it more useable in python for experimentation and if we aren't copying
+                #         it then performance won't be impacted at all
 
                 return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
                     self._model_pointer,

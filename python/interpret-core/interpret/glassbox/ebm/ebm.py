@@ -685,17 +685,6 @@ class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
             random_state=random_state,
         )
 
-    def predict_proba(self, X):
-        check_is_fitted(self, "has_fitted_")
-        prob = EBMUtils.classifier_predict_proba(X, self.feature_combinations_, self.model_, self.intercept_)
-
-        return prob
-
-    def predict(self, X):
-        check_is_fitted(self, "has_fitted_")
-        return EBMUtils.classifier_predict(X, self.feature_combinations_, self.model_, self.intercept_, self.classes_)
-
-
 class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
     def __init__(
         self,
@@ -739,11 +728,6 @@ class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
             random_state=random_state,
         )
 
-    def predict(self, X):
-        check_is_fitted(self, "has_fitted_")
-        return EBMUtils.regressor_predict(X, self.feature_combinations_, self.model_, self.intercept_)
-
-
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -781,7 +765,6 @@ class BaseEBM(BaseEstimator):
         min_cases_for_splits=2,
         # Overall
         n_jobs=-2,
-        # TODO PK v.2 random_state -> random_seed ??
         random_state=42,
         # Preprocessor
         binning_strategy="uniform",
@@ -973,6 +956,8 @@ class BaseEBM(BaseEstimator):
         self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
 
         # Merge estimators into one.
+        # TODO ensure that any model that is publically visible is expaneded
+        #      so that binary classification has two logits AND is postprocessed
         # TODO PK v.2 attribute_set_models_ -> model_
         self.attribute_set_models_ = []
         self.model_errors_ = []
@@ -1130,6 +1115,8 @@ class BaseEBM(BaseEstimator):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
 
+        # TODO PK add a test to see if we handle X.ndim == 1
+
         decision_scores = EBMUtils.decision_function(
             X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
         )
@@ -1275,6 +1262,8 @@ class BaseEBM(BaseEstimator):
             instances, self.attribute_sets_, self.attribute_set_models_
         )
 
+        # TODO PK add a test to see if we handle X.ndim == 1
+
         n_rows = instances.shape[0]
         data_dicts = []
         for _ in range(n_rows):
@@ -1419,6 +1408,9 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1
+
         prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
         return prob
 
@@ -1426,6 +1418,9 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1
+
         return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
 
@@ -1500,4 +1495,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
+
+        # TODO PK add a test to see if we handle X.ndim == 1
+
         return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
