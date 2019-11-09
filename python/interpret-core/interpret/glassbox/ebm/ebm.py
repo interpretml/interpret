@@ -545,9 +545,13 @@ class BaseCoreEBM(BaseEstimator):
         self.feature_combinations_ = new_feature_combinations
 
         # Fix main, train interactions
-        training_scores = self.decision_function(X_train)
-        validation_scores = self.decision_function(X_val)
-
+        training_scores = EBMUtils.decision_function(
+            X_train, self.feature_combinations_, self.model_, 0
+        )
+        validation_scores = EBMUtils.decision_function(
+            X_val, self.feature_combinations_, self.model_, 0
+        )
+        
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
         #         push the re-ordering right to our first call to fit(..) AND stripe convert
         #         groups of rows at once and they process them in fortran order after that
@@ -584,13 +588,6 @@ class BaseCoreEBM(BaseEstimator):
                 self.feature_combinations_.append(feature_combination)
 
         return self
-
-    def decision_function(self, X):
-        check_is_fitted(self, "has_fitted_")
-
-        return EBMUtils.decision_function(
-            X, self.feature_combinations_, self.model_, 0
-        )
 
     def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
 
@@ -1115,12 +1112,13 @@ class BaseEBM(BaseEstimator):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
 
-        # TODO PK add a test to see if we handle X.ndim == 1
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         decision_scores = EBMUtils.decision_function(
             X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
         )
 
+        # TODO PK v.2 these decision_scores are unexpanded.  We need to expand them
         return decision_scores
 
     def explain_global(self, name=None):
@@ -1262,7 +1260,7 @@ class BaseEBM(BaseEstimator):
             instances, self.attribute_sets_, self.attribute_set_models_
         )
 
-        # TODO PK add a test to see if we handle X.ndim == 1
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         n_rows = instances.shape[0]
         data_dicts = []
@@ -1409,7 +1407,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
 
-        # TODO PK add a test to see if we handle X.ndim == 1
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
         return prob
@@ -1419,7 +1417,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
 
-        # TODO PK add a test to see if we handle X.ndim == 1
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
@@ -1496,6 +1494,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
 
-        # TODO PK add a test to see if we handle X.ndim == 1
+        # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
         return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
