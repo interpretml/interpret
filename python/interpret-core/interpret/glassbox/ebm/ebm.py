@@ -14,6 +14,7 @@ from ...provider.compute import JobLibProvider
 from ...utils import gen_name_from_class, gen_global_selector, gen_local_selector
 
 import numpy as np
+import copy
 from warnings import warn
 
 from sklearn.base import is_classifier, clone
@@ -323,11 +324,12 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
 
 # TODO: Clean up
-class BaseCoreEBM(BaseEstimator):
+class BaseCoreEBM:
     """Internal use EBM."""
 
     def __init__(
         self,
+        model_type,
         # Data
         col_types,
         col_n_bins,
@@ -347,6 +349,8 @@ class BaseCoreEBM(BaseEstimator):
         # Overall
         random_state=42,
     ):
+
+        self.model_type = model_type
 
         # Arguments for data
         self.col_types = col_types
@@ -381,7 +385,7 @@ class BaseCoreEBM(BaseEstimator):
                 y,
                 test_size=self.holdout_split,
                 random_state=self.random_state,
-                stratify=y if is_classifier(self) else None,
+                stratify=y if self.model_type == "classification" else None,
             )
         elif self.holdout_split == 0:
             X_train = X
@@ -393,10 +397,6 @@ class BaseCoreEBM(BaseEstimator):
         # Define features
         self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
         # Build EBM allocation code
-        if is_classifier(self):
-            model_type = "classification"
-        else:
-            model_type = "regression"
 
         # For multiclass, need an intercept term per class
         if self.n_classes_ > 2:
@@ -433,7 +433,7 @@ class BaseCoreEBM(BaseEstimator):
                 y_train,
                 X_val,
                 y_val,
-                model_type=model_type,
+                model_type=self.model_type,
                 n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=None,
@@ -450,7 +450,7 @@ class BaseCoreEBM(BaseEstimator):
                 self.features_,
                 X_train,
                 y_train,
-                model_type=model_type,
+                model_type=self.model_type,
                 n_classes=self.n_classes_,
                 scores=None,
             )
@@ -525,13 +525,8 @@ class BaseCoreEBM(BaseEstimator):
             y,
             test_size=self.holdout_split,
             random_state=self.random_state,
-            stratify=y if is_classifier(self) else None,
+            stratify=y if self.model_type == "classification" else None,
         )
-
-        if is_classifier(self):
-            model_type = "classification"
-        else:
-            model_type = "regression"
 
         # Discard initial interactions
         new_model = []
@@ -569,7 +564,7 @@ class BaseCoreEBM(BaseEstimator):
                 y_train,
                 X_val,
                 y_val,
-                model_type=model_type,
+                model_type=self.model_type,
                 n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=training_scores,
@@ -638,92 +633,6 @@ class BaseCoreEBM(BaseEstimator):
 
         return curr_metric, curr_episode_index
 
-
-class CoreEBMClassifier(BaseCoreEBM, ClassifierMixin):
-    def __init__(
-        self,
-        # Data
-        col_types,
-        col_n_bins,
-        # Core
-        main_features="all",
-        interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
-        # Native
-        feature_step_n_inner_bags=0,
-        learning_rate=0.01,
-        training_step_episodes=1,
-        max_tree_splits=2,
-        min_cases_for_splits=2,
-        # Overall
-        random_state=42,
-    ):
-        super(CoreEBMClassifier, self).__init__(
-            # Data
-            col_types=col_types,
-            col_n_bins=col_n_bins,
-            # Core
-            main_features=main_features,
-            interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
-            # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
-            learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
-            max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
-            # Overall
-            random_state=random_state,
-        )
-
-class CoreEBMRegressor(BaseCoreEBM, RegressorMixin):
-    def __init__(
-        self,
-        # Data
-        col_types,
-        col_n_bins,
-        # Core
-        main_features="all",
-        interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
-        # Native
-        feature_step_n_inner_bags=0,
-        learning_rate=0.01,
-        training_step_episodes=1,
-        max_tree_splits=2,
-        min_cases_for_splits=2,
-        # Overall
-        random_state=42,
-    ):
-        super(CoreEBMRegressor, self).__init__(
-            # Data
-            col_types=col_types,
-            col_n_bins=col_n_bins,
-            # Core
-            main_features=main_features,
-            interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
-            # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
-            learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
-            max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
-            # Overall
-            random_state=random_state,
-        )
 
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
@@ -832,6 +741,7 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             y = y.astype(np.int64, casting='unsafe', copy=False)
+            # TODO PK v.2 eliminate n_classes and just use len(self.classes_) like scikit
             self.n_classes_ = len(self.classes_)
             if self.n_classes_ > 2:
                 warn("Multiclass is still experimental. Subject to change per release.")
@@ -840,8 +750,9 @@ class BaseEBM(BaseEstimator):
                     "Multiclass with interactions currently not supported."
                 )
 
-            proto_estimator = CoreEBMClassifier(
+            proto_estimator = BaseCoreEBM(
                 # Data
+                model_type="classification",
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
@@ -861,10 +772,12 @@ class BaseEBM(BaseEstimator):
                 random_state=self.random_state,
             )
         else:
+            # TODO PK v.2 eliminate n_classes and just use len(self.classes_) like scikit
             self.n_classes_ = -1
             y = y.astype(np.float64, casting='unsafe', copy=False)
-            proto_estimator = CoreEBMRegressor(
+            proto_estimator = BaseCoreEBM(
                 # Data
+                model_type="regression",
                 col_types=self.preprocessor_.col_types_,
                 col_n_bins=self.preprocessor_.col_n_bins_,
                 # Core
@@ -895,8 +808,8 @@ class BaseEBM(BaseEstimator):
         X = self.preprocessor_.transform(X)
         estimators = []
         for i in range(self.n_estimators):
-            estimator = clone(proto_estimator)
-            estimator.set_params(random_state=self.random_state + i)
+            estimator = copy.deepcopy(proto_estimator)
+            estimator.random_state = self.random_state + i
             estimators.append(estimator)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
@@ -1334,7 +1247,9 @@ class BaseEBM(BaseEstimator):
         )
 
 
+# modeled after https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+    # TODO PK v.2 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
 
@@ -1422,7 +1337,9 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
 
+# modeled after https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+    # TODO PK v.2 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
 
