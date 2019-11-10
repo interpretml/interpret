@@ -333,20 +333,20 @@ class BaseCoreEBM:
         col_types,
         col_n_bins,
         # Core
-        main_features="all",
-        interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
+        main_features,
+        interactions,
+        holdout_split,
+        data_n_episodes,
+        early_stopping_tolerance,
+        early_stopping_run_length,
         # Native
-        feature_step_n_inner_bags=0,
-        learning_rate=0.01,
-        training_step_episodes=1,
-        max_tree_splits=2,
-        min_cases_for_splits=2,
+        feature_step_n_inner_bags,
+        learning_rate,
+        training_step_episodes,
+        max_tree_splits,
+        min_cases_for_splits,
         # Overall
-        random_state=42,
+        random_state,
     ):
 
         self.model_type = model_type
@@ -374,7 +374,7 @@ class BaseCoreEBM:
         self.random_state = random_state
 
     def fit(self, X, y, n_classes):
-        self.n_classes_ = n_classes
+        self.n_classes = n_classes
 
         # Split data into train/val
 
@@ -398,8 +398,8 @@ class BaseCoreEBM:
         # Build EBM allocation code
 
         # For multiclass, need an intercept term per class
-        if self.n_classes_ > 2:
-            self.intercept_ = [0] * self.n_classes_
+        if self.n_classes > 2:
+            self.intercept_ = [0] * self.n_classes
         else:
             self.intercept_ = 0
 
@@ -433,7 +433,7 @@ class BaseCoreEBM:
                 X_val,
                 y_val,
                 model_type=self.model_type,
-                n_classes=self.n_classes_,
+                n_classes=self.n_classes,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=None,
                 validation_scores=None,
@@ -450,7 +450,7 @@ class BaseCoreEBM:
                 X_train,
                 y_train,
                 model_type=self.model_type,
-                n_classes=self.n_classes_,
+                n_classes=self.n_classes,
                 scores=None,
             )
         ) as native_ebm_interactions:
@@ -564,7 +564,7 @@ class BaseCoreEBM:
                 X_val,
                 y_val,
                 model_type=self.model_type,
-                n_classes=self.n_classes_,
+                n_classes=self.n_classes,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
@@ -866,8 +866,6 @@ class BaseEBM(BaseEstimator):
         self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
 
         # Merge estimators into one.
-        # TODO ensure that any model that is publically visible is expaneded
-        #      so that binary classification has two logits AND is postprocessed
         # TODO PK v.2 attribute_set_models_ -> model_
         self.attribute_set_models_ = []
         self.model_errors_ = []
@@ -878,6 +876,9 @@ class BaseEBM(BaseEstimator):
 
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
+
+            # TODO PK v.2 if we end up choosing to expand/contract averaged_model 
+            #             do it HERE AND apply post processing before returning
 
             self.attribute_set_models_.append(averaged_model)
             self.model_errors_.append(model_errors)
