@@ -741,11 +741,10 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
             y = y.astype(np.int64, casting='unsafe', copy=False)
-            # TODO PK v.2 eliminate n_classes and just use len(self.classes_) like scikit
-            self.n_classes_ = len(self.classes_)
-            if self.n_classes_ > 2:
+            n_classes = len(self.classes_)
+            if n_classes > 2:
                 warn("Multiclass is still experimental. Subject to change per release.")
-            if self.n_classes_ > 2 and self.interactions != 0:
+            if n_classes > 2 and self.interactions != 0:
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
                 )
@@ -773,8 +772,7 @@ class BaseEBM(BaseEstimator):
                 )
                 estimators.append(estimator)
         else:
-            # TODO PK v.2 eliminate n_classes and just use len(self.classes_) like scikit
-            self.n_classes_ = -1
+            n_classes = -1
             y = y.astype(np.float64, casting='unsafe', copy=False)
             for i in range(self.n_estimators):
                 estimator = BaseCoreEBM(
@@ -800,11 +798,15 @@ class BaseEBM(BaseEstimator):
                 )
                 estimators.append(estimator)
 
+        # TODO PK v.2 eliminate self.n_classes_ and let our consumers use 
+        #             len(self.classes_) like scikit
+        self.n_classes_ = n_classes
+
         # Train base models for main effects, pair detection.
 
         # Intercept needs to be a list for multiclass
-        if self.n_classes_ > 2:
-            self.intercept_ = [0] * self.n_classes_
+        if n_classes > 2:
+            self.intercept_ = [0] * n_classes
         else:
             self.intercept_ = 0
         X_orig = X
@@ -816,7 +818,7 @@ class BaseEBM(BaseEstimator):
             return estimator.fit(X, y, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y, self.n_classes_) for i in range(self.n_estimators)
+            (estimators[i], X, y, n_classes) for i in range(self.n_estimators)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
@@ -901,8 +903,8 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
-        # Mean center graphs - only for binary classification and regression
-        if self.n_classes_ <= 2:
+        if n_classes <= 2:
+            # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.attribute_sets_, self.attribute_set_models_, []
             )
@@ -922,9 +924,8 @@ class BaseEBM(BaseEstimator):
                 # Add mean center adjustment back to intercept
                 self.intercept_ = self.intercept_ + score_mean
                 self._attrib_set_model_means_.append(score_mean)
-
-        # Postprocess model graphs for multiclass
-        if self.n_classes_ > 2:
+        else:
+            # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(x, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
 
             postprocessed = multiclass_postprocess(
