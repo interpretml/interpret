@@ -373,7 +373,7 @@ class BaseCoreEBM:
         # Arguments for overall
         self.random_state = random_state
 
-    def fit(self, X, y, n_classes):
+    def fit_internal(self, X, y, n_classes):
         self.n_classes = n_classes
 
         # Split data into train/val
@@ -509,7 +509,6 @@ class BaseCoreEBM:
         return self
 
     def staged_fit_interactions(self, X, y, inter_indices=[]):
-        check_is_fitted(self, "has_fitted_")
 
         self.inter_episode_idx_ = 0
         if len(inter_indices) == 0:
@@ -815,7 +814,7 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         def train_model(estimator, X, y, n_classes):
-            return estimator.fit(X, y, n_classes)
+            return estimator.fit_internal(X, y, n_classes)
 
         train_model_args_iter = (
             (estimators[i], X, y, n_classes) for i in range(self.n_estimators)
