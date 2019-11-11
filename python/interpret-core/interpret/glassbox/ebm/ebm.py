@@ -326,6 +326,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 class BaseCoreEBM:
     """Internal use EBM."""
 
+    # TODO PK v.2 col_types, col_n_bins, main_features, interactions should probably be moved to the fit function
+    #             to be consistent with our public interface, and sklearn convention where properties specific to
+    #             the data are put into the fit function.  We should probably also follow using trailing underscores
+    #             for things that are derived from the fit function, again for clarity with our public interface
+
     def __init__(
         self,
         model_type,
@@ -373,8 +378,8 @@ class BaseCoreEBM:
         # Arguments for overall
         self.random_state = random_state
 
-    def fit_internal(self, X, y, n_classes):
-        self.n_classes = n_classes
+    def fit_parallel(self, X, y, n_classes):
+        self.n_classes_ = n_classes
 
         # Split data into train/val
 
@@ -398,8 +403,8 @@ class BaseCoreEBM:
         # Build EBM allocation code
 
         # For multiclass, need an intercept term per class
-        if self.n_classes > 2:
-            self.intercept_ = [0] * self.n_classes
+        if self.n_classes_ > 2:
+            self.intercept_ = [0] * self.n_classes_
         else:
             self.intercept_ = 0
 
@@ -433,7 +438,7 @@ class BaseCoreEBM:
                 X_val,
                 y_val,
                 model_type=self.model_type,
-                n_classes=self.n_classes,
+                n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=None,
                 validation_scores=None,
@@ -450,7 +455,7 @@ class BaseCoreEBM:
                 X_train,
                 y_train,
                 model_type=self.model_type,
-                n_classes=self.n_classes,
+                n_classes=self.n_classes_,
                 scores=None,
             )
         ) as native_ebm_interactions:
@@ -563,7 +568,7 @@ class BaseCoreEBM:
                 X_val,
                 y_val,
                 model_type=self.model_type,
-                n_classes=self.n_classes,
+                n_classes=self.n_classes_,
                 num_inner_bags=self.feature_step_n_inner_bags,
                 training_scores=training_scores,
                 validation_scores=validation_scores,
@@ -635,12 +640,32 @@ class BaseCoreEBM:
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
+    # Interface modeled after:
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
+    # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+    # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html
+    # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
+    # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
+
+    # TODO PK v.2 we should probably move all inputs that have a relation to the data to the fit function.  For examples:
+    #             https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html#lightgbm.LGBMClassifier.fit
+    #             look at feature_name='auto', categorical_feature='auto' in LightGBM (and we should probably adopt those names)
+    #             Including: feature_names, feature_types, schema, main_attr, interactions (for specific columns)
+    #             AND these things should have underscores, per sklearn, https://scikit-learn.org/dev/developers/develop.html
+    #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore, 
+    #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
+
     def __init__(
         self,
         # Explainer
         # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per 
         # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
         feature_names=None,
+        # TODO PK v.2 look at how sklearn has thought about feature types -> https://github.com/scikit-learn/scikit-learn/pull/3346
+        #      also look at lightGBM's categorical_feature parameter 
+        #      https://towardsdatascience.com/catboost-vs-light-gbm-vs-xgboost-5f93620723db
+        #
         # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per 
         # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
         feature_types=None,
@@ -797,8 +822,9 @@ class BaseEBM(BaseEstimator):
                 )
                 estimators.append(estimator)
 
-        # TODO PK v.2 eliminate self.n_classes_ and let our consumers use 
-        #             len(self.classes_) like scikit
+        # TODO PK v.2 eliminate self.n_classes_ for our public interface BaseEBM
+        #             and let our consumers use len(self.classes_) like scikit
+        #             our private BaseCoreEBM should continue to keep n_classes_
         self.n_classes_ = n_classes
 
         # Train base models for main effects, pair detection.
@@ -814,7 +840,7 @@ class BaseEBM(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         def train_model(estimator, X, y, n_classes):
-            return estimator.fit_internal(X, y, n_classes)
+            return estimator.fit_parallel(X, y, n_classes)
 
         train_model_args_iter = (
             (estimators[i], X, y, n_classes) for i in range(self.n_estimators)
@@ -1246,7 +1272,6 @@ class BaseEBM(BaseEstimator):
         )
 
 
-# modeled after https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     # TODO PK v.2 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
@@ -1336,7 +1361,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
 
-# modeled after https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
     # TODO PK v.2 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
