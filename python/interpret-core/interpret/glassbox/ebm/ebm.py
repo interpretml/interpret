@@ -408,9 +408,6 @@ class BaseCoreEBM:
         else:
             self.intercept_ = 0
 
-        self.feature_combinations_ = []
-        self.model_ = []
-
         if isinstance(self.main_features, str) and self.main_features == "all":
             main_feature_indices = [[x] for x in range(len(self.features_))]
         elif isinstance(self.main_features, list) and all(
@@ -429,6 +426,8 @@ class BaseCoreEBM:
         X_val = np.asfortranarray(X_val)
 
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
+        self.feature_combinations_ = []
+        self.model_ = []
         with closing(
             NativeEBMTraining(
                 self.features_,
@@ -616,8 +615,8 @@ class BaseCoreEBM:
                     validation_weights=0,
                 )
 
-            # NOTE: Out of per-feature boosting on purpose.
-            min_metric = min(curr_metric, min_metric)
+                # NOTE: Out of per-feature boosting on purpose.
+                min_metric = min(curr_metric, min_metric)
 
             if no_change_run_length == 0:
                 bp_metric = min_metric
@@ -634,7 +633,7 @@ class BaseCoreEBM:
                 break
         log.info("End boosting {0}".format(name))
 
-        return curr_metric, curr_episode_index
+        return min_metric, curr_episode_index
 
 
 class BaseEBM(BaseEstimator):
