@@ -402,11 +402,16 @@ class BaseCoreEBM:
         self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
         # Build EBM allocation code
 
-        # For multiclass, need an intercept term per class
-        if self.n_classes_ > 2:
-            self.intercept_ = [0] * self.n_classes_
+        # scikit-learn returns an np.array for classification and
+        # a single np.float64 for regression, so we do the same
+        if self.model_type == "classification":
+            self.intercept_ = np.zeros(
+                EBMUtils.get_count_scores_c(self.n_classes_),
+                dtype=np.float64,
+                order='C'
+            )
         else:
-            self.intercept_ = 0
+            self.intercept_ = np.float64(0)
 
         if isinstance(self.main_features, str) and self.main_features == "all":
             main_feature_indices = [[x] for x in range(len(self.features_))]
@@ -448,6 +453,17 @@ class BaseCoreEBM:
 
         # TODO PK currently we're using None for the scores, but we should instead determine what they
         # are after training the mains
+        
+        # TODO PK clean this up by moving it into the _build_interactions function so that we don't
+        #         have to allocate a NativeEBMInteraction here without knowing whehter we even
+        #         want interactions
+
+        # consider interactions after training mains
+        #training_scores = EBMUtils.decision_function(
+        #    X_train, self.feature_combinations_, self.model_, self.intercept_
+        #)
+        training_scores = None
+
         with closing(
             NativeEBMInteraction(
                 self.features_,
@@ -455,7 +471,7 @@ class BaseCoreEBM:
                 y_train,
                 model_type=self.model_type,
                 n_classes=self.n_classes_,
-                scores=None,
+                scores=training_scores,
             )
         ) as native_ebm_interactions:
             # Build interaction terms
@@ -543,10 +559,10 @@ class BaseCoreEBM:
 
         # Fix main, train interactions
         training_scores = EBMUtils.decision_function(
-            X_train, self.feature_combinations_, self.model_, 0
+            X_train, self.feature_combinations_, self.model_, self.intercept_
         )
         validation_scores = EBMUtils.decision_function(
-            X_val, self.feature_combinations_, self.model_, 0
+            X_val, self.feature_combinations_, self.model_, self.intercept_
         )
         
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
@@ -735,6 +751,9 @@ class BaseEBM(BaseEstimator):
 
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
+        # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
+        #         so move everything to local variables until the end when we assign them to self.*
+
         # TODO PK we should do some basic checks here that X and y have the same dimensions and that
         #      they are well formed (look for NaNs, etc)
 
@@ -828,11 +847,17 @@ class BaseEBM(BaseEstimator):
 
         # Train base models for main effects, pair detection.
 
-        # Intercept needs to be a list for multiclass
-        if n_classes > 2:
-            self.intercept_ = [0] * n_classes
+        # scikit-learn returns an np.array for classification and
+        # a single float64 for regression, so we do the same
+        if is_classifier(self):
+            self.intercept_ = np.zeros(
+                EBMUtils.get_count_scores_c(self.n_classes_),
+                dtype=np.float64,
+                order='C'
+            )
         else:
-            self.intercept_ = 0
+            self.intercept_ = np.float64(0)
+
         X_orig = X
         X = self.preprocessor_.transform(X)
 
@@ -890,6 +915,7 @@ class BaseEBM(BaseEstimator):
         self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
 
         # Merge estimators into one.
+        # TODO PK v.2 consider exposing our models as pandas.NDFrame
         # TODO PK v.2 attribute_set_models_ -> model_
         self.attribute_set_models_ = []
         self.model_errors_ = []
@@ -947,7 +973,7 @@ class BaseEBM(BaseEstimator):
                 )
 
                 # Add mean center adjustment back to intercept
-                self.intercept_ = self.intercept_ + score_mean
+                self.intercept_ += score_mean
                 self._attrib_set_model_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
