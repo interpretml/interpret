@@ -239,7 +239,7 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
             new_data = data.values
 
         if feature_names is None:
-            new_feature_names = ["feature_" + str(col) if isinstance(col, int) else str(col) for col in data.columns]   
+            new_feature_names = list(data.columns)
         else:
             new_feature_names = feature_names
 

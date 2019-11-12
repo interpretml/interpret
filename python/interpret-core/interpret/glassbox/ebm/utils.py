@@ -136,7 +136,8 @@ class EBMUtils:
     def gen_feature_name(feature_idxs, col_names):
         feature_name = []
         for feature_index in feature_idxs:
-            feature_name.append(col_names[feature_index])
+            col_name = col_names[feature_index]
+            feature_name.append("feature_" + str(col_name) if isinstance(col_name, int) else str(col_name))
         feature_name = " x ".join(feature_name)
         return feature_name
 
