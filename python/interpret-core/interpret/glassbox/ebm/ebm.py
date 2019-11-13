@@ -433,66 +433,46 @@ class BaseCoreEBM:
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         self.feature_combinations_ = []
         self.model_ = []
-        with closing(
-            NativeEBMTraining(
-                self.features_,
-                main_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=None,
-                validation_scores=None,
-            )
-        ) as native_ebm_training:
-            # Train main effects
-            self._fit_main(native_ebm_training, main_feature_combinations)
 
-        # TODO PK currently we're using None for the scores, but we should instead determine what they
-        # are after training the mains
-        
-        # TODO PK clean this up by moving it into the _build_interactions function so that we don't
-        #         have to allocate a NativeEBMInteraction here without knowing whehter we even
-        #         want interactions
+        # Train main effects
+        self._fit_main(main_feature_combinations, X_train, y_train, X_val, y_val)
 
-        # consider interactions after training mains
-        #training_scores = EBMUtils.decision_function(
-        #    X_train, self.feature_combinations_, self.model_, self.intercept_
-        #)
-        training_scores = None
-
-        with closing(
-            NativeEBMInteraction(
-                self.features_,
-                X_train,
-                y_train,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                scores=training_scores,
-            )
-        ) as native_ebm_interactions:
-            # Build interaction terms
-            self.inter_indices_, self.inter_scores_ = self._build_interactions(
-                native_ebm_interactions
-            )
+        # Build interaction terms, if required
+        self.inter_indices_, self.inter_scores_ = self._build_interactions(
+            X_train, y_train
+        )
 
         self.staged_fit_interactions(X, y, self.inter_indices_)
 
         return self
 
-    def _build_interactions(self, native_ebm):
+    def _build_interactions(self, X_train, y_train):
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
+
+            # TODO PK currently we're using None for the scores, but we should instead determine what they
+            # are after training the mains
+
+            #training_scores = EBMUtils.decision_function(
+            #    X_train, self.feature_combinations_, self.model_, self.intercept_
+            #)
+            training_scores = None
+
+            # TODO PK we only need to store the top n_interactions items, so use a heap
             interaction_scores = []
-            interaction_indices = [
-                x for x in combinations(range(len(self.col_types)), 2)
-            ]
-            for pair in interaction_indices:
-                score = native_ebm.get_interaction_score(pair)
-                interaction_scores.append((pair, score))
+            with closing(
+                NativeEBMInteraction(
+                    self.features_,
+                    X_train,
+                    y_train,
+                    model_type=self.model_type,
+                    n_classes=self.n_classes_,
+                    scores=training_scores,
+                )
+            ) as native_ebm_interactions:
+                for pair in combinations(range(len(self.col_types)), 2):
+                    score = native_ebm_interactions.get_interaction_score(pair)
+                    interaction_scores.append((pair, score))
 
             ranked_scores = list(
                 sorted(interaction_scores, key=lambda x: x[1], reverse=True)
@@ -513,16 +493,33 @@ class BaseCoreEBM:
 
         return final_indices, final_scores
 
-    def _fit_main(self, native_ebm, main_feature_combinations):
+    def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
-        self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
-            native_ebm, main_feature_combinations, "Main"
-        )
-        log.debug("Main Metric: {0}".format(self.current_metric_))
-        for index, feature_combination in enumerate(main_feature_combinations):
-            model_feature_combination = native_ebm.get_best_model_feature_combination(index)
-            self.model_.append(model_feature_combination)
-            self.feature_combinations_.append(feature_combination)
+
+        with closing(
+            NativeEBMTraining(
+                self.features_,
+                main_feature_combinations,
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                model_type=self.model_type,
+                n_classes=self.n_classes_,
+                num_inner_bags=self.feature_step_n_inner_bags,
+                training_scores=None,
+                validation_scores=None,
+            )
+        ) as native_ebm_training:
+            self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
+                native_ebm_training, main_feature_combinations, "Main"
+            )
+
+            log.debug("Main Metric: {0}".format(self.current_metric_))
+            for index, feature_combination in enumerate(main_feature_combinations):
+                model_feature_combination = native_ebm_training.get_best_model_feature_combination(index)
+                self.model_.append(model_feature_combination)
+                self.feature_combinations_.append(feature_combination)
 
         self.has_fitted_ = True
 
