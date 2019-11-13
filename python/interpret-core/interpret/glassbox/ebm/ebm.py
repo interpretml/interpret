@@ -446,6 +446,38 @@ class BaseCoreEBM:
 
         return self
 
+    def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
+        log.info("Train main effects")
+
+        with closing(
+            NativeEBMTraining(
+                self.features_,
+                main_feature_combinations,
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                model_type=self.model_type,
+                n_classes=self.n_classes_,
+                num_inner_bags=self.feature_step_n_inner_bags,
+                training_scores=None,
+                validation_scores=None,
+            )
+        ) as native_ebm_training:
+            self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
+                native_ebm_training, main_feature_combinations, "Main"
+            )
+
+            log.debug("Main Metric: {0}".format(self.current_metric_))
+            for index, feature_combination in enumerate(main_feature_combinations):
+                model_feature_combination = native_ebm_training.get_best_model_feature_combination(index)
+                self.model_.append(model_feature_combination)
+                self.feature_combinations_.append(feature_combination)
+
+        self.has_fitted_ = True
+
+        return self
+
     def _build_interactions(self, X_train, y_train):
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
@@ -492,38 +524,6 @@ class BaseCoreEBM:
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         return final_indices, final_scores
-
-    def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
-        log.info("Train main effects")
-
-        with closing(
-            NativeEBMTraining(
-                self.features_,
-                main_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=None,
-                validation_scores=None,
-            )
-        ) as native_ebm_training:
-            self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm_training, main_feature_combinations, "Main"
-            )
-
-            log.debug("Main Metric: {0}".format(self.current_metric_))
-            for index, feature_combination in enumerate(main_feature_combinations):
-                model_feature_combination = native_ebm_training.get_best_model_feature_combination(index)
-                self.model_.append(model_feature_combination)
-                self.feature_combinations_.append(feature_combination)
-
-        self.has_fitted_ = True
-
-        return self
 
     def staged_fit_interactions(self, X, y, inter_indices=[]):
 
