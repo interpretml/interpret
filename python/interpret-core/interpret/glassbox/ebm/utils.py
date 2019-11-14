@@ -5,6 +5,7 @@
 
 # from scipy.special import expit
 from sklearn.utils.extmath import softmax
+from sklearn.model_selection import train_test_split
 import numbers
 import numpy as np
 
@@ -20,6 +21,29 @@ class EBMUtils:
     def get_count_scores_c(n_classes):
         # this should reflect how the C code represents scores
         return 1 if n_classes <= 2 else n_classes
+
+    @staticmethod
+    def ebm_train_test_split(X, y, test_size, random_state, is_classification):
+        # all test/train splits should be done with this function to ensure that
+        # if we re-generate the train/test splits that they are generated exactly
+        # the same as before
+        if test_size > 0:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X,
+                y,
+                test_size=test_size,
+                random_state=random_state,
+                stratify=y if is_classification else None,
+            )
+        elif test_size == 0:
+            X_train = X
+            y_train = y
+            X_val = np.empty(shape=(0, 0), dtype=X.dtype)
+            y_val = np.empty(shape=(0), dtype=y.dtype)
+        else:  # pragma: no cover
+            raise Exception("test_size must be between 0 and 1.")
+
+        return X_train, X_val, y_train, y_val
 
     @staticmethod
     def gen_features(col_types, col_n_bins):

@@ -27,7 +27,6 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )
-from sklearn.model_selection import train_test_split
 from contextlib import closing
 from itertools import combinations
 
@@ -383,21 +382,14 @@ class BaseCoreEBM:
 
         # Split data into train/val
 
-        if self.holdout_split > 0:
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=self.holdout_split,
-                random_state=self.random_state,
-                stratify=y if self.model_type == "classification" else None,
-            )
-        elif self.holdout_split == 0:
-            X_train = X
-            y_train = y
-            X_val = np.empty(shape=(0, 0), dtype=np.int64)
-            y_val = np.empty(shape=(0), dtype=y.dtype)
-        else:  # pragma: no cover
-            raise Exception("Holdout_split must be between 0 and 1.")
+        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X, 
+            y, 
+            test_size=self.holdout_split, 
+            random_state=self.random_state, 
+            is_classification=self.model_type == "classification"
+        )
+
         # Define features
         self.features_ = EBMUtils.gen_features(self.col_types, self.col_n_bins)
         # Build EBM allocation code
@@ -474,8 +466,6 @@ class BaseCoreEBM:
                 self.model_.append(model_feature_combination)
                 self.feature_combinations_.append(feature_combination)
 
-        self.has_fitted_ = True
-
         return self
 
     def _build_interactions(self, X_train, y_train):
@@ -485,6 +475,7 @@ class BaseCoreEBM:
             # TODO PK currently we're using None for the scores, but we should instead determine what they
             # are after training the mains
 
+            # TODO X_train is already fortran ordered by this point.  We need to check/handle this!
             #training_scores = EBMUtils.decision_function(
             #    X_train, self.feature_combinations_, self.model_, self.intercept_
             #)
@@ -535,12 +526,12 @@ class BaseCoreEBM:
         log.info("Training interactions")
 
         # Split data into train/val
-        X_train, X_val, y_train, y_val = train_test_split(
-            X,
-            y,
-            test_size=self.holdout_split,
-            random_state=self.random_state,
-            stratify=y if self.model_type == "classification" else None,
+        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X, 
+            y, 
+            test_size=self.holdout_split, 
+            random_state=self.random_state, 
+            is_classification=self.model_type == "classification"
         )
 
         # Discard initial interactions
@@ -690,6 +681,14 @@ class BaseEBM(BaseEstimator):
         # Core
         # TODO PK v.2 change main_attr -> main_features (also look for anything with attr in it)
         main_attr="all",
+        # TODO PK v.2 we should probably have two types of interaction terms.
+        #             The first is either a number or array of numbres that indicates
+        #             how many interactions at each dimension level(starting at two)
+        #             This parameter should be part of __init__
+        #             The second parameter would be a list of specific interaction sets
+        #             which would be provided to the fit function.  People may want to use
+        #             both at the same time, and there isn't a good way to separate the two concepts
+        #             without issues.  Also, the deserve to be in separate functions (init vs fit)
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -1015,13 +1014,14 @@ class BaseEBM(BaseEstimator):
             backward_impacts = []
             forward_impacts = []
 
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=self.holdout_split,
-                random_state=estimator.random_state,
-                stratify=y if is_classifier(self) else None,
+            X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+                X, 
+                y, 
+                test_size=self.holdout_split, 
+                random_state=estimator.random_state, 
+                is_classification=is_classifier(self)
             )
+
             base_forward_score = score_fn(
                 estimator, X_val, y_val, estimator.inter_indices_
             )
