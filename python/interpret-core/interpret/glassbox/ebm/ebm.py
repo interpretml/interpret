@@ -426,7 +426,9 @@ class BaseCoreEBM:
             X_train, y_train
         )
 
-        self.staged_fit_interactions(X, y, self.inter_indices_)
+        self.inter_episode_idx_ = 0
+        if len(self.inter_indices_) != 0:
+            self._staged_fit_interactions(X_train, y_train, X_val, y_val, self.inter_indices_)
 
         return self
 
@@ -458,7 +460,7 @@ class BaseCoreEBM:
                 self.model_.append(model_feature_combination)
                 self.feature_combinations_.append(feature_combination)
 
-        return self
+        return
 
     def _build_interactions(self, X_train, y_train):
         if isinstance(self.interactions, int) and self.interactions != 0:
@@ -506,14 +508,9 @@ class BaseCoreEBM:
 
         return final_indices, final_scores
 
-    def staged_fit_interactions(self, X, y, inter_indices=[]):
+    def staged_fit_interactions_parallel(self, X, y, inter_indices=[]):
 
-        self.inter_episode_idx_ = 0
-        if len(inter_indices) == 0:
-            log.info("No interactions to train")
-            return self
-
-        log.info("Training interactions")
+        log.info("Splitting train/test for interactions")
 
         # Split data into train/val
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
@@ -524,16 +521,12 @@ class BaseCoreEBM:
             is_classification=self.model_type == "classification"
         )
 
-        # Discard initial interactions
-        new_model = []
-        new_feature_combinations = []
-        for i, feature_combination in enumerate(self.feature_combinations_):
-            if len(feature_combination["attributes"]) != 1:
-                continue
-            new_model.append(self.model_[i])
-            new_feature_combinations.append(self.feature_combinations_[i])
-        self.model_ = new_model
-        self.feature_combinations_ = new_feature_combinations
+        self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
+        return self
+
+    def _staged_fit_interactions(self, X_train, y_train, X_val, y_val, inter_indices=[]):
+
+        log.info("Training interactions")
 
         # Fix main, train interactions
         training_scores = EBMUtils.decision_function(
@@ -546,6 +539,8 @@ class BaseCoreEBM:
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
             NativeEBMTraining(
+                # TODO: we can reduce this list of features_ down to just the ones required for
+                #       training our inter_feature_combinations, which would reduce memory
                 self.features_,
                 inter_feature_combinations,
                 X_train,
@@ -570,7 +565,7 @@ class BaseCoreEBM:
                 self.model_.append(native_ebm_training.get_best_model_feature_combination(index))
                 self.feature_combinations_.append(feature_combination)
 
-        return self
+        return
 
     def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
 
@@ -854,15 +849,29 @@ class BaseEBM(BaseEstimator):
             # Select merged pairs
             pair_indices = self._select_merged_pairs(estimators, X, y)
 
-            # Retrain interactions for base models
-            def staged_fit_fn(estimator, X, y, inter_indices=[]):
-                return estimator.staged_fit_interactions(X, y, inter_indices)
+            for estimator in estimators:
+                # Discard initial interactions
+                new_model = []
+                new_feature_combinations = []
+                for i, feature_combination in enumerate(estimator.feature_combinations_):
+                    if len(feature_combination["attributes"]) != 1:
+                        continue
+                    new_model.append(estimator.model_[i])
+                    new_feature_combinations.append(estimator.feature_combinations_[i])
+                estimator.model_ = new_model
+                estimator.feature_combinations_ = new_feature_combinations
+                estimator.inter_episode_idx_ = 0
 
-            staged_fit_args_iter = (
-                (estimators[i], X, y, pair_indices) for i in range(self.n_estimators)
-            )
+            if len(pair_indices) != 0:
+                # Retrain interactions for base models
+                def staged_fit_fn(estimator, X, y, inter_indices=[]):
+                    return estimator.staged_fit_interactions_parallel(X, y, inter_indices)
 
-            estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
+                staged_fit_args_iter = (
+                    (estimators[i], X, y, pair_indices) for i in range(self.n_estimators)
+                )
+
+                estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
         elif isinstance(self.interactions, int) and self.interactions == 0:
             pair_indices = []
         elif isinstance(self.interactions, list):
