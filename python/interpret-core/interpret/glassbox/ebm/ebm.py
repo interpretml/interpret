@@ -419,8 +419,8 @@ class BaseCoreEBM:
         #         groups of rows at once and they process them in fortran order after that
         # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
         # AND our C code expects it in that ordering
-        X_train = np.asfortranarray(X_train)
-        X_val = np.asfortranarray(X_val)
+        X_train = np.ascontiguousarray(X_train.T)
+        X_val = np.ascontiguousarray(X_val.T)
 
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         self.feature_combinations_ = []
@@ -475,10 +475,10 @@ class BaseCoreEBM:
             # TODO PK currently we're using None for the scores, but we should instead determine what they
             # are after training the mains
 
-            # TODO X_train is already fortran ordered by this point.  We need to check/handle this!
-            #training_scores = EBMUtils.decision_function(
-            #    X_train, self.feature_combinations_, self.model_, self.intercept_
-            #)
+            # BAD BAD -> X_train is already fortran ordered by this point.  We need to check/handle this!
+            # READ THE ABOVE !! training_scores = EBMUtils.decision_function(
+            # READ THE ABOVE !!    X_train, self.feature_combinations_, self.model_, self.intercept_
+            # READ THE ABOVE !! )
             training_scores = None
 
             # TODO PK we only need to store the top n_interactions items, so use a heap
@@ -558,8 +558,8 @@ class BaseCoreEBM:
         #         groups of rows at once and they process them in fortran order after that
         # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
         # AND our C code expects it in that ordering
-        X_train = np.asfortranarray(X_train)
-        X_val = np.asfortranarray(X_val)
+        X_train = np.ascontiguousarray(X_train.T)
+        X_val = np.ascontiguousarray(X_val.T)
 
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(

@@ -111,7 +111,7 @@ class Native:
             # int64_t * trainingTargets
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t * trainingBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
@@ -120,7 +120,7 @@ class Native:
             # int64_t * validationTargets
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t * validationBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
@@ -147,7 +147,7 @@ class Native:
             # double * trainingTargets
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t * trainingBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * trainingPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t countValidationInstances
@@ -155,7 +155,7 @@ class Native:
             # double * validationTargets
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t * validationBinnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * validationPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t countInnerBags
@@ -230,7 +230,7 @@ class Native:
             # int64_t * targets
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t * binnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
@@ -247,7 +247,7 @@ class Native:
             # double * targets
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t * binnedData
-            ndpointer(dtype=np.int64, ndim=2, flags="F_CONTIGUOUS"),
+            ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
             # double * predictorScores
             ndpointer(dtype=np.float64, ndim=1),
         ]
