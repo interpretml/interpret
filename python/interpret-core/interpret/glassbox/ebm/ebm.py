@@ -474,11 +474,9 @@ class BaseCoreEBM:
 
             # TODO PK currently we're using None for the scores, but we should instead determine what they
             # are after training the mains
-
-            # BAD BAD -> X_train is already fortran ordered by this point.  We need to check/handle this!
-            # READ THE ABOVE !! training_scores = EBMUtils.decision_function(
-            # READ THE ABOVE !!    X_train, self.feature_combinations_, self.model_, self.intercept_
-            # READ THE ABOVE !! )
+            #training_scores = EBMUtils.decision_function(
+            #    X_train, self.feature_combinations_, self.model_, self.intercept_
+            #)
             training_scores = None
 
             # TODO PK we only need to store the top n_interactions items, so use a heap
@@ -545,14 +543,6 @@ class BaseCoreEBM:
         self.model_ = new_model
         self.feature_combinations_ = new_feature_combinations
 
-        # Fix main, train interactions
-        training_scores = EBMUtils.decision_function(
-            X_train, self.feature_combinations_, self.model_, self.intercept_
-        )
-        validation_scores = EBMUtils.decision_function(
-            X_val, self.feature_combinations_, self.model_, self.intercept_
-        )
-        
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
         #         push the re-ordering right to our first call to fit(..) AND stripe convert
         #         groups of rows at once and they process them in fortran order after that
@@ -561,6 +551,14 @@ class BaseCoreEBM:
         X_train = np.ascontiguousarray(X_train.T)
         X_val = np.ascontiguousarray(X_val.T)
 
+        # Fix main, train interactions
+        training_scores = EBMUtils.decision_function(
+            X_train, self.feature_combinations_, self.model_, self.intercept_
+        )
+        validation_scores = EBMUtils.decision_function(
+            X_val, self.feature_combinations_, self.model_, self.intercept_
+        )
+        
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
         with closing(
             NativeEBMTraining(
@@ -950,6 +948,8 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
+        X = np.ascontiguousarray(X.T)
+
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
@@ -1014,13 +1014,15 @@ class BaseEBM(BaseEstimator):
             backward_impacts = []
             forward_impacts = []
 
-            X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            _, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
                 X, 
                 y, 
                 test_size=self.holdout_split, 
                 random_state=estimator.random_state, 
                 is_classification=is_classifier(self)
             )
+
+            X_val = np.ascontiguousarray(X_val.T)
 
             base_forward_score = score_fn(
                 estimator, X_val, y_val, estimator.inter_indices_
@@ -1073,6 +1075,8 @@ class BaseEBM(BaseEstimator):
         X = self.preprocessor_.transform(X)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
 
         decision_scores = EBMUtils.decision_function(
             X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
@@ -1216,13 +1220,16 @@ class BaseEBM(BaseEstimator):
 
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
         instances = self.preprocessor_.transform(X)
+
+        instances = np.ascontiguousarray(instances.T)
+
         scores_gen = EBMUtils.scores_by_feature_combination(
             instances, self.attribute_sets_, self.attribute_set_models_
         )
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
-        n_rows = instances.shape[0]
+        n_rows = instances.shape[1]
         data_dicts = []
         for _ in range(n_rows):
             data_dict = {
@@ -1261,7 +1268,7 @@ class BaseEBM(BaseEstimator):
             perf_list.append(perf)
             data_dicts[row_idx]["perf"] = perf
 
-        selector = gen_local_selector(instances, y, scores)
+        selector = gen_local_selector(y, scores)
 
         internal_obj = {
             "overall": None,
@@ -1370,6 +1377,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
+        X = np.ascontiguousarray(X.T)
+
         prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
         return prob
 
@@ -1379,6 +1388,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         X = self.preprocessor_.transform(X)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
 
         return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
 
@@ -1457,5 +1468,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         X = self.preprocessor_.transform(X)
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
+
+        X = np.ascontiguousarray(X.T)
 
         return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)

@@ -83,8 +83,8 @@ class EBMUtils:
             # Get the current column(s) to process
             feature_idxs = feature_combination["attributes"]
             feature_idxs = list(reversed(feature_idxs))
-            sliced_X = X[:, feature_idxs]
-            scores = tensor[tuple(sliced_X.T)]
+            sliced_X = X[feature_idxs, :]
+            scores = tensor[tuple(sliced_X)]
 
             yield set_idx, feature_combination, scores
 
@@ -93,13 +93,13 @@ class EBMUtils:
         X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]
     ):
         if X.ndim == 1:
-            X = X.reshape(1, X.shape[0])
+            X = X.reshape(X.shape[0], 1)
 
         # Initialize empty vector for predictions
         if isinstance(intercept, numbers.Number) or len(intercept) == 1:
-            score_vector = np.empty(X.shape[0])
+            score_vector = np.empty(X.shape[1])
         else:
-            score_vector = np.empty((X.shape[0], len(intercept)))
+            score_vector = np.empty((X.shape[1], len(intercept)))
 
         np.copyto(score_vector, intercept)
 

@@ -11,13 +11,13 @@ def test_multiclass_postprocess_smoke():
     k = 3
     b = 10
 
-    X_binned = np.random.randint(b, size=(n, d))
+    X_binned = np.random.randint(b, size=(d, n))
     feature_graphs = []
     for _ in range(d):
         feature_graphs.append(np.random.rand(b, k))
 
     def binned_predict_proba(X_binned, k=3):
-        n = len(X_binned)
+        n = X_binned.shape[1]
         return 1 / k * np.ones((n, k))
 
     feature_types = ["numeric"] * d

@@ -102,7 +102,7 @@ class TreeInterpreter(ExplainerMixin):
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
-        selector = gen_local_selector(X, y, predictions)
+        selector = gen_local_selector(y, predictions)
 
         return FeatureValueExplanation(
             "local",

@@ -30,17 +30,17 @@ def multiclass_postprocess(
     # Compute the predicted probability on the counterfactual data with each value in feature i decrease by 1.
     for i in range(len(feature_graphs)):
         data_prev = np.copy(X_binned)
-        data_prev[:, i] = np.maximum(X_binned[:, i] - 1, 0)
+        data_prev[i, :] = np.maximum(X_binned[i, :] - 1, 0)
         predprob_prev[i] = binned_predict_proba(data_prev)
 
     intercepts = np.zeros(K)
     for i in range(len(feature_graphs)):
-        bincount = np.bincount(X_binned[:, i].astype(int))
+        bincount = np.bincount(X_binned[i, :].astype(int))
         if feature_types[i] == "numeric":
             num_bins = feature_graphs[i].shape[0]
             change = np.zeros(num_bins)
             for v in range(1, num_bins):
-                subset_index = X_binned[:, i] == v
+                subset_index = X_binned[i, :] == v
                 ratio = np.divide(
                     predprob[subset_index, :], predprob_prev[i][subset_index, :]
                 )
@@ -63,9 +63,7 @@ def multiclass_postprocess(
                 updated_feature_graphs[i], change.reshape((num_bins, -1))
             )
         for k in range(K):
-            mean = np.sum(np.multiply(updated_feature_graphs[i][:, k], bincount)) / len(
-                X_binned
-            )
+            mean = np.sum(np.multiply(updated_feature_graphs[i][:, k], bincount)) / X_binned.shape[1]
             updated_feature_graphs[i][:, k] = np.subtract(
                 updated_feature_graphs[i][:, k], mean
             )

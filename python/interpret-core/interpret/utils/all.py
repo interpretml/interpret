@@ -90,11 +90,10 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
-
-def gen_local_selector(X, y, y_hat, round=3):
+def gen_local_selector(y, y_hat, round=3):
     records = []
 
-    for i in range(X.shape[0]):
+    for i in range(y_hat.shape[0]):
         record = {}
         record["Predicted"] = y_hat[i]
         if y is not None:

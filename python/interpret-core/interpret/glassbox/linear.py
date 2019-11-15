@@ -161,7 +161,7 @@ class BaseLinear:
             }
         )
 
-        selector = gen_local_selector(X, y, predictions)
+        selector = gen_local_selector(y, predictions)
 
         return FeatureValueExplanation(
             "local",

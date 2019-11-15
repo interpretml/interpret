@@ -329,7 +329,7 @@ class BaseShallowDecisionTree:
         else:
             scores = self.predict(X)
 
-        selector = gen_local_selector(X, y, scores)
+        selector = gen_local_selector(y, scores)
 
         return TreeExplanation(
             "local",
