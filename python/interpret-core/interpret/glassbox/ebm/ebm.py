@@ -414,14 +414,6 @@ class BaseCoreEBM:
         else:
             raise RuntimeError("Argument 'main_attr' has invalid value")
 
-        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
-        #         push the re-ordering right to our first call to fit(..) AND stripe convert
-        #         groups of rows at once and they process them in fortran order after that
-        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
-        # AND our C code expects it in that ordering
-        X_train = np.ascontiguousarray(X_train.T)
-        X_val = np.ascontiguousarray(X_val.T)
-
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
         self.feature_combinations_ = []
         self.model_ = []
@@ -542,14 +534,6 @@ class BaseCoreEBM:
             new_feature_combinations.append(self.feature_combinations_[i])
         self.model_ = new_model
         self.feature_combinations_ = new_feature_combinations
-
-        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
-        #         push the re-ordering right to our first call to fit(..) AND stripe convert
-        #         groups of rows at once and they process them in fortran order after that
-        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
-        # AND our C code expects it in that ordering
-        X_train = np.ascontiguousarray(X_train.T)
-        X_val = np.ascontiguousarray(X_val.T)
 
         # Fix main, train interactions
         training_scores = EBMUtils.decision_function(
@@ -1014,15 +998,14 @@ class BaseEBM(BaseEstimator):
             backward_impacts = []
             forward_impacts = []
 
-            _, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
                 X, 
                 y, 
                 test_size=self.holdout_split, 
                 random_state=estimator.random_state, 
-                is_classification=is_classifier(self)
+                is_classification=is_classifier(self),
+                is_train=False
             )
-
-            X_val = np.ascontiguousarray(X_val.T)
 
             base_forward_score = score_fn(
                 estimator, X_val, y_val, estimator.inter_indices_

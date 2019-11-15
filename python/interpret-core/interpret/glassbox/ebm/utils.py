@@ -23,25 +23,52 @@ class EBMUtils:
         return 1 if n_classes <= 2 else n_classes
 
     @staticmethod
-    def ebm_train_test_split(X, y, test_size, random_state, is_classification):
+    def ebm_train_test_split(X, y, test_size, random_state, is_classification, is_train=True):
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
         if test_size > 0:
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=test_size,
-                random_state=random_state,
-                stratify=y if is_classification else None,
-            )
+            if is_train:
+                X_train, X_val, y_train, y_val = train_test_split(
+                    X,
+                    y,
+                    test_size=test_size,
+                    random_state=random_state,
+                    stratify=y if is_classification else None,
+                )
+            else:
+                X_train = None
+                y_train = None
+                _, X_val, _, y_val = train_test_split(
+                    X,
+                    y,
+                    test_size=test_size,
+                    random_state=random_state,
+                    stratify=y if is_classification else None,
+                )
         elif test_size == 0:
-            X_train = X
-            y_train = y
-            X_val = np.empty(shape=(0, 0), dtype=X.dtype)
-            y_val = np.empty(shape=(0), dtype=y.dtype)
+            if is_train:
+                X_train = X
+                y_train = y
+                X_val = np.empty(shape=(0, 0), dtype=X.dtype)
+                y_val = np.empty(shape=(0), dtype=y.dtype)
+            else:
+                X_train = None
+                y_train = None
+                X_val = np.empty(shape=(0, 0), dtype=X.dtype)
+                y_val = np.empty(shape=(0), dtype=y.dtype)
         else:  # pragma: no cover
             raise Exception("test_size must be between 0 and 1.")
+
+        # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
+        #         push the re-ordering right to our first call to fit(..) AND stripe convert
+        #         groups of rows at once and they process them in fortran order after that
+        # change to Fortran ordering on our data, which is more efficient in terms of memory accesses
+        # AND our C code expects it in that ordering
+        if X_train is not None:
+            X_train = np.ascontiguousarray(X_train.T)
+
+        X_val = np.ascontiguousarray(X_val.T)
 
         return X_train, X_val, y_train, y_val
 
