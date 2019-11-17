@@ -983,24 +983,24 @@ EbmTrainingState * AllocateCoreTraining(const IntegerDataType randomSeed, const 
 }
 
 EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
-   IntegerDataType randomSeed,
+   IntegerDataType countTargetClasses,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations,
    const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes,
-   IntegerDataType countTargetClasses,
    IntegerDataType countTrainingInstances,
-   const IntegerDataType * trainingTargets,
    const IntegerDataType * trainingBinnedData,
+   const IntegerDataType * trainingTargets,
    const FractionalDataType * trainingPredictorScores,
    IntegerDataType countValidationInstances,
-   const IntegerDataType * validationTargets,
    const IntegerDataType * validationBinnedData,
+   const IntegerDataType * validationTargets,
    const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags
+   IntegerDataType countInnerBags,
+   IntegerDataType randomSeed
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeTrainingClassification: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTargetClasses=%" IntegerDataTypePrintf ", countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTargetClasses, countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
+   LOG_N(TraceLevelInfo, "Entered InitializeTrainingClassification: countTargetClasses=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf ", randomSeed=%" IntegerDataTypePrintf, countTargetClasses, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationTargets), static_cast<const void *>(validationPredictorScores), countInnerBags, randomSeed);
    if(countTargetClasses < 0) {
       LOG_0(TraceLevelError, "ERROR InitializeTrainingClassification countTargetClasses can't be negative");
       return nullptr;
@@ -1020,23 +1020,23 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTra
 }
 
 EBMCORE_IMPORT_EXPORT_BODY PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
-   IntegerDataType randomSeed,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations,
    const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes,
    IntegerDataType countTrainingInstances,
-   const FractionalDataType * trainingTargets,
    const IntegerDataType * trainingBinnedData,
+   const FractionalDataType * trainingTargets,
    const FractionalDataType * trainingPredictorScores,
    IntegerDataType countValidationInstances,
-   const FractionalDataType * validationTargets,
    const IntegerDataType * validationBinnedData,
+   const FractionalDataType * validationTargets,
    const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags
+   IntegerDataType countInnerBags,
+   IntegerDataType randomSeed
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeTrainingRegression: randomSeed=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingTargets=%p, trainingBinnedData=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationTargets=%p, validationBinnedData=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf, randomSeed, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationTargets), static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationPredictorScores), countInnerBags);
+   LOG_N(TraceLevelInfo, "Entered InitializeTrainingRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf ", randomSeed=%" IntegerDataTypePrintf, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationTargets), static_cast<const void *>(validationPredictorScores), countInnerBags, randomSeed);
    const PEbmTraining pEbmTraining = reinterpret_cast<PEbmTraining>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeTrainingRegression %p", static_cast<void *>(pEbmTraining));
    return pEbmTraining;

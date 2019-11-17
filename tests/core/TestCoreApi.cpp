@@ -718,9 +718,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_learningTypeOrCountTargetClasses, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingClassificationTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
       } else {
          exit(1);
       }
@@ -970,9 +970,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmInteraction = InitializeInteractionClassification(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_learningTypeOrCountTargetClasses, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionClassificationTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmInteraction = InitializeInteractionRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionRegressionTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else {
          exit(1);
       }
@@ -1009,7 +1009,7 @@ TEST_CASE("null validationMetricReturn, training, regression") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingRegression(randomSeed, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingRegression(0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1019,7 +1019,7 @@ TEST_CASE("null validationMetricReturn, training, binary") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 2, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(2, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1029,7 +1029,7 @@ TEST_CASE("null validationMetricReturn, training, multiclass") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 3, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(3, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1043,14 +1043,14 @@ TEST_CASE("null interactionScoreReturn, interaction, regression") {
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 2, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr);
    const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 3, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr);
    const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);

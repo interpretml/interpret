@@ -185,39 +185,39 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(sign
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
 EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
-   IntegerDataType randomSeed,
+   IntegerDataType countTargetClasses,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations,
    const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes,
-   IntegerDataType countTargetClasses,
    IntegerDataType countTrainingInstances,
-   const IntegerDataType * trainingTargets,
    const IntegerDataType * trainingBinnedData,
+   const IntegerDataType * trainingTargets,
    const FractionalDataType * trainingPredictorScores,
    IntegerDataType countValidationInstances,
-   const IntegerDataType * validationTargets,
    const IntegerDataType * validationBinnedData,
+   const IntegerDataType * validationTargets,
    const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags
+   IntegerDataType countInnerBags,
+   IntegerDataType randomSeed
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
-   IntegerDataType randomSeed, 
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations, 
    const EbmCoreFeatureCombination * featureCombinations,
    const IntegerDataType * featureCombinationIndexes, 
    IntegerDataType countTrainingInstances, 
-   const FractionalDataType * trainingTargets, 
    const IntegerDataType * trainingBinnedData, 
-   const FractionalDataType * trainingPredictorScores, 
+   const FractionalDataType * trainingTargets,
+   const FractionalDataType * trainingPredictorScores,
    IntegerDataType countValidationInstances, 
-   const FractionalDataType * validationTargets, 
    const IntegerDataType * validationBinnedData, 
-   const FractionalDataType * validationPredictorScores, 
-   IntegerDataType countInnerBags
+   const FractionalDataType * validationTargets,
+   const FractionalDataType * validationPredictorScores,
+   IntegerDataType countInnerBags,
+   IntegerDataType randomSeed
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmTraining ebmTraining, 
@@ -259,20 +259,20 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeTraining(
 
 
 EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
+   IntegerDataType countTargetClasses,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
-   IntegerDataType countTargetClasses,
    IntegerDataType countInstances,
-   const IntegerDataType * targets,
    const IntegerDataType * binnedData,
+   const IntegerDataType * targets,
    const FractionalDataType * predictorScores
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
    IntegerDataType countInstances, 
-   const FractionalDataType * targets, 
    const IntegerDataType * binnedData, 
+   const FractionalDataType * targets,
    const FractionalDataType * predictorScores
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(

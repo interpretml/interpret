@@ -92,7 +92,7 @@ class Native:
         ]
 
         self.lib.InitializeTrainingClassification.argtypes = [
-            # int64_t randomSeed
+            # int64_t countTargetClasses
             ct.c_longlong,
             # int64_t countFeatures
             ct.c_longlong,
@@ -104,34 +104,32 @@ class Native:
             ct.POINTER(self.EbmCoreFeatureCombination),
             # int64_t * featureCombinationIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countTargetClasses
-            ct.c_longlong,
             # int64_t countTrainingInstances
             ct.c_longlong,
-            # int64_t * trainingTargets
-            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # int64_t * trainingTargets
+            ndpointer(dtype=np.int64, ndim=1),
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
             # int64_t countValidationInstances
             ct.c_longlong,
-            # int64_t * validationTargets
-            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # int64_t * validationTargets
+            ndpointer(dtype=np.int64, ndim=1),
             # double * validationPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
             # int64_t countInnerBags
             ct.c_longlong,
+            # int64_t randomSeed
+            ct.c_longlong
         ]
         self.lib.InitializeTrainingClassification.restype = ct.c_void_p
 
         self.lib.InitializeTrainingRegression.argtypes = [
-            # int64_t randomSeed
-            ct.c_longlong,
             # int64_t countFeatures
             ct.c_longlong,
             # EbmCoreFeature * features
@@ -144,22 +142,24 @@ class Native:
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t countTrainingInstances
             ct.c_longlong,
-            # double * trainingTargets
-            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # double * trainingTargets
+            ndpointer(dtype=np.float64, ndim=1),
             # double * trainingPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t countValidationInstances
             ct.c_longlong,
-            # double * validationTargets
-            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # double * validationTargets
+            ndpointer(dtype=np.float64, ndim=1),
             # double * validationPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
             # int64_t countInnerBags
             ct.c_longlong,
+            # int64_t randomSeed
+            ct.c_longlong
         ]
         self.lib.InitializeTrainingRegression.restype = ct.c_void_p
 
@@ -219,18 +219,18 @@ class Native:
         ]
 
         self.lib.InitializeInteractionClassification.argtypes = [
+            # int64_t countTargetClasses
+            ct.c_longlong,
             # int64_t countFeatures
             ct.c_longlong,
             # EbmCoreFeature * features
             ct.POINTER(self.EbmCoreFeature),
-            # int64_t countTargetClasses
-            ct.c_longlong,
             # int64_t countInstances
             ct.c_longlong,
-            # int64_t * targets
-            ndpointer(dtype=np.int64, ndim=1),
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # int64_t * targets
+            ndpointer(dtype=np.int64, ndim=1),
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
@@ -244,10 +244,10 @@ class Native:
             ct.POINTER(self.EbmCoreFeature),
             # int64_t countInstances
             ct.c_longlong,
-            # double * targets
-            ndpointer(dtype=np.float64, ndim=1),
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
+            # double * targets
+            ndpointer(dtype=np.float64, ndim=1),
             # double * predictorScores
             ndpointer(dtype=np.float64, ndim=1),
         ]
@@ -488,42 +488,42 @@ class NativeEBMTraining:
         # Allocate external resources
         if model_type == "classification":
             self._model_pointer = self._native.lib.InitializeTrainingClassification(
-                random_state,
+                n_classes,
                 len(feature_array),
                 feature_array,
                 len(feature_combinations_array),
                 feature_combinations_array,
                 feature_combination_indexes,
-                n_classes,
                 len(y_train),
-                y_train,
                 X_train,
+                y_train,
                 training_scores,
                 len(y_val),
-                y_val,
                 X_val,
+                y_val,
                 validation_scores,
                 num_inner_bags,
+                random_state
             )
             if not self._model_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeTrainingClassification")
         elif model_type == "regression":
             self._model_pointer = self._native.lib.InitializeTrainingRegression(
-                random_state,
                 len(feature_array),
                 feature_array,
                 len(feature_combinations_array),
                 feature_combinations_array,
                 feature_combination_indexes,
                 len(y_train),
-                y_train,
                 X_train,
+                y_train,
                 training_scores,
                 len(y_val),
-                y_val,
                 X_val,
+                y_val,
                 validation_scores,
                 num_inner_bags,
+                random_state
             )
             if not self._model_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeTrainingRegression")
@@ -751,12 +751,12 @@ class NativeEBMInteraction:
         # Allocate external resources
         if model_type == "classification":
             self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
+                n_classes,
                 len(feature_array),
                 feature_array,
-                n_classes,
                 len(y),
-                y,
                 X,
+                y,
                 scores,
             )
             if not self._interaction_pointer:  # pragma: no cover
@@ -766,8 +766,8 @@ class NativeEBMInteraction:
                 len(feature_array),
                 feature_array,
                 len(y),
-                y,
                 X,
+                y,
                 scores,
             )
             if not self._interaction_pointer:  # pragma: no cover

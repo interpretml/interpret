@@ -37,49 +37,49 @@ ebm_feature_combination <- function(count_features_in_combination = 1) {
 
 # Training functions
 
-initialize_training_regression <- function(random_seed, features, feature_combinations, feature_combination_indexes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags) {
-   random_seed <- as.integer(random_seed)
+initialize_training_regression <- function(features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
    feature_combination_indexes <- as.double(feature_combination_indexes)
-   training_targets <- as.double(training_targets)
    training_binned_data <- as.double(training_binned_data)
+   training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
       training_predictor_scores <- as.double(training_predictor_scores)
    }
-   validation_targets <- as.double(validation_targets)
    validation_binned_data <- as.double(validation_binned_data)
+   validation_targets <- as.double(validation_targets)
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
+   random_seed <- as.integer(random_seed)
 
-   ebm_training <- .Call(InitializeTrainingRegression_R, random_seed, features, feature_combinations, feature_combination_indexes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
+   ebm_training <- .Call(InitializeTrainingRegression_R, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
    if(is.null(ebm_training)) {
       stop("error in InitializeTrainingRegression_R")
    }
    return(ebm_training)
 }
 
-initialize_training_classification <- function(random_seed, features, feature_combinations, feature_combination_indexes, count_target_classes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags) {
-   random_seed <- as.integer(random_seed)
+initialize_training_classification <- function(count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
+   count_target_classes <- as.double(count_target_classes)
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
    feature_combination_indexes <- as.double(feature_combination_indexes)
-   count_target_classes <- as.double(count_target_classes)
-   training_targets <- as.double(training_targets)
    training_binned_data <- as.double(training_binned_data)
+   training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
       training_predictor_scores <- as.double(training_predictor_scores)
    }
-   validation_targets <- as.double(validation_targets)
    validation_binned_data <- as.double(validation_binned_data)
+   validation_targets <- as.double(validation_targets)
    if(!is.null(validation_predictor_scores)) {
       validation_predictor_scores <- as.double(validation_predictor_scores)
    }
    count_inner_bags <- as.integer(count_inner_bags)
+   random_seed <- as.integer(random_seed)
 
-   ebm_training <- .Call(InitializeTrainingClassification_R, random_seed, features, feature_combinations, feature_combination_indexes, count_target_classes, training_targets, training_binned_data, training_predictor_scores, validation_targets, validation_binned_data, validation_predictor_scores, count_inner_bags)
+   ebm_training <- .Call(InitializeTrainingClassification_R, count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
    if(is.null(ebm_training)) {
       stop("error in InitializeTrainingClassification_R")
    }
@@ -131,31 +131,31 @@ get_best_model_feature_combination <- function(ebm_training, index_feature_combi
 
 # Interaction detection functions
 
-initialize_interaction_regression <- function(features, targets, binned_data, predictor_scores) {
+initialize_interaction_regression <- function(features, binned_data, targets, predictor_scores) {
    features <- as.list(features)
-   targets <- as.double(targets)
    binned_data <- as.double(binned_data)
+   targets <- as.double(targets)
    if(!is.null(predictor_scores)) {
       predictor_scores <- as.double(predictor_scores)
    }
 
-   ebm_interaction <- .Call(InitializeInteractionRegression_R, features, targets, binned_data, predictor_scores)
+   ebm_interaction <- .Call(InitializeInteractionRegression_R, features, binned_data, targets, predictor_scores)
    if(is.null(ebm_interaction)) {
       stop("error in InitializeInteractionRegression_R")
    }
    return(ebm_interaction)
 }
 
-initialize_interaction_classification <- function(features, count_target_classes, targets, binned_data, predictor_scores) {
-   features <- as.list(features)
+initialize_interaction_classification <- function(count_target_classes, features, binned_data, targets, predictor_scores) {
    count_target_classes <- as.double(count_target_classes)
-   targets <- as.double(targets)
+   features <- as.list(features)
    binned_data <- as.double(binned_data)
+   targets <- as.double(targets)
    if(!is.null(predictor_scores)) {
       predictor_scores <- as.double(predictor_scores)
    }
 
-   ebm_interaction <- .Call(InitializeInteractionClassification_R, features, count_target_classes, targets, binned_data, predictor_scores)
+   ebm_interaction <- .Call(InitializeInteractionClassification_R, count_target_classes, features, binned_data, targets, predictor_scores)
    if(is.null(ebm_interaction)) {
       stop("error in InitializeInteractionClassification_R")
    }
