@@ -880,71 +880,6 @@ SEXP TrainingStep_R(
    return ret;
 }
 
-SEXP GetCurrentModelFeatureCombination_R(
-   SEXP ebmTraining,
-   SEXP indexFeatureCombination
-) {
-   EBM_ASSERT(nullptr != ebmTraining); // shouldn't be possible
-   EBM_ASSERT(nullptr != indexFeatureCombination); // shouldn't be possible
-
-   if(EXTPTRSXP != TYPEOF(ebmTraining)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R EXTPTRSXP != TYPEOF(ebmTraining)");
-      return R_NilValue;
-   }
-   EbmTrainingState * pEbmTraining = static_cast<EbmTrainingState *>(R_ExternalPtrAddr(ebmTraining));
-   if(nullptr == pEbmTraining) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R nullptr == pEbmTraining");
-      return R_NilValue;
-   }
-
-   if(!IsSingleDoubleVector(indexFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsSingleDoubleVector(indexFeatureCombination)");
-      return R_NilValue;
-   }
-   double doubleIndex = REAL(indexFeatureCombination)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
-      return R_NilValue;
-   }
-   IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
-   // we check if iFeatureCombination can fit into a size_t in IsDoubleToIntegerDataTypeIndexValid
-   if(pEbmTraining->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R pEbmTraining->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
-      return R_NilValue;
-   }
-
-   FractionalDataType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmTraining>(pEbmTraining), iFeatureCombination);
-   if(nullptr == pModelFeatureCombinationTensor) {
-      // if nullptr == pModelFeatureCombinationTensor then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
-      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
-      return ret;
-   }
-   size_t cValues = GetVectorLengthFlatCore(pEbmTraining->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureCombinationCore * const pFeatureCombinationCore = pEbmTraining->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
-   const size_t cFeatures = pFeatureCombinationCore->m_cFeatures;
-   if(0 != cFeatures) {
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombinationCore->m_FeatureCombinationEntry[0];
-      const FeatureCombinationCore::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
-      do {
-         const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-         cValues *= cBins;
-         ++pFeatureCombinationEntry;
-      } while(pFeatureCombinationEntryEnd != pFeatureCombinationEntry);
-   }
-   if(!IsNumberConvertable<R_xlen_t, size_t>(cValues)) {
-      return R_NilValue;
-   }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
-   EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   memcpy(REAL(ret), pModelFeatureCombinationTensor, sizeof(double) * cValues);
-   UNPROTECT(1);
-   return ret;
-}
-
 SEXP GetBestModelFeatureCombination_R(
    SEXP ebmTraining,
    SEXP indexFeatureCombination
@@ -985,6 +920,71 @@ SEXP GetBestModelFeatureCombination_R(
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
+      return ret;
+   }
+   size_t cValues = GetVectorLengthFlatCore(pEbmTraining->m_runtimeLearningTypeOrCountTargetClasses);
+   const FeatureCombinationCore * const pFeatureCombinationCore = pEbmTraining->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
+   const size_t cFeatures = pFeatureCombinationCore->m_cFeatures;
+   if(0 != cFeatures) {
+      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombinationCore->m_FeatureCombinationEntry[0];
+      const FeatureCombinationCore::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
+      do {
+         const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
+         EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         cValues *= cBins;
+         ++pFeatureCombinationEntry;
+      } while(pFeatureCombinationEntryEnd != pFeatureCombinationEntry);
+   }
+   if(!IsNumberConvertable<R_xlen_t, size_t>(cValues)) {
+      return R_NilValue;
+   }
+   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
+   EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+   memcpy(REAL(ret), pModelFeatureCombinationTensor, sizeof(double) * cValues);
+   UNPROTECT(1);
+   return ret;
+}
+
+SEXP GetCurrentModelFeatureCombination_R(
+   SEXP ebmTraining,
+   SEXP indexFeatureCombination
+) {
+   EBM_ASSERT(nullptr != ebmTraining); // shouldn't be possible
+   EBM_ASSERT(nullptr != indexFeatureCombination); // shouldn't be possible
+
+   if(EXTPTRSXP != TYPEOF(ebmTraining)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R EXTPTRSXP != TYPEOF(ebmTraining)");
+      return R_NilValue;
+   }
+   EbmTrainingState * pEbmTraining = static_cast<EbmTrainingState *>(R_ExternalPtrAddr(ebmTraining));
+   if(nullptr == pEbmTraining) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R nullptr == pEbmTraining");
+      return R_NilValue;
+   }
+
+   if(!IsSingleDoubleVector(indexFeatureCombination)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsSingleDoubleVector(indexFeatureCombination)");
+      return R_NilValue;
+   }
+   double doubleIndex = REAL(indexFeatureCombination)[0];
+   if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
+      return R_NilValue;
+   }
+   IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
+   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntegerDataTypeIndexValid
+   if(pEbmTraining->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R pEbmTraining->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
+      return R_NilValue;
+   }
+
+   FractionalDataType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmTraining>(pEbmTraining), iFeatureCombination);
+   if(nullptr == pModelFeatureCombinationTensor) {
+      // if nullptr == pModelFeatureCombinationTensor then either:
+      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
+      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
       return ret;
    }
    size_t cValues = GetVectorLengthFlatCore(pEbmTraining->m_runtimeLearningTypeOrCountTargetClasses);
@@ -1230,8 +1230,8 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "InitializeTrainingClassification_R", (DL_FUNC)&InitializeTrainingClassification_R, 12 },
    { "InitializeTrainingRegression_R", (DL_FUNC)& InitializeTrainingRegression_R, 11 },
    { "TrainingStep_R", (DL_FUNC)& TrainingStep_R, 7 },
+   { "GetBestModelFeatureCombination_R", (DL_FUNC)&GetBestModelFeatureCombination_R, 2 },
    { "GetCurrentModelFeatureCombination_R", (DL_FUNC)& GetCurrentModelFeatureCombination_R, 2 },
-   { "GetBestModelFeatureCombination_R", (DL_FUNC)& GetBestModelFeatureCombination_R, 2 },
    { "FreeTraining_R", (DL_FUNC)& FreeTraining_R, 1 },
    { "InitializeInteractionClassification_R", (DL_FUNC)&InitializeInteractionClassification_R, 5 },
    { "InitializeInteractionRegression_R", (DL_FUNC)& InitializeInteractionRegression_R, 4 },

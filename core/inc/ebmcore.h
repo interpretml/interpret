@@ -245,12 +245,12 @@ EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION Trainin
    const FractionalDataType * validationWeights,
    FractionalDataType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmTraining ebmTraining, 
    IntegerDataType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
-   PEbmTraining ebmTraining, 
+EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+   PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeTraining(

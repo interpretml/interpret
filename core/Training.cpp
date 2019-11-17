@@ -1442,39 +1442,6 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION TrainingSt
    return ApplyModelFeatureCombinationUpdate(ebmTraining, indexFeatureCombination, pModelFeatureCombinationUpdateTensor, validationMetricReturn);
 }
 
-EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
-   PEbmTraining ebmTraining,
-   IntegerDataType indexFeatureCombination
-) {
-   LOG_N(TraceLevelInfo, "Entered GetCurrentModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
-
-   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
-   EBM_ASSERT(nullptr != pEbmTrainingState);
-   EBM_ASSERT(0 <= indexFeatureCombination);
-   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
-   size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
-
-   if(nullptr == pEbmTrainingState->m_apCurrentModel) {
-      // if pEbmTrainingState->m_apCurrentModel is nullptr, then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
-      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
-
-      LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureCombination no model");
-      return nullptr;
-   }
-
-   SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pEbmTrainingState->m_apCurrentModel[iFeatureCombination];
-   EBM_ASSERT(nullptr != pCurrentModel);
-   EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
-   FractionalDataType * pRet = pCurrentModel->GetValuePointer();
-   EBM_ASSERT(nullptr != pRet);
-
-   LOG_N(TraceLevelInfo, "Exited GetCurrentModelFeatureCombination %p", static_cast<void *>(pRet));
-   return pRet;
-}
-
 EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmTraining ebmTraining,
    IntegerDataType indexFeatureCombination
@@ -1505,6 +1472,39 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetBe
    EBM_ASSERT(nullptr != pRet);
 
    LOG_N(TraceLevelInfo, "Exited GetBestModelFeatureCombination %p", static_cast<void *>(pRet));
+   return pRet;
+}
+
+EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+   PEbmTraining ebmTraining,
+   IntegerDataType indexFeatureCombination
+) {
+   LOG_N(TraceLevelInfo, "Entered GetCurrentModelFeatureCombination: ebmTraining=%p, indexFeatureCombination=%" IntegerDataTypePrintf, static_cast<void *>(ebmTraining), indexFeatureCombination);
+
+   EbmTrainingState * pEbmTrainingState = reinterpret_cast<EbmTrainingState *>(ebmTraining);
+   EBM_ASSERT(nullptr != pEbmTrainingState);
+   EBM_ASSERT(0 <= indexFeatureCombination);
+   EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureCombination))); // we wouldn't have allowed the creation of an feature set larger than size_t
+   size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
+   EBM_ASSERT(iFeatureCombination < pEbmTrainingState->m_cFeatureCombinations);
+
+   if(nullptr == pEbmTrainingState->m_apCurrentModel) {
+      // if pEbmTrainingState->m_apCurrentModel is nullptr, then either:
+      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  If there were logits in this model, they'd all be infinity, but you could alternatively think of this model as having zero logits, since the number of logits can be one less than the number of target classification classes.  A model with zero logits is empty, and has zero items.  We want to return a tensor with 0 items in it, so we could either return a pointer to some random memory that can't be accessed, or we can return nullptr.  We return a nullptr in the hopes that our caller will either handle it or throw a nicer exception.
+
+      LOG_0(TraceLevelInfo, "Exited GetCurrentModelFeatureCombination no model");
+      return nullptr;
+   }
+
+   SegmentedTensor<ActiveDataType, FractionalDataType> * pCurrentModel = pEbmTrainingState->m_apCurrentModel[iFeatureCombination];
+   EBM_ASSERT(nullptr != pCurrentModel);
+   EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
+   FractionalDataType * pRet = pCurrentModel->GetValuePointer();
+   EBM_ASSERT(nullptr != pRet);
+
+   LOG_N(TraceLevelInfo, "Exited GetCurrentModelFeatureCombination %p", static_cast<void *>(pRet));
    return pRet;
 }
 

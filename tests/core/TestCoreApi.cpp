@@ -762,18 +762,6 @@ public:
       return validationMetricReturn;
    }
 
-   FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
-      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
-      return predictorScore;
-   }
-
    FractionalDataType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -786,17 +774,6 @@ public:
       return predictorScore;
    }
 
-   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
-      return pModel;
-   }
-
    const FractionalDataType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -805,6 +782,29 @@ public:
          exit(1);
       }
       FractionalDataType * pModel = GetBestModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
+      return pModel;
+   }
+
+   FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_featureCombinations.size() <= iFeatureCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
+      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
+      return predictorScore;
+   }
+
+   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_featureCombinations.size() <= iFeatureCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
       return pModel;
    }
 
@@ -1508,8 +1508,8 @@ TEST_CASE("features with 0 states, training") {
    CHECK(0 == validationMetric);
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
-   test.GetCurrentModelFeatureCombinationRaw(0);
    test.GetBestModelFeatureCombinationRaw(0);
+   test.GetCurrentModelFeatureCombinationRaw(0);
 }
 
 TEST_CASE("features with 0 states, interaction") {
@@ -1531,14 +1531,14 @@ TEST_CASE("classification with 0 possible target states, training") {
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 0 possible target states, interaction") {
@@ -1559,14 +1559,14 @@ TEST_CASE("classification with 1 possible target, training") {
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {

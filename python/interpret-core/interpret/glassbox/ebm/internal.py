@@ -197,14 +197,6 @@ class Native:
         ]
         self.lib.ApplyModelFeatureCombinationUpdate.restype = ct.c_longlong
 
-        self.lib.GetCurrentModelFeatureCombination.argtypes = [
-            # void * ebmTraining
-            ct.c_void_p,
-            # int64_t indexFeatureCombination
-            ct.c_longlong,
-        ]
-        self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
-
         self.lib.GetBestModelFeatureCombination.argtypes = [
             # void * ebmTraining
             ct.c_void_p,
@@ -212,6 +204,14 @@ class Native:
             ct.c_longlong,
         ]
         self.lib.GetBestModelFeatureCombination.restype = ct.POINTER(ct.c_double)
+
+        self.lib.GetCurrentModelFeatureCombination.argtypes = [
+            # void * ebmTraining
+            ct.c_void_p,
+            # int64_t indexFeatureCombination
+            ct.c_longlong,
+        ]
+        self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.FreeTraining.argtypes = [
             # void * ebmTraining

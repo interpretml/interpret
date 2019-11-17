@@ -8,8 +8,8 @@ EXPORTS
   GenerateModelFeatureCombinationUpdate
   ApplyModelFeatureCombinationUpdate
   TrainingStep
-  GetCurrentModelFeatureCombination
   GetBestModelFeatureCombination
+  GetCurrentModelFeatureCombination
   FreeTraining
   InitializeInteractionClassification
   InitializeInteractionRegression
