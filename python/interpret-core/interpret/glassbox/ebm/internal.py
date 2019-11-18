@@ -465,6 +465,39 @@ class NativeEBMTraining:
         # first set the one thing that we will close on
         self._model_pointer = None
 
+
+        # check inputs for important inputs or things that would segfault in C
+        if not isinstance(features, list):
+            raise ValueError("features should be a list")
+
+        if not isinstance(feature_combinations, list):
+            raise ValueError("feature_combinations should be a list")
+
+        if X_train.ndim != 2:
+            raise ValueError("X_train should have exactly 2 dimensions")
+
+        if y_train.ndim != 1:
+            raise ValueError("y_train should have exactly 1 dimension")
+
+        if X_train.shape[0] != len(features):
+            raise ValueError("X_train does not have the same number of features as the features array")
+
+        if X_train.shape[1] != len(y_train):
+            raise ValueError("X_train does not have the same number of instances as y_train")
+
+        if X_val.ndim != 2:
+            raise ValueError("X_val should have exactly 2 dimensions")
+
+        if y_val.ndim != 1:
+            raise ValueError("y_val should have exactly 1 dimension")
+
+        if X_val.shape[0] != len(features):
+            raise ValueError("X_val does not have the same number of features as the features array")
+
+        if X_val.shape[1] != len(y_val):
+            raise ValueError("X_val does not have the same number of instances as y_val")
+
+
         self._native = Native.get_native_singleton()
 
         log.info("Allocation training start")
@@ -481,12 +514,34 @@ class NativeEBMTraining:
             feature_combinations
         )
 
+        n_scores = EBMUtils.get_count_scores_c(n_classes)
         if scores_train is None:
-            n_scores = EBMUtils.get_count_scores_c(n_classes)
             scores_train = np.zeros(len(y_train) * n_scores, dtype=np.float64, order='C')
+        else:
+            if scores_train.shape[0] != len(y_train):
+                raise ValueError("scores_train does not have the same number of instances as y_train")
+            if n_scores == 1:
+                if scores_train.ndim != 1:
+                    raise ValueError("scores_train should have exactly 1 dimensions for regression or binary classification")
+            else:
+                if scores_train.ndim != 2:
+                    raise ValueError("scores_train should have exactly 2 dimensions for multiclass")
+                if(scores_train.shape[1] != n_scores):
+                    raise ValueError("scores_train does not have the same number of logit scores as n_scores")
+
         if scores_val is None:
-            n_scores = EBMUtils.get_count_scores_c(n_classes)
             scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order='C')
+        else:
+            if scores_val.shape[0] != len(y_val):
+                raise ValueError("scores_val does not have the same number of instances as y_val")
+            if n_scores == 1:
+                if scores_val.ndim != 1:
+                    raise ValueError("scores_val should have exactly 1 dimensions for regression or binary classification")
+            else:
+                if scores_val.ndim != 2:
+                    raise ValueError("scores_val should have exactly 2 dimensions for multiclass")
+                if(scores_val.shape[1] != n_scores):
+                    raise ValueError("scores_val does not have the same number of logit scores as n_scores")
 
         # Allocate external resources
         if model_type == "classification":
@@ -612,8 +667,9 @@ class NativeEBMTraining:
         dimensions = list(reversed(dimensions))
 
         # Array returned for multiclass is one higher dimension
-        if self._model_type == "classification" and self._n_classes > 2:
-            dimensions.append(self._n_classes)
+        n_scores = EBMUtils.get_count_scores_c(self._n_classes)
+        if n_scores > 1:
+            dimensions.append(n_scores)
 
         shape = tuple(dimensions)
         return shape
@@ -754,6 +810,24 @@ class NativeEBMInteraction:
         # first set the one thing that we will close on
         self._interaction_pointer = None
 
+
+        # check inputs for important inputs or things that would segfault in C
+        if not isinstance(features, list):
+            raise ValueError("features should be a list")
+
+        if X.ndim != 2:
+            raise ValueError("X should have exactly 2 dimensions")
+
+        if y.ndim != 1:
+            raise ValueError("y should have exactly 1 dimension")
+
+        if X.shape[0] != len(features):
+            raise ValueError("X does not have the same number of features as the features array")
+
+        if X.shape[1] != len(y):
+            raise ValueError("X does not have the same number of instances as y")
+
+
         self._native = Native.get_native_singleton()
 
         log.info("Allocation interaction start")
@@ -761,9 +835,20 @@ class NativeEBMInteraction:
         # Store args
         feature_array = Native.convert_features_to_c(features)
 
+        n_scores = EBMUtils.get_count_scores_c(n_classes)
         if scores is None:
-            n_scores = EBMUtils.get_count_scores_c(n_classes)
-            scores = np.zeros(y.shape[0] * n_scores, dtype=np.float64, order='C')
+            scores = np.zeros(len(y) * n_scores, dtype=np.float64, order='C')
+        else:
+            if scores.shape[0] != len(y):
+                raise ValueError("scores does not have the same number of instances as y")
+            if n_scores == 1:
+                if scores.ndim != 1:
+                    raise ValueError("scores should have exactly 1 dimensions for regression or binary classification")
+            else:
+                if scores.ndim != 2:
+                    raise ValueError("scores should have exactly 2 dimensions for multiclass")
+                if(scores.shape[1] != n_scores):
+                    raise ValueError("scores does not have the same number of logit scores as n_scores")
 
         # Allocate external resources
         if model_type == "classification":
@@ -815,6 +900,7 @@ class NativeEBMInteraction:
 
         log.info("Fast interaction score end")
         return score.value
+
 
 class NativeHelper:
     @staticmethod
