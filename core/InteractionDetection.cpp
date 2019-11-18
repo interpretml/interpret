@@ -25,6 +25,8 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, const EbmCoreFeature * features, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, IntegerDataType countInstances, const void * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+   // TODO : give AllocateCoreInteraction the same calling parameter order as InitializeInteractionClassification
+
    EBM_ASSERT(0 <= countFeatures);
    EBM_ASSERT(0 == countFeatures || nullptr != features);
    // countTargetClasses is checked by our caller since it's only valid for classification at this point

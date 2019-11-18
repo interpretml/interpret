@@ -4,8 +4,7 @@
 
 from ...utils import perf_dict
 from .utils import EBMUtils
-from .internal import NativeEBMTraining
-from .internal import NativeEBMInteraction
+from .internal import NativeHelper
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
@@ -27,7 +26,6 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )
-from contextlib import closing
 from itertools import combinations
 
 import logging
@@ -435,30 +433,30 @@ class BaseCoreEBM:
     def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
 
-        with closing(
-            NativeEBMTraining(
-                self.features_,
-                main_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=None,
-                validation_scores=None,
-            )
-        ) as native_ebm_training:
-            self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm_training, main_feature_combinations, "Main"
-            )
+        self.model_, self.current_metric_, self.main_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+            model_type=self.model_type,
+            n_classes=self.n_classes_,
+            features=self.features_,
+            feature_combinations=main_feature_combinations,
+            X_train=X_train,
+            y_train=y_train,
+            scores_train=None,
+            X_val=X_val,
+            y_val=y_val,
+            scores_val=None,
+            n_inner_bags=self.feature_step_n_inner_bags,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            max_tree_splits=self.max_tree_splits,
+            min_cases_for_splits=self.min_cases_for_splits,
+            training_step_episodes=self.training_step_episodes,
+            data_n_episodes=self.data_n_episodes,
+            early_stopping_tolerance=self.early_stopping_tolerance,
+            early_stopping_run_length=self.early_stopping_run_length,
+            name="Main"
+        )
 
-            log.debug("Main Metric: {0}".format(self.current_metric_))
-            for index, feature_combination in enumerate(main_feature_combinations):
-                model_feature_combination = native_ebm_training.get_best_model_feature_combination(index)
-                self.model_.append(model_feature_combination)
-                self.feature_combinations_.append(feature_combination)
+        self.feature_combinations_ = main_feature_combinations
 
         return
 
@@ -466,37 +464,25 @@ class BaseCoreEBM:
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
-            # TODO PK currently we're using None for the scores, but we should instead determine what they
+            # TODO PK currently we're using None for the scores_train, but we should instead determine what they
             # are after training the mains
-            #training_scores = EBMUtils.decision_function(
+            #scores_train = EBMUtils.decision_function(
             #    X_train, self.feature_combinations_, self.model_, self.intercept_
             #)
-            training_scores = None
+            scores_train = None
 
-            # TODO PK we only need to store the top n_interactions items, so use a heap
-            interaction_scores = []
-            with closing(
-                NativeEBMInteraction(
-                    self.features_,
-                    X_train,
-                    y_train,
-                    model_type=self.model_type,
-                    n_classes=self.n_classes_,
-                    scores=training_scores,
-                )
-            ) as native_ebm_interactions:
-                for pair in combinations(range(len(self.col_types)), 2):
-                    score = native_ebm_interactions.get_interaction_score(pair)
-                    interaction_scores.append((pair, score))
+            iter_feature_combinations=combinations(range(len(self.col_types)), 2)
 
-            ranked_scores = list(
-                sorted(interaction_scores, key=lambda x: x[1], reverse=True)
+            final_indices, final_scores = NativeHelper.get_interactions(
+                n_interactions=self.interactions,
+                iter_feature_combinations=iter_feature_combinations,
+                model_type=self.model_type,
+                n_classes=self.n_classes_,
+                features=self.features_,
+                X=X_train,
+                y=y_train,
+                scores=scores_train
             )
-            n_interactions = min(len(ranked_scores), self.interactions)
-            final_ranked_scores = ranked_scores[0:n_interactions]
-
-            final_indices = [x[0] for x in final_ranked_scores]
-            final_scores = [x[1] for x in final_ranked_scores]
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
             final_scores = []
@@ -528,95 +514,45 @@ class BaseCoreEBM:
 
         log.info("Training interactions")
 
-        # Fix main, train interactions
-        training_scores = EBMUtils.decision_function(
+        scores_train = EBMUtils.decision_function(
             X_train, self.feature_combinations_, self.model_, self.intercept_
         )
-        validation_scores = EBMUtils.decision_function(
+        scores_val = EBMUtils.decision_function(
             X_val, self.feature_combinations_, self.model_, self.intercept_
         )
-        
-        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
-        with closing(
-            NativeEBMTraining(
-                # TODO: we can reduce this list of features_ down to just the ones required for
-                #       training our inter_feature_combinations, which would reduce memory
-                self.features_,
-                inter_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=training_scores,
-                validation_scores=validation_scores,
-                random_state=self.random_state,
-            )
-        ) as native_ebm_training:
-            log.info("Train interactions")
-            self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm_training, inter_feature_combinations, "Pair"
-            )
-            log.debug("Interaction Metric: {0}".format(self.current_metric_))
 
-            for index, feature_combination in enumerate(inter_feature_combinations):
-                self.model_.append(native_ebm_training.get_best_model_feature_combination(index))
-                self.feature_combinations_.append(feature_combination)
+        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
+
+        model_update, self.current_metric_, self.inter_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+            model_type=self.model_type,
+            n_classes=self.n_classes_,
+            features=self.features_,
+            feature_combinations=inter_feature_combinations,
+            X_train=X_train,
+            y_train=y_train,
+            scores_train=scores_train,
+            X_val=X_val,
+            y_val=y_val,
+            scores_val=scores_val,
+            n_inner_bags=self.feature_step_n_inner_bags,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            max_tree_splits=self.max_tree_splits,
+            min_cases_for_splits=self.min_cases_for_splits,
+            training_step_episodes=self.training_step_episodes,
+            data_n_episodes=self.data_n_episodes,
+            early_stopping_tolerance=self.early_stopping_tolerance,
+            early_stopping_run_length=self.early_stopping_run_length,
+            name="Pair"
+        )
+
+        self.model_.extend(model_update)
+        self.feature_combinations_.extend(inter_feature_combinations)
 
         return
 
-    def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
 
-        no_change_run_length = 0
-        curr_metric = np.inf
-        min_metric = np.inf
-        bp_metric = np.inf
-        log.info("Start boosting {0}".format(name))
-        curr_episode_index = 0
-        for data_episode_index in range(self.data_n_episodes):
-            curr_episode_index = data_episode_index
-
-            if data_episode_index % 10 == 0:
-                log.debug("Sweep Index for {0}: {1}".format(name, data_episode_index))
-                log.debug("Metric: {0}".format(curr_metric))
-
-            if len(feature_combinations) == 0:
-                log.debug("No sets to boost for {0}".format(name))
-
-            for index, feature_combination in enumerate(feature_combinations):
-                curr_metric = native_ebm.training_step(
-                    index,
-                    training_step_episodes=self.training_step_episodes,
-                    learning_rate=self.learning_rate,
-                    max_tree_splits=self.max_tree_splits,
-                    min_cases_for_split=self.min_cases_for_splits,
-                    training_weights=0,
-                    validation_weights=0,
-                )
-
-                # NOTE: Out of per-feature boosting on purpose.
-                min_metric = min(curr_metric, min_metric)
-
-            if no_change_run_length == 0:
-                bp_metric = min_metric
-            if curr_metric + self.early_stopping_tolerance < bp_metric:
-                no_change_run_length = 0
-            else:
-                no_change_run_length += 1
-
-            if (
-                self.early_stopping_run_length >= 0
-                and no_change_run_length >= self.early_stopping_run_length
-            ):
-                log.info("Early break {0}: {1}".format(name, data_episode_index))
-                break
-        log.info("End boosting {0}".format(name))
-
-        return min_metric, curr_episode_index
-
-
+# TODO PK v.2 Should we be exposing data in this class, or use helper functions to return the values?
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -914,7 +850,8 @@ class BaseEBM(BaseEstimator):
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
-            # TODO PK v.2 if we end up choosing to expand/contract averaged_model 
+            # TODO PK v.2 if we end up choosing to expand/contract by removing
+            #             logits from multiclass models, averaged_model 
             #             do it HERE AND apply post processing before returning
 
             self.attribute_set_models_.append(averaged_model)
@@ -922,7 +859,8 @@ class BaseEBM(BaseEstimator):
 
         # Get episode indexes for base estimators.
         self.main_episode_idxs_ = []
-        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
+        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_ 
+        #             (but does this need to be exposed at all)
         self.inter_episode_idxs_ = []
         for estimator in estimators:
             self.main_episode_idxs_.append(estimator.main_episode_idx_)

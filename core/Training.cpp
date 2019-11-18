@@ -905,6 +905,7 @@ void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 EbmTrainingState * AllocateCoreTraining(const IntegerDataType randomSeed, const IntegerDataType countFeatures, const EbmCoreFeature * const features, const IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * const featureCombinations, const IntegerDataType * const featureCombinationIndexes, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const IntegerDataType countTrainingInstances, const void * const trainingTargets, const IntegerDataType * const trainingBinnedData, const FractionalDataType * const trainingPredictorScores, const IntegerDataType countValidationInstances, const void * const validationTargets, const IntegerDataType * const validationBinnedData, const FractionalDataType * const validationPredictorScores, const IntegerDataType countInnerBags) {
+   // TODO : give AllocateCoreTraining the same calling parameter order as InitializeTrainingClassification
    // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
    // randomSeed can be any value

@@ -1,8 +1,6 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
-# TODO PK convert all scores to 2-D C-CONTIGUOUS ndarray (python access wil be: score[instance_idx, class_idx]
-
 # TODO: Add unit tests for internal EBM interfacing
 import sys
 from sys import platform
@@ -12,6 +10,7 @@ import numpy as np
 import os
 import struct
 import logging
+from contextlib import closing
 
 from .utils import EBMUtils
 
@@ -417,45 +416,49 @@ class Native:
         return feature_combinations_ar, feature_combination_indexes
 
 
-
 class NativeEBMTraining:
     """Lightweight wrapper for EBM C training code.
     """
 
     def __init__(
         self,
+        model_type,
+        n_classes,
         features,
         feature_combinations,
         X_train,
         y_train,
+        scores_train,
         X_val,
         y_val,
-        model_type,
-        n_classes,
-        num_inner_bags=0,
-        training_scores=None,
-        validation_scores=None,
-        random_state=1337,
+        scores_val,
+        n_inner_bags,
+        random_state
     ):
 
-        # TODO: Update documentation for training/val scores args.
         """ Initializes internal wrapper for EBM C code.
 
         Args:
+            model_type: 'regression'/'classification'.
+            n_classes: Specific to classification,
+                number of unique classes.
             features: List of features represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
             feature_combinations: List of feature combinations represented as
                 a dictionary of keys ("features")
             X_train: Training design matrix as 2-D ndarray.
             y_train: Training response as 1-D ndarray.
+            scores_train: training predictions from a prior predictor
+                that this class will boost on top of.  For regression
+                there is 1 prediction per instance.  For binary classification
+                there is one logit.  For multiclass there are n_classes logits
             X_val: Validation design matrix as 2-D ndarray.
             y_val: Validation response as 1-D ndarray.
-            model_type: 'regression'/'classification'.
-            n_classes: Specific to classification,
-                number of unique classes.
-            num_inner_bags: number of inner bags.
-            training_scores: Undocumented.
-            validation_scores: Undocumented.
+            scores_val: Validation predictions from a prior predictor
+                that this class will boost on top of.  For regression
+                there is 1 prediction per instance.  For binary classification
+                there is one logit.  For multiclass there are n_classes logits
+            n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
         """
 
@@ -467,6 +470,9 @@ class NativeEBMTraining:
         log.info("Allocation training start")
 
         # Store args
+        self._model_type = model_type
+        self._n_classes = n_classes
+
         self._features = features
         feature_array = Native.convert_features_to_c(features)
 
@@ -475,15 +481,12 @@ class NativeEBMTraining:
             feature_combinations
         )
 
-        self._model_type = model_type
-        self._n_classes = n_classes
-
-        if training_scores is None:
+        if scores_train is None:
             n_scores = EBMUtils.get_count_scores_c(n_classes)
-            training_scores = np.zeros(y_train.shape[0] * n_scores, dtype=np.float64, order='C')
-        if validation_scores is None:
+            scores_train = np.zeros(len(y_train) * n_scores, dtype=np.float64, order='C')
+        if scores_val is None:
             n_scores = EBMUtils.get_count_scores_c(n_classes)
-            validation_scores = np.zeros(y_val.shape[0] * n_scores, dtype=np.float64, order='C')
+            scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order='C')
 
         # Allocate external resources
         if model_type == "classification":
@@ -497,12 +500,12 @@ class NativeEBMTraining:
                 len(y_train),
                 X_train,
                 y_train,
-                training_scores,
+                scores_train,
                 len(y_val),
                 X_val,
                 y_val,
-                validation_scores,
-                num_inner_bags,
+                scores_val,
+                n_inner_bags,
                 random_state
             )
             if not self._model_pointer:  # pragma: no cover
@@ -517,12 +520,12 @@ class NativeEBMTraining:
                 len(y_train),
                 X_train,
                 y_train,
-                training_scores,
+                scores_train,
                 len(y_val),
                 X_val,
                 y_val,
-                validation_scores,
-                num_inner_bags,
+                scores_val,
+                n_inner_bags,
                 random_state
             )
             if not self._model_pointer:  # pragma: no cover
@@ -541,12 +544,10 @@ class NativeEBMTraining:
     def training_step(
         self,
         feature_combination_index,
-        training_step_episodes=1,
-        learning_rate=0.01,
-        max_tree_splits=2,
-        min_cases_for_split=2,
-        training_weights=0,
-        validation_weights=0,
+        learning_rate,
+        max_tree_splits,
+        min_cases_for_split,
+        training_step_episodes,
     ):
 
         """ Conducts a training step per feature
@@ -555,12 +556,10 @@ class NativeEBMTraining:
         Args:
             feature_combination_index: The index for the feature combination
                 to train on.
-            training_step_episodes: Number of episodes to train feature step.
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
             min_cases_for_split: Min observations required to split.
-            training_weights: Training weights as float vector.
-            validation_weights: Validation weights as float vector.
+            training_step_episodes: Number of episodes to train feature step.
 
         Returns:
             Validation loss for the training step.
@@ -578,8 +577,8 @@ class NativeEBMTraining:
                     learning_rate,
                     max_tree_splits,
                     min_cases_for_split,
-                    training_weights,
-                    validation_weights,
+                    0,
+                    0,
                     ct.byref(gain),
                 )
                 if not model_update_tensor_pointer:  # pragma: no cover
@@ -619,7 +618,7 @@ class NativeEBMTraining:
         shape = tuple(dimensions)
         return shape
 
-    def get_best_model_feature_combination(self, feature_combination_index):
+    def _get_best_model_feature_combination(self, feature_combination_index):
         """ Returns best model/function according to validation set
             for a given feature combination.
 
@@ -666,7 +665,15 @@ class NativeEBMTraining:
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
         return array
 
-    def get_current_model_feature_combination(self, feature_combination_index):
+    def get_best_model(self):
+        model = []
+        for index in range(len(self._feature_combinations)):
+            model_feature_combination = self._get_best_model_feature_combination(index)
+            model.append(model_feature_combination)
+
+        return model
+
+    def _get_current_model_feature_combination(self, feature_combination_index):
         """ Returns current model/function according to validation set
             for a given feature combination.
 
@@ -705,6 +712,14 @@ class NativeEBMTraining:
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
         return array
 
+    def get_current_model(self):
+        model = []
+        for index in range(len(self._feature_combinations)):
+            model_feature_combination = self._get_current_model_feature_combination(index)
+            model.append(model_feature_combination)
+
+        return model
+
 
 class NativeEBMInteraction:
     """Lightweight wrapper for EBM C interaction code.
@@ -712,26 +727,28 @@ class NativeEBMInteraction:
 
     def __init__(
         self,
+        model_type,
+        n_classes,
         features,
         X,
         y,
-        model_type,
-        n_classes,
-        scores=None,
+        scores,
     ):
 
-        # TODO: Update documentation for scores args.
         """ Initializes internal wrapper for EBM C code.
 
         Args:
+            model_type: 'regression'/'classification'.
+            n_classes: Specific to classification,
+                number of unique classes.
             features: List of features represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
-            model_type: 'regression'/'classification'.
-            n_classes: Specific to classification,
-                number of unique classes.
-            scores: Undocumented.
+            scores: predictions from a prior predictor.  For regression
+                there is 1 prediction per instance.  For binary classification
+                there is one logit.  For multiclass there are n_classes logits
+
         """
 
         # first set the one thing that we will close on
@@ -798,3 +815,125 @@ class NativeEBMInteraction:
 
         log.info("Fast interaction score end")
         return score.value
+
+class NativeHelper:
+    @staticmethod
+    def cyclic_gradient_boost(
+        model_type,
+        n_classes,
+        features,
+        feature_combinations,
+        X_train,
+        y_train,
+        scores_train,
+        X_val,
+        y_val,
+        scores_val,
+        n_inner_bags,
+        random_state,
+        learning_rate,
+        max_tree_splits,
+        min_cases_for_splits,
+        training_step_episodes,
+        data_n_episodes,
+        early_stopping_tolerance,
+        early_stopping_run_length,
+        name
+    ):
+
+        min_metric = np.inf
+        episode_index = 0
+        with closing(
+            NativeEBMTraining(
+                model_type,
+                n_classes,
+                features,
+                feature_combinations,
+                X_train,
+                y_train,
+                scores_train,
+                X_val,
+                y_val,
+                scores_val,
+                n_inner_bags,
+                random_state
+            )
+        ) as native_ebm_training:
+            no_change_run_length = 0
+            bp_metric = np.inf
+            log.info("Start boosting {0}".format(name))
+            for episode_index in range(data_n_episodes):
+                if episode_index % 10 == 0:
+                    log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
+                    log.debug("Metric: {0}".format(min_metric))
+
+                for feature_combination_index in range(len(feature_combinations)):
+                    curr_metric = native_ebm_training.training_step(
+                        feature_combination_index=feature_combination_index,
+                        learning_rate=learning_rate,
+                        max_tree_splits=max_tree_splits,
+                        min_cases_for_split=min_cases_for_splits,
+                        training_step_episodes=training_step_episodes,
+                    )
+
+                    min_metric = min(curr_metric, min_metric)
+
+                # TODO PK this early_stopping_tolerance is a little inconsistent
+                #      since it only exits when a small range of figures expresses
+                #      a pattern, but we can do better by keeping a list of the last
+                #      number of measurements to have a consistent window of values
+                if no_change_run_length == 0:
+                    bp_metric = min_metric
+                if min_metric + early_stopping_tolerance < bp_metric:
+                    no_change_run_length = 0
+                else:
+                    no_change_run_length += 1
+
+                if (
+                    early_stopping_run_length >= 0
+                    and no_change_run_length >= early_stopping_run_length
+                ):
+                    break
+
+            log.info("End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(name, min_metric, episode_index))
+            model_update = native_ebm_training.get_best_model()
+
+        return model_update, min_metric, episode_index
+
+    @staticmethod
+    def get_interactions(
+        n_interactions,
+        iter_feature_combinations,
+        model_type,
+        n_classes,
+        features,
+        X,
+        y,
+        scores
+    ):
+        # TODO PK we only need to store the top n_interactions items, so use a heap
+        interaction_scores = []
+        with closing(
+            NativeEBMInteraction(
+                model_type=model_type,
+                n_classes=n_classes,
+                features=features,
+                X=X,
+                y=y,
+                scores=scores,
+            )
+        ) as native_ebm_interactions:
+            for feature_combination in iter_feature_combinations:
+                score = native_ebm_interactions.get_interaction_score(feature_combination)
+                interaction_scores.append((feature_combination, score))
+
+        ranked_scores = list(
+            sorted(interaction_scores, key=lambda x: x[1], reverse=True)
+        )
+        n_interactions = min(len(ranked_scores), n_interactions)
+        final_ranked_scores = ranked_scores[0:n_interactions]
+
+        final_indices = [x[0] for x in final_ranked_scores]
+        final_scores = [x[1] for x in final_ranked_scores]
+
+        return final_indices, final_scores
