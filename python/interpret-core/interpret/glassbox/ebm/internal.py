@@ -307,9 +307,9 @@ class Native:
 
         # it's critical that we put typed_log_func into self, 
         # otherwise it will be garbage collected
-        self.typed_log_func = self._LogFuncType(native_log)
+        self._typed_log_func = self._LogFuncType(native_log)
         
-        self.lib.SetLogMessageFunction(self.typed_log_func)
+        self.lib.SetLogMessageFunction(self._typed_log_func)
         self.lib.SetTraceLevel(ct.c_char(level_dict[level]))
 
     @staticmethod
@@ -411,7 +411,7 @@ class Native:
             for feature_idx in features_in_combination:
                 feature_combination_indexes.append(feature_idx)
 
-        feature_combination_indexes = np.array(feature_combination_indexes, dtype=ct.c_longlong)
+        feature_combination_indexes = np.array(feature_combination_indexes, dtype=np.int64)
 
         return feature_combinations_ar, feature_combination_indexes
 
@@ -657,6 +657,9 @@ class NativeEBMTraining:
         return metric_output.value
 
     def _get_feature_combination_shape(self, feature_combination_index):
+        # TODO PK do this once during construction so that we don't have to do it again
+        #         and so that we don't have to store self._features & self._feature_combinations 
+
         # Retrieve dimensions of log odds tensor
         dimensions = []
         feature_combination = self._feature_combinations[feature_combination_index]

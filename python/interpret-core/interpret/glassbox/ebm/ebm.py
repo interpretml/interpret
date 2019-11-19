@@ -494,22 +494,6 @@ class BaseCoreEBM:
 
         return final_indices, final_scores
 
-    def staged_fit_interactions_parallel(self, X, y, inter_indices=[]):
-
-        log.info("Splitting train/test for interactions")
-
-        # Split data into train/val
-        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
-            X, 
-            y, 
-            test_size=self.holdout_split, 
-            random_state=self.random_state, 
-            is_classification=self.model_type == "classification"
-        )
-
-        self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
-        return self
-
     def _staged_fit_interactions(self, X_train, y_train, X_val, y_val, inter_indices=[]):
 
         log.info("Training interactions")
@@ -550,6 +534,25 @@ class BaseCoreEBM:
         self.feature_combinations_.extend(inter_feature_combinations)
 
         return
+
+    def staged_fit_interactions_parallel(self, X, y, inter_indices=[]):
+
+        log.info("Splitting train/test for interactions")
+
+        # Split data into train/val
+        # NOTE: ideally we would store the train/validation split in the 
+        #       remote processes, but joblib doesn't have a concept
+        #       of keeping remote state, so we re-split our sets
+        X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
+            X, 
+            y, 
+            test_size=self.holdout_split, 
+            random_state=self.random_state, 
+            is_classification=self.model_type == "classification"
+        )
+
+        self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
+        return self
 
 
 # TODO PK v.2 Should we be exposing data in this class, or use helper functions to return the values?
@@ -687,6 +690,8 @@ class BaseEBM(BaseEstimator):
             schema=self.schema_, binning_strategy=self.binning_strategy
         )
         self.preprocessor_.fit(X)
+        X_orig = X
+        X = self.preprocessor_.transform(X)
 
         estimators = []
         if is_classifier(self):
@@ -767,9 +772,6 @@ class BaseEBM(BaseEstimator):
         else:
             self.intercept_ = np.float64(0)
 
-        X_orig = X
-        X = self.preprocessor_.transform(X)
-
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         def train_model(estimator, X, y, n_classes):
@@ -816,6 +818,8 @@ class BaseEBM(BaseEstimator):
             raise RuntimeError("Argument 'interaction' has invalid value")
 
         self.inter_indices_ = pair_indices
+
+        X = np.ascontiguousarray(X.T)
 
         # Average base models into one.
         self.attributes_ = EBMUtils.gen_features(
@@ -878,8 +882,6 @@ class BaseEBM(BaseEstimator):
             )
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
-
-        X = np.ascontiguousarray(X.T)
 
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
