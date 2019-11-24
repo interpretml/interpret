@@ -323,11 +323,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 class BaseCoreEBM:
     """Internal use EBM."""
 
-    # TODO PK v.2 col_types, col_n_bins, main_features, interactions should probably be moved to the fit function
-    #             to be consistent with our public interface, and sklearn convention where properties specific to
-    #             the data are put into the fit function.  We should probably also follow using trailing underscores
-    #             for things that are derived from the fit function, again for clarity with our public interface
-
+    # TODO PK decide if we should follow any kind of sklearn convention here with
+    # our private class with respect to using trailing underscores
     def __init__(
         self,
         model_type,
@@ -567,11 +564,21 @@ class BaseEBM(BaseEstimator):
     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
     # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
-    # TODO PK v.2 we should probably move all inputs that have a relation to the data to the fit function.  For examples:
-    #             https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html#lightgbm.LGBMClassifier.fit
-    #             look at feature_name='auto', categorical_feature='auto' in LightGBM (and we should probably adopt those names)
-    #             Including: feature_names, feature_types, schema, main_attr, interactions (for specific columns)
-    #             AND these things should have underscores, per sklearn, https://scikit-learn.org/dev/developers/develop.html
+    # According to scikit-learn convention, everything related to the dataset should be passed into the fit function, but
+    # also according to convention the fit function should have only X, y, and instance weights.  For intelligibility
+    # we need to include things like the names of features, so we need to break one of these rules.  We have chosen
+    # to pass information about the dataset into the __init__ function because then it's possible to do the training
+    # first and then later set things like the features names after training.  Also, people have become accustomed
+    # to passing optional parameters into the __init__ function, but not the fit function, so we maintain that by
+    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names, 
+    # but this still gives the user ultimate control since they can either keep the DataFrame names or pass in new ones to __init__
+    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their 
+    # potential size.  We don't have that issue with our smaller extra dataset dependent parameters
+
+    # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
+    #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
+    #             feature_names, feature_types, schema, main_attr, interactions (for specific columns)
+    #             per : https://scikit-learn.org/dev/developers/develop.html
     #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore, 
     #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
 
@@ -602,7 +609,7 @@ class BaseEBM(BaseEstimator):
         #             how many interactions at each dimension level(starting at two)
         #             This parameter should be part of __init__
         #             The second parameter would be a list of specific interaction sets
-        #             which would be provided to the fit function.  People may want to use
+        #             that people may want to use
         #             both at the same time, and there isn't a good way to separate the two concepts
         #             without issues.  Also, the deserve to be in separate functions (init vs fit)
         interactions=0,

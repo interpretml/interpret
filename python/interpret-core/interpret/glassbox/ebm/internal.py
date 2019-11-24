@@ -970,7 +970,9 @@ class NativeHelper:
                 # TODO PK this early_stopping_tolerance is a little inconsistent
                 #      since it only exits when a small range of figures expresses
                 #      a pattern, but we can do better by keeping a list of the last
-                #      number of measurements to have a consistent window of values
+                #      number of measurements to have a consistent window of values.
+                #      If we only cared about the metric at the start and end of the epoch 
+                #      window a linked list would be best since we can add/remove items O(1)
                 if no_change_run_length == 0:
                     bp_metric = min_metric
                 if min_metric + early_stopping_tolerance < bp_metric:
