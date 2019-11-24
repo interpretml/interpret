@@ -934,12 +934,17 @@ class BaseEBM(BaseEstimator):
     def _select_merged_pairs(self, estimators, X, y):
         # Select pairs from base models
         def score_fn(estimator, X, y, drop_indices):
-            if is_classifier(estimator):
+            if estimator.model_type == "classification":
                 prob = EBMUtils.classifier_predict_proba(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
+                # TODO PK we only generate the ROC for binary classification (prob[:, 1]).  This needs to change for multiclass
+                # TODO PK consider using log loss for consistency with the rest of our metric calculations throughout this package
                 return -1.0 * roc_auc_score(y, prob[:, 1])
-            else:
+            elif estimator.model_type == "regression":
                 pred = EBMUtils.regressor_predict(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
                 return mean_squared_error(y, pred)
+            else:
+                msg = "Unknown model_type: '{}'.".format(estimator.model_type)
+                raise ValueError(msg)
 
         pair_cum_rank = Counter()
         pair_freq = Counter()

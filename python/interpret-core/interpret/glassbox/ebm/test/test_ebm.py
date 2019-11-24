@@ -1,6 +1,10 @@
 # Copyright (c) 2019 Microsoft Corporation
 # Distributed under the MIT software license
 
+# TODO PK add a test for Regression with interactions
+# TODO PK add a test with a real regression dataset
+# TODO PK add a test with more than 1 multiclass interaction
+
 from ....test.utils import (
     synthetic_multiclass,
     synthetic_classification,
