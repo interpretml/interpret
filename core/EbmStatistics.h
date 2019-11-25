@@ -21,10 +21,10 @@ public:
    EBM_INLINE static FractionalDataType ComputeNewtonRaphsonStep(const FractionalDataType residualError) {
       // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that they are using t * (2 - t) since they have a 2 in their objective
       const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-      return absResidualError * (1 - absResidualError);
+      return absResidualError * (FractionalDataType { 1 } - absResidualError);
    }
 
-   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
+   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
       // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
@@ -44,7 +44,7 @@ public:
    }
    WARNING_POP
 
-   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cInstances) {
+   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
       // TODO: check again if we can ever have a zero here
       // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
       EBM_ASSERT(0 != cInstances);
@@ -71,23 +71,26 @@ public:
       // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having trainingLogOddsPrediction be 0
       // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having trainingLogOddsPrediction be 0
 
-      // TODO : this assembly is using branches instead of conditional execution.  Try finding something that will work without any branching, like multiplication, even if it's slower without branch misses
-
-      // TODO: instead of negating trainingLogOddsPrediction and then conditionally assigning it, can we multiply it with the result of the first conditional -1 vs 1
-      return (UNPREDICTABLE(0 == binnedActualValue) ? -1 : 1) / (1 + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
+      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
+      const FractionalDataType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -1 } : FractionalDataType { 1 }) / (FractionalDataType { 1 } + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
+#ifndef NDEBUG
+      const FractionalDataType retDebug = ComputeClassificationResidualErrorMulticlass(1 + std::exp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
+      EBM_ASSERT(std::isinf(ret) || std::isinf(retDebug) || std::isnan(ret) || std::isnan(retDebug) || std::abs(retDebug - ret) < FractionalDataType { 0.0000001 });
+#endif // NDEBUG
+      return ret;
    }
 
    // if trainingLogOddsPrediction is zero (so, 50%/50% odds), then we can call this function
    EBM_INLINE static FractionalDataType ComputeClassificationResidualErrorBinaryclass(const StorageDataTypeCore binnedActualValue) {
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
-      const FractionalDataType result = UNPREDICTABLE(0 == binnedActualValue) ? -0.5 : 0.5;
+      const FractionalDataType result = UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -0.5 } : FractionalDataType { 0.5 };
       EBM_ASSERT(ComputeClassificationResidualErrorBinaryclass(0, binnedActualValue) == result);
       return result;
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationResidualErrorMulticlass(const FractionalDataType sumExp, const FractionalDataType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
       // TODO: is it better to use the non-branching conditional below, or is it better to assign all the items the negation case and then AFTERWARDS adding one to the single case that is equal to iVector 
-      const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FractionalDataType { 1 } : static_cast<FractionalDataType>(0);
+      const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FractionalDataType { 1 } : FractionalDataType { 0 };
       const FractionalDataType ret = yi - std::exp(trainingLogWeight) / sumExp;
       return ret;
    }
@@ -117,12 +120,21 @@ public:
       // TODO: the calls to log and exp have loops and conditional statements.  Suposedly the assembly FYL2X is slower than the C++ log/exp functions.  Look into this more.  We might end up sorting our input data by the target to avoid this if we can't find a non-branching solution because branch prediction will be important here
       // https://stackoverflow.com/questions/45785705/logarithm-in-c-and-assembly
 
-      return std::log(1 + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction)); // log & exp will return the same type that it is given, either float or double
+      const FractionalDataType ret = std::log(FractionalDataType { 1 } + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction)); // log & exp will return the same type that it is given, either float or double
+
+#ifndef NDEBUG
+      FractionalDataType scores[2];
+      scores[0] = 0;
+      scores[1] = validationLogOddsPrediction;
+      const FractionalDataType retDebug = EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(1 + std::exp(validationLogOddsPrediction), scores, binnedActualValue);
+      EBM_ASSERT(std::isinf(ret) || std::isinf(retDebug) || std::abs(retDebug - ret) < FractionalDataType { 0.0000001 });
+#endif // NDEBUG
+
+      return ret;
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
-      // TODO: avoid doing the negation below.  Also, can we optimize further?
-      return -std::log(std::exp(aValidationLogWeight[binnedActualValue]) / sumExp);
+      return std::log(sumExp / std::exp(aValidationLogWeight[binnedActualValue]));
    }
 };
 
