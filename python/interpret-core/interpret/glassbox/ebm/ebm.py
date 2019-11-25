@@ -17,7 +17,7 @@ from warnings import warn
 
 from sklearn.base import is_classifier, clone
 from sklearn.utils.validation import check_is_fitted
-from sklearn.metrics import roc_auc_score, mean_squared_error
+from sklearn.metrics import log_loss, mean_squared_error
 from collections import Counter
 
 from sklearn.base import (
@@ -936,23 +936,29 @@ class BaseEBM(BaseEstimator):
         return self
 
     def _select_merged_pairs(self, estimators, X, y):
+        # TODO PK we really need to use purification before here because it's not really legal to elminate
+        #         a feature combination unless it's average contribution value is zero, and for a pair that 
+        #         would mean that the intercepts for both featuers in the combination were zero, hense purified
+
         # Select pairs from base models
-        def score_fn(estimator, X, y, drop_indices):
-            if estimator.model_type == "classification":
-                prob = EBMUtils.classifier_predict_proba(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
-                # TODO PK we only generate the ROC for binary classification (prob[:, 1]).  This needs to change for multiclass
-                # TODO PK consider using log loss for consistency with the rest of our metric calculations throughout this package
-                return -1.0 * roc_auc_score(y, prob[:, 1])
-            elif estimator.model_type == "regression":
-                pred = EBMUtils.regressor_predict(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
+        def score_fn(model_type, X, y, feature_combinations, model, intercept, drop_indices):
+            if model_type == "classification":
+                # TODO PK remove the drop_indices from classifier_predict_proba & regressor_predict
+                prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept, drop_indices)
+                return log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
+            elif model_type == "regression":
+                pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept, drop_indices)
                 return mean_squared_error(y, pred)
             else:
-                msg = "Unknown model_type: '{}'.".format(estimator.model_type)
+                msg = "Unknown model_type: '{}'.".format(model_type)
                 raise ValueError(msg)
 
         pair_cum_rank = Counter()
         pair_freq = Counter()
+
         for index, estimator in enumerate(estimators):
+            # TODO PK move the work done inside this loop to the original parallel threads so that this part can be done in parallel
+
             backward_impacts = []
             forward_impacts = []
 
@@ -965,21 +971,49 @@ class BaseEBM(BaseEstimator):
                 is_train=False
             )
 
+            n_base_feature_combinations = len(estimator.feature_combinations_) - len(estimator.inter_indices_)
+
+            # TODO PK BUG estimator.inter_indices_ SHOULD BE INDEXES AND NOT A LIST OF TUPPLES
             base_forward_score = score_fn(
-                estimator, X_val, y_val, estimator.inter_indices_
+                estimator.model_type, 
+                X_val, 
+                y_val, 
+                estimator.feature_combinations_[:n_base_feature_combinations], 
+                estimator.model_[:n_base_feature_combinations], 
+                estimator.intercept_, 
+                []
             )
-            base_backward_score = score_fn(estimator, X_val, y_val, [])
+            base_backward_score = score_fn(
+                estimator.model_type, 
+                X_val, 
+                y_val, 
+                estimator.feature_combinations_, 
+                estimator.model_, 
+                estimator.intercept_, 
+                []
+            )
             for pair_idx, pair in enumerate(estimator.inter_indices_):
+                n_full_idx = n_base_feature_combinations + pair_idx
+
                 pair_freq[pair] += 1
+
                 backward_score = score_fn(
-                    estimator, X_val, y_val, estimator.inter_indices_[pair_idx]
+                    estimator.model_type, 
+                    X_val, 
+                    y_val, 
+                    estimator.feature_combinations_[:n_full_idx] + estimator.feature_combinations_[n_full_idx + 1:], 
+                    estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1:], 
+                    estimator.intercept_, 
+                    []
                 )
                 forward_score = score_fn(
-                    estimator,
+                    estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.inter_indices_[:pair_idx]
-                    + estimator.inter_indices_[pair_idx + 1 :],
+                    estimator.feature_combinations_[:n_base_feature_combinations] + estimator.feature_combinations_[n_full_idx:n_full_idx + 1], 
+                    estimator.model_[:n_base_feature_combinations] + estimator.model_[n_full_idx:n_full_idx + 1], 
+                    estimator.intercept_, 
+                    []
                 )
                 backward_impact = backward_score - base_backward_score
                 forward_impact = base_forward_score - forward_score
