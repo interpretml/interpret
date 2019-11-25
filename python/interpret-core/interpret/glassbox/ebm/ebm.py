@@ -461,12 +461,9 @@ class BaseCoreEBM:
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
-            # TODO PK currently we're using None for the scores_train, but we should instead determine what they
-            # are after training the mains
-            #scores_train = EBMUtils.decision_function(
-            #    X_train, self.feature_combinations_, self.model_, self.intercept_
-            #)
-            scores_train = None
+            scores_train = EBMUtils.decision_function(
+                X_train, self.feature_combinations_, self.model_, self.intercept_
+            )
 
             iter_feature_combinations=combinations(range(len(self.col_types)), 2)
 
