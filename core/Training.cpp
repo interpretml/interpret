@@ -640,18 +640,18 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
          const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
 
-         FractionalDataType rootMeanSquareError = 0;
+         FractionalDataType meanSquareError = 0;
          do {
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
-            rootMeanSquareError += residualError * residualError;
+            meanSquareError += EbmStatistics::ComputeRegressionSingleInstanceMeanSquaredError(residualError);
             *pResidualError = residualError;
             ++pResidualError;
          } while(pResidualErrorEnd != pResidualError);
 
-         rootMeanSquareError /= pValidationSet->GetCountInstances();
+         meanSquareError /= pValidationSet->GetCountInstances();
          LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop - Zero dimensions");
-         return sqrt(rootMeanSquareError);
+         return meanSquareError;
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FractionalDataType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
@@ -710,7 +710,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
    const StorageDataTypeCore * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-      FractionalDataType rootMeanSquareError = 0;
+      FractionalDataType meanSquareError = 0;
       FractionalDataType * pResidualError = pValidationSet->GetResidualPointer();
 
       // this shouldn't overflow since we're accessing existing memory
@@ -737,7 +737,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
             const FractionalDataType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FractionalDataType residualError = EbmStatistics::ComputeRegressionResidualError(*pResidualError - smallChangeToPrediction);
-            rootMeanSquareError += residualError * residualError;
+            meanSquareError += EbmStatistics::ComputeRegressionSingleInstanceMeanSquaredError(residualError);
             *pResidualError = residualError;
             ++pResidualError;
 
@@ -759,9 +759,9 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
          goto one_last_loop_regression;
       }
 
-      rootMeanSquareError /= pValidationSet->GetCountInstances();
+      meanSquareError /= pValidationSet->GetCountInstances();
       LOG_0(TraceLevelVerbose, "Exited ValidationSetTargetFeatureLoop");
-      return sqrt(rootMeanSquareError);
+      return meanSquareError;
    } else {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       FractionalDataType sumLogLoss = 0;
@@ -1296,7 +1296,7 @@ static IntegerDataType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmTra
 
       modelMetric = ValidationSetInputFeatureLoop<1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pEbmTrainingState->m_pValidationSet, aModelFeatureCombinationUpdateTensor, pEbmTrainingState->m_runtimeLearningTypeOrCountTargetClasses);
 
-      // modelMetric is either logloss (classification) or rmse (regression).  In either case we want to minimize it.
+      // modelMetric is either logloss (classification) or mean squared error (mse) (regression).  In either case we want to minimize it.
       if(LIKELY(modelMetric < pEbmTrainingState->m_bestModelMetric)) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
          pEbmTrainingState->m_bestModelMetric = modelMetric;

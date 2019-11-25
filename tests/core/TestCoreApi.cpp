@@ -59,8 +59,15 @@ inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
    static int CONCATENATE_TOKENS(UNUSED_INTEGER_HIDDEN_, __LINE__) = RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description)); \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
+int g_countEqualityFailures = 0;
+
 inline bool IsApproxEqual(const double value, const double expected, const double percentage) {
-   return std::abs(expected - value) <= std::abs(expected * percentage);
+   bool ret = std::abs(expected - value) <= std::abs(expected * percentage);
+   if(!ret) {
+      // we're going to fail!
+      ++g_countEqualityFailures; // this doesn't do anything useful but gives us something to break on
+   }
+   return ret;
 }
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
@@ -1069,7 +1076,7 @@ TEST_CASE("zero learning rate, training, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination, {}, {}, 0);
-         CHECK_APPROX(validationMetric, 12);
+         CHECK_APPROX(validationMetric, 144);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
 
@@ -1151,18 +1158,18 @@ TEST_CASE("negative learning rate, training, regression") {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 12.100000000000000);
+            CHECK_APPROX(validationMetric, 146.41);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, -0.1000000000000000);
          }
          if(0 == iFeatureCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 12.20100000000000);
+            CHECK_APPROX(validationMetric, 148.864401);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, -0.2010000000000000);
          }
       }
    }
-   CHECK_APPROX(validationMetric, 209593.55637813677);
+   CHECK_APPROX(validationMetric, 43929458875.235196700295656826033);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, -209581.55637813677);
 }
@@ -1269,7 +1276,7 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") 
    test.InitializeTraining();
 
    FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
-   CHECK_APPROX(validationMetric, 11.900000000000000);
+   CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
@@ -1289,7 +1296,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
    test.InitializeTraining();
 
    FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, 0);
-   CHECK_APPROX(validationMetric, 11.900000000000000);
+   CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
@@ -1324,7 +1331,7 @@ TEST_CASE("Zero training instances, training, regression") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Train(0);
-      CHECK_APPROX(validationMetric, 12);
+      CHECK_APPROX(validationMetric, 144);
       FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
    }
@@ -1712,18 +1719,18 @@ TEST_CASE("FeatureCombination with zero features, training, regression") {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination);
          if(0 == iFeatureCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.900000000000000);
+            CHECK_APPROX(validationMetric, 141.61);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1000000000000000);
          }
          if(0 == iFeatureCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.801000000000000);
+            CHECK_APPROX(validationMetric, 139.263601);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1990000000000000);
          }
       }
    }
-   CHECK_APPROX(validationMetric, 2.0004317124741098);
+   CHECK_APPROX(validationMetric, 4.001727036272099502004735302456);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
@@ -2205,7 +2212,7 @@ TEST_CASE("Test data bit packing extremes, training, regression") {
             test.InitializeTraining();
 
             FractionalDataType validationMetric = test.Train(0);
-            CHECK_APPROX(validationMetric, 7.93);
+            CHECK_APPROX(validationMetric, 62.8849);
             FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0.07);
          }

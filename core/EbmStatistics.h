@@ -138,6 +138,11 @@ public:
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
       return std::log(sumExp / std::exp(aValidationLogWeight[binnedActualValue]));
    }
+
+   EBM_INLINE static FractionalDataType ComputeRegressionSingleInstanceMeanSquaredError(const FractionalDataType residualError) {
+      // we are confirmed to get the same mean squared error value as scikit-learn for regression
+      return residualError * residualError;
+   }
 };
 
 #endif // EBM_STATISTICS_H
