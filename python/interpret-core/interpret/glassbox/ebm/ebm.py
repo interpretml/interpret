@@ -890,7 +890,7 @@ class BaseEBM(BaseEstimator):
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
-                X, self.attribute_sets_, self.attribute_set_models_, []
+                X, self.attribute_sets_, self.attribute_set_models_
             )
             # TODO PK v.2 _attrib_set_model_means_ -> _model_means_ 
             # (or something else matching what this is being used for)
@@ -920,7 +920,7 @@ class BaseEBM(BaseEstimator):
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, self.attribute_sets_, self.attribute_set_models_, []
+            X, self.attribute_sets_, self.attribute_set_models_
         )
         self.mean_abs_scores_ = []
         for set_idx, feature_combination, scores in scores_gen:
@@ -941,13 +941,12 @@ class BaseEBM(BaseEstimator):
         #         would mean that the intercepts for both featuers in the combination were zero, hense purified
 
         # Select pairs from base models
-        def score_fn(model_type, X, y, feature_combinations, model, intercept, drop_indices):
+        def score_fn(model_type, X, y, feature_combinations, model, intercept):
             if model_type == "classification":
-                # TODO PK remove the drop_indices from classifier_predict_proba & regressor_predict
-                prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept, drop_indices)
+                prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
                 return log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
             elif model_type == "regression":
-                pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept, drop_indices)
+                pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept)
                 return mean_squared_error(y, pred)
             else:
                 msg = "Unknown model_type: '{}'.".format(model_type)
@@ -980,8 +979,7 @@ class BaseEBM(BaseEstimator):
                 y_val, 
                 estimator.feature_combinations_[:n_base_feature_combinations], 
                 estimator.model_[:n_base_feature_combinations], 
-                estimator.intercept_, 
-                []
+                estimator.intercept_
             )
             base_backward_score = score_fn(
                 estimator.model_type, 
@@ -989,8 +987,7 @@ class BaseEBM(BaseEstimator):
                 y_val, 
                 estimator.feature_combinations_, 
                 estimator.model_, 
-                estimator.intercept_, 
-                []
+                estimator.intercept_
             )
             for pair_idx, pair in enumerate(estimator.inter_indices_):
                 n_full_idx = n_base_feature_combinations + pair_idx
@@ -1003,8 +1000,7 @@ class BaseEBM(BaseEstimator):
                     y_val, 
                     estimator.feature_combinations_[:n_full_idx] + estimator.feature_combinations_[n_full_idx + 1:], 
                     estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1:], 
-                    estimator.intercept_, 
-                    []
+                    estimator.intercept_
                 )
                 forward_score = score_fn(
                     estimator.model_type,
@@ -1012,8 +1008,7 @@ class BaseEBM(BaseEstimator):
                     y_val,
                     estimator.feature_combinations_[:n_base_feature_combinations] + estimator.feature_combinations_[n_full_idx:n_full_idx + 1], 
                     estimator.model_[:n_base_feature_combinations] + estimator.model_[n_full_idx:n_full_idx + 1], 
-                    estimator.intercept_, 
-                    []
+                    estimator.intercept_
                 )
                 backward_impact = backward_score - base_backward_score
                 forward_impact = base_forward_score - forward_score
