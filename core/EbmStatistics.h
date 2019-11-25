@@ -114,6 +114,7 @@ public:
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossBinaryclass(const FractionalDataType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+      // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
       // TODO: also try log1p and I guess (exp1p?) for accuracy and performance
@@ -134,6 +135,7 @@ public:
    }
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
+      // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
       return std::log(sumExp / std::exp(aValidationLogWeight[binnedActualValue]));
    }
 };
