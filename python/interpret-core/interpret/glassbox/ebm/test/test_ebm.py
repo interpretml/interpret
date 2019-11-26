@@ -157,26 +157,39 @@ def _smoke_test_explanations(global_exp, local_exp, port):
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_adult():
+    from sklearn.metrics import roc_auc_score
+    import sys
+
     data = adult_classification()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
+    X_tr = data["train"]["X"]
+    y_tr = data["train"]["y"]
+    X_te = data["test"]["X"]
+    y_te = data["test"]["y"]
+
+    # clf = ExplainableBoostingClassifier(n_jobs=1, interactions=3)
+    # n_splits = 3
+    # ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
+    # cross_validate(
+    #     clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
+    # )
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
-    n_splits = 3
-    ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    cross_validate(
-        clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-    )
-    clf.fit(X, y)
-    prob_scores = clf.predict_proba(X)
+    clf.fit(X_tr, y_tr)
+
+    prob_scores = clf.predict_proba(X_te)
 
     within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
     assert within_bounds
 
+    # Performance
+    auc = roc_auc_score(y_te, prob_scores[:, 1])
+    print(auc, file=sys.stderr)
+    assert auc > 0.5
+
     valid_ebm(clf)
 
     global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X[:5, :], y[:5])
+    local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
 
     _smoke_test_explanations(global_exp, local_exp, 6000)
 
