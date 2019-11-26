@@ -4,8 +4,7 @@
 
 from ...utils import perf_dict
 from .utils import EBMUtils
-from .internal import NativeEBMTraining
-from .internal import NativeEBMInteraction
+from .internal import NativeHelper
 from .postprocessing import multiclass_postprocess
 from ...utils import unify_data, autogen_schema
 from ...api.base import ExplainerMixin
@@ -18,7 +17,7 @@ from warnings import warn
 
 from sklearn.base import is_classifier, clone
 from sklearn.utils.validation import check_is_fitted
-from sklearn.metrics import roc_auc_score, mean_squared_error
+from sklearn.metrics import log_loss, mean_squared_error
 from collections import Counter
 
 from sklearn.base import (
@@ -27,7 +26,6 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )
-from contextlib import closing
 from itertools import combinations
 
 import logging
@@ -325,11 +323,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 class BaseCoreEBM:
     """Internal use EBM."""
 
-    # TODO PK v.2 col_types, col_n_bins, main_features, interactions should probably be moved to the fit function
-    #             to be consistent with our public interface, and sklearn convention where properties specific to
-    #             the data are put into the fit function.  We should probably also follow using trailing underscores
-    #             for things that are derived from the fit function, again for clarity with our public interface
-
+    # TODO PK decide if we should follow any kind of sklearn convention here with
+    # our private class with respect to using trailing underscores
     def __init__(
         self,
         model_type,
@@ -435,30 +430,30 @@ class BaseCoreEBM:
     def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
 
-        with closing(
-            NativeEBMTraining(
-                self.features_,
-                main_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=None,
-                validation_scores=None,
-            )
-        ) as native_ebm_training:
-            self.current_metric_, self.main_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm_training, main_feature_combinations, "Main"
-            )
+        self.model_, self.current_metric_, self.main_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+            model_type=self.model_type,
+            n_classes=self.n_classes_,
+            features=self.features_,
+            feature_combinations=main_feature_combinations,
+            X_train=X_train,
+            y_train=y_train,
+            scores_train=None,
+            X_val=X_val,
+            y_val=y_val,
+            scores_val=None,
+            n_inner_bags=self.feature_step_n_inner_bags,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            max_tree_splits=self.max_tree_splits,
+            min_cases_for_splits=self.min_cases_for_splits,
+            training_step_episodes=self.training_step_episodes,
+            data_n_episodes=self.data_n_episodes,
+            early_stopping_tolerance=self.early_stopping_tolerance,
+            early_stopping_run_length=self.early_stopping_run_length,
+            name="Main"
+        )
 
-            log.debug("Main Metric: {0}".format(self.current_metric_))
-            for index, feature_combination in enumerate(main_feature_combinations):
-                model_feature_combination = native_ebm_training.get_best_model_feature_combination(index)
-                self.model_.append(model_feature_combination)
-                self.feature_combinations_.append(feature_combination)
+        self.feature_combinations_ = main_feature_combinations
 
         return
 
@@ -466,37 +461,22 @@ class BaseCoreEBM:
         if isinstance(self.interactions, int) and self.interactions != 0:
             log.info("Estimating with FAST")
 
-            # TODO PK currently we're using None for the scores, but we should instead determine what they
-            # are after training the mains
-            #training_scores = EBMUtils.decision_function(
-            #    X_train, self.feature_combinations_, self.model_, self.intercept_
-            #)
-            training_scores = None
-
-            # TODO PK we only need to store the top n_interactions items, so use a heap
-            interaction_scores = []
-            with closing(
-                NativeEBMInteraction(
-                    self.features_,
-                    X_train,
-                    y_train,
-                    model_type=self.model_type,
-                    n_classes=self.n_classes_,
-                    scores=training_scores,
-                )
-            ) as native_ebm_interactions:
-                for pair in combinations(range(len(self.col_types)), 2):
-                    score = native_ebm_interactions.get_interaction_score(pair)
-                    interaction_scores.append((pair, score))
-
-            ranked_scores = list(
-                sorted(interaction_scores, key=lambda x: x[1], reverse=True)
+            scores_train = EBMUtils.decision_function(
+                X_train, self.feature_combinations_, self.model_, self.intercept_
             )
-            n_interactions = min(len(ranked_scores), self.interactions)
-            final_ranked_scores = ranked_scores[0:n_interactions]
 
-            final_indices = [x[0] for x in final_ranked_scores]
-            final_scores = [x[1] for x in final_ranked_scores]
+            iter_feature_combinations=combinations(range(len(self.col_types)), 2)
+
+            final_indices, final_scores = NativeHelper.get_interactions(
+                n_interactions=self.interactions,
+                iter_feature_combinations=iter_feature_combinations,
+                model_type=self.model_type,
+                n_classes=self.n_classes_,
+                features=self.features_,
+                X=X_train,
+                y=y_train,
+                scores=scores_train
+            )
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
             final_scores = []
@@ -508,11 +488,55 @@ class BaseCoreEBM:
 
         return final_indices, final_scores
 
+    def _staged_fit_interactions(self, X_train, y_train, X_val, y_val, inter_indices=[]):
+
+        log.info("Training interactions")
+
+        scores_train = EBMUtils.decision_function(
+            X_train, self.feature_combinations_, self.model_, self.intercept_
+        )
+        scores_val = EBMUtils.decision_function(
+            X_val, self.feature_combinations_, self.model_, self.intercept_
+        )
+
+        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
+
+        model_update, self.current_metric_, self.inter_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+            model_type=self.model_type,
+            n_classes=self.n_classes_,
+            features=self.features_,
+            feature_combinations=inter_feature_combinations,
+            X_train=X_train,
+            y_train=y_train,
+            scores_train=scores_train,
+            X_val=X_val,
+            y_val=y_val,
+            scores_val=scores_val,
+            n_inner_bags=self.feature_step_n_inner_bags,
+            random_state=self.random_state,
+            learning_rate=self.learning_rate,
+            max_tree_splits=self.max_tree_splits,
+            min_cases_for_splits=self.min_cases_for_splits,
+            training_step_episodes=self.training_step_episodes,
+            data_n_episodes=self.data_n_episodes,
+            early_stopping_tolerance=self.early_stopping_tolerance,
+            early_stopping_run_length=self.early_stopping_run_length,
+            name="Pair"
+        )
+
+        self.model_.extend(model_update)
+        self.feature_combinations_.extend(inter_feature_combinations)
+
+        return
+
     def staged_fit_interactions_parallel(self, X, y, inter_indices=[]):
 
         log.info("Splitting train/test for interactions")
 
         # Split data into train/val
+        # NOTE: ideally we would store the train/validation split in the 
+        #       remote processes, but joblib doesn't have a concept
+        #       of keeping remote state, so we re-split our sets
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X, 
             y, 
@@ -524,99 +548,8 @@ class BaseCoreEBM:
         self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
         return self
 
-    def _staged_fit_interactions(self, X_train, y_train, X_val, y_val, inter_indices=[]):
 
-        log.info("Training interactions")
-
-        # Fix main, train interactions
-        training_scores = EBMUtils.decision_function(
-            X_train, self.feature_combinations_, self.model_, self.intercept_
-        )
-        validation_scores = EBMUtils.decision_function(
-            X_val, self.feature_combinations_, self.model_, self.intercept_
-        )
-        
-        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
-        with closing(
-            NativeEBMTraining(
-                # TODO: we can reduce this list of features_ down to just the ones required for
-                #       training our inter_feature_combinations, which would reduce memory
-                self.features_,
-                inter_feature_combinations,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
-                model_type=self.model_type,
-                n_classes=self.n_classes_,
-                num_inner_bags=self.feature_step_n_inner_bags,
-                training_scores=training_scores,
-                validation_scores=validation_scores,
-                random_state=self.random_state,
-            )
-        ) as native_ebm_training:
-            log.info("Train interactions")
-            self.current_metric_, self.inter_episode_idx_ = self._cyclic_gradient_boost(
-                native_ebm_training, inter_feature_combinations, "Pair"
-            )
-            log.debug("Interaction Metric: {0}".format(self.current_metric_))
-
-            for index, feature_combination in enumerate(inter_feature_combinations):
-                self.model_.append(native_ebm_training.get_best_model_feature_combination(index))
-                self.feature_combinations_.append(feature_combination)
-
-        return
-
-    def _cyclic_gradient_boost(self, native_ebm, feature_combinations, name=None):
-
-        no_change_run_length = 0
-        curr_metric = np.inf
-        min_metric = np.inf
-        bp_metric = np.inf
-        log.info("Start boosting {0}".format(name))
-        curr_episode_index = 0
-        for data_episode_index in range(self.data_n_episodes):
-            curr_episode_index = data_episode_index
-
-            if data_episode_index % 10 == 0:
-                log.debug("Sweep Index for {0}: {1}".format(name, data_episode_index))
-                log.debug("Metric: {0}".format(curr_metric))
-
-            if len(feature_combinations) == 0:
-                log.debug("No sets to boost for {0}".format(name))
-
-            for index, feature_combination in enumerate(feature_combinations):
-                curr_metric = native_ebm.training_step(
-                    index,
-                    training_step_episodes=self.training_step_episodes,
-                    learning_rate=self.learning_rate,
-                    max_tree_splits=self.max_tree_splits,
-                    min_cases_for_split=self.min_cases_for_splits,
-                    training_weights=0,
-                    validation_weights=0,
-                )
-
-                # NOTE: Out of per-feature boosting on purpose.
-                min_metric = min(curr_metric, min_metric)
-
-            if no_change_run_length == 0:
-                bp_metric = min_metric
-            if curr_metric + self.early_stopping_tolerance < bp_metric:
-                no_change_run_length = 0
-            else:
-                no_change_run_length += 1
-
-            if (
-                self.early_stopping_run_length >= 0
-                and no_change_run_length >= self.early_stopping_run_length
-            ):
-                log.info("Early break {0}: {1}".format(name, data_episode_index))
-                break
-        log.info("End boosting {0}".format(name))
-
-        return min_metric, curr_episode_index
-
-
+# TODO PK v.2 Should we be exposing data in this class, or use helper functions to return the values?
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -628,11 +561,21 @@ class BaseEBM(BaseEstimator):
     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
     # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
-    # TODO PK v.2 we should probably move all inputs that have a relation to the data to the fit function.  For examples:
-    #             https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html#lightgbm.LGBMClassifier.fit
-    #             look at feature_name='auto', categorical_feature='auto' in LightGBM (and we should probably adopt those names)
-    #             Including: feature_names, feature_types, schema, main_attr, interactions (for specific columns)
-    #             AND these things should have underscores, per sklearn, https://scikit-learn.org/dev/developers/develop.html
+    # According to scikit-learn convention, everything related to the dataset should be passed into the fit function, but
+    # also according to convention the fit function should have only X, y, and instance weights.  For intelligibility
+    # we need to include things like the names of features, so we need to break one of these rules.  We have chosen
+    # to pass information about the dataset into the __init__ function because then it's possible to do the training
+    # first and then later set things like the features names after training.  Also, people have become accustomed
+    # to passing optional parameters into the __init__ function, but not the fit function, so we maintain that by
+    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names, 
+    # but this still gives the user ultimate control since they can either keep the DataFrame names or pass in new ones to __init__
+    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their 
+    # potential size.  We don't have that issue with our smaller extra dataset dependent parameters
+
+    # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
+    #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
+    #             feature_names, feature_types, schema, main_attr, interactions (for specific columns)
+    #             per : https://scikit-learn.org/dev/developers/develop.html
     #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore, 
     #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
 
@@ -663,7 +606,7 @@ class BaseEBM(BaseEstimator):
         #             how many interactions at each dimension level(starting at two)
         #             This parameter should be part of __init__
         #             The second parameter would be a list of specific interaction sets
-        #             which would be provided to the fit function.  People may want to use
+        #             that people may want to use
         #             both at the same time, and there isn't a good way to separate the two concepts
         #             without issues.  Also, the deserve to be in separate functions (init vs fit)
         interactions=0,
@@ -751,6 +694,8 @@ class BaseEBM(BaseEstimator):
             schema=self.schema_, binning_strategy=self.binning_strategy
         )
         self.preprocessor_.fit(X)
+        X_orig = X
+        X = self.preprocessor_.transform(X)
 
         estimators = []
         if is_classifier(self):
@@ -831,9 +776,6 @@ class BaseEBM(BaseEstimator):
         else:
             self.intercept_ = np.float64(0)
 
-        X_orig = X
-        X = self.preprocessor_.transform(X)
-
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         def train_model(estimator, X, y, n_classes):
@@ -881,6 +823,8 @@ class BaseEBM(BaseEstimator):
 
         self.inter_indices_ = pair_indices
 
+        X = np.ascontiguousarray(X.T)
+
         # Average base models into one.
         self.attributes_ = EBMUtils.gen_features(
             self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
@@ -914,7 +858,8 @@ class BaseEBM(BaseEstimator):
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
-            # TODO PK v.2 if we end up choosing to expand/contract averaged_model 
+            # TODO PK v.2 if we end up choosing to expand/contract by removing
+            #             logits from multiclass models, averaged_model 
             #             do it HERE AND apply post processing before returning
 
             self.attribute_set_models_.append(averaged_model)
@@ -922,7 +867,8 @@ class BaseEBM(BaseEstimator):
 
         # Get episode indexes for base estimators.
         self.main_episode_idxs_ = []
-        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
+        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_ 
+        #             (but does this need to be exposed at all)
         self.inter_episode_idxs_ = []
         for estimator in estimators:
             self.main_episode_idxs_.append(estimator.main_episode_idx_)
@@ -941,12 +887,10 @@ class BaseEBM(BaseEstimator):
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
 
-        X = np.ascontiguousarray(X.T)
-
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
-                X, self.attribute_sets_, self.attribute_set_models_, []
+                X, self.attribute_sets_, self.attribute_set_models_
             )
             # TODO PK v.2 _attrib_set_model_means_ -> _model_means_ 
             # (or something else matching what this is being used for)
@@ -976,7 +920,7 @@ class BaseEBM(BaseEstimator):
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, self.attribute_sets_, self.attribute_set_models_, []
+            X, self.attribute_sets_, self.attribute_set_models_
         )
         self.mean_abs_scores_ = []
         for set_idx, feature_combination, scores in scores_gen:
@@ -992,18 +936,28 @@ class BaseEBM(BaseEstimator):
         return self
 
     def _select_merged_pairs(self, estimators, X, y):
+        # TODO PK we really need to use purification before here because it's not really legal to elminate
+        #         a feature combination unless it's average contribution value is zero, and for a pair that 
+        #         would mean that the intercepts for both featuers in the combination were zero, hense purified
+
         # Select pairs from base models
-        def score_fn(estimator, X, y, drop_indices):
-            if is_classifier(estimator):
-                prob = EBMUtils.classifier_predict_proba(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
-                return -1.0 * roc_auc_score(y, prob[:, 1])
-            else:
-                pred = EBMUtils.regressor_predict(X, estimator.feature_combinations_, estimator.model_, estimator.intercept_, drop_indices)
+        def score_fn(model_type, X, y, feature_combinations, model, intercept):
+            if model_type == "classification":
+                prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
+                return log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
+            elif model_type == "regression":
+                pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept)
                 return mean_squared_error(y, pred)
+            else:
+                msg = "Unknown model_type: '{}'.".format(model_type)
+                raise ValueError(msg)
 
         pair_cum_rank = Counter()
         pair_freq = Counter()
+
         for index, estimator in enumerate(estimators):
+            # TODO PK move the work done inside this loop to the original parallel threads so that this part can be done in parallel
+
             backward_impacts = []
             forward_impacts = []
 
@@ -1016,21 +970,45 @@ class BaseEBM(BaseEstimator):
                 is_train=False
             )
 
+            n_base_feature_combinations = len(estimator.feature_combinations_) - len(estimator.inter_indices_)
+
+            # TODO PK BUG estimator.inter_indices_ SHOULD BE INDEXES AND NOT A LIST OF TUPPLES
             base_forward_score = score_fn(
-                estimator, X_val, y_val, estimator.inter_indices_
+                estimator.model_type, 
+                X_val, 
+                y_val, 
+                estimator.feature_combinations_[:n_base_feature_combinations], 
+                estimator.model_[:n_base_feature_combinations], 
+                estimator.intercept_
             )
-            base_backward_score = score_fn(estimator, X_val, y_val, [])
+            base_backward_score = score_fn(
+                estimator.model_type, 
+                X_val, 
+                y_val, 
+                estimator.feature_combinations_, 
+                estimator.model_, 
+                estimator.intercept_
+            )
             for pair_idx, pair in enumerate(estimator.inter_indices_):
+                n_full_idx = n_base_feature_combinations + pair_idx
+
                 pair_freq[pair] += 1
+
                 backward_score = score_fn(
-                    estimator, X_val, y_val, estimator.inter_indices_[pair_idx]
+                    estimator.model_type, 
+                    X_val, 
+                    y_val, 
+                    estimator.feature_combinations_[:n_full_idx] + estimator.feature_combinations_[n_full_idx + 1:], 
+                    estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1:], 
+                    estimator.intercept_
                 )
                 forward_score = score_fn(
-                    estimator,
+                    estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.inter_indices_[:pair_idx]
-                    + estimator.inter_indices_[pair_idx + 1 :],
+                    estimator.feature_combinations_[:n_base_feature_combinations] + estimator.feature_combinations_[n_full_idx:n_full_idx + 1], 
+                    estimator.model_[:n_base_feature_combinations] + estimator.model_[n_full_idx:n_full_idx + 1], 
+                    estimator.intercept_
                 )
                 backward_impact = backward_score - base_backward_score
                 forward_impact = base_forward_score - forward_score

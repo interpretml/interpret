@@ -6,18 +6,18 @@
 }
 \usage{
 initialize_interaction_classification(
-  features, 
   count_target_classes, 
-  targets, 
+  features, 
   binned_data, 
+  targets, 
   predictor_scores
 )
 }
 \arguments{
-  \item{features}{features}
   \item{count_target_classes}{count target classes}
-  \item{targets}{targets}
+  \item{features}{features}
   \item{binned_data}{binned data}
+  \item{targets}{targets}
   \item{predictor_scores}{predictor scores}
 }
 \value{
@@ -25,7 +25,7 @@ initialize_interaction_classification(
 }
 \examples{
   interaction_ptr <- initialize_interaction_classification(
-    list(ebm_feature(1)), 
     2, 
+    list(ebm_feature(1)), 
     c(0), c(0), c(0))
 }

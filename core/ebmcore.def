@@ -3,15 +3,15 @@ LIBRARY
 EXPORTS
   SetLogMessageFunction
   SetTraceLevel
-  InitializeTrainingRegression
   InitializeTrainingClassification
+  InitializeTrainingRegression
   GenerateModelFeatureCombinationUpdate
   ApplyModelFeatureCombinationUpdate
   TrainingStep
-  GetCurrentModelFeatureCombination
   GetBestModelFeatureCombination
+  GetCurrentModelFeatureCombination
   FreeTraining
-  InitializeInteractionRegression
   InitializeInteractionClassification
+  InitializeInteractionRegression
   GetInteractionScore
   FreeInteraction

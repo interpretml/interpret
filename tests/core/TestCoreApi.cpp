@@ -59,8 +59,15 @@ inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
    static int CONCATENATE_TOKENS(UNUSED_INTEGER_HIDDEN_, __LINE__) = RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description)); \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
+int g_countEqualityFailures = 0;
+
 inline bool IsApproxEqual(const double value, const double expected, const double percentage) {
-   return std::abs(expected - value) <= std::abs(expected * percentage);
+   bool ret = std::abs(expected - value) <= std::abs(expected * percentage);
+   if(!ret) {
+      // we're going to fail!
+      ++g_countEqualityFailures; // this doesn't do anything useful but gives us something to break on
+   }
+   return ret;
 }
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
@@ -718,9 +725,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmTraining = InitializeTrainingClassification(randomSeed, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_learningTypeOrCountTargetClasses, m_trainingClassificationTargets.size(), 0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingClassificationTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmTraining = InitializeTrainingRegression(randomSeed, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags);
+         m_pEbmTraining = InitializeTrainingRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
       } else {
          exit(1);
       }
@@ -762,18 +769,6 @@ public:
       return validationMetricReturn;
    }
 
-   FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
-      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
-      return predictorScore;
-   }
-
    FractionalDataType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -786,17 +781,6 @@ public:
       return predictorScore;
    }
 
-   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
-         exit(1);
-      }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
-         exit(1);
-      }
-      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
-      return pModel;
-   }
-
    const FractionalDataType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
       if(Stage::InitializedTraining != m_stage) {
          exit(1);
@@ -805,6 +789,29 @@ public:
          exit(1);
       }
       FractionalDataType * pModel = GetBestModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
+      return pModel;
+   }
+
+   FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_featureCombinations.size() <= iFeatureCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
+      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
+      return predictorScore;
+   }
+
+   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+      if(Stage::InitializedTraining != m_stage) {
+         exit(1);
+      }
+      if(m_featureCombinations.size() <= iFeatureCombination) {
+         exit(1);
+      }
+      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmTraining, iFeatureCombination);
       return pModel;
    }
 
@@ -970,9 +977,9 @@ public:
       }
 
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmInteraction = InitializeInteractionClassification(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_learningTypeOrCountTargetClasses, m_interactionClassificationTargets.size(), 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionClassificationTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmInteraction = InitializeInteractionRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionRegressionTargets.size(), 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         m_pEbmInteraction = InitializeInteractionRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionRegressionTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
       } else {
          exit(1);
       }
@@ -1009,7 +1016,7 @@ TEST_CASE("null validationMetricReturn, training, regression") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingRegression(randomSeed, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingRegression(0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1019,7 +1026,7 @@ TEST_CASE("null validationMetricReturn, training, binary") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 2, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(2, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1029,7 +1036,7 @@ TEST_CASE("null validationMetricReturn, training, multiclass") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmTraining pEbmTraining = InitializeTrainingClassification(randomSeed, 0, nullptr, 1, combinations, nullptr, 3, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0);
+   PEbmTraining pEbmTraining = InitializeTrainingClassification(3, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
    const IntegerDataType ret = TrainingStep(pEbmTraining, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeTraining(pEbmTraining);
@@ -1043,14 +1050,14 @@ TEST_CASE("null interactionScoreReturn, interaction, regression") {
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 2, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr);
    const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(0, nullptr, 3, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr);
    const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
@@ -1069,7 +1076,7 @@ TEST_CASE("zero learning rate, training, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination, {}, {}, 0);
-         CHECK_APPROX(validationMetric, 12);
+         CHECK_APPROX(validationMetric, 144);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
 
@@ -1151,18 +1158,18 @@ TEST_CASE("negative learning rate, training, regression") {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 12.100000000000000);
+            CHECK_APPROX(validationMetric, 146.41);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, -0.1000000000000000);
          }
          if(0 == iFeatureCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 12.20100000000000);
+            CHECK_APPROX(validationMetric, 148.864401);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, -0.2010000000000000);
          }
       }
    }
-   CHECK_APPROX(validationMetric, 209593.55637813677);
+   CHECK_APPROX(validationMetric, 43929458875.235196700295656826033);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, -209581.55637813677);
 }
@@ -1269,7 +1276,7 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") 
    test.InitializeTraining();
 
    FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
-   CHECK_APPROX(validationMetric, 11.900000000000000);
+   CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
@@ -1289,7 +1296,7 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
    test.InitializeTraining();
 
    FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, 0);
-   CHECK_APPROX(validationMetric, 11.900000000000000);
+   CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
@@ -1324,7 +1331,7 @@ TEST_CASE("Zero training instances, training, regression") {
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Train(0);
-      CHECK_APPROX(validationMetric, 12);
+      CHECK_APPROX(validationMetric, 144);
       FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
    }
@@ -1508,8 +1515,8 @@ TEST_CASE("features with 0 states, training") {
    CHECK(0 == validationMetric);
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
-   test.GetCurrentModelFeatureCombinationRaw(0);
    test.GetBestModelFeatureCombinationRaw(0);
+   test.GetCurrentModelFeatureCombinationRaw(0);
 }
 
 TEST_CASE("features with 0 states, interaction") {
@@ -1531,14 +1538,14 @@ TEST_CASE("classification with 0 possible target states, training") {
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 0 possible target states, interaction") {
@@ -1559,14 +1566,14 @@ TEST_CASE("classification with 1 possible target, training") {
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeTraining();
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
    FractionalDataType validationMetric = test.Train(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {
@@ -1712,18 +1719,18 @@ TEST_CASE("FeatureCombination with zero features, training, regression") {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Train(iFeatureCombination);
          if(0 == iFeatureCombination && 0 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.900000000000000);
+            CHECK_APPROX(validationMetric, 141.61);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1000000000000000);
          }
          if(0 == iFeatureCombination && 1 == iEpoch) {
-            CHECK_APPROX(validationMetric, 11.801000000000000);
+            CHECK_APPROX(validationMetric, 139.263601);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
             CHECK_APPROX(modelValue, 0.1990000000000000);
          }
       }
    }
-   CHECK_APPROX(validationMetric, 2.0004317124741098);
+   CHECK_APPROX(validationMetric, 4.001727036272099502004735302456);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
@@ -2205,7 +2212,7 @@ TEST_CASE("Test data bit packing extremes, training, regression") {
             test.InitializeTraining();
 
             FractionalDataType validationMetric = test.Train(0);
-            CHECK_APPROX(validationMetric, 7.93);
+            CHECK_APPROX(validationMetric, 62.8849);
             FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0.07);
          }

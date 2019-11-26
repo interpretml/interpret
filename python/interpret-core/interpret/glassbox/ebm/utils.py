@@ -100,11 +100,9 @@ class EBMUtils:
 
     @staticmethod
     def scores_by_feature_combination(
-        X, feature_combinations, model, skip_feature_combination_idxs=[]
+        X, feature_combinations, model
     ):
         for set_idx, feature_combination in enumerate(feature_combinations):
-            if set_idx in skip_feature_combination_idxs:
-                continue
             tensor = model[set_idx]
 
             # Get the current column(s) to process
@@ -117,7 +115,7 @@ class EBMUtils:
 
     @staticmethod
     def decision_function(
-        X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]
+        X, feature_combinations, model, intercept
     ):
         if X.ndim == 1:
             X = X.reshape(X.shape[0], 1)
@@ -131,7 +129,7 @@ class EBMUtils:
         np.copyto(score_vector, intercept)
 
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, feature_combinations, model, skip_feature_combination_idxs
+            X, feature_combinations, model
         )
         for _, _, scores in scores_gen:
             score_vector += scores
@@ -144,13 +142,12 @@ class EBMUtils:
         return score_vector
 
     @staticmethod
-    def classifier_predict_proba(X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]):
+    def classifier_predict_proba(X, feature_combinations, model, intercept):
         log_odds_vector = EBMUtils.decision_function(
             X,
             feature_combinations,
             model,
-            intercept,
-            skip_feature_combination_idxs,
+            intercept
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -173,13 +170,12 @@ class EBMUtils:
         return classes[np.argmax(log_odds_vector, axis=1)]
 
     @staticmethod
-    def regressor_predict(X, feature_combinations, model, intercept, skip_feature_combination_idxs=[]):
+    def regressor_predict(X, feature_combinations, model, intercept):
         scores = EBMUtils.decision_function(
             X,
             feature_combinations,
             model,
-            intercept,
-            skip_feature_combination_idxs,
+            intercept
         )
         return scores
 

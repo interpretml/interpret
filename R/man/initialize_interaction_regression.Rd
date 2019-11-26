@@ -7,15 +7,15 @@
 \usage{
 initialize_interaction_regression(
   features, 
-  targets, 
   binned_data, 
+  targets, 
   predictor_scores
 )
 }
 \arguments{
   \item{features}{features}
-  \item{targets}{targets}
   \item{binned_data}{binned data}
+  \item{targets}{targets}
   \item{predictor_scores}{predictor scores}
 }
 \value{

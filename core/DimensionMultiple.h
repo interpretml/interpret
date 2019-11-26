@@ -879,9 +879,9 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
 
       FractionalDataType splittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         splittingScore += 0 == pTotalsLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLow->m_cInstancesInBucket);
+         splittingScore += 0 == pTotalsLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLow->m_cInstancesInBucket));
          EBM_ASSERT(0 <= splittingScore);
-         splittingScore += 0 == pTotalsHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHigh->m_cInstancesInBucket);
+         splittingScore += 0 == pTotalsHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHigh->m_cInstancesInBucket));
          EBM_ASSERT(0 <= splittingScore);
       }
       EBM_ASSERT(0 <= splittingScore);
@@ -1282,10 +1282,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
                predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               predictionLowLow = 0 == pTotals2LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowLowBest->m_cInstancesInBucket);
-               predictionLowHigh = 0 == pTotals2LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowHighBest->m_cInstancesInBucket);
-               predictionHighLow = 0 == pTotals2HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighLowBest->m_cInstancesInBucket);
-               predictionHighHigh = 0 == pTotals2HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_cInstancesInBucket);
+               predictionLowLow = 0 == pTotals2LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowLowBest->m_cInstancesInBucket));
+               predictionLowHigh = 0 == pTotals2LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowHighBest->m_cInstancesInBucket));
+               predictionHighLow = 0 == pTotals2HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighLowBest->m_cInstancesInBucket));
+               predictionHighHigh = 0 == pTotals2HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighHighBest->m_cInstancesInBucket));
             }
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1386,10 +1386,10 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
                predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               predictionLowLow = 0 == pTotals1LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowLowBest->m_cInstancesInBucket);
-               predictionLowHigh = 0 == pTotals1LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowHighBest->m_cInstancesInBucket);
-               predictionHighLow = 0 == pTotals1HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighLowBest->m_cInstancesInBucket);
-               predictionHighHigh = 0 == pTotals1HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighHighBest->m_cInstancesInBucket);
+               predictionLowLow = 0 == pTotals1LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowLowBest->m_cInstancesInBucket));
+               predictionLowHigh = 0 == pTotals1LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowHighBest->m_cInstancesInBucket));
+               predictionHighLow = 0 == pTotals1HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighLowBest->m_cInstancesInBucket));
+               predictionHighHigh = 0 == pTotals1HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighHighBest->m_cInstancesInBucket));
             }
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -1855,10 +1855,10 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
             FractionalDataType splittingScore = 0;
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               splittingScore += 0 == pTotalsLowLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowLow->m_cInstancesInBucket);
-               splittingScore += 0 == pTotalsLowHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowHigh->m_cInstancesInBucket);
-               splittingScore += 0 == pTotalsHighLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighLow->m_cInstancesInBucket);
-               splittingScore += 0 == pTotalsHighHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighHigh->m_cInstancesInBucket);
+               splittingScore += 0 == pTotalsLowLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLowLow->m_cInstancesInBucket));
+               splittingScore += 0 == pTotalsLowHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLowHigh->m_cInstancesInBucket));
+               splittingScore += 0 == pTotalsHighLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHighLow->m_cInstancesInBucket));
+               splittingScore += 0 == pTotalsHighHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHighHigh->m_cInstancesInBucket));
                EBM_ASSERT(0 <= splittingScore);
             }
             EBM_ASSERT(0 <= splittingScore);

@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 
 
-# TODO: Rename explainer types possibly to (blackbox, glassbox, greybox)
+# TODO v.2 Rename explainer types possibly to (blackbox, glassbox, greybox)
 class ExplainerMixin(ABC):
     """ An object that computes explanations.
         This is a contract required for InterpretML.
