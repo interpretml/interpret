@@ -162,20 +162,21 @@ def _smoke_test_explanations(global_exp, local_exp, port):
 @pytest.mark.slow
 def test_ebm_adult():
     from sklearn.metrics import roc_auc_score
-    import sys
 
     data = adult_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
     X_tr = data["train"]["X"]
     y_tr = data["train"]["y"]
     X_te = data["test"]["X"]
     y_te = data["test"]["y"]
 
-    # clf = ExplainableBoostingClassifier(n_jobs=1, interactions=3)
-    # n_splits = 3
-    # ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    # cross_validate(
-    #     clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-    # )
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
+    n_splits = 3
+    ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
+    cross_validate(
+        clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
+    )
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
     clf.fit(X_tr, y_tr)
@@ -187,7 +188,6 @@ def test_ebm_adult():
 
     # Performance
     auc = roc_auc_score(y_te, prob_scores[:, 1])
-    print(auc, file=sys.stderr)
     assert auc > 0.5
 
     valid_ebm(clf)
