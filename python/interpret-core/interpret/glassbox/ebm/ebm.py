@@ -325,6 +325,8 @@ class BaseCoreEBM:
 
     # TODO PK decide if we should follow any kind of sklearn convention here with
     # our private class with respect to using trailing underscores
+
+    # TODO PK do we really need all of these parameters??
     def __init__(
         self,
         model_type,
@@ -938,7 +940,7 @@ class BaseEBM(BaseEstimator):
     def _select_merged_pairs(self, estimators, X, y):
         # TODO PK we really need to use purification before here because it's not really legal to elminate
         #         a feature combination unless it's average contribution value is zero, and for a pair that 
-        #         would mean that the intercepts for both featuers in the combination were zero, hense purified
+        #         would mean that the intercepts for both features in the combination were zero, hense purified
 
         # Select pairs from base models
         def score_fn(model_type, X, y, feature_combinations, model, intercept):
@@ -952,15 +954,28 @@ class BaseEBM(BaseEstimator):
                 msg = "Unknown model_type: '{}'.".format(model_type)
                 raise ValueError(msg)
 
+        # TODO PK rename the "pair" variables in this function to "interaction" since that's more generalized
+
+        # TODO PK sort the interaction tuples so that they have a unique ordering, otherwise
+        #         when they get inserted into pair_cum_rank and pair_freq they could potentially have
+        #         reversed ordering and then be duplicates
+        #         ordering by increasing indexes is probably the most meaningful representation to the user
+
         pair_cum_rank = Counter()
         pair_freq = Counter()
 
         for index, estimator in enumerate(estimators):
             # TODO PK move the work done inside this loop to the original parallel threads so that this part can be done in parallel
 
+            # TODO PK this algorithm in O(N^2) by the number of interactions.  Alternatively 
+            #         there is an O(N) algorithm where we generate the logits for the base forward and base backwards
+            #         predictions, then we copy that entire array AND add or substract the one feature under consideration
+
             backward_impacts = []
             forward_impacts = []
 
+            # TODO PK we can remove the is_train input to ebm_train_test_split once we've moved the pair scoring stuff 
+            #         to a background thread because we'll already have the validation split without re-splitting it
             _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
                 X, 
                 y, 
@@ -972,7 +987,6 @@ class BaseEBM(BaseEstimator):
 
             n_base_feature_combinations = len(estimator.feature_combinations_) - len(estimator.inter_indices_)
 
-            # TODO PK BUG estimator.inter_indices_ SHOULD BE INDEXES AND NOT A LIST OF TUPPLES
             base_forward_score = score_fn(
                 estimator.model_type, 
                 X_val, 
@@ -1010,6 +1024,8 @@ class BaseEBM(BaseEstimator):
                     estimator.model_[:n_base_feature_combinations] + estimator.model_[n_full_idx:n_full_idx + 1], 
                     estimator.intercept_
                 )
+                # for both regression (mean square error) and classification (log loss), higher values are bad, so
+                # interactions with high positive values for backward_impact and forward_impact are good
                 backward_impact = backward_score - base_backward_score
                 forward_impact = base_forward_score - forward_score
 
@@ -1017,8 +1033,8 @@ class BaseEBM(BaseEstimator):
                 forward_impacts.append(forward_impact)
 
             # Average ranks
-            backward_ranks = np.argsort(backward_impacts[::-1])
-            forward_ranks = np.argsort(forward_impacts[::-1])
+            backward_ranks = np.argsort(backward_impacts)[::-1]
+            forward_ranks = np.argsort(forward_impacts)[::-1]
             pair_ranks = np.mean(np.array([backward_ranks, forward_ranks]), axis=0)
 
             # Add to cumulative rank for a pair across all models
@@ -1026,6 +1042,7 @@ class BaseEBM(BaseEstimator):
                 pair_cum_rank[pair] += pair_ranks[pair_idx]
 
         # Calculate pair importance ranks
+        # TODO PK this copy isn't required
         pair_weighted_ranks = pair_cum_rank.copy()
         for pair, freq in pair_freq.items():
             # Calculate average rank
