@@ -38,10 +38,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB5
 		R\man\get_best_model_feature_combination.Rd = R\man\get_best_model_feature_combination.Rd
 		R\man\get_current_model_feature_combination.Rd = R\man\get_current_model_feature_combination.Rd
 		R\man\get_interaction_score.Rd = R\man\get_interaction_score.Rd
+		R\man\initialize_boosting_classification.Rd = R\man\initialize_boosting_classification.Rd
+		R\man\initialize_boosting_regression.Rd = R\man\initialize_boosting_regression.Rd
 		R\man\initialize_interaction_classification.Rd = R\man\initialize_interaction_classification.Rd
 		R\man\initialize_interaction_regression.Rd = R\man\initialize_interaction_regression.Rd
-		R\man\initialize_training_classification.Rd = R\man\initialize_training_classification.Rd
-		R\man\initialize_training_regression.Rd = R\man\initialize_training_regression.Rd
 		R\man\training_step.Rd = R\man\training_step.Rd
 	EndProjectSection
 EndProject

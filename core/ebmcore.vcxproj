@@ -283,7 +283,7 @@ EXIT /B 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EbmInteractionState.h" />
-    <ClInclude Include="EbmTrainingState.h" />
+    <ClInclude Include="EbmBoostingState.h" />
     <ClInclude Include="inc\ebmcore.h" />
     <ClInclude Include="FeatureCore.h" />
     <ClInclude Include="FeatureCombinationCore.h" />
@@ -317,7 +317,7 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="SamplingWithReplacement.cpp" />
-    <ClCompile Include="Training.cpp" />
+    <ClCompile Include="Boosting.cpp" />
     <ClCompile Include="wrap_func.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
