@@ -1262,7 +1262,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
 }
 
 TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") {
-   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
+   // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1282,7 +1282,7 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") 
 }
 
 TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
-   // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
+   // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
    TestApi test = TestApi(k_learningTypeRegression);
@@ -1312,7 +1312,7 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 //   test.InitializeBoosting();
 //
 //   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-//      FractionalDataType validationMetric = test.Train(0);
+//      FractionalDataType validationMetric = test.Boost(0);
 //      CHECK_APPROX(validationMetric, 12);
 //      FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
 //      CHECK_APPROX(modelValue, 0);

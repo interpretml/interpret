@@ -588,13 +588,13 @@ class NativeEBMBoosting:
         else:
             raise AttributeError("Unrecognized model_type")
 
-        log.info("Allocation training end")
+        log.info("Allocation boosting end")
 
     def close(self):
         """ Deallocates C objects used to boost EBM. """
-        log.info("Deallocation training start")
+        log.info("Deallocation boosting start")
         self._native.lib.FreeBoosting(self._model_pointer)
-        log.info("Deallocation training end")
+        log.info("Deallocation boosting end")
 
     def boosting_step(
         self,
@@ -605,7 +605,7 @@ class NativeEBMBoosting:
         boosting_step_episodes,
     ):
 
-        """ Conducts a training step per feature
+        """ Conducts a boosting step per feature
             by growing a shallow decision tree.
 
         Args:
@@ -617,9 +617,9 @@ class NativeEBMBoosting:
             boosting_step_episodes: Number of episodes to boost feature step.
 
         Returns:
-            Validation loss for the training step.
+            Validation loss for the boosting step.
         """
-        # log.debug("Training step start")
+        # log.debug("Boosting step start")
 
         metric_output = ct.c_double(0.0)
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
@@ -653,7 +653,7 @@ class NativeEBMBoosting:
                 if return_code != 0:  # pragma: no cover
                     raise Exception("Out of memory in ApplyModelFeatureCombinationUpdate")
 
-        # log.debug("Training step end")
+        # log.debug("Boosting step end")
         return metric_output.value
 
     def _get_feature_combination_shape(self, feature_combination_index):

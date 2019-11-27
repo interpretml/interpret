@@ -35,7 +35,7 @@ ebm_feature_combination <- function(count_features_in_combination = 1) {
    return(ret)
 }
 
-# Training functions
+# Boosting functions
 
 initialize_boosting_classification <- function(count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
    count_target_classes <- as.double(count_target_classes)
