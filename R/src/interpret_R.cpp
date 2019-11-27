@@ -47,13 +47,13 @@ EBM_INLINE bool IsDoubleToIntegerDataTypeIndexValid(const double val) {
    return true;
 }
 
-void TrainingFinalizer(SEXP trainingRPointer) {
-   EBM_ASSERT(nullptr != trainingRPointer); // shouldn't be possible
-   if(EXTPTRSXP == TYPEOF(trainingRPointer)) {
-      PEbmBoosting pTraining = static_cast<PEbmBoosting>(R_ExternalPtrAddr(trainingRPointer));
-      if(nullptr != pTraining) {
-         FreeBoosting(pTraining);
-         R_ClearExternalPtr(trainingRPointer);
+void BoostingFinalizer(SEXP boostingRPointer) {
+   EBM_ASSERT(nullptr != boostingRPointer); // shouldn't be possible
+   if(EXTPTRSXP == TYPEOF(boostingRPointer)) {
+      PEbmBoosting pEbmBoosting = static_cast<PEbmBoosting>(R_ExternalPtrAddr(boostingRPointer));
+      if(nullptr != pEbmBoosting) {
+         FreeBoosting(pEbmBoosting);
+         R_ClearExternalPtr(boostingRPointer);
       }
    }
 }
@@ -579,13 +579,13 @@ SEXP InitializeBoostingClassification_R(
    if(nullptr == pEbmBoosting) {
       return R_NilValue;
    } else {
-      SEXP trainingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(trainingRPointer);
+      SEXP boostingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(boostingRPointer);
 
-      R_RegisterCFinalizerEx(trainingRPointer, &TrainingFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(boostingRPointer, &BoostingFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return trainingRPointer;
+      return boostingRPointer;
    }
 }
 
@@ -744,13 +744,13 @@ SEXP InitializeBoostingRegression_R(
    if(nullptr == pEbmBoosting) {
       return R_NilValue;
    } else {
-      SEXP trainingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(trainingRPointer);
+      SEXP boostingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmBoosting), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(boostingRPointer);
 
-      R_RegisterCFinalizerEx(trainingRPointer, &TrainingFinalizer, Rboolean::TRUE);
+      R_RegisterCFinalizerEx(boostingRPointer, &BoostingFinalizer, Rboolean::TRUE);
 
       UNPROTECT(1);
-      return trainingRPointer;
+      return boostingRPointer;
    }
 }
 
@@ -1013,7 +1013,7 @@ SEXP GetCurrentModelFeatureCombination_R(
 SEXP FreeBoosting_R(
    SEXP ebmBoosting
 ) {
-   TrainingFinalizer(ebmBoosting);
+   BoostingFinalizer(ebmBoosting);
    return R_NilValue;
 }
 

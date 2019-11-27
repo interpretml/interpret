@@ -11,7 +11,7 @@ get_current_model_feature_combination(
 )
 }
 \arguments{
-  \item{ebm_boosting}{ebm training}
+  \item{ebm_boosting}{ebm boosting}
   \item{index_feature_combination}{index feature combination}
 }
 \value{

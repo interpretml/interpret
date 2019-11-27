@@ -202,7 +202,7 @@ static constexpr IntegerDataType k_countInstancesRequiredForParentSplitMinDefaul
 
 class TestApi {
    enum class Stage {
-      Beginning, FeaturesAdded, FeatureCombinationsAdded, TrainingAdded, ValidationAdded, InitializedTraining, InteractionAdded, InitializedInteraction
+      Beginning, FeaturesAdded, FeatureCombinationsAdded, TrainingAdded, ValidationAdded, InitializedBoosting, InteractionAdded, InitializedInteraction
    };
 
    Stage m_stage;
@@ -238,7 +238,7 @@ class TestApi {
    PEbmInteraction m_pEbmInteraction;
 
    const FractionalDataType * GetPredictorScores(const size_t iFeatureCombination, const FractionalDataType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) const {
-      if(Stage::InitializedTraining != m_stage) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
@@ -716,7 +716,7 @@ public:
       m_stage = Stage::ValidationAdded;
    }
 
-   void InitializeTraining(const IntegerDataType countInnerBags = k_countInnerBagsDefault) {
+   void InitializeBoosting(const IntegerDataType countInnerBags = k_countInnerBagsDefault) {
       if(Stage::ValidationAdded != m_stage) {
          exit(1);
       }
@@ -735,11 +735,11 @@ public:
       if(nullptr == m_pEbmBoosting) {
          exit(1);
       }
-      m_stage = Stage::InitializedTraining;
+      m_stage = Stage::InitializedBoosting;
    }
 
-   FractionalDataType Train(const IntegerDataType indexFeatureCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = k_learningRateDefault, const IntegerDataType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntegerDataType countInstancesRequiredForParentSplitMin = k_countInstancesRequiredForParentSplitMinDefault) {
-      if(Stage::InitializedTraining != m_stage) {
+   FractionalDataType Boost(const IntegerDataType indexFeatureCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = k_learningRateDefault, const IntegerDataType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntegerDataType countInstancesRequiredForParentSplitMin = k_countInstancesRequiredForParentSplitMinDefault) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(indexFeatureCombination < IntegerDataType { 0 }) {
@@ -770,7 +770,7 @@ public:
    }
 
    FractionalDataType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
-      if(Stage::InitializedTraining != m_stage) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
@@ -782,7 +782,7 @@ public:
    }
 
    const FractionalDataType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
@@ -793,7 +793,7 @@ public:
    }
 
    FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
-      if(Stage::InitializedTraining != m_stage) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
@@ -805,7 +805,7 @@ public:
    }
 
    const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
-      if(Stage::InitializedTraining != m_stage) {
+      if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
@@ -1012,7 +1012,7 @@ public:
    }
 };
 
-TEST_CASE("null validationMetricReturn, training, regression") {
+TEST_CASE("null validationMetricReturn, boosting, regression") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
@@ -1022,7 +1022,7 @@ TEST_CASE("null validationMetricReturn, training, regression") {
    FreeBoosting(pEbmBoosting);
 }
 
-TEST_CASE("null validationMetricReturn, training, binary") {
+TEST_CASE("null validationMetricReturn, boosting, binary") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
@@ -1032,7 +1032,7 @@ TEST_CASE("null validationMetricReturn, training, binary") {
    FreeBoosting(pEbmBoosting);
 }
 
-TEST_CASE("null validationMetricReturn, training, multiclass") {
+TEST_CASE("null validationMetricReturn, boosting, multiclass") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
@@ -1063,19 +1063,19 @@ TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
    FreeInteraction(pEbmInteraction);
 }
 
-TEST_CASE("zero learning rate, training, regression") {
+TEST_CASE("zero learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
          CHECK_APPROX(validationMetric, 144);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -1086,19 +1086,19 @@ TEST_CASE("zero learning rate, training, regression") {
    }
 }
 
-TEST_CASE("zero learning rate, training, binary") {
+TEST_CASE("zero learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
          CHECK_APPROX(validationMetric, 0.69314718055994529);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -1113,19 +1113,19 @@ TEST_CASE("zero learning rate, training, binary") {
    }
 }
 
-TEST_CASE("zero learning rate, training, multiclass") {
+TEST_CASE("zero learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, 0);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
          CHECK_APPROX(validationMetric, 1.0986122886681098);
          modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
          CHECK_APPROX(modelValue, 0);
@@ -1144,19 +1144,19 @@ TEST_CASE("zero learning rate, training, multiclass") {
    }
 }
 
-TEST_CASE("negative learning rate, training, regression") {
+TEST_CASE("negative learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 146.41);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1174,19 +1174,19 @@ TEST_CASE("negative learning rate, training, regression") {
    CHECK_APPROX(modelValue, -209581.55637813677);
 }
 
-TEST_CASE("negative learning rate, training, binary") {
+TEST_CASE("negative learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.70319717972663420);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1219,19 +1219,19 @@ TEST_CASE("negative learning rate, training, binary") {
 #endif // EXPAND_BINARY_LOGITS
 }
 
-TEST_CASE("negative learning rate, training, multiclass") {
+TEST_CASE("negative learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination, {}, {}, -k_learningRateDefault);
+         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.1288361512023379);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1261,7 +1261,7 @@ TEST_CASE("negative learning rate, training, multiclass") {
    CHECK_APPROX(modelValue, 19.907994122542746);
 }
 
-TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") {
+TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") {
    // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
@@ -1273,15 +1273,15 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, training, regression") 
       RegressionInstance(10, { 1 }),
       });
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
+   FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
 }
 
-TEST_CASE("zero countTreeSplitsMax, training, regression") {
+TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
    // TODO : call test.Train many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 
@@ -1293,9 +1293,9 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
       RegressionInstance(10, { 1 }),
       });
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Train(0, {}, {}, k_learningRateDefault, 0);
+   FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
    FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
@@ -1303,13 +1303,13 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
 
 
 // TODO: decide what to do with this test
-//TEST_CASE("infinite target training set, training, regression") {
+//TEST_CASE("infinite target training set, boosting, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
 //   test.AddFeatureCombinations({ { 0 } });
 //   test.AddTrainingInstances({ RegressionInstance(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() }, { 1 }) });
 //   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
-//   test.InitializeTraining();
+//   test.InitializeBoosting();
 //
 //   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
 //      FractionalDataType validationMetric = test.Train(0);
@@ -1321,32 +1321,32 @@ TEST_CASE("zero countTreeSplitsMax, training, regression") {
 
 
 
-TEST_CASE("Zero training instances, training, regression") {
+TEST_CASE("Zero training instances, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<RegressionInstance> {});
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 144);
       FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
    }
 }
 
-TEST_CASE("Zero training instances, training, binary") {
+TEST_CASE("Zero training instances, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 0.69314718055994529);
       FractionalDataType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
@@ -1356,16 +1356,16 @@ TEST_CASE("Zero training instances, training, binary") {
    }
 }
 
-TEST_CASE("Zero training instances, training, multiclass") {
+TEST_CASE("Zero training instances, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 1.0986122886681098);
       FractionalDataType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
@@ -1377,16 +1377,16 @@ TEST_CASE("Zero training instances, training, multiclass") {
    }
 }
 
-TEST_CASE("Zero validation instances, training, regression") {
+TEST_CASE("Zero validation instances, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
    test.AddValidationInstances(std::vector<RegressionInstance> {});
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
@@ -1403,16 +1403,16 @@ TEST_CASE("Zero validation instances, training, regression") {
    }
 }
 
-TEST_CASE("Zero validation instances, training, binary") {
+TEST_CASE("Zero validation instances, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
@@ -1433,16 +1433,16 @@ TEST_CASE("Zero validation instances, training, binary") {
    }
 }
 
-TEST_CASE("Zero validation instances, training, multiclass") {
+TEST_CASE("Zero validation instances, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Train(0);
+      FractionalDataType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
@@ -1502,16 +1502,16 @@ TEST_CASE("Zero interaction instances, interaction, multiclass") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("features with 0 states, training") {
+TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(0) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<RegressionInstance> {});
    test.AddValidationInstances(std::vector<RegressionInstance> {});
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Train(0);
+   FractionalDataType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
@@ -1529,19 +1529,19 @@ TEST_CASE("features with 0 states, interaction") {
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("classification with 0 possible target states, training") {
+TEST_CASE("classification with 0 possible target states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
-   FractionalDataType validationMetric = test.Train(0);
+   FractionalDataType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
@@ -1558,18 +1558,18 @@ TEST_CASE("classification with 0 possible target states, interaction") {
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("classification with 1 possible target, training") {
+TEST_CASE("classification with 1 possible target, boosting") {
    TestApi test = TestApi(1);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureCombinations({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
-   FractionalDataType validationMetric = test.Train(0);
+   FractionalDataType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
@@ -1586,7 +1586,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
    CHECK(0 == validationMetric);
 }
 
-TEST_CASE("features with 1 state in various positions, training") {
+TEST_CASE("features with 1 state in various positions, boosting") {
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ 
       FeatureTest(1),
@@ -1596,7 +1596,7 @@ TEST_CASE("features with 1 state in various positions, training") {
    test0.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test0.AddTrainingInstances({ RegressionInstance(10, { 0, 1, 1 }) });
    test0.AddValidationInstances({ RegressionInstance(12, { 0, 1, 1 }) });
-   test0.InitializeTraining();
+   test0.InitializeBoosting();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({
@@ -1607,7 +1607,7 @@ TEST_CASE("features with 1 state in various positions, training") {
    test1.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test1.AddTrainingInstances({ RegressionInstance(10, { 1, 0, 1 }) });
    test1.AddValidationInstances({ RegressionInstance(12, { 1, 0, 1 }) });
-   test1.InitializeTraining();
+   test1.InitializeBoosting();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({
@@ -1618,25 +1618,25 @@ TEST_CASE("features with 1 state in various positions, training") {
    test2.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
    test2.AddTrainingInstances({ RegressionInstance(10, { 1, 1, 0 }) });
    test2.AddValidationInstances({ RegressionInstance(12, { 1, 1, 0 }) });
-   test2.InitializeTraining();
+   test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric00 = test0.Train(0);
-      FractionalDataType validationMetric10 = test1.Train(1);
+      FractionalDataType validationMetric00 = test0.Boost(0);
+      FractionalDataType validationMetric10 = test1.Boost(1);
       CHECK_APPROX(validationMetric00, validationMetric10);
-      FractionalDataType validationMetric20 = test2.Train(2);
+      FractionalDataType validationMetric20 = test2.Boost(2);
       CHECK_APPROX(validationMetric00, validationMetric20);
 
-      FractionalDataType validationMetric01 = test0.Train(1);
-      FractionalDataType validationMetric11 = test1.Train(2);
+      FractionalDataType validationMetric01 = test0.Boost(1);
+      FractionalDataType validationMetric11 = test1.Boost(2);
       CHECK_APPROX(validationMetric01, validationMetric11);
-      FractionalDataType validationMetric21 = test2.Train(0);
+      FractionalDataType validationMetric21 = test2.Boost(0);
       CHECK_APPROX(validationMetric01, validationMetric21);
 
-      FractionalDataType validationMetric02 = test0.Train(2);
-      FractionalDataType validationMetric12 = test1.Train(0);
+      FractionalDataType validationMetric02 = test0.Boost(2);
+      FractionalDataType validationMetric12 = test1.Boost(0);
       CHECK_APPROX(validationMetric02, validationMetric12);
-      FractionalDataType validationMetric22 = test2.Train(1);
+      FractionalDataType validationMetric22 = test2.Boost(1);
       CHECK_APPROX(validationMetric02, validationMetric22);
 
       FractionalDataType modelValue000 = test0.GetCurrentModelPredictorScore(0, { 0 }, 0);
@@ -1669,55 +1669,55 @@ TEST_CASE("features with 1 state in various positions, training") {
    }
 }
 
-TEST_CASE("zero FeatureCombinations, training, regression") {
+TEST_CASE("zero FeatureCombinations, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureCombinations({});
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // training isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureCombination index
 }
 
-TEST_CASE("zero FeatureCombinations, training, binary") {
+TEST_CASE("zero FeatureCombinations, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({});
    test.AddTrainingInstances({ ClassificationInstance(1, {}) });
    test.AddValidationInstances({ ClassificationInstance(1, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // training isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureCombination index
 }
 
-TEST_CASE("zero FeatureCombinations, training, multiclass") {
+TEST_CASE("zero FeatureCombinations, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureCombinations({});
    test.AddTrainingInstances({ ClassificationInstance(2, {}) });
    test.AddValidationInstances({ ClassificationInstance(2, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // training isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureCombination index
 }
 
-TEST_CASE("FeatureCombination with zero features, training, regression") {
+TEST_CASE("FeatureCombination with zero features, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination);
+         validationMetric = test.Boost(iFeatureCombination);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 141.61);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1735,19 +1735,19 @@ TEST_CASE("FeatureCombination with zero features, training, regression") {
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
-TEST_CASE("FeatureCombination with zero features, training, binary") {
+TEST_CASE("FeatureCombination with zero features, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination);
+         validationMetric = test.Boost(iFeatureCombination);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.68319717972663419);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1771,19 +1771,19 @@ TEST_CASE("FeatureCombination with zero features, training, binary") {
    CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
-TEST_CASE("FeatureCombination with zero features, training, multiclass") {
+TEST_CASE("FeatureCombination with zero features, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ });
    test.AddFeatureCombinations({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
-   test.InitializeTraining();
+   test.InitializeBoosting();
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Train(iFeatureCombination);
+         validationMetric = test.Boost(iFeatureCombination);
          if(0 == iFeatureCombination && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.0688384008227103);
             modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1840,36 +1840,36 @@ TEST_CASE("FeatureCombination with zero features, interaction, multiclass") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, training, regression") {
+TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, regression") {
    TestApi testZeroFeaturesInCombination = TestApi(k_learningTypeRegression);
    testZeroFeaturesInCombination.AddFeatures({});
    testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
    testZeroFeaturesInCombination.AddTrainingInstances({ RegressionInstance(10, {}) });
    testZeroFeaturesInCombination.AddValidationInstances({ RegressionInstance(12, {}) });
-   testZeroFeaturesInCombination.InitializeTraining();
+   testZeroFeaturesInCombination.InitializeBoosting();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingInstances({ RegressionInstance(10, { 0 }) });
    testOneState.AddValidationInstances({ RegressionInstance(12, { 0 }) });
-   testOneState.InitializeTraining();
+   testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(k_learningTypeRegression);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
    testTwoStates.AddValidationInstances({ RegressionInstance(12, { 1 }) });
-   testTwoStates.InitializeTraining();
+   testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Train(iFeatureCombination);
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iFeatureCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
          FractionalDataType modelValueZeroFeaturesInCombination = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1881,36 +1881,36 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    }
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, training, binary") {
+TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, binary") {
    TestApi testZeroFeaturesInCombination = TestApi(2, 0);
    testZeroFeaturesInCombination.AddFeatures({});
    testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
    testZeroFeaturesInCombination.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testZeroFeaturesInCombination.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.InitializeTraining();
+   testZeroFeaturesInCombination.InitializeBoosting();
 
    TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
-   testOneState.InitializeTraining();
+   testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(2, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
-   testTwoStates.InitializeTraining();
+   testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Train(iFeatureCombination);
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iFeatureCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
          FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1928,36 +1928,36 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    }
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, training, multiclass") {
+TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, multiclass") {
    TestApi testZeroFeaturesInCombination = TestApi(3);
    testZeroFeaturesInCombination.AddFeatures({});
    testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
    testZeroFeaturesInCombination.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testZeroFeaturesInCombination.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.InitializeTraining();
+   testZeroFeaturesInCombination.InitializeBoosting();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureCombinations({ { 0 } });
    testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
-   testOneState.InitializeTraining();
+   testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(3);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureCombinations({ { 0 } });
    testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
-   testTwoStates.InitializeTraining();
+   testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Train(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Train(iFeatureCombination);
+         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Train(iFeatureCombination);
+         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
          FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
@@ -1981,7 +1981,7 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
    }
 }
 
-TEST_CASE("3 dimensional featureCombination with one dimension reduced in different ways, training, regression") {
+TEST_CASE("3 dimensional featureCombination with one dimension reduced in different ways, boosting, regression") {
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
    test0.AddFeatureCombinations({ { 0, 1, 2 } });
@@ -1992,7 +1992,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
       RegressionInstance(12, { 0, 1, 1 }),
       });
    test0.AddValidationInstances({ RegressionInstance(12, { 0, 1, 0 }) });
-   test0.InitializeTraining();
+   test0.InitializeBoosting();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
@@ -2004,7 +2004,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
       RegressionInstance(12, { 1, 0, 1 }),
       });
    test1.AddValidationInstances({ RegressionInstance(12, { 0, 0, 1 }) });
-   test1.InitializeTraining();
+   test1.InitializeBoosting();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
@@ -2016,16 +2016,16 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
       RegressionInstance(12, { 1, 1, 0 }),
       });
    test2.AddValidationInstances({ RegressionInstance(12, { 1, 0, 0 }) });
-   test2.InitializeTraining();
+   test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       assert(test0.GetFeatureCombinationsCount() == test1.GetFeatureCombinationsCount());
       assert(test0.GetFeatureCombinationsCount() == test2.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < test0.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetric0 = test0.Train(iFeatureCombination);
-         FractionalDataType validationMetric1 = test1.Train(iFeatureCombination);
+         FractionalDataType validationMetric0 = test0.Boost(iFeatureCombination);
+         FractionalDataType validationMetric1 = test1.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetric0, validationMetric1);
-         FractionalDataType validationMetric2 = test2.Train(iFeatureCombination);
+         FractionalDataType validationMetric2 = test2.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetric0, validationMetric2);
 
          FractionalDataType modelValue01 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
@@ -2081,13 +2081,13 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, mult
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("Test Rehydration, training, regression") {
+TEST_CASE("Test Rehydration, boosting, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureCombinations({ {} });
    testContinuous.AddTrainingInstances({ RegressionInstance(10, {}) });
    testContinuous.AddValidationInstances({ RegressionInstance(12, {}) });
-   testContinuous.InitializeTraining();
+   testContinuous.InitializeBoosting();
 
    FractionalDataType model0 = 0;
 
@@ -2100,10 +2100,10 @@ TEST_CASE("Test Rehydration, training, regression") {
       testRestart.AddFeatureCombinations({ {} });
       testRestart.AddTrainingInstances({ RegressionInstance(10, {}, model0) });
       testRestart.AddValidationInstances({ RegressionInstance(12, {}, model0) });
-      testRestart.InitializeTraining();
+      testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Train(0);
-      validationMetricContinuous = testContinuous.Train(0);
+      validationMetricRestart = testRestart.Boost(0);
+      validationMetricContinuous = testContinuous.Boost(0);
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
@@ -2112,13 +2112,13 @@ TEST_CASE("Test Rehydration, training, regression") {
    }
 }
 
-TEST_CASE("Test Rehydration, training, binary") {
+TEST_CASE("Test Rehydration, boosting, binary") {
    TestApi testContinuous = TestApi(2, 0);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureCombinations({ {} });
    testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testContinuous.InitializeTraining();
+   testContinuous.InitializeBoosting();
 
    FractionalDataType model0 = 0;
    FractionalDataType model1 = 0;
@@ -2132,10 +2132,10 @@ TEST_CASE("Test Rehydration, training, binary") {
       testRestart.AddFeatureCombinations({ {} });
       testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
       testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
-      testRestart.InitializeTraining();
+      testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Train(0);
-      validationMetricContinuous = testContinuous.Train(0);
+      validationMetricRestart = testRestart.Boost(0);
+      validationMetricContinuous = testContinuous.Boost(0);
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
@@ -2148,13 +2148,13 @@ TEST_CASE("Test Rehydration, training, binary") {
    }
 }
 
-TEST_CASE("Test Rehydration, training, multiclass") {
+TEST_CASE("Test Rehydration, boosting, multiclass") {
    TestApi testContinuous = TestApi(3);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureCombinations({ {} });
    testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testContinuous.InitializeTraining();
+   testContinuous.InitializeBoosting();
 
    FractionalDataType model0 = 0;
    FractionalDataType model1 = 0;
@@ -2169,10 +2169,10 @@ TEST_CASE("Test Rehydration, training, multiclass") {
       testRestart.AddFeatureCombinations({ {} });
       testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
       testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
-      testRestart.InitializeTraining();
+      testRestart.InitializeBoosting();
 
-      validationMetricRestart = testRestart.Train(0);
-      validationMetricContinuous = testContinuous.Train(0);
+      validationMetricRestart = testRestart.Boost(0);
+      validationMetricContinuous = testContinuous.Boost(0);
       CHECK_APPROX(validationMetricContinuous, validationMetricRestart);
 
       modelValueContinuous = testContinuous.GetCurrentModelPredictorScore(0, {}, 0);
@@ -2189,7 +2189,7 @@ TEST_CASE("Test Rehydration, training, multiclass") {
    }
 }
 
-TEST_CASE("Test data bit packing extremes, training, regression") {
+TEST_CASE("Test data bit packing extremes, boosting, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
       IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
@@ -2209,9 +2209,9 @@ TEST_CASE("Test data bit packing extremes, training, regression") {
             }
             test.AddTrainingInstances(trainingInstances);
             test.AddValidationInstances(validationInstances);
-            test.InitializeTraining();
+            test.InitializeBoosting();
 
-            FractionalDataType validationMetric = test.Train(0);
+            FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 62.8849);
             FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0.07);
@@ -2220,7 +2220,7 @@ TEST_CASE("Test data bit packing extremes, training, regression") {
    }
 }
 
-TEST_CASE("Test data bit packing extremes, training, binary") {
+TEST_CASE("Test data bit packing extremes, boosting, binary") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
       IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
@@ -2240,9 +2240,9 @@ TEST_CASE("Test data bit packing extremes, training, binary") {
             }
             test.AddTrainingInstances(trainingInstances);
             test.AddValidationInstances(validationInstances);
-            test.InitializeTraining();
+            test.InitializeBoosting();
 
-            FractionalDataType validationMetric = test.Train(0);
+            FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 0.70319717972663420);
             FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
             CHECK_APPROX(modelValue, -0.02);

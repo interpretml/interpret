@@ -156,7 +156,7 @@ bool EbmBoostingState::Initialize(const IntegerDataType randomSeed, const EbmCor
             FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
             IntegerDataType countBins = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
+            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
             if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
                LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                return true;

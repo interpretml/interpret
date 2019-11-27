@@ -16,7 +16,7 @@ boosting_step(
 )
 }
 \arguments{
-  \item{ebm_boosting}{ebm training}
+  \item{ebm_boosting}{ebm boosting}
   \item{index_feature_combination}{index feature combination}
   \item{learning_rate}{learning rate}
   \item{count_tree_splits_max}{count tree splits max}
@@ -25,7 +25,7 @@ boosting_step(
   \item{validation_weights}{validation weights}
 }
 \value{
-  Returns the mean squared error when the model being trained is for a regression problem, or the log loss for a classification problem
+  Returns the mean squared error when the model being boosted on is for a regression problem, or the log loss for a classification problem
 }
 \examples{
   boosting_ptr <- initialize_boosting_regression(

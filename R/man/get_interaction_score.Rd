@@ -15,7 +15,7 @@ get_interaction_score(
   \item{feature_indexes}{feature indexes}
 }
 \value{
-  Returns an interaction score that indicates the relative benefit of a proposed set of features as inputs to explainable boosting machine training
+  Returns an interaction score that indicates the relative benefit of a proposed set of features as inputs to EBM boosting
 }
 \examples{
   interaction_ptr <- initialize_interaction_regression(

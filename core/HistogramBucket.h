@@ -416,7 +416,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 ) {
    LOG_0(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;

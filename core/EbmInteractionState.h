@@ -69,7 +69,7 @@ public:
             FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
             IntegerDataType countBins = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
             if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
                LOG_0(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
                return true;

@@ -423,7 +423,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
          pFastTotalStateInitialize->m_iCur = 0;
          pFastTotalStateInitialize->m_cBins = cBins;
@@ -553,7 +553,7 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 //      EBM_ASSERT(1 <= cDimensions);
 //      do {
 //         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
-//         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+//         EBM_ASSERT(1 <= pFeatureCombinationEntry->m_pFeature->m_cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
 //         multipleTotalInitialize *= static_cast<ptrdiff_t>(pFeatureCombinationEntry->m_pFeature->m_cBins);
 //         pCurrentIndexAndCountBinsInitialize->multipleTotal = multipleTotalInitialize;
 //         ++pFeatureCombinationEntry;
@@ -729,7 +729,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       EBM_ASSERT(1 <= cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
          EBM_ASSERT(*piPointInitialize < cBins);
          EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          size_t addValue = multipleTotalInitialize * (*piPointInitialize);
@@ -764,7 +764,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       EBM_ASSERT(0 < cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             EBM_ASSERT(!IsMultiplyError(cBins - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cBins - 1);
@@ -1731,7 +1731,7 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace; // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
       if(IsMultiplyError(cTotalBucketsMainSpace, cBins)) {
-         // unlike in the training code where we check at allocation time if the tensor created overflows on multiplication
+         // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what combination of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
          LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBucketsMainSpace, cBins)");
@@ -1776,7 +1776,7 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 #endif // NDEBUG
 
    
-   // TODO : use the fancy recursive binner that we use in the training version of this function
+   // TODO : use the fancy recursive binner that we use in the boosting version of this function
    BinDataSetInteraction<compilerLearningTypeOrCountTargetClasses>(aHistogramBuckets, pFeatureCombination, pDataSet, runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
@@ -1816,8 +1816,8 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
       const size_t cBinsDimension1 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
       const size_t cBinsDimension2 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
-      EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be trained on (dimensions with 1 bin don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
       FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
 

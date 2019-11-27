@@ -417,7 +417,7 @@ class Native:
 
 
 class NativeEBMBoosting:
-    """Lightweight wrapper for EBM C training code.
+    """Lightweight wrapper for EBM C boosting code.
     """
 
     def __init__(
@@ -591,7 +591,7 @@ class NativeEBMBoosting:
         log.info("Allocation training end")
 
     def close(self):
-        """ Deallocates C objects used to train EBM. """
+        """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation training start")
         self._native.lib.FreeBoosting(self._model_pointer)
         log.info("Deallocation training end")
@@ -610,7 +610,7 @@ class NativeEBMBoosting:
 
         Args:
             feature_combination_index: The index for the feature combination
-                to train on.
+                to boost on.
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
             min_cases_for_split: Min observations required to split.
