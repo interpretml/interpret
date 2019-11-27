@@ -922,7 +922,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes
+      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins)); // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes
       cTotalBucketsMainSpace *= cBins;
       EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
    }

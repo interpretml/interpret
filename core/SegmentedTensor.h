@@ -358,7 +358,7 @@ public:
 
          pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
          const size_t cValuesPerDimension = *pcValuesPerDimension;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));  // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));  // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cValuesPerDimension;
          const size_t cNewDivisions = cValuesPerDimension - 1;
 
@@ -584,7 +584,7 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmTrainingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;

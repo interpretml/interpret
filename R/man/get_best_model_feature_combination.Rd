@@ -6,12 +6,12 @@
 }
 \usage{
 get_best_model_feature_combination(
-  ebm_training, 
+  ebm_boosting, 
   index_feature_combination
 )
 }
 \arguments{
-  \item{ebm_training}{ebm training}
+  \item{ebm_boosting}{ebm training}
   \item{index_feature_combination}{index feature combination}
 }
 \value{

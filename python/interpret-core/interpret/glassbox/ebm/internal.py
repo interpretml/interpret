@@ -90,7 +90,7 @@ class Native:
             ct.c_char
         ]
 
-        self.lib.InitializeTrainingClassification.argtypes = [
+        self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
             ct.c_longlong,
             # int64_t countFeatures
@@ -126,9 +126,9 @@ class Native:
             # int64_t randomSeed
             ct.c_longlong
         ]
-        self.lib.InitializeTrainingClassification.restype = ct.c_void_p
+        self.lib.InitializeBoostingClassification.restype = ct.c_void_p
 
-        self.lib.InitializeTrainingRegression.argtypes = [
+        self.lib.InitializeBoostingRegression.argtypes = [
             # int64_t countFeatures
             ct.c_longlong,
             # EbmCoreFeature * features
@@ -160,10 +160,10 @@ class Native:
             # int64_t randomSeed
             ct.c_longlong
         ]
-        self.lib.InitializeTrainingRegression.restype = ct.c_void_p
+        self.lib.InitializeBoostingRegression.restype = ct.c_void_p
 
         self.lib.GenerateModelFeatureCombinationUpdate.argtypes = [
-            # void * ebmTraining
+            # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureCombination
             ct.c_longlong,
@@ -185,7 +185,7 @@ class Native:
         self.lib.GenerateModelFeatureCombinationUpdate.restype = ct.POINTER(ct.c_double)
 
         self.lib.ApplyModelFeatureCombinationUpdate.argtypes = [
-            # void * ebmTraining
+            # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureCombination
             ct.c_longlong,
@@ -197,7 +197,7 @@ class Native:
         self.lib.ApplyModelFeatureCombinationUpdate.restype = ct.c_longlong
 
         self.lib.GetBestModelFeatureCombination.argtypes = [
-            # void * ebmTraining
+            # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureCombination
             ct.c_longlong,
@@ -205,7 +205,7 @@ class Native:
         self.lib.GetBestModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.GetCurrentModelFeatureCombination.argtypes = [
-            # void * ebmTraining
+            # void * ebmBoosting
             ct.c_void_p,
             # int64_t indexFeatureCombination
             ct.c_longlong,
@@ -213,7 +213,7 @@ class Native:
         self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
         self.lib.FreeTraining.argtypes = [
-            # void * ebmTraining
+            # void * ebmBoosting
             ct.c_void_p
         ]
 
@@ -416,7 +416,7 @@ class Native:
         return feature_combinations_ar, feature_combination_indexes
 
 
-class NativeEBMTraining:
+class NativeEBMBoosting:
     """Lightweight wrapper for EBM C training code.
     """
 
@@ -545,7 +545,7 @@ class NativeEBMTraining:
 
         # Allocate external resources
         if model_type == "classification":
-            self._model_pointer = self._native.lib.InitializeTrainingClassification(
+            self._model_pointer = self._native.lib.InitializeBoostingClassification(
                 n_classes,
                 len(feature_array),
                 feature_array,
@@ -564,9 +564,9 @@ class NativeEBMTraining:
                 random_state
             )
             if not self._model_pointer:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeTrainingClassification")
+                raise MemoryError("Out of memory in InitializeBoostingClassification")
         elif model_type == "regression":
-            self._model_pointer = self._native.lib.InitializeTrainingRegression(
+            self._model_pointer = self._native.lib.InitializeBoostingRegression(
                 len(feature_array),
                 feature_array,
                 len(feature_combinations_array),
@@ -584,7 +584,7 @@ class NativeEBMTraining:
                 random_state
             )
             if not self._model_pointer:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeTrainingRegression")
+                raise MemoryError("Out of memory in InitializeBoostingRegression")
         else:
             raise AttributeError("Unrecognized model_type")
 
@@ -933,7 +933,7 @@ class NativeHelper:
         min_metric = np.inf
         episode_index = 0
         with closing(
-            NativeEBMTraining(
+            NativeEBMBoosting(
                 model_type,
                 n_classes,
                 features,
@@ -947,7 +947,7 @@ class NativeHelper:
                 n_inner_bags,
                 random_state
             )
-        ) as native_ebm_training:
+        ) as native_ebm_boosting:
             no_change_run_length = 0
             bp_metric = np.inf
             log.info("Start boosting {0}".format(name))
@@ -957,7 +957,7 @@ class NativeHelper:
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_combination_index in range(len(feature_combinations)):
-                    curr_metric = native_ebm_training.training_step(
+                    curr_metric = native_ebm_boosting.training_step(
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
                         max_tree_splits=max_tree_splits,
@@ -987,7 +987,7 @@ class NativeHelper:
                     break
 
             log.info("End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(name, min_metric, episode_index))
-            model_update = native_ebm_training.get_best_model()
+            model_update = native_ebm_boosting.get_best_model()
 
         return model_update, min_metric, episode_index
 

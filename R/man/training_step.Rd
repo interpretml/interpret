@@ -6,7 +6,7 @@
 }
 \usage{
 training_step(
-  ebm_training, 
+  ebm_boosting, 
   index_feature_combination, 
   learning_rate, 
   count_tree_splits_max, 
@@ -16,7 +16,7 @@ training_step(
 )
 }
 \arguments{
-  \item{ebm_training}{ebm training}
+  \item{ebm_boosting}{ebm training}
   \item{index_feature_combination}{index feature combination}
   \item{learning_rate}{learning rate}
   \item{count_tree_splits_max}{count tree splits max}

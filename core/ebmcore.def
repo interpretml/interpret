@@ -3,8 +3,8 @@ LIBRARY
 EXPORTS
   SetLogMessageFunction
   SetTraceLevel
-  InitializeTrainingClassification
-  InitializeTrainingRegression
+  InitializeBoostingClassification
+  InitializeBoostingRegression
   GenerateModelFeatureCombinationUpdate
   ApplyModelFeatureCombinationUpdate
   TrainingStep

@@ -64,12 +64,12 @@ extern "C" {
 #error compiler not recognized
 #endif // compiler type
 
-typedef struct _EbmTraining {
-   // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
+typedef struct _EbmBoosting {
+   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} *PEbmTraining;
+} *PEbmBoosting;
 typedef struct _EbmInteraction {
-   // this struct is to enforce that our caller doesn't mix EbmTraining and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
+   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
 } *PEbmInteraction;
 
@@ -122,7 +122,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(sign
 //   - TODO: is this a useful property, or in otherwords, do we want to keep negated logits in our "small update model" => the model logits that we expose to python are kept very separate from the "small update logits" that we use internally in C++ for calculating changes to residuals and for calculating metrics.  We could in theory keep the small update logits as negative internally in C++ if that was useful, and then when it came time to update our public models, we could subtract the negated small update logits.  The code that merges the "small update logits" into the public models is the SegmentedRegion::Add(..) function, but we could have a SegmentedRegion::Subtract(..) function that would be equally efficient if we wanted to do that.  In that function we don't benefit from the assembly add property that you get to choose one of the original values to keep when adding two registers together since we can either just load both items into registers and do the subtract, or we can load the value we will subtract into a register and subract that from the pointer indirection to the target memory location.
 //   - clearly, keeping normal logits instead of negated logits will be less confusing
 //   - keeping negated logits would be even more confusing since we want to keep non-negated values for regression models
-//   - when calling InitializeTrainingClassification, the trainingPredictorScores and validationPredictorScores values would logically need to be negated for consistency with the models if we stored the models as negated, so it would be even more confusing
+//   - when calling InitializeBoostingClassification, the trainingPredictorScores and validationPredictorScores values would logically need to be negated for consistency with the models if we stored the models as negated, so it would be even more confusing
 //   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature combinations" and get the logit for that "feature combination" to sum them all together for the combined logit, and that work is going to be far far greater than negating a logit at the end, so whether we keep negated or non-negated logits isn't a big deal computationally
 // - shifting logits
 //   - for multiclass, we only require K-1 logits for a K-class prediction problem.  If we use K logits, then we can shift all the logits together at will in any particular instance/bin WITHOUT changing the intercept by adding a constant accross all logits within the bin.  If we have K-1 logits, then one of the logits is implicitly zero and the others are forced into the only values that make sense relative to the zero by having shifted all the logits so that one of the bins/instances is zero
@@ -184,7 +184,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(sign
 //       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.  I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingClassification(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoostingClassification(
    IntegerDataType countTargetClasses,
    IntegerDataType countFeatures,
    const EbmCoreFeature * features,
@@ -202,7 +202,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION Initialize
    IntegerDataType countInnerBags,
    IntegerDataType randomSeed
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION InitializeTrainingRegression(
+EBMCORE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoostingRegression(
    IntegerDataType countFeatures, 
    const EbmCoreFeature * features,
    IntegerDataType countFeatureCombinations, 
@@ -220,7 +220,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE PEbmTraining EBMCORE_CALLING_CONVENTION Initialize
    IntegerDataType randomSeed
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
-   PEbmTraining ebmTraining, 
+   PEbmBoosting ebmBoosting, 
    IntegerDataType indexFeatureCombination, 
    FractionalDataType learningRate, 
    IntegerDataType countTreeSplitsMax, 
@@ -230,13 +230,13 @@ EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION Ge
    FractionalDataType * gainReturn
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
-   PEbmTraining ebmTraining, 
+   PEbmBoosting ebmBoosting, 
    IntegerDataType indexFeatureCombination, 
    const FractionalDataType * modelFeatureCombinationUpdateTensor,
    FractionalDataType * validationMetricReturn
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
-   PEbmTraining ebmTraining,
+   PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
    IntegerDataType countTreeSplitsMax,
@@ -246,15 +246,15 @@ EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION Trainin
    FractionalDataType * validationMetricReturn
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
-   PEbmTraining ebmTraining, 
+   PEbmBoosting ebmBoosting, 
    IntegerDataType indexFeatureCombination
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
-   PEbmTraining ebmTraining,
+   PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination
 );
 EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeTraining(
-   PEbmTraining ebmTraining
+   PEbmBoosting ebmBoosting
 );
 
 

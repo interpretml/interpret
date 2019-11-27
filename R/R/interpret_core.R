@@ -55,11 +55,11 @@ initialize_training_classification <- function(count_target_classes, features, f
    count_inner_bags <- as.integer(count_inner_bags)
    random_seed <- as.integer(random_seed)
 
-   ebm_training <- .Call(InitializeTrainingClassification_R, count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
-   if(is.null(ebm_training)) {
-      stop("error in InitializeTrainingClassification_R")
+   ebm_boosting <- .Call(InitializeBoostingClassification_R, count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
+   if(is.null(ebm_boosting)) {
+      stop("error in InitializeBoostingClassification_R")
    }
-   return(ebm_training)
+   return(ebm_boosting)
 }
 
 initialize_training_regression <- function(features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
@@ -79,15 +79,15 @@ initialize_training_regression <- function(features, feature_combinations, featu
    count_inner_bags <- as.integer(count_inner_bags)
    random_seed <- as.integer(random_seed)
 
-   ebm_training <- .Call(InitializeTrainingRegression_R, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
-   if(is.null(ebm_training)) {
-      stop("error in InitializeTrainingRegression_R")
+   ebm_boosting <- .Call(InitializeBoostingRegression_R, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed)
+   if(is.null(ebm_boosting)) {
+      stop("error in InitializeBoostingRegression_R")
    }
-   return(ebm_training)
+   return(ebm_boosting)
 }
 
-training_step <- function(ebm_training, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights) {
-   stopifnot(class(ebm_training) == "externalptr")
+training_step <- function(ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights) {
+   stopifnot(class(ebm_boosting) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
    learning_rate <- as.double(learning_rate)
    count_tree_splits_max <- as.double(count_tree_splits_max)
@@ -99,29 +99,29 @@ training_step <- function(ebm_training, index_feature_combination, learning_rate
       validation_weights <- as.double(validation_weights)
    }
 
-   validation_metric <- .Call(TrainingStep_R, ebm_training, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
+   validation_metric <- .Call(TrainingStep_R, ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
    if(is.null(validation_metric)) {
       stop("error in TrainingStep_R")
    }
    return(validation_metric)
 }
 
-get_best_model_feature_combination <- function(ebm_training, index_feature_combination) {
-   stopifnot(class(ebm_training) == "externalptr")
+get_best_model_feature_combination <- function(ebm_boosting, index_feature_combination) {
+   stopifnot(class(ebm_boosting) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
 
-   model_feature_combination_tensor <- .Call(GetBestModelFeatureCombination_R, ebm_training, index_feature_combination)
+   model_feature_combination_tensor <- .Call(GetBestModelFeatureCombination_R, ebm_boosting, index_feature_combination)
    if(is.null(model_feature_combination_tensor)) {
       stop("error in GetBestModelFeatureCombination_R")
    }
    return(model_feature_combination_tensor)
 }
 
-get_current_model_feature_combination <- function(ebm_training, index_feature_combination) {
-   stopifnot(class(ebm_training) == "externalptr")
+get_current_model_feature_combination <- function(ebm_boosting, index_feature_combination) {
+   stopifnot(class(ebm_boosting) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
 
-   model_feature_combination_tensor <- .Call(GetCurrentModelFeatureCombination_R, ebm_training, index_feature_combination)
+   model_feature_combination_tensor <- .Call(GetCurrentModelFeatureCombination_R, ebm_boosting, index_feature_combination)
    if(is.null(model_feature_combination_tensor)) {
       stop("error in GetCurrentModelFeatureCombination_R")
    }
