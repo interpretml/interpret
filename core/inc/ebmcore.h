@@ -235,7 +235,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION ApplyMo
    const FractionalDataType * modelFeatureCombinationUpdateTensor,
    FractionalDataType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
@@ -253,7 +253,7 @@ EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION Ge
    PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeTraining(
+EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeBoosting(
    PEbmBoosting ebmBoosting
 );
 

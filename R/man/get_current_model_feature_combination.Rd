@@ -18,7 +18,7 @@ get_current_model_feature_combination(
   Returns the current model tensor for a single explainable boosting machine feature combination
 }
 \examples{
-  training_ptr <- initialize_training_regression(
+  boosting_ptr <- initialize_boosting_regression(
     1L, 
     list(ebm_feature(2)), 
     list(ebm_feature_combination(1)), 
@@ -27,7 +27,7 @@ get_current_model_feature_combination(
     c(12), c(1), c(0), 
     0L)
 
-  validation_metric <- training_step(training_ptr, 0, 0.01, 2, 2, NULL, NULL)
+  validation_metric <- boosting_step(boosting_ptr, 0, 0.01, 2, 2, NULL, NULL)
 
-  model_feature_combination_tensor <- get_current_model_feature_combination(training_ptr, 0)
+  model_feature_combination_tensor <- get_current_model_feature_combination(boosting_ptr, 0)
 }

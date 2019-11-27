@@ -32,7 +32,7 @@
 #include "DimensionSingle.h"
 #include "DimensionMultiple.h"
 
-#include "EbmTrainingState.h"
+#include "EbmBoostingState.h"
 
 void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");
@@ -904,8 +904,8 @@ void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmBoostingState * AllocateCoreTraining(const IntegerDataType randomSeed, const IntegerDataType countFeatures, const EbmCoreFeature * const features, const IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * const featureCombinations, const IntegerDataType * const featureCombinationIndexes, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const IntegerDataType countTrainingInstances, const void * const trainingTargets, const IntegerDataType * const trainingBinnedData, const FractionalDataType * const trainingPredictorScores, const IntegerDataType countValidationInstances, const void * const validationTargets, const IntegerDataType * const validationBinnedData, const FractionalDataType * const validationPredictorScores, const IntegerDataType countInnerBags) {
-   // TODO : give AllocateCoreTraining the same calling parameter order as InitializeBoostingClassification
+EbmBoostingState * AllocateCoreBoosting(const IntegerDataType randomSeed, const IntegerDataType countFeatures, const EbmCoreFeature * const features, const IntegerDataType countFeatureCombinations, const EbmCoreFeatureCombination * const featureCombinations, const IntegerDataType * const featureCombinationIndexes, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const IntegerDataType countTrainingInstances, const void * const trainingTargets, const IntegerDataType * const trainingBinnedData, const FractionalDataType * const trainingPredictorScores, const IntegerDataType countValidationInstances, const void * const validationTargets, const IntegerDataType * const validationBinnedData, const FractionalDataType * const validationPredictorScores, const IntegerDataType countInnerBags) {
+   // TODO : give AllocateCoreBoosting the same calling parameter order as InitializeBoostingClassification
    // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
    // randomSeed can be any value
@@ -1015,7 +1015,7 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoo
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, runtimeLearningTypeOrCountTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
+   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, runtimeLearningTypeOrCountTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;
 }
@@ -1038,7 +1038,7 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoo
    IntegerDataType randomSeed
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countFeatureCombinations=%" IntegerDataTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntegerDataTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntegerDataTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntegerDataTypePrintf ", randomSeed=%" IntegerDataTypePrintf, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationTargets), static_cast<const void *>(validationPredictorScores), countInnerBags, randomSeed);
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreTraining(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
+   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;
 }
@@ -1408,7 +1408,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModel
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION TrainingStep(
+EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination,
    FractionalDataType learningRate,
@@ -1429,7 +1429,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION TrainingSt
          if(nullptr != validationMetricReturn) {
             *validationMetricReturn = 0;
          }
-         LOG_0(TraceLevelWarning, "WARNING TrainingStep pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
+         LOG_0(TraceLevelWarning, "WARNING BoostingStep pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return 0;
       }
    }
@@ -1509,12 +1509,12 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GetCu
    return pRet;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeTraining(
+EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeBoosting(
    PEbmBoosting ebmBoosting
 ) {
-   LOG_N(TraceLevelInfo, "Entered FreeTraining: ebmBoosting=%p", static_cast<void *>(ebmBoosting));
+   LOG_N(TraceLevelInfo, "Entered FreeBoosting: ebmBoosting=%p", static_cast<void *>(ebmBoosting));
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    // pEbmBoostingState == nullptr is legal, just like delete/free
    delete pEbmBoostingState;
-   LOG_0(TraceLevelInfo, "Exited FreeTraining");
+   LOG_0(TraceLevelInfo, "Exited FreeBoosting");
 }

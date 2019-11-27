@@ -1,11 +1,11 @@
-\name{initialize_training_regression}
-\alias{initialize_training_regression}
-\title{Initializes Regression Training}
+\name{initialize_boosting_regression}
+\alias{initialize_boosting_regression}
+\title{Initializes Regression Boosting}
 \description{
-  Initializes Regression Training
+  Initializes Regression Boosting
 }
 \usage{
-initialize_training_regression(
+initialize_boosting_regression(
   features, 
   feature_combinations, 
   feature_combination_indexes, 
@@ -33,10 +33,10 @@ initialize_training_regression(
   \item{random_seed}{random seed}
 }
 \value{
-  Returns an opaque externalptr object that can be passed to the function training_step to iteratively boost on features in the explainable boosting machine model, or to the functions get_best_model_feature_combination, or get_current_model_feature_combination to obtain the explainable boosting machine tensors
+  Returns an opaque externalptr object that can be passed to the function boosting_step to iteratively boost on features in the explainable boosting machine model, or to the functions get_best_model_feature_combination, or get_current_model_feature_combination to obtain the explainable boosting machine tensors
 }
 \examples{
-  training_ptr <- initialize_training_regression(
+  boosting_ptr <- initialize_boosting_regression(
     list(ebm_feature(1)), 
     list(ebm_feature_combination(1)), 
     c(0), 

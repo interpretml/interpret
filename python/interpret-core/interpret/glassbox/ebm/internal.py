@@ -212,7 +212,7 @@ class Native:
         ]
         self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
 
-        self.lib.FreeTraining.argtypes = [
+        self.lib.FreeBoosting.argtypes = [
             # void * ebmBoosting
             ct.c_void_p
         ]
@@ -593,16 +593,16 @@ class NativeEBMBoosting:
     def close(self):
         """ Deallocates C objects used to train EBM. """
         log.info("Deallocation training start")
-        self._native.lib.FreeTraining(self._model_pointer)
+        self._native.lib.FreeBoosting(self._model_pointer)
         log.info("Deallocation training end")
 
-    def training_step(
+    def boosting_step(
         self,
         feature_combination_index,
         learning_rate,
         max_tree_splits,
         min_cases_for_split,
-        training_step_episodes,
+        boosting_step_episodes,
     ):
 
         """ Conducts a training step per feature
@@ -614,7 +614,7 @@ class NativeEBMBoosting:
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
             min_cases_for_split: Min observations required to split.
-            training_step_episodes: Number of episodes to train feature step.
+            boosting_step_episodes: Number of episodes to boost feature step.
 
         Returns:
             Validation loss for the training step.
@@ -625,7 +625,7 @@ class NativeEBMBoosting:
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
-            for i in range(training_step_episodes):
+            for i in range(boosting_step_episodes):
                 model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
                     self._model_pointer,
                     feature_combination_index,
@@ -923,7 +923,7 @@ class NativeHelper:
         learning_rate,
         max_tree_splits,
         min_cases_for_splits,
-        training_step_episodes,
+        boosting_step_episodes,
         data_n_episodes,
         early_stopping_tolerance,
         early_stopping_run_length,
@@ -957,12 +957,12 @@ class NativeHelper:
                     log.debug("Metric: {0}".format(min_metric))
 
                 for feature_combination_index in range(len(feature_combinations)):
-                    curr_metric = native_ebm_boosting.training_step(
+                    curr_metric = native_ebm_boosting.boosting_step(
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
                         max_tree_splits=max_tree_splits,
                         min_cases_for_split=min_cases_for_splits,
-                        training_step_episodes=training_step_episodes,
+                        boosting_step_episodes=boosting_step_episodes,
                     )
 
                     min_metric = min(curr_metric, min_metric)

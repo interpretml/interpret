@@ -5,7 +5,7 @@
 #include <cmath> // std::isnan, std::isinf
 
 #include "ebmcore.h"
-#include "EbmTrainingState.h"
+#include "EbmBoostingState.h"
 #include "EbmInteractionState.h"
 
 #include <Rinternals.h>
@@ -52,7 +52,7 @@ void TrainingFinalizer(SEXP trainingRPointer) {
    if(EXTPTRSXP == TYPEOF(trainingRPointer)) {
       PEbmBoosting pTraining = static_cast<PEbmBoosting>(R_ExternalPtrAddr(trainingRPointer));
       if(nullptr != pTraining) {
-         FreeTraining(pTraining);
+         FreeBoosting(pTraining);
          R_ClearExternalPtr(trainingRPointer);
       }
    }
@@ -754,7 +754,7 @@ SEXP InitializeBoostingRegression_R(
    }
 }
 
-SEXP TrainingStep_R(
+SEXP BoostingStep_R(
    SEXP ebmBoosting,
    SEXP indexFeatureCombination,
    SEXP learningRate,
@@ -772,61 +772,61 @@ SEXP TrainingStep_R(
    EBM_ASSERT(nullptr != validationWeights);
 
    if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R EXTPTRSXP != TYPEOF(ebmBoosting)");
       return R_NilValue;
    }
    EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
    if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R nullptr == pEbmBoosting");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R nullptr == pEbmBoosting");
       return R_NilValue;
    }
 
    if(!IsSingleDoubleVector(indexFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsSingleDoubleVector(indexFeatureCombination)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(indexFeatureCombination)");
       return R_NilValue;
    }
    double doubleIndex = REAL(indexFeatureCombination)[0];
    if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
    IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
 
    if(!IsSingleDoubleVector(learningRate)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsSingleDoubleVector(learningRate)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(learningRate)");
       return R_NilValue;
    }
    double learningRateLocal = REAL(learningRate)[0];
 
    if(!IsSingleDoubleVector(countTreeSplitsMax)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsSingleDoubleVector(countTreeSplitsMax)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countTreeSplitsMax)");
       return R_NilValue;
    }
    double doubleCountTreeSplitsMax = REAL(countTreeSplitsMax)[0];
    IntegerDataType cTreeSplitsMax;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
    if(std::isnan(doubleCountTreeSplitsMax) || static_cast<double>(std::numeric_limits<IntegerDataType>::max()) < doubleCountTreeSplitsMax) {
-      LOG_0(TraceLevelWarning, "WARNING TrainingStep_R countTreeSplitsMax overflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax overflow");
       cTreeSplitsMax = std::numeric_limits<IntegerDataType>::max();
    } else if(doubleCountTreeSplitsMax < static_cast<double>(std::numeric_limits<IntegerDataType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING TrainingStep_R countTreeSplitsMax underflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax underflow");
       cTreeSplitsMax = std::numeric_limits<IntegerDataType>::lowest();
    } else {
       cTreeSplitsMax = static_cast<IntegerDataType>(doubleCountTreeSplitsMax);
    }
 
    if(!IsSingleDoubleVector(countInstancesRequiredForParentSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsSingleDoubleVector(countInstancesRequiredForParentSplitMin)");
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countInstancesRequiredForParentSplitMin)");
       return R_NilValue;
    }
    double doubleCountInstancesRequiredForParentSplitMin = REAL(countInstancesRequiredForParentSplitMin)[0];
    IntegerDataType cInstancesRequiredForParentSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
    if(std::isnan(doubleCountInstancesRequiredForParentSplitMin) || static_cast<double>(std::numeric_limits<IntegerDataType>::max()) < doubleCountInstancesRequiredForParentSplitMin) {
-      LOG_0(TraceLevelWarning, "WARNING TrainingStep_R countInstancesRequiredForParentSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForParentSplitMin overflow");
       cInstancesRequiredForParentSplitMin = std::numeric_limits<IntegerDataType>::max();
    } else if(doubleCountInstancesRequiredForParentSplitMin < static_cast<double>(std::numeric_limits<IntegerDataType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING TrainingStep_R countInstancesRequiredForParentSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForParentSplitMin underflow");
       cInstancesRequiredForParentSplitMin = std::numeric_limits<IntegerDataType>::lowest();
    } else {
       cInstancesRequiredForParentSplitMin = static_cast<IntegerDataType>(doubleCountInstancesRequiredForParentSplitMin);
@@ -836,41 +836,41 @@ SEXP TrainingStep_R(
    double * pValidationWeights = nullptr;
    if(NILSXP != TYPEOF(trainingWeights) || NILSXP != TYPEOF(validationWeights)) {
       if(REALSXP != TYPEOF(trainingWeights)) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R REALSXP != TYPEOF(trainingWeights)");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R REALSXP != TYPEOF(trainingWeights)");
          return R_NilValue;
       }
       R_xlen_t trainingWeightsLength = xlength(trainingWeights);
       if(!IsNumberConvertable<size_t, R_xlen_t>(trainingWeightsLength)) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsNumberConvertable<size_t, R_xlen_t>(trainingWeightsLength)");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsNumberConvertable<size_t, R_xlen_t>(trainingWeightsLength)");
          return R_NilValue;
       }
       size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
       if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()");
          return R_NilValue;
       }
       pTrainingWeights = REAL(trainingWeights);
 
       if(REALSXP != TYPEOF(validationWeights)) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R REALSXP != TYPEOF(validationWeights)");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R REALSXP != TYPEOF(validationWeights)");
          return R_NilValue;
       }
       R_xlen_t validationWeightsLength = xlength(validationWeights);
       if(!IsNumberConvertable<size_t, R_xlen_t>(validationWeightsLength)) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R !IsNumberConvertable<size_t, R_xlen_t>(validationWeightsLength)");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsNumberConvertable<size_t, R_xlen_t>(validationWeightsLength)");
          return R_NilValue;
       }
       size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
       if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR TrainingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()");
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()");
          return R_NilValue;
       }
       pValidationWeights = REAL(validationWeights);
    }
 
    FractionalDataType validationMetricReturn;
-   if(0 != TrainingStep(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination, learningRateLocal, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pTrainingWeights, pValidationWeights, &validationMetricReturn)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainingStep_R TrainingStep returned error code");
+   if(0 != BoostingStep(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination, learningRateLocal, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pTrainingWeights, pValidationWeights, &validationMetricReturn)) {
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R BoostingStep returned error code");
       return R_NilValue;
    }
 
@@ -1010,7 +1010,7 @@ SEXP GetCurrentModelFeatureCombination_R(
    return ret;
 }
 
-SEXP FreeTraining_R(
+SEXP FreeBoosting_R(
    SEXP ebmBoosting
 ) {
    TrainingFinalizer(ebmBoosting);
@@ -1229,10 +1229,10 @@ SEXP FreeInteraction_R(
 static const R_CallMethodDef g_exposedFunctions[] = {
    { "InitializeBoostingClassification_R", (DL_FUNC)&InitializeBoostingClassification_R, 12 },
    { "InitializeBoostingRegression_R", (DL_FUNC)& InitializeBoostingRegression_R, 11 },
-   { "TrainingStep_R", (DL_FUNC)& TrainingStep_R, 7 },
+   { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },
    { "GetBestModelFeatureCombination_R", (DL_FUNC)&GetBestModelFeatureCombination_R, 2 },
    { "GetCurrentModelFeatureCombination_R", (DL_FUNC)& GetCurrentModelFeatureCombination_R, 2 },
-   { "FreeTraining_R", (DL_FUNC)& FreeTraining_R, 1 },
+   { "FreeBoosting_R", (DL_FUNC)& FreeBoosting_R, 1 },
    { "InitializeInteractionClassification_R", (DL_FUNC)&InitializeInteractionClassification_R, 5 },
    { "InitializeInteractionRegression_R", (DL_FUNC)& InitializeInteractionRegression_R, 4 },
    { "GetInteractionScore_R", (DL_FUNC)& GetInteractionScore_R, 2 },

@@ -1,11 +1,11 @@
-\name{training_step}
-\alias{training_step}
-\title{Training Step}
+\name{boosting_step}
+\alias{boosting_step}
+\title{Boosting Step}
 \description{
-  Takes one Training Step
+  Takes one Boosting Step
 }
 \usage{
-training_step(
+boosting_step(
   ebm_boosting, 
   index_feature_combination, 
   learning_rate, 
@@ -25,10 +25,10 @@ training_step(
   \item{validation_weights}{validation weights}
 }
 \value{
-  Returns the root mean squared error when the model being trained is for a regression problem, or the log loss for a classification problem
+  Returns the mean squared error when the model being trained is for a regression problem, or the log loss for a classification problem
 }
 \examples{
-  training_ptr <- initialize_training_regression(
+  boosting_ptr <- initialize_boosting_regression(
     1L, 
     list(ebm_feature(2)), 
     list(ebm_feature_combination(1)),
@@ -37,5 +37,5 @@ training_step(
     c(12), c(1), c(0), 
     0L)
 
-  validation_metric <- training_step(training_ptr, 0, 0.01, 2, 2, NULL, NULL)
+  validation_metric <- boosting_step(boosting_ptr, 0, 0.01, 2, 2, NULL, NULL)
 }

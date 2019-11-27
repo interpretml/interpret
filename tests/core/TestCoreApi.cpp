@@ -354,7 +354,7 @@ public:
 
    ~TestApi() {
       if(nullptr != m_pEbmBoosting) {
-         FreeTraining(m_pEbmBoosting);
+         FreeBoosting(m_pEbmBoosting);
       }
       if(nullptr != m_pEbmInteraction) {
          FreeInteraction(m_pEbmInteraction);
@@ -762,7 +762,7 @@ public:
       }
 
       FractionalDataType validationMetricReturn = FractionalDataType { 0 };
-      const IntegerDataType ret = TrainingStep(m_pEbmBoosting, indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
+      const IntegerDataType ret = BoostingStep(m_pEbmBoosting, indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
       if(0 != ret) {
          exit(1);
       }
@@ -1017,9 +1017,9 @@ TEST_CASE("null validationMetricReturn, training, regression") {
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = TrainingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
-   FreeTraining(pEbmBoosting);
+   FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null validationMetricReturn, training, binary") {
@@ -1027,9 +1027,9 @@ TEST_CASE("null validationMetricReturn, training, binary") {
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(2, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = TrainingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
-   FreeTraining(pEbmBoosting);
+   FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null validationMetricReturn, training, multiclass") {
@@ -1037,9 +1037,9 @@ TEST_CASE("null validationMetricReturn, training, multiclass") {
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(3, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = TrainingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
-   FreeTraining(pEbmBoosting);
+   FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, regression") {

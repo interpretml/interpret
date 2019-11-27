@@ -37,7 +37,7 @@ ebm_feature_combination <- function(count_features_in_combination = 1) {
 
 # Training functions
 
-initialize_training_classification <- function(count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
+initialize_boosting_classification <- function(count_target_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
    count_target_classes <- as.double(count_target_classes)
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
@@ -62,7 +62,7 @@ initialize_training_classification <- function(count_target_classes, features, f
    return(ebm_boosting)
 }
 
-initialize_training_regression <- function(features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
+initialize_boosting_regression <- function(features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, count_inner_bags, random_seed) {
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
    feature_combination_indexes <- as.double(feature_combination_indexes)
@@ -86,7 +86,7 @@ initialize_training_regression <- function(features, feature_combinations, featu
    return(ebm_boosting)
 }
 
-training_step <- function(ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights) {
+boosting_step <- function(ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights) {
    stopifnot(class(ebm_boosting) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
    learning_rate <- as.double(learning_rate)
@@ -99,9 +99,9 @@ training_step <- function(ebm_boosting, index_feature_combination, learning_rate
       validation_weights <- as.double(validation_weights)
    }
 
-   validation_metric <- .Call(TrainingStep_R, ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
+   validation_metric <- .Call(BoostingStep_R, ebm_boosting, index_feature_combination, learning_rate, count_tree_splits_max, count_instances_required_for_parent_split_min, training_weights, validation_weights)
    if(is.null(validation_metric)) {
-      stop("error in TrainingStep_R")
+      stop("error in BoostingStep_R")
    }
    return(validation_metric)
 }

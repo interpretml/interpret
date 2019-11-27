@@ -343,7 +343,7 @@ class BaseCoreEBM:
         # Native
         feature_step_n_inner_bags,
         learning_rate,
-        training_step_episodes,
+        boosting_step_episodes,
         max_tree_splits,
         min_cases_for_splits,
         # Overall
@@ -367,7 +367,7 @@ class BaseCoreEBM:
         # Arguments for internal EBM.
         self.feature_step_n_inner_bags = feature_step_n_inner_bags
         self.learning_rate = learning_rate
-        self.training_step_episodes = training_step_episodes
+        self.boosting_step_episodes = boosting_step_episodes
         self.max_tree_splits = max_tree_splits
         self.min_cases_for_splits = min_cases_for_splits
 
@@ -448,7 +448,7 @@ class BaseCoreEBM:
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
             min_cases_for_splits=self.min_cases_for_splits,
-            training_step_episodes=self.training_step_episodes,
+            boosting_step_episodes=self.boosting_step_episodes,
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
@@ -519,7 +519,7 @@ class BaseCoreEBM:
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
             min_cases_for_splits=self.min_cases_for_splits,
-            training_step_episodes=self.training_step_episodes,
+            boosting_step_episodes=self.boosting_step_episodes,
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
@@ -621,7 +621,7 @@ class BaseEBM(BaseEstimator):
         # TODO PK v.2 feature_step_n_inner_bags -> n_inner_bags
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
-        # TODO PK v.2 eliminate training_step_episodes
+        # TODO PK v.2 eliminate training_step_episodes (if not, rename to boosting_step_episodes)
         training_step_episodes=1,
         max_tree_splits=2,
         min_cases_for_splits=2,
@@ -726,7 +726,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                     learning_rate=self.learning_rate,
-                    training_step_episodes=self.training_step_episodes,
+                    boosting_step_episodes=self.training_step_episodes,
                     max_tree_splits=self.max_tree_splits,
                     min_cases_for_splits=self.min_cases_for_splits,
                     # Overall
@@ -752,7 +752,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                     learning_rate=self.learning_rate,
-                    training_step_episodes=self.training_step_episodes,
+                    boosting_step_episodes=self.training_step_episodes,
                     max_tree_splits=self.max_tree_splits,
                     min_cases_for_splits=self.min_cases_for_splits,
                     # Overall

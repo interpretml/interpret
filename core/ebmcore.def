@@ -7,10 +7,10 @@ EXPORTS
   InitializeBoostingRegression
   GenerateModelFeatureCombinationUpdate
   ApplyModelFeatureCombinationUpdate
-  TrainingStep
+  BoostingStep
   GetBestModelFeatureCombination
   GetCurrentModelFeatureCombination
-  FreeTraining
+  FreeBoosting
   InitializeInteractionClassification
   InitializeInteractionRegression
   GetInteractionScore
