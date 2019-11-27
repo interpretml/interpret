@@ -222,7 +222,7 @@ We also build on top of many great packages. Please check them out!
 
   <details>
     <summary>
-      <em>"Axiomatic Interpretability for Multiclass Additive Models" (X. Zhang, S. Tan, P. Koch, Y. Lou, U. Chajewska, and R. Caruana 2012)</em>
+      <em>"Axiomatic Interpretability for Multiclass Additive Models" (X. Zhang, S. Tan, P. Koch, Y. Lou, U. Chajewska, and R. Caruana 2019)</em>
     </summary>
     <br/>
     <pre>
@@ -254,6 +254,22 @@ We also build on top of many great packages. Please check them out!
 }
 </pre>
     <a href="https://arxiv.org/pdf/1710.06169">Paper link</a>
+  </details>
+
+  <details>
+    <summary>
+      <em>"Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models" (B. Lengerich, S. Tan, C. Chang, G. Hooker, R. Caruana 2019)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{lengerich2019purifying,
+  title={Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models},
+  author={Lengerich, Benjamin and Tan, Sarah and Chang, Chun-Hao and Hooker, Giles and Caruana, Rich},
+  journal={arXiv preprint arXiv:1911.04974},
+  year={2019}
+}
+</pre>
+    <a href="https://arxiv.org/pdf/1911.04974.pdf">Paper link</a>
   </details>
 
   <hr/>
