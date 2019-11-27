@@ -398,171 +398,6 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Fra
    return false;
 }
 
-SEXP InitializeTrainingRegression_R(
-   SEXP features,
-   SEXP featureCombinations,
-   SEXP featureCombinationIndexes,
-   SEXP trainingBinnedData,
-   SEXP trainingTargets,
-   SEXP trainingPredictorScores,
-   SEXP validationBinnedData,
-   SEXP validationTargets,
-   SEXP validationPredictorScores,
-   SEXP countInnerBags,
-   SEXP randomSeed
-) {
-   EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != featureCombinations);
-   EBM_ASSERT(nullptr != featureCombinationIndexes);
-   EBM_ASSERT(nullptr != trainingBinnedData);
-   EBM_ASSERT(nullptr != trainingTargets);
-   EBM_ASSERT(nullptr != trainingPredictorScores);
-   EBM_ASSERT(nullptr != validationBinnedData);
-   EBM_ASSERT(nullptr != validationTargets);
-   EBM_ASSERT(nullptr != validationPredictorScores);
-   EBM_ASSERT(nullptr != countInnerBags);
-   EBM_ASSERT(nullptr != randomSeed);
-
-   size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
-
-   size_t cFeatureCombinations;
-   EbmCoreFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
-   if(nullptr == aFeatureCombinations) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countFeatureCombinations = static_cast<IntegerDataType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
-
-   const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
-   if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cFeatureCombinationsIndexesActual;
-   const IntegerDataType * aFeatureCombinationIndexes;
-   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   if(cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck");
-      return R_NilValue;
-   }
-
-   size_t cTrainingBinnedData;
-   const IntegerDataType * aTrainingBinnedData;
-   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cTrainingInstances;
-   const FractionalDataType * aTrainingTargets;
-   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countTrainingInstances = static_cast<IntegerDataType>(cTrainingInstances);
-
-   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R IsMultiplyError(cTrainingInstances, cFeatures)");
-      return R_NilValue;
-   }
-   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cTrainingInstances * cFeatures != cTrainingBinnedData");
-      return R_NilValue;
-   }
-
-   const FractionalDataType * aTrainingPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(trainingPredictorScores)) {
-      size_t cTrainingPredictorScores;
-      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cTrainingInstances != cTrainingPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cTrainingInstances != cTrainingPredictorScores");
-         return R_NilValue;
-      }
-   }
-
-   size_t cValidationBinnedData;
-   const IntegerDataType * aValidationBinnedData;
-   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cValidationInstances;
-   const FractionalDataType * aValidationTargets;
-   if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countValidationInstances = static_cast<IntegerDataType>(cValidationInstances);
-
-   if(IsMultiplyError(cValidationInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R IsMultiplyError(cValidationInstances, cFeatures)");
-      return R_NilValue;
-   }
-   if(cValidationInstances * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cValidationInstances * cFeatures != cValidationBinnedData");
-      return R_NilValue;
-   }
-
-   const FractionalDataType * aValidationPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(validationPredictorScores)) {
-      size_t cValidationPredictorScores;
-      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cValidationInstances != cValidationPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cValidationInstances != cValidationPredictorScores");
-         return R_NilValue;
-      }
-   }
-
-   if(!IsSingleIntVector(countInnerBags)) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsSingleIntVector(countInnerBags)");
-      return R_NilValue;
-   }
-   int countInnerBagsInt = INTEGER(countInnerBags)[0];
-   if(!IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)");
-      return nullptr;
-   }
-   IntegerDataType countInnerBagsLocal = static_cast<IntegerDataType>(countInnerBagsInt);
-
-   if(!IsSingleIntVector(randomSeed)) {
-      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsSingleIntVector(randomSeed)");
-      return R_NilValue;
-   }
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntegerDataType randomSeedLocal = static_cast<IntegerDataType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
-
-   PEbmTraining pEbmTraining = InitializeTrainingRegression(countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
-
-   if(nullptr == pEbmTraining) {
-      return R_NilValue;
-   } else {
-      SEXP trainingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmTraining), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(trainingRPointer);
-
-      R_RegisterCFinalizerEx(trainingRPointer, &TrainingFinalizer, Rboolean::TRUE);
-
-      UNPROTECT(1);
-      return trainingRPointer;
-   }
-}
-
 SEXP InitializeTrainingClassification_R(
    SEXP countTargetClasses,
    SEXP features,
@@ -740,6 +575,171 @@ SEXP InitializeTrainingClassification_R(
    const IntegerDataType randomSeedLocal = static_cast<IntegerDataType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
 
    PEbmTraining pEbmTraining = InitializeTrainingClassification(static_cast<IntegerDataType>(cTargetClasses), countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
+
+   if(nullptr == pEbmTraining) {
+      return R_NilValue;
+   } else {
+      SEXP trainingRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmTraining), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(trainingRPointer);
+
+      R_RegisterCFinalizerEx(trainingRPointer, &TrainingFinalizer, Rboolean::TRUE);
+
+      UNPROTECT(1);
+      return trainingRPointer;
+   }
+}
+
+SEXP InitializeTrainingRegression_R(
+   SEXP features,
+   SEXP featureCombinations,
+   SEXP featureCombinationIndexes,
+   SEXP trainingBinnedData,
+   SEXP trainingTargets,
+   SEXP trainingPredictorScores,
+   SEXP validationBinnedData,
+   SEXP validationTargets,
+   SEXP validationPredictorScores,
+   SEXP countInnerBags,
+   SEXP randomSeed
+) {
+   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != featureCombinations);
+   EBM_ASSERT(nullptr != featureCombinationIndexes);
+   EBM_ASSERT(nullptr != trainingBinnedData);
+   EBM_ASSERT(nullptr != trainingTargets);
+   EBM_ASSERT(nullptr != trainingPredictorScores);
+   EBM_ASSERT(nullptr != validationBinnedData);
+   EBM_ASSERT(nullptr != validationTargets);
+   EBM_ASSERT(nullptr != validationPredictorScores);
+   EBM_ASSERT(nullptr != countInnerBags);
+   EBM_ASSERT(nullptr != randomSeed);
+
+   size_t cFeatures;
+   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   if(nullptr == aFeatures) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+
+   size_t cFeatureCombinations;
+   EbmCoreFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
+   if(nullptr == aFeatureCombinations) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countFeatureCombinations = static_cast<IntegerDataType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+
+   const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
+   if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+
+   size_t cFeatureCombinationsIndexesActual;
+   const IntegerDataType * aFeatureCombinationIndexes;
+   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck");
+      return R_NilValue;
+   }
+
+   size_t cTrainingBinnedData;
+   const IntegerDataType * aTrainingBinnedData;
+   if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+
+   size_t cTrainingInstances;
+   const FractionalDataType * aTrainingTargets;
+   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countTrainingInstances = static_cast<IntegerDataType>(cTrainingInstances);
+
+   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R IsMultiplyError(cTrainingInstances, cFeatures)");
+      return R_NilValue;
+   }
+   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cTrainingInstances * cFeatures != cTrainingBinnedData");
+      return R_NilValue;
+   }
+
+   const FractionalDataType * aTrainingPredictorScores = nullptr;
+   if(NILSXP != TYPEOF(trainingPredictorScores)) {
+      size_t cTrainingPredictorScores;
+      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
+         // we've already logged any errors
+         return R_NilValue;
+      }
+      if(cTrainingInstances != cTrainingPredictorScores) {
+         LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cTrainingInstances != cTrainingPredictorScores");
+         return R_NilValue;
+      }
+   }
+
+   size_t cValidationBinnedData;
+   const IntegerDataType * aValidationBinnedData;
+   if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+
+   size_t cValidationInstances;
+   const FractionalDataType * aValidationTargets;
+   if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countValidationInstances = static_cast<IntegerDataType>(cValidationInstances);
+
+   if(IsMultiplyError(cValidationInstances, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R IsMultiplyError(cValidationInstances, cFeatures)");
+      return R_NilValue;
+   }
+   if(cValidationInstances * cFeatures != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cValidationInstances * cFeatures != cValidationBinnedData");
+      return R_NilValue;
+   }
+
+   const FractionalDataType * aValidationPredictorScores = nullptr;
+   if(NILSXP != TYPEOF(validationPredictorScores)) {
+      size_t cValidationPredictorScores;
+      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
+         // we've already logged any errors
+         return R_NilValue;
+      }
+      if(cValidationInstances != cValidationPredictorScores) {
+         LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R cValidationInstances != cValidationPredictorScores");
+         return R_NilValue;
+      }
+   }
+
+   if(!IsSingleIntVector(countInnerBags)) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsSingleIntVector(countInnerBags)");
+      return R_NilValue;
+   }
+   int countInnerBagsInt = INTEGER(countInnerBags)[0];
+   if(!IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)");
+      return nullptr;
+   }
+   IntegerDataType countInnerBagsLocal = static_cast<IntegerDataType>(countInnerBagsInt);
+
+   if(!IsSingleIntVector(randomSeed)) {
+      LOG_0(TraceLevelError, "ERROR InitializeTrainingRegression_R !IsSingleIntVector(randomSeed)");
+      return R_NilValue;
+   }
+   // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
+   const IntegerDataType randomSeedLocal = static_cast<IntegerDataType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+
+   PEbmTraining pEbmTraining = InitializeTrainingRegression(countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
 
    if(nullptr == pEbmTraining) {
       return R_NilValue;
@@ -1018,77 +1018,6 @@ SEXP FreeTraining_R(
 }
 
 
-SEXP InitializeInteractionRegression_R(
-   SEXP features,
-   SEXP binnedData,
-   SEXP targets,
-   SEXP predictorScores
-) {
-   EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != binnedData);
-   EBM_ASSERT(nullptr != targets);
-   EBM_ASSERT(nullptr != predictorScores);
-
-   size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
-   if(nullptr == aFeatures) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
-
-   size_t cBinnedData;
-   const IntegerDataType * aBinnedData;
-   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-
-   size_t cInstances;
-   const FractionalDataType * aTargets;
-   if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
-      // we've already logged any errors
-      return R_NilValue;
-   }
-   const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
-
-   if(IsMultiplyError(cInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
-      return R_NilValue;
-   }
-   if(cInstances * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances * cFeatures != cBinnedData");
-      return R_NilValue;
-   }
-
-   const FractionalDataType * aPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(predictorScores)) {
-      size_t cPredictorScores;
-      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cInstances != cPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
-         return R_NilValue;
-      }
-   }
-
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
-
-   if(nullptr == pEbmInteraction) {
-      return R_NilValue;
-   } else {
-      SEXP interactionRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmInteraction), R_NilValue, R_NilValue); // makes an EXTPTRSXP
-      PROTECT(interactionRPointer);
-
-      R_RegisterCFinalizerEx(interactionRPointer, &InteractionFinalizer, Rboolean::TRUE);
-
-      UNPROTECT(1);
-      return interactionRPointer;
-   }
-}
-
 SEXP InitializeInteractionClassification_R(
    SEXP countTargetClasses,
    SEXP features,
@@ -1168,6 +1097,77 @@ SEXP InitializeInteractionClassification_R(
    }
 
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(static_cast<IntegerDataType>(cTargetClasses), countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
+
+   if(nullptr == pEbmInteraction) {
+      return R_NilValue;
+   } else {
+      SEXP interactionRPointer = R_MakeExternalPtr(static_cast<void *>(pEbmInteraction), R_NilValue, R_NilValue); // makes an EXTPTRSXP
+      PROTECT(interactionRPointer);
+
+      R_RegisterCFinalizerEx(interactionRPointer, &InteractionFinalizer, Rboolean::TRUE);
+
+      UNPROTECT(1);
+      return interactionRPointer;
+   }
+}
+
+SEXP InitializeInteractionRegression_R(
+   SEXP features,
+   SEXP binnedData,
+   SEXP targets,
+   SEXP predictorScores
+) {
+   EBM_ASSERT(nullptr != features);
+   EBM_ASSERT(nullptr != binnedData);
+   EBM_ASSERT(nullptr != targets);
+   EBM_ASSERT(nullptr != predictorScores);
+
+   size_t cFeatures;
+   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   if(nullptr == aFeatures) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+
+   size_t cBinnedData;
+   const IntegerDataType * aBinnedData;
+   if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+
+   size_t cInstances;
+   const FractionalDataType * aTargets;
+   if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
+
+   if(IsMultiplyError(cInstances, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
+      return R_NilValue;
+   }
+   if(cInstances * cFeatures != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances * cFeatures != cBinnedData");
+      return R_NilValue;
+   }
+
+   const FractionalDataType * aPredictorScores = nullptr;
+   if(NILSXP != TYPEOF(predictorScores)) {
+      size_t cPredictorScores;
+      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
+         // we've already logged any errors
+         return R_NilValue;
+      }
+      if(cInstances != cPredictorScores) {
+         LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
+         return R_NilValue;
+      }
+   }
+
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;
