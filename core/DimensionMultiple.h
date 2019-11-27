@@ -907,8 +907,8 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG_0(TraceLevelVerbose, "Entered TrainMultiDimensional");
+bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+   LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
@@ -929,19 +929,19 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
    const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
    const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
    }
    const size_t cTotalBuckets =  cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
@@ -949,7 +949,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional nullptr == aHistogramBuckets");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
    }
    memset(aHistogramBuckets, 0, cBytesBuffer);
@@ -1110,7 +1110,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      LOG_0(TraceLevelVerbose, "TrainMultiDimensional Starting FIRST bin sweep loop");
+      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
@@ -1162,7 +1162,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
-      LOG_0(TraceLevelVerbose, "TrainMultiDimensional Starting SECOND bin sweep loop");
+      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
@@ -1204,11 +1204,11 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
-      LOG_0(TraceLevelVerbose, "TrainMultiDimensional Done sweep loops");
+      LOG_0(TraceLevelVerbose, "BoostMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
          if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-            LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+            LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
             free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1218,14 +1218,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
 
          if(cutFirst2LowBest < cutFirst2HighBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1235,14 +1235,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
          } else if(cutFirst2HighBest < cutFirst2LowBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 2)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1252,7 +1252,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2LowBest;
          } else {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1260,7 +1260,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             }
 
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1311,7 +1311,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
          }
       } else {
          if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-            LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+            LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
             free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1321,7 +1321,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
 
          if(cutFirst1LowBest < cutFirst1HighBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1329,7 +1329,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             }
 
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1339,7 +1339,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
          } else if(cutFirst1HighBest < cutFirst1LowBest) {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1347,7 +1347,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             }
 
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1357,14 +1357,14 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
             pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
             if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
             if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-               LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1415,7 +1415,7 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
          }
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING TrainMultiDimensional 2 != dimensions");
+      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional 2 != dimensions");
   
       // TODO: handle this better
 #ifndef NDEBUG
@@ -1429,13 +1429,13 @@ bool TrainMultiDimensional(CachedTrainingThreadResources<IsClassification(compil
    free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
 
-   LOG_0(TraceLevelVerbose, "Exited TrainMultiDimensional");
+   LOG_0(TraceLevelVerbose, "Exited BoostMultiDimensional");
    return false;
 }
 WARNING_POP
 
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-//bool TrainMultiDimensionalPaulAlgorithm(CachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//bool BoostMultiDimensionalPaulAlgorithm(CachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pFeatureCombination, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aHistogramBuckets)) {
 //      return true;

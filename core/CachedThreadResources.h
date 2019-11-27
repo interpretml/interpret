@@ -28,7 +28,7 @@ template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
 template<bool bClassification>
-class CachedTrainingThreadResources {
+class CachedBoostingThreadResources {
    bool m_bError;
 
    // this allows us to share the memory between underlying data types
@@ -50,7 +50,7 @@ public:
    std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>> m_bestTreeNodeToSplit;
 
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
-   CachedTrainingThreadResources(const size_t cVectorLength) try
+   CachedBoostingThreadResources(const size_t cVectorLength) try
       : m_bError(true)
       , m_aThreadByteBuffer1(nullptr)
       , m_cThreadByteBufferCapacity1(0)
@@ -75,8 +75,8 @@ public:
       // so instead of setting it to true here, we set it to true by default and flip it to false if our caller gets to the constructor part
    }
 
-   ~CachedTrainingThreadResources() {
-      LOG_0(TraceLevelInfo, "Entered ~CachedTrainingThreadResources");
+   ~CachedBoostingThreadResources() {
+      LOG_0(TraceLevelInfo, "Entered ~CachedBoostingThreadResources");
 
       free(m_aThreadByteBuffer1);
       free(m_aThreadByteBuffer2);
@@ -85,13 +85,13 @@ public:
       delete[] m_aSumHistogramBucketVectorEntryBest;
       delete[] m_aSumResidualErrors2;
 
-      LOG_0(TraceLevelInfo, "Exited ~CachedTrainingThreadResources");
+      LOG_0(TraceLevelInfo, "Exited ~CachedBoostingThreadResources");
    }
 
    EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-         LOG_N(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
+         LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
          // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory in the old slot or it can be moved
          void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
          if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
@@ -110,7 +110,7 @@ public:
       //   2) we'll always get back an odd number of items, which is good because we always have an odd number of TreeNodeChilden
       EBM_ASSERT(0 == m_cThreadByteBufferCapacity2 % cByteBoundaries);
       m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
-      LOG_N(TraceLevelInfo, "Growing CachedTrainingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
+      LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
       // TODO : use malloc here.  our tree objects have internal pointers, so we're going to dispose of our work anyways
       // There is no way to check if the array was re-allocated or not without invoking undefined behavior, so we don't get a benefit if the array can be resized with realloc
       void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer2, m_cThreadByteBufferCapacity2);

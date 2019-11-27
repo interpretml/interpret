@@ -1044,13 +1044,13 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoo
 }
 
 template<bool bClassification>
-EBM_INLINE CachedTrainingThreadResources<bClassification> * GetCachedThreadResources(EbmBoostingState * pEbmBoostingState);
+EBM_INLINE CachedBoostingThreadResources<bClassification> * GetCachedThreadResources(EbmBoostingState * pEbmBoostingState);
 template<>
-EBM_INLINE CachedTrainingThreadResources<true> * GetCachedThreadResources<true>(EbmBoostingState * pEbmBoostingState) {
+EBM_INLINE CachedBoostingThreadResources<true> * GetCachedThreadResources<true>(EbmBoostingState * pEbmBoostingState) {
    return &pEbmBoostingState->m_cachedThreadResourcesUnion.classification;
 }
 template<>
-EBM_INLINE CachedTrainingThreadResources<false> * GetCachedThreadResources<false>(EbmBoostingState * pEbmBoostingState) {
+EBM_INLINE CachedBoostingThreadResources<false> * GetCachedThreadResources<false>(EbmBoostingState * pEbmBoostingState) {
    return &pEbmBoostingState->m_cachedThreadResourcesUnion.regression;
 }
 
@@ -1070,7 +1070,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
    }
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
-   CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmBoostingState);
+   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmBoostingState);
    const FeatureCombinationCore * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
@@ -1087,15 +1087,15 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FractionalDataType gain = 0;
          if(0 == pFeatureCombination->m_cFeatures) {
-            if(TrainZeroDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          } else if(1 == pFeatureCombination->m_cFeatures) {
-            if(TrainSingleDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          } else {
-            if(TrainMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          }

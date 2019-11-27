@@ -20,7 +20,7 @@
 #include "TreeNode.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -154,7 +154,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassi
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool GrowDecisionTree(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cHistogramBuckets, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
+bool GrowDecisionTree(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cHistogramBuckets, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -393,8 +393,8 @@ retry_with_bigger_tree_node_children_array:
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG_0(TraceLevelVerbose, "Entered TrainZeroDimensional");
+bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+   LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
@@ -426,14 +426,14 @@ bool TrainZeroDimensional(CachedTrainingThreadResources<IsClassification(compile
       pValues[0] = smallChangeToModel;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited TrainZeroDimensional");
+   LOG_0(TraceLevelVerbose, "Exited BoostZeroDimensional");
    return false;
 }
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-   LOG_0(TraceLevelVerbose, "Entered TrainSingleDimensional");
+bool BoostSingleDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+   LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
    size_t cTotalBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
@@ -453,7 +453,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING TrainSingleDimensional nullptr == aHistogramBuckets");
+      LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
       return true;
    }
    // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
@@ -490,7 +490,7 @@ bool TrainSingleDimensional(CachedTrainingThreadResources<IsClassification(compi
 #endif // NDEBUG
    );
 
-   LOG_0(TraceLevelVerbose, "Exited TrainSingleDimensional");
+   LOG_0(TraceLevelVerbose, "Exited BoostSingleDimensional");
    return bRet;
 }
 
