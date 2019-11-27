@@ -1,6 +1,9 @@
 # Reduce a numpy matrix such that each row and column has mean 0.
-# Any offset is moved to the main effects. This recreates the 
+# Any offset is moved to the main effects. This recreates the
 # Functional ANOVA decomposition.
+
+# For more details, please refer to the paper:
+# https://arxiv.org/abs/1911.04974
 
 import numpy as np
 
@@ -39,26 +42,26 @@ def purify_once(mat, densities=None, m1=None, m2=None, randomize=False):
     if m2 is None:
         m2 = np.zeros((mat.shape[1], 1))
 
-    if randomize: # randomize each row/col selection rather than in-order
+    if randomize:  # randomize each row/col selection rather than in-order
         nonzero_rows = set(list(range(mat.shape[0])))
         nonzero_cols = set(list(range(mat.shape[1])))
         for iteration in range(mat.shape[0] + mat.shape[1]):
             if np.random.binomial(1, 0.5) and len(nonzero_rows) > 0:
-                i = np.random.choice(list(nonzero_rows)) # todo: maybe slow
+                i = np.random.choice(list(nonzero_rows))  # todo: maybe slow
                 nonzero_rows.remove(i)
                 mat, m1 = purify_row(mat, m1, densities, i)
             elif len(nonzero_cols) > 0:
                 j = np.random.choice(list(nonzero_cols))
                 nonzero_cols.remove(j)
                 mat, m2 = purify_col(mat, m2, densities, j)
-                
+
     # Fix each row mean
     for i in range(mat.shape[0]):
         mat, m1 = purify_row(mat, m1, densities, i)
     # Fix each col mean
     for j in range(mat.shape[1]):
         mat, m2 = purify_col(mat, m2, densities, j)
-        
+
     return np.squeeze(m1), np.squeeze(m2), mat
 
 
@@ -83,12 +86,12 @@ def calc_col_means(mat, densities):
 
 
 def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
-    # Move the means of the rows and columns into the marginal effects, 
+    # Move the means of the rows and columns into the marginal effects,
     # respecting sample density.
-    # If randomize is True, then the order of row and columns is randomly 
+    # If randomize is True, then the order of row and columns is randomly
     # selected; otherwise they are processed in order.
 
-    if densities is None: # Use a uniform density
+    if densities is None:  # Use a uniform density
         densities = np.ones_like(mat)
     i = 1
     m1, m2, mat = purify_once(mat, densities)
@@ -112,4 +115,3 @@ def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
     intercept += np.average(m2, weights=np.sum(densities, axis=0))
     m2 -= np.average(m2, weights=np.sum(densities, axis=0))
     return intercept, m1, m2, mat, i
-
