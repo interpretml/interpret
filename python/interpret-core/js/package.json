@@ -1,6 +1,6 @@
 {
   "name": "interpret-inline",
-  "version": "0.1.19",
+  "version": "0.1.20-prerelease",
   "description": "Interpret inline library for exposing UX across all notebook environments.",
   "main": "index.js",
   "keywords": [],
