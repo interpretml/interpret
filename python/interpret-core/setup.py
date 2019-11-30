@@ -9,7 +9,7 @@ version = "0.1.20-prerelease"
 long_description = """
 Core system for **the** interpret package.
 
-https://github.com/microsoft/interpret
+https://github.com/interpretml/interpret
 """
 
 entry_points = {
@@ -94,10 +94,10 @@ setup(
     version=version,
     author="InterpretML Team",
     author_email="interpret@microsoft.com",
-    description="Fit interpretable models. Explain blackbox machine learning.",
+    description="Fit interpretable machine learning models. Explain blackbox machine learning.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/microsoft/interpret",
+    url="https://github.com/interpretml/interpret",
     packages=find_packages(),
     package_data=package_data,
     classifiers=[
