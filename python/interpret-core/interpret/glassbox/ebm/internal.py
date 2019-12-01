@@ -463,7 +463,7 @@ class NativeEBMBoosting:
         """
 
         # first set the one thing that we will close on
-        self._model_pointer = None
+        self._booster_pointer = None
 
 
         # check inputs for important inputs or things that would segfault in C
@@ -545,7 +545,7 @@ class NativeEBMBoosting:
 
         # Allocate external resources
         if model_type == "classification":
-            self._model_pointer = self._native.lib.InitializeBoostingClassification(
+            self._booster_pointer = self._native.lib.InitializeBoostingClassification(
                 n_classes,
                 len(feature_array),
                 feature_array,
@@ -563,10 +563,10 @@ class NativeEBMBoosting:
                 n_inner_bags,
                 random_state
             )
-            if not self._model_pointer:  # pragma: no cover
+            if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingClassification")
         elif model_type == "regression":
-            self._model_pointer = self._native.lib.InitializeBoostingRegression(
+            self._booster_pointer = self._native.lib.InitializeBoostingRegression(
                 len(feature_array),
                 feature_array,
                 len(feature_combinations_array),
@@ -583,7 +583,7 @@ class NativeEBMBoosting:
                 n_inner_bags,
                 random_state
             )
-            if not self._model_pointer:  # pragma: no cover
+            if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingRegression")
         else:
             raise AttributeError("Unrecognized model_type")
@@ -593,7 +593,7 @@ class NativeEBMBoosting:
     def close(self):
         """ Deallocates C objects used to boost EBM. """
         log.info("Deallocation boosting start")
-        self._native.lib.FreeBoosting(self._model_pointer)
+        self._native.lib.FreeBoosting(self._booster_pointer)
         log.info("Deallocation boosting end")
 
     def boosting_step(
@@ -627,7 +627,7 @@ class NativeEBMBoosting:
             gain = ct.c_double(0.0)
             for i in range(boosting_step_episodes):
                 model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
-                    self._model_pointer,
+                    self._booster_pointer,
                     feature_combination_index,
                     learning_rate,
                     max_tree_splits,
@@ -644,7 +644,7 @@ class NativeEBMBoosting:
                 model_update_tensor = Native.make_ndarray(model_update_tensor_pointer, shape, dtype=np.double, copy_data=False)
 
                 return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
-                    self._model_pointer,
+                    self._booster_pointer,
                     feature_combination_index,
                     model_update_tensor,
                     ct.byref(metric_output),
@@ -712,7 +712,7 @@ class NativeEBMBoosting:
         #             cases.  Do we want to do the same for conformance and in graphing
 
         array_p = self._native.lib.GetBestModelFeatureCombination(
-            self._model_pointer, feature_combination_index
+            self._booster_pointer, feature_combination_index
         )
 
         if not array_p:  # pragma: no cover
@@ -759,7 +759,7 @@ class NativeEBMBoosting:
             return None
 
         array_p = self._native.lib.GetCurrentModelFeatureCombination(
-            self._model_pointer, feature_combination_index
+            self._booster_pointer, feature_combination_index
         )
 
         if not array_p:  # pragma: no cover
@@ -967,11 +967,12 @@ class NativeHelper:
                     min_metric = min(curr_metric, min_metric)
 
                 # TODO PK this early_stopping_tolerance is a little inconsistent
-                #      since it only exits when a small range of figures expresses
-                #      a pattern, but we can do better by keeping a list of the last
+                #      since it triggers intermittently and only re-triggers if the
+                #      threshold is re-passed, but not based on a smooth windowed set 
+                #      of checks.  We can do better by keeping a list of the last
                 #      number of measurements to have a consistent window of values.
                 #      If we only cared about the metric at the start and end of the epoch 
-                #      window a linked list would be best since we can add/remove items O(1)
+                #      window a circular buffer would be best choice with O(1).
                 if no_change_run_length == 0:
                     bp_metric = min_metric
                 if min_metric + early_stopping_tolerance < bp_metric:
