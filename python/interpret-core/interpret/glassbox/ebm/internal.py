@@ -190,7 +190,7 @@ class Native:
             # int64_t indexFeatureCombination
             ct.c_longlong,
             # double * modelFeatureCombinationUpdateTensor
-            ct.POINTER(ct.c_double),
+            ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
@@ -639,15 +639,14 @@ class NativeEBMBoosting:
                 if not model_update_tensor_pointer:  # pragma: no cover
                     raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
 
-                # TODO PK convert model_update_tensor_pointer into a view (verify that we aren't copying the data) before
-                #         passing it into ApplyModelFeatureCombinationUpdate (which we need to change to accept a view)
-                #         This will make it more useable in python for experimentation and if we aren't copying
-                #         it then performance won't be impacted at all
+                shape = self._get_feature_combination_shape(feature_combination_index)
+                # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
+                model_update_tensor = Native.make_ndarray(model_update_tensor_pointer, shape, dtype=np.double, copy_data=False)
 
                 return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
                     self._model_pointer,
                     feature_combination_index,
-                    model_update_tensor_pointer,
+                    model_update_tensor,
                     ct.byref(metric_output),
                 )
                 if return_code != 0:  # pragma: no cover
