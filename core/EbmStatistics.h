@@ -27,6 +27,8 @@ public:
    EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
+      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification, and what about the possibility of using Newton-Raphson step in the gain?
+
       // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
       EBM_ASSERT(0 < cInstances); // we purge bins that have an instance counts of zero, so cInstances should never be zero
       return sumResidualError / cInstances * sumResidualError;

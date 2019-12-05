@@ -283,7 +283,8 @@ class Native:
                     log.info(message)
                 elif trace_level == self.TraceLevelVerbose:
                     log.debug(message)
-            except: # we're being called from C, so we can't raise exceptions
+            except:  # pragma: no cover
+                # we're being called from C, so we can't raise exceptions
                 pass
 
         if level is None:
@@ -467,34 +468,34 @@ class NativeEBMBoosting:
 
 
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features, list):
+        if not isinstance(features, list):  # pragma: no cover
             raise ValueError("features should be a list")
 
-        if not isinstance(feature_combinations, list):
+        if not isinstance(feature_combinations, list):  # pragma: no cover
             raise ValueError("feature_combinations should be a list")
 
-        if X_train.ndim != 2:
+        if X_train.ndim != 2:  # pragma: no cover
             raise ValueError("X_train should have exactly 2 dimensions")
 
-        if y_train.ndim != 1:
+        if y_train.ndim != 1:  # pragma: no cover
             raise ValueError("y_train should have exactly 1 dimension")
 
-        if X_train.shape[0] != len(features):
+        if X_train.shape[0] != len(features):  # pragma: no cover
             raise ValueError("X_train does not have the same number of features as the features array")
 
-        if X_train.shape[1] != len(y_train):
+        if X_train.shape[1] != len(y_train):  # pragma: no cover
             raise ValueError("X_train does not have the same number of instances as y_train")
 
-        if X_val.ndim != 2:
+        if X_val.ndim != 2:  # pragma: no cover
             raise ValueError("X_val should have exactly 2 dimensions")
 
-        if y_val.ndim != 1:
+        if y_val.ndim != 1:  # pragma: no cover
             raise ValueError("y_val should have exactly 1 dimension")
 
-        if X_val.shape[0] != len(features):
+        if X_val.shape[0] != len(features):  # pragma: no cover
             raise ValueError("X_val does not have the same number of features as the features array")
 
-        if X_val.shape[1] != len(y_val):
+        if X_val.shape[1] != len(y_val):  # pragma: no cover
             raise ValueError("X_val does not have the same number of instances as y_val")
 
 
@@ -518,29 +519,29 @@ class NativeEBMBoosting:
         if scores_train is None:
             scores_train = np.zeros(len(y_train) * n_scores, dtype=np.float64, order='C')
         else:
-            if scores_train.shape[0] != len(y_train):
+            if scores_train.shape[0] != len(y_train):  # pragma: no cover
                 raise ValueError("scores_train does not have the same number of instances as y_train")
             if n_scores == 1:
-                if scores_train.ndim != 1:
+                if scores_train.ndim != 1:  # pragma: no cover
                     raise ValueError("scores_train should have exactly 1 dimensions for regression or binary classification")
             else:
-                if scores_train.ndim != 2:
+                if scores_train.ndim != 2:  # pragma: no cover
                     raise ValueError("scores_train should have exactly 2 dimensions for multiclass")
-                if(scores_train.shape[1] != n_scores):
+                if(scores_train.shape[1] != n_scores):  # pragma: no cover
                     raise ValueError("scores_train does not have the same number of logit scores as n_scores")
 
         if scores_val is None:
             scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order='C')
         else:
-            if scores_val.shape[0] != len(y_val):
+            if scores_val.shape[0] != len(y_val):  # pragma: no cover
                 raise ValueError("scores_val does not have the same number of instances as y_val")
             if n_scores == 1:
-                if scores_val.ndim != 1:
+                if scores_val.ndim != 1:  # pragma: no cover
                     raise ValueError("scores_val should have exactly 1 dimensions for regression or binary classification")
             else:
-                if scores_val.ndim != 2:
+                if scores_val.ndim != 2:  # pragma: no cover
                     raise ValueError("scores_val should have exactly 2 dimensions for multiclass")
-                if(scores_val.shape[1] != n_scores):
+                if(scores_val.shape[1] != n_scores):  # pragma: no cover
                     raise ValueError("scores_val does not have the same number of logit scores as n_scores")
 
         # Allocate external resources
@@ -585,7 +586,7 @@ class NativeEBMBoosting:
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingRegression")
-        else:
+        else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation boosting end")
@@ -814,19 +815,19 @@ class NativeEBMInteraction:
 
 
         # check inputs for important inputs or things that would segfault in C
-        if not isinstance(features, list):
+        if not isinstance(features, list):  # pragma: no cover
             raise ValueError("features should be a list")
 
-        if X.ndim != 2:
+        if X.ndim != 2:  # pragma: no cover
             raise ValueError("X should have exactly 2 dimensions")
 
-        if y.ndim != 1:
+        if y.ndim != 1:  # pragma: no cover
             raise ValueError("y should have exactly 1 dimension")
 
-        if X.shape[0] != len(features):
+        if X.shape[0] != len(features):  # pragma: no cover
             raise ValueError("X does not have the same number of features as the features array")
 
-        if X.shape[1] != len(y):
+        if X.shape[1] != len(y):  # pragma: no cover
             raise ValueError("X does not have the same number of instances as y")
 
 
@@ -841,15 +842,15 @@ class NativeEBMInteraction:
         if scores is None:
             scores = np.zeros(len(y) * n_scores, dtype=np.float64, order='C')
         else:
-            if scores.shape[0] != len(y):
+            if scores.shape[0] != len(y):  # pragma: no cover
                 raise ValueError("scores does not have the same number of instances as y")
             if n_scores == 1:
-                if scores.ndim != 1:
+                if scores.ndim != 1:  # pragma: no cover
                     raise ValueError("scores should have exactly 1 dimensions for regression or binary classification")
             else:
-                if scores.ndim != 2:
+                if scores.ndim != 2:  # pragma: no cover
                     raise ValueError("scores should have exactly 2 dimensions for multiclass")
-                if(scores.shape[1] != n_scores):
+                if(scores.shape[1] != n_scores):  # pragma: no cover
                     raise ValueError("scores does not have the same number of logit scores as n_scores")
 
         # Allocate external resources
@@ -876,7 +877,7 @@ class NativeEBMInteraction:
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")
-        else:
+        else:  # pragma: no cover
             raise AttributeError("Unrecognized model_type")
 
         log.info("Allocation interaction end")

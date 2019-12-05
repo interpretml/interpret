@@ -187,7 +187,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                                 col_data, q=np.linspace(0, 1, self.max_n_bins + 1)
                             )
                         )
-                    else:
+                    else:  # pragma: no cover
                         raise ValueError(
                             "Unknown binning_strategy: '{}'.".format(
                                 self.binning_strategy
@@ -408,7 +408,7 @@ class BaseCoreEBM:
             isinstance(x, int) for x in self.main_features
         ):
             main_feature_indices = [[x] for x in self.main_features]
-        else:
+        else:  # pragma: no cover
             raise RuntimeError("Argument 'main_attr' has invalid value")
 
         main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
@@ -598,6 +598,7 @@ class BaseEBM(BaseEstimator):
         schema=None,
         # Ensemble
         n_estimators=16,
+        # TODO PK v.2 holdout_size doesn't seem to do anything.  Eliminate.  holdout_split is used
         holdout_size=0.15,
         scoring=None,
         # Core
@@ -611,7 +612,18 @@ class BaseEBM(BaseEstimator):
         #             that people may want to use
         #             both at the same time, and there isn't a good way to separate the two concepts
         #             without issues.  Also, the deserve to be in separate functions (init vs fit)
+
+        # TODO PK v.2 change interactions to n_interactions which can either be a number for pairs
+        #             or can be a list/tuple of integers which denote the number of interactions per dimension
+        #             so (3,2,1) would mean 3 pairs, 2 tripples, 1 quadruple
+
+        # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).  
+        # Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
+
+        # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
+
         interactions=0,
+        # TODO PK v.2 use test_size instead of holdout_split, since sklearn does
         holdout_split=0.15,
         data_n_episodes=2000,
         # TODO PK v.2 eliminate early_stopping_tolerance (use zero for this!)
@@ -704,9 +716,9 @@ class BaseEBM(BaseEstimator):
             self.classes_, y = np.unique(y, return_inverse=True)
             y = y.astype(np.int64, casting='unsafe', copy=False)
             n_classes = len(self.classes_)
-            if n_classes > 2:
+            if n_classes > 2:  # pragma: no cover
                 warn("Multiclass is still experimental. Subject to change per release.")
-            if n_classes > 2 and self.interactions != 0:
+            if n_classes > 2 and self.interactions != 0:  # pragma: no cover
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
                 )
@@ -946,11 +958,11 @@ class BaseEBM(BaseEstimator):
         def score_fn(model_type, X, y, feature_combinations, model, intercept):
             if model_type == "classification":
                 prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
-                return log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
+                return 0 if len(y) == 0 else log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
             elif model_type == "regression":
                 pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept)
-                return mean_squared_error(y, pred)
-            else:
+                return 0 if len(y) == 0 else mean_squared_error(y, pred)
+            else:  # pragma: no cover
                 msg = "Unknown model_type: '{}'.".format(model_type)
                 raise ValueError(msg)
 

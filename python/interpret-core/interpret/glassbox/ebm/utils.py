@@ -50,13 +50,12 @@ class EBMUtils:
             if is_train:
                 X_train = X
                 y_train = y
-                X_val = np.empty(shape=(0, 0), dtype=X.dtype)
-                y_val = np.empty(shape=(0), dtype=y.dtype)
             else:
                 X_train = None
                 y_train = None
-                X_val = np.empty(shape=(0, 0), dtype=X.dtype)
-                y_val = np.empty(shape=(0), dtype=y.dtype)
+
+            X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
+            y_val = np.empty(shape=(0), dtype=y.dtype)
         else:  # pragma: no cover
             raise Exception("test_size must be between 0 and 1.")
 

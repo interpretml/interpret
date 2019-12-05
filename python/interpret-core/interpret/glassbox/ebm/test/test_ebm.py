@@ -217,3 +217,13 @@ def test_ebm_iris():
     local_exp = clf.explain_local(X_test, y_test)
 
     _smoke_test_explanations(global_exp, local_exp, 6001)
+
+
+def test_zero_validation():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, holdout_split=0)
+    clf.fit(X, y)
+
