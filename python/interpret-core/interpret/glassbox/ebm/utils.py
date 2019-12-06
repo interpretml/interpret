@@ -24,6 +24,68 @@ class EBMUtils:
 
     @staticmethod
     def ebm_train_test_split(X, y, test_size, random_state, is_classification, is_train=True):
+        # TODO PK Implement the following for memory efficiency and speed of initialization:
+        #   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
+        #   - OBSERVATION: We want sparse feature support in our booster since we don't need to access 
+        #                  memory if there are long segments with a single value
+        #   - OBSERVATION: Sorting a dataset with sparse features will lead to unpredictably sized final memory sizes, 
+        #                  since more clumped data will be more compressed
+        #   - OBSERVATION: for interactions, from a CPU access point of view, we want all of our features to have the 
+        #                  same # of bits so that we can have one loop compare any tuple of features.  
+        #                  We therefore do NOT want sparse feature support when looking for interactions
+        #   - OBSERVATION: sorting will be easier for non-sparse data, and we'll want non-sparse data for interactions anyways, 
+        #                  so we should only do sparseness for our boosting dataset allocation
+        #   - OBSERVATION: without sparse memory in the initial shared memory object, we can calculate the size without seeing the data.
+        #                  Even if we had sorted sparse features, we'd only find out the memory size after the sort, 
+        #                  so we'd want dynamically allocated memory during the sort
+        #   - OBSERVATION: for boosting, we can compress memory to the right size per feature_combination, 
+        #                  but for interactions, we want to compress all features by the same amount
+        #                  (all features use the same number of bits) so that we can compare any two/three/etc 
+        #                  features and loop at the same points for each
+        # STEPS:
+        #   - We receive the data from the user in the cache inefficient format X[instances, features]
+        #   - Do preprocessing so that we know how many bins each feature has 
+        #     (we might want to process X[instances, features] in chunks, like below to do this)
+        #   - call into C to get back the exact size of the memory object that we need in order to store all the data.  
+        #     We can do this because we won't store any of the data at this point as sparse
+        #   - Allocate the buffer in python using RawArray (RawArray will be shared with other processes as read only data)
+        #   - Divide the features into M chunks of N features.  Let's choose M to be 32, so that we don't increase memory usage by more than 3%
+        #   - Loop over M:
+        #     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
+        #     - Loop over N:
+        #       - take 1 feature and pass it into C for bit compression (don't use sparse coding here) into the RawArray
+        #   - NOTE: this transposes the matrix twice (once for preprocessing and once for adding to C), 
+        #     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
+        #   - Call a C function which will finalize the dataset (this function will accept the target array).  
+        #     - The C function will create an index array and add this index to the dataset (it will be shared)
+        #     - sort the index array by the target first, then the features with the highest counts of the mode value
+        #     - sort the underlying data by the index array
+        #   - Now the memory is read only from now on, and shareable.  Include a reverse index in the data for reconstructing the
+        #     original order inside the data structure.  
+        #   - No pointers in the data structure, just offsets (for sharing cross process)!
+        #   - Start each child processes, and pass them our shared memory structure 
+        #     (it will be mapped into each process address space, but not copied)
+        #   - each child calls a train/validation splitter provided by our C that fills a numpy array of bools
+        #     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes, 
+        #     possibly sort them (if order in not guaranteed), then convert to bools in a caching inefficient way, 
+        #     whereas in C we can do a single pass without any memory array inputs (using just a random number generator) 
+        #     and we can make the outputs consistent across languages.
+        #   - with the RawArray complete data PLUS the train/validation bool list we can generate either interaction datasets OR boosting dataset as needed.
+        #     We can reduce our memory footprint, by never having both an interaction AND boosting dataset in memory at the same time.
+        #   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets
+        #   - FOR BOOSTING:
+        #     - Pass the train/validation bool list into C AND the RawArray AND the feature_combination definitions.
+        #     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
+        #       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)
+        #     - C will do a first pass to determine how much memory it will need (sparse features are variable sized) [we have all the data to do this!]
+        #     - C will allocate the memory for the boosting dataset
+        #     - C will do a second pass to fill the boosting data structure and return that to python
+        #     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements to select whether each instance for that feature goes into the train or validation set, and handling increments
+        #   - FOR INTERACTIONS:
+        #     - pass into C the train/validation sets and the RawArray
+        #     - C will compute the amount of memory needed, and allocate that (our interaction data is NOT sparse, so we can compute)
+        #     - turn the RawArray data into the new memory non-compressed format for interactions, and return it to python
+
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
