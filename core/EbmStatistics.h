@@ -74,9 +74,9 @@ public:
       // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having trainingLogOddsPrediction be 0
 
       // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
-      const FractionalDataType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -1 } : FractionalDataType { 1 }) / (FractionalDataType { 1 } + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
+      const FractionalDataType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -1 } : FractionalDataType { 1 }) / (FractionalDataType { 1 } + EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
 #ifndef NDEBUG
-      const FractionalDataType retDebug = ComputeClassificationResidualErrorMulticlass(1 + std::exp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
+      const FractionalDataType retDebug = ComputeClassificationResidualErrorMulticlass(1 + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
       EBM_ASSERT(std::isinf(ret) || std::isinf(retDebug) || std::isnan(ret) || std::isnan(retDebug) || std::abs(retDebug - ret) < FractionalDataType { 0.0000001 });
 #endif // NDEBUG
       return ret;
@@ -93,7 +93,7 @@ public:
    EBM_INLINE static FractionalDataType ComputeClassificationResidualErrorMulticlass(const FractionalDataType sumExp, const FractionalDataType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
       // TODO: is it better to use the non-branching conditional below, or is it better to assign all the items the negation case and then AFTERWARDS adding one to the single case that is equal to iVector 
       const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FractionalDataType { 1 } : FractionalDataType { 0 };
-      const FractionalDataType ret = yi - std::exp(trainingLogWeight) / sumExp;
+      const FractionalDataType ret = yi - EbmExp(trainingLogWeight) / sumExp;
       return ret;
    }
 
@@ -123,13 +123,13 @@ public:
       // TODO: the calls to log and exp have loops and conditional statements.  Suposedly the assembly FYL2X is slower than the C++ log/exp functions.  Look into this more.  We might end up sorting our input data by the target to avoid this if we can't find a non-branching solution because branch prediction will be important here
       // https://stackoverflow.com/questions/45785705/logarithm-in-c-and-assembly
 
-      const FractionalDataType ret = std::log(FractionalDataType { 1 } + std::exp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction)); // log & exp will return the same type that it is given, either float or double
+      const FractionalDataType ret = EbmLog(FractionalDataType { 1 } + EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction)); // log & exp will return the same type that it is given, either float or double
 
 #ifndef NDEBUG
       FractionalDataType scores[2];
       scores[0] = 0;
       scores[1] = validationLogOddsPrediction;
-      const FractionalDataType retDebug = EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(1 + std::exp(validationLogOddsPrediction), scores, binnedActualValue);
+      const FractionalDataType retDebug = EbmStatistics::ComputeClassificationSingleInstanceLogLossMulticlass(1 + EbmExp(validationLogOddsPrediction), scores, binnedActualValue);
       EBM_ASSERT(std::isinf(ret) || std::isinf(retDebug) || std::abs(retDebug - ret) < FractionalDataType { 0.0000001 });
 #endif // NDEBUG
 
@@ -138,7 +138,7 @@ public:
 
    EBM_INLINE static FractionalDataType ComputeClassificationSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
-      return std::log(sumExp / std::exp(aValidationLogWeight[binnedActualValue]));
+      return EbmLog(sumExp / EbmExp(aValidationLogWeight[binnedActualValue]));
    }
 
    EBM_INLINE static FractionalDataType ComputeRegressionSingleInstanceMeanSquaredError(const FractionalDataType residualError) {

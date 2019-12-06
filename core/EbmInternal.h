@@ -9,6 +9,9 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
+#include <cmath> // std::exp, std::log
+
+#include "ebmcore.h"
 
 #define UNUSED(x) (void)(x)
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
@@ -266,5 +269,65 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
 // TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
 static constexpr ptrdiff_t k_iZeroResidual = -1;
 static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
+
+// TODO eventually consider using these approximate functions for exp and log.  They make a BIG difference!
+//#define FAST_EXP
+//#define FAST_LOG
+
+#ifdef FAST_EXP
+EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
+   // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
+   // TODO make the number of multiplications below a copmile time constant so we can try different values (9 in the code below)
+   val = FractionalDataType { 1 } + val / FractionalDataType { 512 };
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   val *= val;
+   return val;
+}
+#else // FAST_EXP
+EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
+   return std::exp(val);
+}
+#endif // FAST_EXP
+
+#ifdef FAST_LOG
+
+// TODO move this include up into the VS specific parts
+#include <intrin.h>
+#pragma intrinsic(_BitScanReverse)
+#pragma intrinsic(_BitScanReverse64)
+
+template<typename T>
+EBM_INLINE unsigned int MostSignificantBit(T val) {
+   // TODO this only works in MS compiler.  This also doesn't work for numbers larger than uint64_t.  This has many problems, so review it.
+   unsigned long index;
+   return _BitScanReverse64(&index, static_cast<unsigned __int64>(val)) ? static_cast<unsigned int>(index) : static_cast<unsigned int>(0);
+}
+
+EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+   // TODO : this only handles numbers x > 1.  For numbers below 1, we should do 1/x and figure out how much to multiply below
+
+   // for various algorithms, see https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
+   unsigned int shifts = MostSignificantBit(static_cast<uint64_t>(val));
+   val = val / static_cast<FractionalDataType>(uint64_t { 1 } << shifts);
+
+   // this works sorta kinda well for numbers between 1 to 2 (we shifted our number to be within this range)
+   // TODO : increase precision of these magic numbers
+   val = FractionalDataType { -1.7417939 } + (FractionalDataType { 2.8212026 } + (FractionalDataType { -1.4699568 } + (FractionalDataType { 0.44717955 } + FractionalDataType { -0.056570851 } * val) * val) * val) * val;
+   val += static_cast<FractionalDataType>(shifts) * FractionalDataType { 0.69314718 };
+
+   return val;
+}
+#else // FAST_LOG
+EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+   return std::log(val);
+}
+#endif // FAST_LOG
 
 #endif // EBM_INTERNAL_H

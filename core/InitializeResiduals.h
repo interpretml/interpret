@@ -138,7 +138,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FractionalDataType predictionScore = *pPredictorScores - subtract;
-                  sumExp += std::exp(predictionScore);
+                  sumExp += EbmExp(predictionScore);
                   ++pPredictorScores;
                }
 

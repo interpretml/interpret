@@ -405,7 +405,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                   // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                   const FractionalDataType trainingPredictorScores = pTrainingPredictorScores[iVector1] + smallChangeToPredictorScores;
                   pTrainingPredictorScores[iVector1] = trainingPredictorScores;
-                  sumExp += std::exp(trainingPredictorScores);
+                  sumExp += EbmExp(trainingPredictorScores);
                   ++iVector1;
                } while(iVector1 < cVectorLength);
 
@@ -542,7 +542,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                   // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                   const FractionalDataType trainingPredictorScores = pTrainingPredictorScores[iVector1] + smallChangeToPredictorScores;
                   pTrainingPredictorScores[iVector1] = trainingPredictorScores;
-                  sumExp += std::exp(trainingPredictorScores);
+                  sumExp += EbmExp(trainingPredictorScores);
                   ++iVector1;
                } while(iVector1 < cVectorLength);
 
@@ -683,7 +683,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
                   const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
                   *pValidationPredictorScores = validationPredictorScores;
-                  sumExp += std::exp(validationPredictorScores);
+                  sumExp += EbmExp(validationPredictorScores);
                   ++pValidationPredictorScores;
 
                   // TODO : consider replacing iVector with pValidationPredictorScoresInnerEnd
@@ -810,7 +810,7 @@ static FractionalDataType ValidationSetTargetFeatureLoop(const FeatureCombinatio
 
                   const FractionalDataType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
                   *pValidationPredictorScores = validationPredictorScores;
-                  sumExp += std::exp(validationPredictorScores);
+                  sumExp += EbmExp(validationPredictorScores);
                   ++pValidationPredictorScores;
 
                   // TODO : consider replacing iVector with pValidationPredictorScoresInnerEnd
