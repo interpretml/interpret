@@ -122,7 +122,7 @@ EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures)
             return nullptr;
          }
          const char * pName = CHAR(nameR);
-         if(0 == strcmp("count_bins", pName)) {
+         if(0 == strcmp("n_bins", pName)) {
             if(bCountBinsFound) {
                LOG_0(TraceLevelError, "ERROR ConvertFeatures bCountBinsFound");
                return nullptr;
@@ -270,8 +270,8 @@ EbmCoreFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombina
          return nullptr;
       }
       const char * pName = CHAR(nameR);
-      if(0 != strcmp("count_features_in_combination", pName)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations 0 != strcmp(\"count_features_in_combination\", pName");
+      if(0 != strcmp("n_features", pName)) {
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations 0 != strcmp(\"n_features\", pName");
          return nullptr;
       }
 

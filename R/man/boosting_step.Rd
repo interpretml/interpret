@@ -9,8 +9,8 @@ boosting_step(
   ebm_boosting, 
   index_feature_combination, 
   learning_rate, 
-  count_tree_splits_max, 
-  count_instances_required_for_parent_split_min, 
+  n_tree_splits_max, 
+  n_instances_required_for_parent_split_min, 
   training_weights, 
   validation_weights
 )
@@ -19,8 +19,8 @@ boosting_step(
   \item{ebm_boosting}{ebm boosting}
   \item{index_feature_combination}{index feature combination}
   \item{learning_rate}{learning rate}
-  \item{count_tree_splits_max}{count tree splits max}
-  \item{count_instances_required_for_parent_split_min}{count instances required for parent split min}
+  \item{n_tree_splits_max}{count tree splits max}
+  \item{n_instances_required_for_parent_split_min}{count instances required for parent split min}
   \item{training_weights}{training weights}
   \item{validation_weights}{validation weights}
 }
@@ -30,7 +30,7 @@ boosting_step(
 \examples{
   boosting_ptr <- initialize_boosting_regression(
     list(ebm_feature(2)), 
-    list(ebm_feature_combination(1)),
+    list(ebm_feature_combination_c(1)),
     c(0), 
     c(10, 10), c(0, 1), c(0, 0), 
     c(12), c(1), c(0), 

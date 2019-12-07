@@ -1277,8 +1277,10 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") 
 
    FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
-   FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   FractionalDataType modelValue;
+   modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
+   CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
 }
 
 TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
@@ -1297,8 +1299,10 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 
    FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
-   FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+   FractionalDataType modelValue;
+   modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
+   CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
 }
 
 
@@ -1332,8 +1336,10 @@ TEST_CASE("Zero training instances, boosting, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       FractionalDataType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 144);
-      FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
+      FractionalDataType modelValue;
+      modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
    }
 }
 
@@ -1351,8 +1357,11 @@ TEST_CASE("Zero training instances, boosting, binary") {
       FractionalDataType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
    }
 }
 
@@ -1368,12 +1377,16 @@ TEST_CASE("Zero training instances, boosting, multiclass") {
       FractionalDataType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 1.0986122886681098);
       FractionalDataType modelValue;
+
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
    }
 }
 
@@ -1397,9 +1410,12 @@ TEST_CASE("Zero validation instances, boosting, regression") {
       if(1 == iEpoch) {
          CHECK_APPROX(modelValue, 0.1990000000000000);
       }
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
       // the best model doesn't update since we don't have any basis to validate any changes
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 0));
    }
 }
 
@@ -1416,8 +1432,11 @@ TEST_CASE("Zero validation instances, boosting, binary") {
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
       FractionalDataType modelValue;
+
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
+
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
       if(0 == iEpoch) {
          CHECK_APPROX(modelValue, -0.020000000000000000);
@@ -1425,11 +1444,16 @@ TEST_CASE("Zero validation instances, boosting, binary") {
       if(1 == iEpoch) {
          CHECK_APPROX(modelValue, -0.039801986733067563);
       }
+      CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
+
       // the best model doesn't update since we don't have any basis to validate any changes
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 0));
+
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 1);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 1));
    }
 }
 
@@ -1449,26 +1473,35 @@ TEST_CASE("Zero validation instances, boosting, multiclass") {
       if(0 == iEpoch) {
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
          CHECK_APPROX(modelValue, 0.03000000000000000);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
          CHECK_APPROX(modelValue, -0.01500000000000000);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
          CHECK_APPROX(modelValue, -0.01500000000000000);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
       }
       if(1 == iEpoch) {
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
          CHECK_APPROX(modelValue, 0.059119949636662006);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
          CHECK_APPROX(modelValue, -0.029887518980531450);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 1));
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 2);
          CHECK_APPROX(modelValue, -0.029887518980531450);
+         CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 2));
       }
       // the best model doesn't update since we don't have any basis to validate any changes
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 0));
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 1);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 1));
       modelValue = test.GetBestModelPredictorScore(0, { 0 }, 2);
       CHECK_APPROX(modelValue, 0);
+      CHECK_APPROX(modelValue, test.GetBestModelPredictorScore(0, { 1 }, 2));
    }
 }
 
@@ -2213,8 +2246,10 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
 
             FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 62.8849);
-            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
-            CHECK_APPROX(modelValue, 0.07);
+            for(IntegerDataType iBin = 0; iBin < cBins; ++iBin) {
+               FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 0);
+               CHECK_APPROX(modelValue, 0.07);
+            }
          }
       }
    }
@@ -2244,8 +2279,13 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
 
             FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 0.70319717972663420);
-            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
-            CHECK_APPROX(modelValue, -0.02);
+            for(IntegerDataType iBin = 0; iBin < cBins; ++iBin) {
+               FractionalDataType modelValue;
+               modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 0);
+               CHECK_APPROX(modelValue, 0);
+               modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 1);
+               CHECK_APPROX(modelValue, -0.02);
+            }
          }
       }
    }

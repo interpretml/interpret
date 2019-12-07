@@ -15,7 +15,7 @@ initialize_boosting_regression(
   validation_binned_data, 
   validation_targets, 
   validation_predictor_scores, 
-  count_inner_bags,
+  n_inner_bags,
   random_seed
 )
 }
@@ -29,7 +29,7 @@ initialize_boosting_regression(
   \item{validation_binned_data}{validation binned data}
   \item{validation_targets}{validation targets}
   \item{validation_predictor_scores}{validation predictor scores}
-  \item{count_inner_bags}{count inner bags}
+  \item{n_inner_bags}{count inner bags}
   \item{random_seed}{random seed}
 }
 \value{
@@ -38,7 +38,7 @@ initialize_boosting_regression(
 \examples{
   boosting_ptr <- initialize_boosting_regression(
     list(ebm_feature(1)), 
-    list(ebm_feature_combination(1)), 
+    list(ebm_feature_combination_c(1)), 
     c(0), 
     c(0), c(0), c(0), 
     c(0), c(0), c(0), 

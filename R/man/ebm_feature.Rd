@@ -6,13 +6,13 @@
 }
 \usage{
 ebm_feature(
-  count_bins, 
+  n_bins, 
   has_missing, 
   feature_type
 )
 }
 \arguments{
-  \item{count_bins}{count bins}
+  \item{n_bins}{count bins}
   \item{has_missing}{has missing}
   \item{feature_type}{feature type}
 }

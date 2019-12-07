@@ -6,7 +6,7 @@
 }
 \usage{
 initialize_interaction_classification(
-  count_target_classes, 
+  n_classes, 
   features, 
   binned_data, 
   targets, 
@@ -14,7 +14,7 @@ initialize_interaction_classification(
 )
 }
 \arguments{
-  \item{count_target_classes}{count target classes}
+  \item{n_classes}{count target classes}
   \item{features}{features}
   \item{binned_data}{binned data}
   \item{targets}{targets}

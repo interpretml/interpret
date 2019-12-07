@@ -20,7 +20,7 @@ get_current_model_feature_combination(
 \examples{
   boosting_ptr <- initialize_boosting_regression(
     list(ebm_feature(2)), 
-    list(ebm_feature_combination(1)), 
+    list(ebm_feature_combination_c(1)), 
     c(0), 
     c(10, 10), c(0, 1), c(0, 0), 
     c(12), c(1), c(0), 

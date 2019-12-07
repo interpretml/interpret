@@ -6,7 +6,7 @@
 }
 \usage{
 initialize_boosting_classification(
-  count_target_classes, 
+  n_classes, 
   features, 
   feature_combinations, 
   feature_combination_indexes, 
@@ -16,12 +16,12 @@ initialize_boosting_classification(
   validation_binned_data, 
   validation_targets, 
   validation_predictor_scores, 
-  count_inner_bags,
+  n_inner_bags,
   random_seed
 )
 }
 \arguments{
-  \item{count_target_classes}{count target classes}
+  \item{n_classes}{count target classes}
   \item{features}{features}
   \item{feature_combinations}{feature combinations}
   \item{feature_combination_indexes}{feature combination indexes}
@@ -31,7 +31,7 @@ initialize_boosting_classification(
   \item{validation_binned_data}{validation binned data}
   \item{validation_targets}{validation targets}
   \item{validation_predictor_scores}{validation predictor scores}
-  \item{count_inner_bags}{count inner bags}
+  \item{n_inner_bags}{count inner bags}
   \item{random_seed}{random seed}
 }
 \value{
@@ -41,7 +41,7 @@ initialize_boosting_classification(
   boosting_ptr <- initialize_boosting_classification(
     3, 
     list(ebm_feature(1)), 
-    list(ebm_feature_combination(1)),
+    list(ebm_feature_combination_c(1)),
     c(0), 
     c(0), c(0), c(0, 0, 0), 
     c(0), c(0), c(0, 0, 0), 

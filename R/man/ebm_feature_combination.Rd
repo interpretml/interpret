@@ -6,11 +6,11 @@
 }
 \usage{
 ebm_feature_combination(
-  count_features_in_combination
+  feature_indexes
 )
 }
 \arguments{
-  \item{count_features_in_combination}{count features in combination}
+  \item{feature_indexes}{indexes of the features that compose the feature_combination}
 }
 \value{
   Returns an S3 ebm_feature_combination class that contains information about a combination of ebm_feature objects
