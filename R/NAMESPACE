@@ -1,13 +1,10 @@
 export(ebm_feature)
 export(ebm_feature_combination)
-export(ebm_feature_combination_c)
-export(initialize_boosting_classification)
-export(initialize_boosting_regression)
-export(boosting_step)
-export(get_current_model_feature_combination)
-export(get_best_model_feature_combination)
+
+export(create_main_feature_combinations)
+export(cyclic_gradient_boost)
+
 export(initialize_interaction_classification)
 export(initialize_interaction_regression)
 export(get_interaction_score)
-export(cyclic_gradient_boost)
 useDynLib(interpret, .registration = TRUE)
