@@ -43,6 +43,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4AB7-9961-C4635B88C1B8}"
 	ProjectSection(SolutionItems) = preProject
 		R\R\interpret_core.R = R\R\interpret_core.R
+		R\R\native_booster.R = R\R\native_booster.R
+		R\R\native_interactions.R = R\R\native_interactions.R
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{589FA769-174B-43F0-9665-8F310F4C3E5A}"
