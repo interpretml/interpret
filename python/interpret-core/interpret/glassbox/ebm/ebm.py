@@ -112,6 +112,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         missing_constant=0,
         unknown_constant=0,
         feature_names=None,
+        feature_types=None,
         binning_strategy="uniform",
     ):
         """ Initializes EBM preprocessor.
@@ -130,6 +131,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
         self.feature_names = feature_names
+        self.feature_types = feature_types
         self.binning_strategy = binning_strategy
 
     def fit(self, X):
@@ -159,7 +161,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.schema_ = (
             self.schema
             if self.schema is not None
-            else autogen_schema(X, feature_names=self.feature_names)
+            else autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
         )
         schema = self.schema_
 
@@ -234,7 +236,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        schema = self.schema
+        schema = self.schema_
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
             col_info = schema[list(schema.keys())[col_idx]]
@@ -595,6 +597,15 @@ class BaseEBM(BaseEstimator):
         # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
         feature_types=None,
         # Data
+        # TODO PK v.2 either add a bin_cuts parameter here, or add a preprocessor/transformer class input parameter here so that the user
+        #             can specify a common algorithm for bin cutting to compare against other algorithms.
+        #             PK -> I favor the simple solution of just passing in bin_cuts, since the user can then specify their own bin_cuts, which could be important
+        #             for AUC or interpretability visualizations.  Anyone wanting to do specialized work in comparing our algorithm against others may want
+        #             to precisely duplicate our binning procedure, but this is a very very small subset of our users, so they can just
+        #             copy our internal bin cutting function -> we can make this easier by having a clean function just for bin cutting
+        #             that other people can either call or copy if they want to do this specialized work of having exactly the same 
+        #             bins across two different ML algorithms.
+        # TODO PK v.2 can we eliminate the schema parameter given that we also take feature_names and feature_types definitions in this interface?
         schema=None,
         # Ensemble
         n_estimators=16,
@@ -698,16 +709,14 @@ class BaseEBM(BaseEstimator):
         )
 
         # Build preprocessor
-        self.schema_ = self.schema
-        if self.schema_ is None:
-            self.schema_ = autogen_schema(
-                X, feature_names=self.feature_names, feature_types=self.feature_types
-            )
-
         self.preprocessor_ = EBMPreprocessor(
-            schema=self.schema_, binning_strategy=self.binning_strategy
+            schema=self.schema, binning_strategy=self.binning_strategy, feature_types=self.feature_types
         )
         self.preprocessor_.fit(X)
+
+        # TODO PK v.2 get rid of self.schema_ here since that's already included in self.preprocessor_.schema_
+        self.schema_ = self.preprocessor_.schema_
+
         X_orig = X
         X = self.preprocessor_.transform(X)
 
