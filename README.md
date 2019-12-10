@@ -104,9 +104,10 @@ show([logistic_regression, decision_tree])
 ## Roadmap
 
 Currently we're working on:
-- Multiclass Classification Support
+- R language interface
 - Missing Values Support
 - Improved Categorical Encoding
+- Interaction effect purification (see citations for details)
 
 ...and lots more! Get in touch to find out more.
 
