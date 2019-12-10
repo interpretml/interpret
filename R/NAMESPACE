@@ -1,8 +1,7 @@
 export(ebm_feature)
 export(ebm_feature_combination)
-
-export(create_main_feature_combinations)
-export(cyclic_gradient_boost)
+export(ebm_classify)
+export(ebm_predict_proba)
 
 export(initialize_interaction_classification)
 export(initialize_interaction_regression)

@@ -43,12 +43,12 @@ create_main_feature_combinations <- function(features) {
 ebm_classify <- function(X, y, n_estimators = 16, test_size = 0.15, data_n_episodes = 2000, early_stopping_run_length = 50, learning_rate = 0.01, max_tree_splits = 2, min_cases_for_splits = 2, random_state = 42) {
    col_names = colnames(X)
 
-   bin_edges <- vector(mode = "list", ncol(X))
+   bin_edges <- vector(mode = "list") #, ncol(X))
    # TODO: I know this binning is buggy.  Review
    for(col_name in col_names) bin_edges[[col_name]] <- unique(quantile(X[[col_name]], seq(0,1, 1.0 / 256)))
    for(col_name in col_names) bin_edges[[col_name]] <- bin_edges[[col_name]][2:(length(bin_edges[[col_name]])-1)]
    for(col_name in col_names) X[[col_name]] <- as.integer(findInterval(X[[col_name]], bin_edges[[col_name]]))
-   features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]])) })
+   features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]]) + 1) })
    feature_combinations <- create_main_feature_combinations(features)
    
    set.seed(random_state)
@@ -84,5 +84,33 @@ ebm_classify <- function(X, y, n_estimators = 16, test_size = 0.15, data_n_episo
       data_n_episodes,
       early_stopping_run_length
    )
-   return(result_list)
+   model <- vector(mode = "list")
+   for(i in seq_along(col_names)) {
+      model[[col_names[[i]]]] <- result_list$model_update[[i]]
+   }
+
+   return(list(bin_edges = bin_edges, model = model))
+}
+
+convert_probability <- function(logit) {
+  odds <- exp(logit)
+  proba <- odds / (1 + odds)
+  return(proba)
+}
+
+ebm_predict_proba <- function (model, X) {
+   col_names = colnames(X)
+   X_binned <- vector(mode = "list") #, ncol(X))
+   for(col_name in col_names) X_binned[[col_name]] <- as.integer(findInterval(X[[col_name]], model$bin_edges[[col_name]]) + 1)
+
+   scores <- vector(mode = "numeric", nrow(X))
+   for(col_name in col_names) {
+      bin_vals <- model$model[[col_name]]
+      bin_indexes <- X_binned[[col_name]]
+      update_scores <- bin_vals[bin_indexes]
+      scores <- scores + update_scores
+   }
+
+   probabilities <- convert_probability(scores)
+   return(probabilities)
 }
