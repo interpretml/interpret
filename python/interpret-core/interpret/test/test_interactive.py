@@ -8,6 +8,7 @@ from ..visual.interactive import (
     status_show_server,
 )
 from ..visual.interactive import show, init_show_server, preserve
+from ..visual import interactive
 from .utils import synthetic_classification
 from ..glassbox import LogisticRegression, DecisionListClassifier
 from .. import show_link
@@ -107,6 +108,12 @@ def test_init_show_server(explanation):
 
     init_show_server(addr=target_addr, base_url=base_url, use_relative_links=False)
     show(explanation)
+
+    # Assert that the address and url are passed to Dash
+    provider = interactive.visualize_provider.provider
+    assert provider.app_runner.port == port
+    assert provider.app_runner.base_url == base_url
+
     url = show_link(explanation)
 
     try:
