@@ -137,7 +137,7 @@ class PreserveProvider(VisualizeProvider):
 
 
 class DashProvider(VisualizeProvider):
-    def __init__(self, app_runner=None):
+    def __init__(self, app_runner):
         self.app_runner = app_runner
 
     @classmethod
@@ -152,13 +152,13 @@ class DashProvider(VisualizeProvider):
         )
         return cls(app_runner)
 
-    def _idempotent_start(self):
+    def idempotent_start(self):
         status = self.app_runner.status()
         if not status["thread_alive"]:
             self.app_runner.start()
 
     def link(self, explanation, **kwargs):
-        self._idempotent_start()
+        self.idempotent_start()
 
         # Register
         share_tables = kwargs.pop("share_tables", None)
@@ -168,7 +168,7 @@ class DashProvider(VisualizeProvider):
         return url
 
     def render(self, explanation, **kwargs):
-        self._idempotent_start()
+        self.idempotent_start()
 
         # Register
         share_tables = kwargs.pop("share_tables", None)

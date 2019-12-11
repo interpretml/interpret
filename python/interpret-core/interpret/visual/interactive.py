@@ -3,13 +3,11 @@
 
 import sys
 import logging
-from ..provider.visualize import AutoVisualizeProvider, PreserveProvider
+from ..provider.visualize import AutoVisualizeProvider, PreserveProvider, DashProvider
 
 log = logging.getLogger(__name__)
 
 this = sys.modules[__name__]
-this.app_runner = None
-this.app_addr = None
 
 this._preserve_provider = None
 this.visualize_provider = None
@@ -48,7 +46,11 @@ def get_show_addr():
     Returns:
         Address tuple (ip, port).
     """
-    return this.app_addr
+    if isinstance(this.visualize_provider, DashProvider):
+        addr = (this.visualize_provider.app_runner.ip, this.visualize_provider.app_runner.port)
+        return addr
+    else:
+        return None
 
 
 def shutdown_show_server():
@@ -57,8 +59,8 @@ def shutdown_show_server():
     Returns:
         True if show server has stopped.
     """
-    if this.app_runner is not None:
-        return this.app_runner.stop()
+    if isinstance(this.visualize_provider, DashProvider):
+        return this.visualize_provider.app_runner.stop()
 
     return True  # pragma: no cover
 
@@ -71,7 +73,7 @@ def status_show_server():
     """
     status_dict = {}
 
-    if this.app_runner is not None:
+    if isinstance(this.visualize_provider, DashProvider):
         status_dict["app_runner_exists"] = True
         status_dict.update(this.app_runner.status())
     else:
@@ -93,17 +95,18 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     """
     from .dashboard import AppRunner
 
-    if this.app_runner is not None:
-        log.info("Stopping previous app runner at {0}".format(this.app_addr))
+    # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
+    if isinstance(this.visualize_provider, DashProvider):
+        log.info("Stopping previous dash provider")
         shutdown_show_server()
-        this.app_runner = None
 
-    log.info("Create app runner at {0}".format(addr))
-    this.app_runner = AppRunner(
-        addr, base_url=base_url, use_relative_links=use_relative_links
-    )
-    this.app_runner.start()
-    this.app_addr = this.app_runner.ip, this.app_runner.port
+    if not isinstance(this.visualize_provider, DashProvider):
+        log.info("Replacing visualize provider: {} with {}".format(type(this.visualize_provider), type(DashProvider)))
+        set_visualize_provider(DashProvider.from_address(addr=addr, base_url=base_url, use_relative_links=use_relative_links))
+        this.visualize_provider.idempotent_start()
+
+    addr = (this.visualize_provider.app_runner.ip, this.visualize_provider.app_runner.port)
+    log.info("Running dash provider at {}".format(addr))
 
     return None
 
