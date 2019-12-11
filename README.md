@@ -17,18 +17,18 @@
 
 <br/>
 
-InterpretML is an open-source python package for training interpretable models and explaining blackbox systems. Interpretability is essential for:
+InterpretML is an open-source python package for training interpretable machine learning models and explaining blackbox systems. Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
 - Detecting bias - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
 - Regulatory compliance - Does my model satisfy legal requirements?
 - High-risk applications - Healthcare, finance, judicial, ...
 
-Historically, the most intelligible models were not very accurate, and the most accurate models were not intelligible. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both high accuracy and intelligibility. EBM uses modern machine learning techniques like bagging and boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
+Historically, the most interpretable machine learning models were not very accurate, and the most accurate models were not very interpretable. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both high accuracy and interpretability. EBM uses modern machine learning techniques like bagging and boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
 
 <br/>
 
-[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb)
+[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb)
 
 | Dataset/AUROC | Domain  | Logistic Regression | Random Forest | XGBoost        | Explainable Boosting Machine |
 |---------------|---------|:-------------------:|:-------------:|:--------------:|:----------------------------:|
@@ -96,17 +96,18 @@ show([logistic_regression, decision_tree])
 
 ## Example Notebooks
 
-- [Interpretable models for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)
-- [Interpretable models for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Interpretable%20Regression%20Methods.ipynb)
-- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
-- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/Microsoft/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
+- [Interpretable machine learning models for binary classification](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)
+- [Interpretable machine learning models for regression](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Regression%20Methods.ipynb)
+- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
+- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
 
 ## Roadmap
 
 Currently we're working on:
-- Multiclass Classification Support
+- R language interface
 - Missing Values Support
 - Improved Categorical Encoding
+- Interaction effect purification (see citations for details)
 
 ...and lots more! Get in touch to find out more.
 
@@ -222,7 +223,7 @@ We also build on top of many great packages. Please check them out!
 
   <details>
     <summary>
-      <em>"Axiomatic Interpretability for Multiclass Additive Models" (X. Zhang, S. Tan, P. Koch, Y. Lou, U. Chajewska, and R. Caruana 2012)</em>
+      <em>"Axiomatic Interpretability for Multiclass Additive Models" (X. Zhang, S. Tan, P. Koch, Y. Lou, U. Chajewska, and R. Caruana 2019)</em>
     </summary>
     <br/>
     <pre>
@@ -254,6 +255,22 @@ We also build on top of many great packages. Please check them out!
 }
 </pre>
     <a href="https://arxiv.org/pdf/1710.06169">Paper link</a>
+  </details>
+
+  <details>
+    <summary>
+      <em>"Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models" (B. Lengerich, S. Tan, C. Chang, G. Hooker, R. Caruana 2019)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{lengerich2019purifying,
+  title={Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models},
+  author={Lengerich, Benjamin and Tan, Sarah and Chang, Chun-Hao and Hooker, Giles and Caruana, Rich},
+  journal={arXiv preprint arXiv:1911.04974},
+  year={2019}
+}
+</pre>
+    <a href="https://arxiv.org/pdf/1911.04974.pdf">Paper link</a>
   </details>
 
   <hr/>

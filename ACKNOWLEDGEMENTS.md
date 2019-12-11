@@ -7,6 +7,8 @@ Thank you to everyone here for your impactful contributions!
 - Marco Tulio Ribeiro
 - Gabriel Alon
 - Giles Hooker
+- Aijun Zhang
+- Zebin Yang
 - Marc Sturm
 - Noemie Elhadad
 - Steven Drucker
