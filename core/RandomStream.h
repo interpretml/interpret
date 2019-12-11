@@ -13,6 +13,9 @@
 #include "EbmInternal.h" // EBM_INLINE
 
 class RandomStream final {
+   // TODO: change from std::default_random_engine to std::mt19937_64 m_randomGenerator for cross platform random number identical results
+   // TODO: uniform_int_distribution suposedly doesn't return cross platform identical results, so we should roll our own someday
+   //       https://stackoverflow.com/questions/40361041/achieve-same-random-number-sequence-on-different-os-with-same-seed
    std::default_random_engine m_randomGenerator;
 
 public:
