@@ -93,7 +93,6 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     Returns:
         None.
     """
-    from .dashboard import AppRunner
 
     # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
     if isinstance(this.visualize_provider, DashProvider):
