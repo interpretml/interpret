@@ -7,3 +7,5 @@ export(initialize_interaction_classification)
 export(initialize_interaction_regression)
 export(get_interaction_score)
 useDynLib(interpret, .registration = TRUE)
+
+importFrom("stats", "quantile")

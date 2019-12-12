@@ -646,7 +646,7 @@ class BaseEBM(BaseEstimator):
         # Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions=0,
-        # TODO PK v.2 use test_size instead of holdout_split, since sklearn does
+        # TODO PK v.2 use validation_size instead of holdout_split, since sklearn uses "test_size"
         holdout_split=0.15,
         data_n_episodes=2000,
         # TODO PK v.2 eliminate early_stopping_tolerance (use zero for this!)

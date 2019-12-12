@@ -33,8 +33,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB54-4A5C-9968-2A94829CB1CB}"
 	ProjectSection(SolutionItems) = preProject
+		R\man\ebm_classify.Rd = R\man\ebm_classify.Rd
 		R\man\ebm_feature.Rd = R\man\ebm_feature.Rd
 		R\man\ebm_feature_combination.Rd = R\man\ebm_feature_combination.Rd
+		R\man\ebm_predict_proba.Rd = R\man\ebm_predict_proba.Rd
 		R\man\get_interaction_score.Rd = R\man\get_interaction_score.Rd
 		R\man\initialize_interaction_classification.Rd = R\man\initialize_interaction_classification.Rd
 		R\man\initialize_interaction_regression.Rd = R\man\initialize_interaction_regression.Rd

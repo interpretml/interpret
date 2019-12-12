@@ -40,7 +40,18 @@ create_main_feature_combinations <- function(features) {
    return(feature_combinations)
 }
 
-ebm_classify <- function(X, y, n_estimators = 16, test_size = 0.15, data_n_episodes = 2000, early_stopping_run_length = 50, learning_rate = 0.01, max_tree_splits = 2, min_cases_for_splits = 2, random_state = 42) {
+ebm_classify <- function(
+   X, 
+   y, 
+   num_outer_bags = 16, 
+   validation_size = 0.15, 
+   max_epochs = 2000, 
+   num_early_stopping_run_length = 50, 
+   learning_rate = 0.01, 
+   max_tree_splits = 2, 
+   min_instances_for_split = 2, 
+   random_state = 42
+) {
    col_names = colnames(X)
 
    bin_edges <- vector(mode = "list") #, ncol(X))
@@ -52,7 +63,7 @@ ebm_classify <- function(X, y, n_estimators = 16, test_size = 0.15, data_n_episo
    feature_combinations <- create_main_feature_combinations(features)
    
    set.seed(random_state)
-   val_indexes = sample(1:length(y), ceiling(length(y) * test_size))
+   val_indexes = sample(1:length(y), ceiling(length(y) * validation_size))
 
    X_train = X[-val_indexes,]
    y_train = y[-val_indexes]
@@ -80,9 +91,9 @@ ebm_classify <- function(X, y, n_estimators = 16, test_size = 0.15, data_n_episo
       random_state,
       learning_rate,
       max_tree_splits, 
-      min_cases_for_splits, 
-      data_n_episodes,
-      early_stopping_run_length
+      min_instances_for_split, 
+      max_epochs,
+      num_early_stopping_run_length
    )
    model <- vector(mode = "list")
    for(i in seq_along(col_names)) {
