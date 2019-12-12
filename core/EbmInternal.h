@@ -283,6 +283,18 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 
 #ifdef FAST_EXP
 EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
+   // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from the target and our logits
+   // so if we introduce some noise in the residual error from approximations to exp, it will be seen and corrected by later boosting steps
+   // so it's largely self correcting
+   //
+   // Exp is also used to calculate the log loss, but in that case we report the log loss, but otherwise don't use it again, so any errors
+   // in calculating the log loss don't propegate cyclically
+   //
+   // when we get our logit update from training a feature, we apply that to both the model AND our per instance array of logits, so we can
+   // potentialy diverge there over time, but that's just an addition operation which is going to be exact for many decimal places.
+   // that divergence will NOT be affected by noise in the exp function since the noise in the exp function
+   // will generate noise in the logit update, but it won't cause a divergence between the model and the error
+
    // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
    // TODO make the number of multiplications below a copmile time constant so we can try different values (9 in the code below)
    val = FractionalDataType { 1 } + val / FractionalDataType { 512 };
@@ -318,6 +330,10 @@ EBM_INLINE unsigned int MostSignificantBit(T val) {
 }
 
 EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+   // the log function is only used to calculate the log loss on the valididation set only
+   // the log loss is calculated for the validation set and then returned as a single number to the caller
+   // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
+
    // TODO : this only handles numbers x > 1.  For numbers below 1, we should do 1/x and figure out how much to multiply below
 
    // for various algorithms, see https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
