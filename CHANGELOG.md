@@ -8,8 +8,8 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 ### Fixed
 - **Major bug fix** around EBM interactions. If you use interactions, please upgrade immediately.
   Part of the pairwise selection was not operating as expected and has been corrected.
-- Various EBM fixes around corner-case datasets.
 - Fix for handling dataframes when no named columns are specified.
+- Various EBM fixes around corner-case datasets.
 ### Changed
 - All top-level methods relating to show's backing web server now use visualize provider directly.
   In theory this shouldn't affect top-level API usage, but please raise an issue in the event of failure.
