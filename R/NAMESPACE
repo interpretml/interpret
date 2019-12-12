@@ -1,11 +1,5 @@
-export(ebm_feature)
-export(ebm_feature_combination)
 export(ebm_classify)
 export(ebm_predict_proba)
-
-export(initialize_interaction_classification)
-export(initialize_interaction_regression)
-export(get_interaction_score)
 useDynLib(interpret, .registration = TRUE)
 
 importFrom("stats", "quantile")
