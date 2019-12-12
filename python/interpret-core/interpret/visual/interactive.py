@@ -75,7 +75,7 @@ def status_show_server():
 
     if isinstance(this.visualize_provider, DashProvider):
         status_dict["app_runner_exists"] = True
-        status_dict.update(this.app_runner.status())
+        status_dict.update(this.visualize_provider.app_runner.status())
     else:
         status_dict["app_runner_exists"] = False
 
@@ -140,8 +140,7 @@ def show(explanation, key=-1, **kwargs):
 
         # Set default render if needed
         if this.visualize_provider is None:
-            # If the server has been initialized already, use it
-            this.visualize_provider = AutoVisualizeProvider(app_runner=this.app_runner)
+            this.visualize_provider = AutoVisualizeProvider()
 
         # Render
         this.visualize_provider.render(explanation, key=key, **kwargs)
@@ -165,15 +164,16 @@ def show_link(explanation, share_tables=None):
     Returns:
         URL as a string.
     """
+
     # Initialize server if needed
-    if this.app_runner is None:  # pragma: no cover
-        init_show_server(this.app_addr)
+    if not isinstance(this.visualize_provider, DashProvider):  # pragma: no cover
+        init_show_server()
 
     # Register
-    this.app_runner.register(explanation, share_tables=share_tables)
+    this.visualize_provider.app_runner.register(explanation, share_tables=share_tables)
 
     try:
-        url = this.app_runner.display_link(explanation)
+        url = this.visualize_provider.app_runner.display_link(explanation)
         return url
     except Exception as e:  # pragma: no cover
         log.error(e, exc_info=True)
