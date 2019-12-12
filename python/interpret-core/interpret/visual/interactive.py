@@ -47,7 +47,10 @@ def get_show_addr():
         Address tuple (ip, port).
     """
     if isinstance(this.visualize_provider, DashProvider):
-        addr = (this.visualize_provider.app_runner.ip, this.visualize_provider.app_runner.port)
+        addr = (
+            this.visualize_provider.app_runner.ip,
+            this.visualize_provider.app_runner.port,
+        )
         return addr
     else:
         return None
@@ -99,11 +102,22 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
         log.info("Stopping previous dash provider")
         shutdown_show_server()
 
-    log.info("Replacing visualize provider: {} with {}".format(type(this.visualize_provider), type(DashProvider)))
-    set_visualize_provider(DashProvider.from_address(addr=addr, base_url=base_url, use_relative_links=use_relative_links))
+    log.info(
+        "Replacing visualize provider: {} with {}".format(
+            type(this.visualize_provider), type(DashProvider)
+        )
+    )
+    set_visualize_provider(
+        DashProvider.from_address(
+            addr=addr, base_url=base_url, use_relative_links=use_relative_links
+        )
+    )
     this.visualize_provider.idempotent_start()
 
-    addr = (this.visualize_provider.app_runner.ip, this.visualize_provider.app_runner.port)
+    addr = (
+        this.visualize_provider.app_runner.ip,
+        this.visualize_provider.app_runner.port,
+    )
     log.info("Running dash provider at {}".format(addr))
 
     return None

@@ -226,4 +226,3 @@ def test_zero_validation():
 
     clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, holdout_split=0)
     clf.fit(X, y)
-

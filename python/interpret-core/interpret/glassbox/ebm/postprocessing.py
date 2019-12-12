@@ -63,7 +63,10 @@ def multiclass_postprocess(
                 updated_feature_graphs[i], change.reshape((num_bins, -1))
             )
         for k in range(K):
-            mean = np.sum(np.multiply(updated_feature_graphs[i][:, k], bincount)) / X_binned.shape[1]
+            mean = (
+                np.sum(np.multiply(updated_feature_graphs[i][:, k], bincount))
+                / X_binned.shape[1]
+            )
             updated_feature_graphs[i][:, k] = np.subtract(
                 updated_feature_graphs[i][:, k], mean
             )

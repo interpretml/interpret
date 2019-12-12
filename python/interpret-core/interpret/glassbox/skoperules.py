@@ -121,9 +121,13 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         self.pos_ratio_ = np.mean(y)
 
         # Extract rules
-        self.internal_rules_, self.rules_, self.prec_, self.recall_, self.feat_rule_map_ = self._extract_rules(
-            self.sk_model_.rules_
-        )
+        (
+            self.internal_rules_,
+            self.rules_,
+            self.prec_,
+            self.recall_,
+            self.feat_rule_map_,
+        ) = self._extract_rules(self.sk_model_.rules_)
 
         self.global_selector = gen_global_selector(
             X, self.feature_names, self.feature_types, None

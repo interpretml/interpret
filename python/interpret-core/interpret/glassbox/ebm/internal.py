@@ -16,9 +16,10 @@ from .utils import EBMUtils
 
 log = logging.getLogger(__name__)
 
+
 class Native:
     """Layer/Class responsible for native function calls."""
-    
+
     _native = None
 
     def _initialize(self, is_debug, log_level):
@@ -124,7 +125,7 @@ class Native:
             # int64_t countInnerBags
             ct.c_longlong,
             # int64_t randomSeed
-            ct.c_longlong
+            ct.c_longlong,
         ]
         self.lib.InitializeBoostingClassification.restype = ct.c_void_p
 
@@ -158,7 +159,7 @@ class Native:
             # int64_t countInnerBags
             ct.c_longlong,
             # int64_t randomSeed
-            ct.c_longlong
+            ct.c_longlong,
         ]
         self.lib.InitializeBoostingRegression.restype = ct.c_void_p
 
@@ -306,10 +307,10 @@ class Native:
             "NOTSET": self.TraceLevelOff,
         }
 
-        # it's critical that we put typed_log_func into self, 
+        # it's critical that we put typed_log_func into self,
         # otherwise it will be garbage collected
         self._typed_log_func = self._LogFuncType(native_log)
-        
+
         self.lib.SetLogMessageFunction(self._typed_log_func)
         self.lib.SetTraceLevel(ct.c_char(level_dict[level]))
 
@@ -391,7 +392,7 @@ class Native:
             elif feature["type"] == "continuous":
                 feature_ar[idx].featureType = Native.FeatureTypeOrdinal
             else:
-                raise AttributeError("Unrecognized feature[\"type\"]")
+                raise AttributeError('Unrecognized feature["type"]')
             feature_ar[idx].hasMissing = 1 * feature["has_missing"]
             feature_ar[idx].countBins = feature["n_bins"]
 
@@ -407,12 +408,16 @@ class Native:
         )()
         for idx, feature_combination in enumerate(feature_combinations):
             features_in_combination = feature_combination["attributes"]
-            feature_combinations_ar[idx].countFeaturesInCombination = len(features_in_combination)
+            feature_combinations_ar[idx].countFeaturesInCombination = len(
+                features_in_combination
+            )
 
             for feature_idx in features_in_combination:
                 feature_combination_indexes.append(feature_idx)
 
-        feature_combination_indexes = np.array(feature_combination_indexes, dtype=np.int64)
+        feature_combination_indexes = np.array(
+            feature_combination_indexes, dtype=np.int64
+        )
 
         return feature_combinations_ar, feature_combination_indexes
 
@@ -434,7 +439,7 @@ class NativeEBMBoosting:
         y_val,
         scores_val,
         n_inner_bags,
-        random_state
+        random_state,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -466,7 +471,6 @@ class NativeEBMBoosting:
         # first set the one thing that we will close on
         self._booster_pointer = None
 
-
         # check inputs for important inputs or things that would segfault in C
         if not isinstance(features, list):  # pragma: no cover
             raise ValueError("features should be a list")
@@ -481,10 +485,14 @@ class NativeEBMBoosting:
             raise ValueError("y_train should have exactly 1 dimension")
 
         if X_train.shape[0] != len(features):  # pragma: no cover
-            raise ValueError("X_train does not have the same number of features as the features array")
+            raise ValueError(
+                "X_train does not have the same number of features as the features array"
+            )
 
         if X_train.shape[1] != len(y_train):  # pragma: no cover
-            raise ValueError("X_train does not have the same number of instances as y_train")
+            raise ValueError(
+                "X_train does not have the same number of instances as y_train"
+            )
 
         if X_val.ndim != 2:  # pragma: no cover
             raise ValueError("X_val should have exactly 2 dimensions")
@@ -493,11 +501,14 @@ class NativeEBMBoosting:
             raise ValueError("y_val should have exactly 1 dimension")
 
         if X_val.shape[0] != len(features):  # pragma: no cover
-            raise ValueError("X_val does not have the same number of features as the features array")
+            raise ValueError(
+                "X_val does not have the same number of features as the features array"
+            )
 
         if X_val.shape[1] != len(y_val):  # pragma: no cover
-            raise ValueError("X_val does not have the same number of instances as y_val")
-
+            raise ValueError(
+                "X_val does not have the same number of instances as y_val"
+            )
 
         self._native = Native.get_native_singleton()
 
@@ -511,38 +522,57 @@ class NativeEBMBoosting:
         feature_array = Native.convert_features_to_c(features)
 
         self._feature_combinations = feature_combinations
-        feature_combinations_array, feature_combination_indexes = Native.convert_feature_combinations_to_c(
-            feature_combinations
-        )
+        (
+            feature_combinations_array,
+            feature_combination_indexes,
+        ) = Native.convert_feature_combinations_to_c(feature_combinations)
 
         n_scores = EBMUtils.get_count_scores_c(n_classes)
         if scores_train is None:
-            scores_train = np.zeros(len(y_train) * n_scores, dtype=np.float64, order='C')
+            scores_train = np.zeros(
+                len(y_train) * n_scores, dtype=np.float64, order="C"
+            )
         else:
             if scores_train.shape[0] != len(y_train):  # pragma: no cover
-                raise ValueError("scores_train does not have the same number of instances as y_train")
+                raise ValueError(
+                    "scores_train does not have the same number of instances as y_train"
+                )
             if n_scores == 1:
                 if scores_train.ndim != 1:  # pragma: no cover
-                    raise ValueError("scores_train should have exactly 1 dimensions for regression or binary classification")
+                    raise ValueError(
+                        "scores_train should have exactly 1 dimensions for regression or binary classification"
+                    )
             else:
                 if scores_train.ndim != 2:  # pragma: no cover
-                    raise ValueError("scores_train should have exactly 2 dimensions for multiclass")
-                if(scores_train.shape[1] != n_scores):  # pragma: no cover
-                    raise ValueError("scores_train does not have the same number of logit scores as n_scores")
+                    raise ValueError(
+                        "scores_train should have exactly 2 dimensions for multiclass"
+                    )
+                if scores_train.shape[1] != n_scores:  # pragma: no cover
+                    raise ValueError(
+                        "scores_train does not have the same number of logit scores as n_scores"
+                    )
 
         if scores_val is None:
-            scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order='C')
+            scores_val = np.zeros(len(y_val) * n_scores, dtype=np.float64, order="C")
         else:
             if scores_val.shape[0] != len(y_val):  # pragma: no cover
-                raise ValueError("scores_val does not have the same number of instances as y_val")
+                raise ValueError(
+                    "scores_val does not have the same number of instances as y_val"
+                )
             if n_scores == 1:
                 if scores_val.ndim != 1:  # pragma: no cover
-                    raise ValueError("scores_val should have exactly 1 dimensions for regression or binary classification")
+                    raise ValueError(
+                        "scores_val should have exactly 1 dimensions for regression or binary classification"
+                    )
             else:
                 if scores_val.ndim != 2:  # pragma: no cover
-                    raise ValueError("scores_val should have exactly 2 dimensions for multiclass")
-                if(scores_val.shape[1] != n_scores):  # pragma: no cover
-                    raise ValueError("scores_val does not have the same number of logit scores as n_scores")
+                    raise ValueError(
+                        "scores_val should have exactly 2 dimensions for multiclass"
+                    )
+                if scores_val.shape[1] != n_scores:  # pragma: no cover
+                    raise ValueError(
+                        "scores_val does not have the same number of logit scores as n_scores"
+                    )
 
         # Allocate external resources
         if model_type == "classification":
@@ -562,7 +592,7 @@ class NativeEBMBoosting:
                 y_val,
                 scores_val,
                 n_inner_bags,
-                random_state
+                random_state,
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingClassification")
@@ -582,7 +612,7 @@ class NativeEBMBoosting:
                 y_val,
                 scores_val,
                 n_inner_bags,
-                random_state
+                random_state,
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingRegression")
@@ -638,11 +668,15 @@ class NativeEBMBoosting:
                     ct.byref(gain),
                 )
                 if not model_update_tensor_pointer:  # pragma: no cover
-                    raise MemoryError("Out of memory in GenerateModelFeatureCombinationUpdate")
+                    raise MemoryError(
+                        "Out of memory in GenerateModelFeatureCombinationUpdate"
+                    )
 
                 shape = self._get_feature_combination_shape(feature_combination_index)
                 # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
-                model_update_tensor = Native.make_ndarray(model_update_tensor_pointer, shape, dtype=np.double, copy_data=False)
+                model_update_tensor = Native.make_ndarray(
+                    model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+                )
 
                 return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
                     self._booster_pointer,
@@ -651,14 +685,16 @@ class NativeEBMBoosting:
                     ct.byref(metric_output),
                 )
                 if return_code != 0:  # pragma: no cover
-                    raise Exception("Out of memory in ApplyModelFeatureCombinationUpdate")
+                    raise Exception(
+                        "Out of memory in ApplyModelFeatureCombinationUpdate"
+                    )
 
         # log.debug("Boosting step end")
         return metric_output.value
 
     def _get_feature_combination_shape(self, feature_combination_index):
         # TODO PK do this once during construction so that we don't have to do it again
-        #         and so that we don't have to store self._features & self._feature_combinations 
+        #         and so that we don't have to store self._features & self._feature_combinations
 
         # Retrieve dimensions of log odds tensor
         dimensions = []
@@ -698,14 +734,14 @@ class NativeEBMBoosting:
             # a None value here for now and handle in the upper levels
             #
             # If we were to allow datasets with zero instances, then it would also be legal for there
-            # to be 0 states.  We can probably handle this the same as having 1 state though since 
+            # to be 0 states.  We can probably handle this the same as having 1 state though since
             # any instances in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
             return None
 
         # TODO PK v.2 currently we return only a single logit for binary classification
-        #             for the positive case (the one with target 1).  scikit also 
+        #             for the positive case (the one with target 1).  scikit also
         #             stores and returns 1 logit, but they say to do softmax, make the
         #             target0 logit equal to the negative of the target1 logit.
         #             this has the nice property that it would closely match what you'd
@@ -753,7 +789,7 @@ class NativeEBMBoosting:
             # a None value here for now and handle in the upper levels
             #
             # If we were to allow datasets with zero instances, then it would also be legal for there
-            # to be 0 states.  We can probably handle this the same as having 1 state though since 
+            # to be 0 states.  We can probably handle this the same as having 1 state though since
             # any instances in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
@@ -774,7 +810,9 @@ class NativeEBMBoosting:
     def get_current_model(self):
         model = []
         for index in range(len(self._feature_combinations)):
-            model_feature_combination = self._get_current_model_feature_combination(index)
+            model_feature_combination = self._get_current_model_feature_combination(
+                index
+            )
             model.append(model_feature_combination)
 
         return model
@@ -785,13 +823,7 @@ class NativeEBMInteraction:
     """
 
     def __init__(
-        self,
-        model_type,
-        n_classes,
-        features,
-        X,
-        y,
-        scores,
+        self, model_type, n_classes, features, X, y, scores,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -813,7 +845,6 @@ class NativeEBMInteraction:
         # first set the one thing that we will close on
         self._interaction_pointer = None
 
-
         # check inputs for important inputs or things that would segfault in C
         if not isinstance(features, list):  # pragma: no cover
             raise ValueError("features should be a list")
@@ -825,11 +856,12 @@ class NativeEBMInteraction:
             raise ValueError("y should have exactly 1 dimension")
 
         if X.shape[0] != len(features):  # pragma: no cover
-            raise ValueError("X does not have the same number of features as the features array")
+            raise ValueError(
+                "X does not have the same number of features as the features array"
+            )
 
         if X.shape[1] != len(y):  # pragma: no cover
             raise ValueError("X does not have the same number of instances as y")
-
 
         self._native = Native.get_native_singleton()
 
@@ -840,40 +872,39 @@ class NativeEBMInteraction:
 
         n_scores = EBMUtils.get_count_scores_c(n_classes)
         if scores is None:
-            scores = np.zeros(len(y) * n_scores, dtype=np.float64, order='C')
+            scores = np.zeros(len(y) * n_scores, dtype=np.float64, order="C")
         else:
             if scores.shape[0] != len(y):  # pragma: no cover
-                raise ValueError("scores does not have the same number of instances as y")
+                raise ValueError(
+                    "scores does not have the same number of instances as y"
+                )
             if n_scores == 1:
                 if scores.ndim != 1:  # pragma: no cover
-                    raise ValueError("scores should have exactly 1 dimensions for regression or binary classification")
+                    raise ValueError(
+                        "scores should have exactly 1 dimensions for regression or binary classification"
+                    )
             else:
                 if scores.ndim != 2:  # pragma: no cover
-                    raise ValueError("scores should have exactly 2 dimensions for multiclass")
-                if(scores.shape[1] != n_scores):  # pragma: no cover
-                    raise ValueError("scores does not have the same number of logit scores as n_scores")
+                    raise ValueError(
+                        "scores should have exactly 2 dimensions for multiclass"
+                    )
+                if scores.shape[1] != n_scores:  # pragma: no cover
+                    raise ValueError(
+                        "scores does not have the same number of logit scores as n_scores"
+                    )
 
         # Allocate external resources
         if model_type == "classification":
             self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
-                n_classes,
-                len(feature_array),
-                feature_array,
-                len(y),
-                X,
-                y,
-                scores,
+                n_classes, len(feature_array), feature_array, len(y), X, y, scores,
             )
             if not self._interaction_pointer:  # pragma: no cover
-                raise MemoryError("Out of memory in InitializeInteractionClassification")
+                raise MemoryError(
+                    "Out of memory in InitializeInteractionClassification"
+                )
         elif model_type == "regression":
             self._interaction_pointer = self._native.lib.InitializeInteractionRegression(
-                len(feature_array),
-                feature_array,
-                len(y),
-                X,
-                y,
-                scores,
+                len(feature_array), feature_array, len(y), X, y, scores,
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")
@@ -927,7 +958,7 @@ class NativeHelper:
         data_n_episodes,
         early_stopping_tolerance,
         early_stopping_run_length,
-        name
+        name,
     ):
 
         min_metric = np.inf
@@ -945,7 +976,7 @@ class NativeHelper:
                 y_val,
                 scores_val,
                 n_inner_bags,
-                random_state
+                random_state,
             )
         ) as native_ebm_boosting:
             no_change_run_length = 0
@@ -969,10 +1000,10 @@ class NativeHelper:
 
                 # TODO PK this early_stopping_tolerance is a little inconsistent
                 #      since it triggers intermittently and only re-triggers if the
-                #      threshold is re-passed, but not based on a smooth windowed set 
+                #      threshold is re-passed, but not based on a smooth windowed set
                 #      of checks.  We can do better by keeping a list of the last
                 #      number of measurements to have a consistent window of values.
-                #      If we only cared about the metric at the start and end of the epoch 
+                #      If we only cared about the metric at the start and end of the epoch
                 #      window a circular buffer would be best choice with O(1).
                 if no_change_run_length == 0:
                     bp_metric = min_metric
@@ -987,7 +1018,11 @@ class NativeHelper:
                 ):
                     break
 
-            log.info("End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(name, min_metric, episode_index))
+            log.info(
+                "End boosting {0}, Best Metric: {1}, Num Rounds: {2}".format(
+                    name, min_metric, episode_index
+                )
+            )
             model_update = native_ebm_boosting.get_best_model()
 
         return model_update, min_metric, episode_index
@@ -1001,7 +1036,7 @@ class NativeHelper:
         features,
         X,
         y,
-        scores
+        scores,
     ):
         # TODO PK we only need to store the top n_interactions items, so use a heap
         interaction_scores = []
@@ -1016,7 +1051,9 @@ class NativeHelper:
             )
         ) as native_ebm_interactions:
             for feature_combination in iter_feature_combinations:
-                score = native_ebm_interactions.get_interaction_score(feature_combination)
+                score = native_ebm_interactions.get_interaction_score(
+                    feature_combination
+                )
                 interaction_scores.append((feature_combination, score))
 
         ranked_scores = list(

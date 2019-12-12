@@ -161,7 +161,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.schema_ = (
             self.schema
             if self.schema is not None
-            else autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
+            else autogen_schema(
+                X, feature_names=self.feature_names, feature_types=self.feature_types
+            )
         )
         schema = self.schema_
 
@@ -382,11 +384,11 @@ class BaseCoreEBM:
         # Split data into train/val
 
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
-            X, 
-            y, 
-            test_size=self.holdout_split, 
-            random_state=self.random_state, 
-            is_classification=self.model_type == "classification"
+            X,
+            y,
+            test_size=self.holdout_split,
+            random_state=self.random_state,
+            is_classification=self.model_type == "classification",
         )
 
         # Define features
@@ -399,7 +401,7 @@ class BaseCoreEBM:
             self.intercept_ = np.zeros(
                 EBMUtils.get_count_scores_c(self.n_classes_),
                 dtype=np.float64,
-                order='C'
+                order="C",
             )
         else:
             self.intercept_ = np.float64(0)
@@ -413,7 +415,9 @@ class BaseCoreEBM:
         else:  # pragma: no cover
             raise RuntimeError("Argument 'main_attr' has invalid value")
 
-        main_feature_combinations = EBMUtils.gen_feature_combinations(main_feature_indices)
+        main_feature_combinations = EBMUtils.gen_feature_combinations(
+            main_feature_indices
+        )
         self.feature_combinations_ = []
         self.model_ = []
 
@@ -427,14 +431,20 @@ class BaseCoreEBM:
 
         self.inter_episode_idx_ = 0
         if len(self.inter_indices_) != 0:
-            self._staged_fit_interactions(X_train, y_train, X_val, y_val, self.inter_indices_)
+            self._staged_fit_interactions(
+                X_train, y_train, X_val, y_val, self.inter_indices_
+            )
 
         return self
 
     def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
 
-        self.model_, self.current_metric_, self.main_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+        (
+            self.model_,
+            self.current_metric_,
+            self.main_episode_idx_,
+        ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
@@ -454,7 +464,7 @@ class BaseCoreEBM:
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
-            name="Main"
+            name="Main",
         )
 
         self.feature_combinations_ = main_feature_combinations
@@ -469,7 +479,7 @@ class BaseCoreEBM:
                 X_train, self.feature_combinations_, self.model_, self.intercept_
             )
 
-            iter_feature_combinations=combinations(range(len(self.col_types)), 2)
+            iter_feature_combinations = combinations(range(len(self.col_types)), 2)
 
             final_indices, final_scores = NativeHelper.get_interactions(
                 n_interactions=self.interactions,
@@ -479,7 +489,7 @@ class BaseCoreEBM:
                 features=self.features_,
                 X=X_train,
                 y=y_train,
-                scores=scores_train
+                scores=scores_train,
             )
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
@@ -492,7 +502,9 @@ class BaseCoreEBM:
 
         return final_indices, final_scores
 
-    def _staged_fit_interactions(self, X_train, y_train, X_val, y_val, inter_indices=[]):
+    def _staged_fit_interactions(
+        self, X_train, y_train, X_val, y_val, inter_indices=[]
+    ):
 
         log.info("Training interactions")
 
@@ -505,7 +517,11 @@ class BaseCoreEBM:
 
         inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
 
-        model_update, self.current_metric_, self.inter_episode_idx_ = NativeHelper.cyclic_gradient_boost(
+        (
+            model_update,
+            self.current_metric_,
+            self.inter_episode_idx_,
+        ) = NativeHelper.cyclic_gradient_boost(
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
@@ -525,7 +541,7 @@ class BaseCoreEBM:
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
-            name="Pair"
+            name="Pair",
         )
 
         self.model_.extend(model_update)
@@ -538,15 +554,15 @@ class BaseCoreEBM:
         log.info("Splitting train/test for interactions")
 
         # Split data into train/val
-        # NOTE: ideally we would store the train/validation split in the 
+        # NOTE: ideally we would store the train/validation split in the
         #       remote processes, but joblib doesn't have a concept
         #       of keeping remote state, so we re-split our sets
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
-            X, 
-            y, 
-            test_size=self.holdout_split, 
-            random_state=self.random_state, 
-            is_classification=self.model_type == "classification"
+            X,
+            y,
+            test_size=self.holdout_split,
+            random_state=self.random_state,
+            is_classification=self.model_type == "classification",
         )
 
         self._staged_fit_interactions(X_train, y_train, X_val, y_val, inter_indices)
@@ -571,29 +587,29 @@ class BaseEBM(BaseEstimator):
     # to pass information about the dataset into the __init__ function because then it's possible to do the training
     # first and then later set things like the features names after training.  Also, people have become accustomed
     # to passing optional parameters into the __init__ function, but not the fit function, so we maintain that by
-    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names, 
+    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names,
     # but this still gives the user ultimate control since they can either keep the DataFrame names or pass in new ones to __init__
-    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their 
+    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their
     # potential size.  We don't have that issue with our smaller extra dataset dependent parameters
 
     # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
     #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
     #             feature_names, feature_types, schema, main_attr, interactions (for specific columns)
     #             per : https://scikit-learn.org/dev/developers/develop.html
-    #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore, 
+    #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore,
     #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
 
     def __init__(
         self,
         # Explainer
-        # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per 
+        # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per
         # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
         feature_names=None,
         # TODO PK v.2 look at how sklearn has thought about feature types -> https://github.com/scikit-learn/scikit-learn/pull/3346
-        #      also look at lightGBM's categorical_feature parameter 
+        #      also look at lightGBM's categorical_feature parameter
         #      https://towardsdatascience.com/catboost-vs-light-gbm-vs-xgboost-5f93620723db
         #
-        # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per 
+        # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per
         # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
         feature_types=None,
         # Data
@@ -603,7 +619,7 @@ class BaseEBM(BaseEstimator):
         #             for AUC or interpretability visualizations.  Anyone wanting to do specialized work in comparing our algorithm against others may want
         #             to precisely duplicate our binning procedure, but this is a very very small subset of our users, so they can just
         #             copy our internal bin cutting function -> we can make this easier by having a clean function just for bin cutting
-        #             that other people can either call or copy if they want to do this specialized work of having exactly the same 
+        #             that other people can either call or copy if they want to do this specialized work of having exactly the same
         #             bins across two different ML algorithms.
         # TODO PK v.2 can we eliminate the schema parameter given that we also take feature_names and feature_types definitions in this interface?
         schema=None,
@@ -623,16 +639,12 @@ class BaseEBM(BaseEstimator):
         #             that people may want to use
         #             both at the same time, and there isn't a good way to separate the two concepts
         #             without issues.  Also, the deserve to be in separate functions (init vs fit)
-
         # TODO PK v.2 change interactions to n_interactions which can either be a number for pairs
         #             or can be a list/tuple of integers which denote the number of interactions per dimension
         #             so (3,2,1) would mean 3 pairs, 2 tripples, 1 quadruple
-
-        # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).  
+        # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
         # Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
-
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
-
         interactions=0,
         # TODO PK v.2 use test_size instead of holdout_split, since sklearn does
         holdout_split=0.15,
@@ -710,7 +722,10 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            schema=self.schema, binning_strategy=self.binning_strategy, feature_names=self.feature_names, feature_types=self.feature_types
+            schema=self.schema,
+            binning_strategy=self.binning_strategy,
+            feature_names=self.feature_names,
+            feature_types=self.feature_types,
         )
         self.preprocessor_.fit(X)
 
@@ -723,7 +738,7 @@ class BaseEBM(BaseEstimator):
         estimators = []
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            y = y.astype(np.int64, casting='unsafe', copy=False)
+            y = y.astype(np.int64, casting="unsafe", copy=False)
             n_classes = len(self.classes_)
             if n_classes > 2:  # pragma: no cover
                 warn("Multiclass is still experimental. Subject to change per release.")
@@ -756,7 +771,7 @@ class BaseEBM(BaseEstimator):
                 estimators.append(estimator)
         else:
             n_classes = -1
-            y = y.astype(np.float64, casting='unsafe', copy=False)
+            y = y.astype(np.float64, casting="unsafe", copy=False)
             for i in range(self.n_estimators):
                 estimator = BaseCoreEBM(
                     # Data
@@ -794,7 +809,7 @@ class BaseEBM(BaseEstimator):
             self.intercept_ = np.zeros(
                 EBMUtils.get_count_scores_c(self.n_classes_),
                 dtype=np.float64,
-                order='C'
+                order="C",
             )
         else:
             self.intercept_ = np.float64(0)
@@ -818,7 +833,9 @@ class BaseEBM(BaseEstimator):
                 # Discard initial interactions
                 new_model = []
                 new_feature_combinations = []
-                for i, feature_combination in enumerate(estimator.feature_combinations_):
+                for i, feature_combination in enumerate(
+                    estimator.feature_combinations_
+                ):
                     if len(feature_combination["attributes"]) != 1:
                         continue
                     new_model.append(estimator.model_[i])
@@ -830,10 +847,13 @@ class BaseEBM(BaseEstimator):
             if len(pair_indices) != 0:
                 # Retrain interactions for base models
                 def staged_fit_fn(estimator, X, y, inter_indices=[]):
-                    return estimator.staged_fit_interactions_parallel(X, y, inter_indices)
+                    return estimator.staged_fit_interactions_parallel(
+                        X, y, inter_indices
+                    )
 
                 staged_fit_args_iter = (
-                    (estimators[i], X, y, pair_indices) for i in range(self.n_estimators)
+                    (estimators[i], X, y, pair_indices)
+                    for i in range(self.n_estimators)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -882,7 +902,7 @@ class BaseEBM(BaseEstimator):
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
             # TODO PK v.2 if we end up choosing to expand/contract by removing
-            #             logits from multiclass models, averaged_model 
+            #             logits from multiclass models, averaged_model
             #             do it HERE AND apply post processing before returning
 
             self.attribute_set_models_.append(averaged_model)
@@ -890,7 +910,7 @@ class BaseEBM(BaseEstimator):
 
         # Get episode indexes for base estimators.
         self.main_episode_idxs_ = []
-        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_ 
+        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
         #             (but does this need to be exposed at all)
         self.inter_episode_idxs_ = []
         for estimator in estimators:
@@ -915,7 +935,7 @@ class BaseEBM(BaseEstimator):
             scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.attribute_sets_, self.attribute_set_models_
             )
-            # TODO PK v.2 _attrib_set_model_means_ -> _model_means_ 
+            # TODO PK v.2 _attrib_set_model_means_ -> _model_means_
             # (or something else matching what this is being used for)
             # also look for anything with attrib inside of it
             self._attrib_set_model_means_ = []
@@ -933,7 +953,9 @@ class BaseEBM(BaseEstimator):
                 self._attrib_set_model_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
-            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(x, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+            binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
+                x, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            )
 
             postprocessed = multiclass_postprocess(
                 X, self.attribute_set_models_, binned_predict_proba, self.feature_types
@@ -960,16 +982,22 @@ class BaseEBM(BaseEstimator):
 
     def _select_merged_pairs(self, estimators, X, y):
         # TODO PK we really need to use purification before here because it's not really legal to elminate
-        #         a feature combination unless it's average contribution value is zero, and for a pair that 
+        #         a feature combination unless it's average contribution value is zero, and for a pair that
         #         would mean that the intercepts for both features in the combination were zero, hense purified
 
         # Select pairs from base models
         def score_fn(model_type, X, y, feature_combinations, model, intercept):
             if model_type == "classification":
-                prob = EBMUtils.classifier_predict_proba(X, feature_combinations, model, intercept)
-                return 0 if len(y) == 0 else log_loss(y, prob) # use logloss to conform consistnetly and for multiclass
+                prob = EBMUtils.classifier_predict_proba(
+                    X, feature_combinations, model, intercept
+                )
+                return (
+                    0 if len(y) == 0 else log_loss(y, prob)
+                )  # use logloss to conform consistnetly and for multiclass
             elif model_type == "regression":
-                pred = EBMUtils.regressor_predict(X, feature_combinations, model, intercept)
+                pred = EBMUtils.regressor_predict(
+                    X, feature_combinations, model, intercept
+                )
                 return 0 if len(y) == 0 else mean_squared_error(y, pred)
             else:  # pragma: no cover
                 msg = "Unknown model_type: '{}'.".format(model_type)
@@ -988,41 +1016,43 @@ class BaseEBM(BaseEstimator):
         for index, estimator in enumerate(estimators):
             # TODO PK move the work done inside this loop to the original parallel threads so that this part can be done in parallel
 
-            # TODO PK this algorithm in O(N^2) by the number of interactions.  Alternatively 
+            # TODO PK this algorithm in O(N^2) by the number of interactions.  Alternatively
             #         there is an O(N) algorithm where we generate the logits for the base forward and base backwards
             #         predictions, then we copy that entire array AND add or substract the one feature under consideration
 
             backward_impacts = []
             forward_impacts = []
 
-            # TODO PK we can remove the is_train input to ebm_train_test_split once we've moved the pair scoring stuff 
+            # TODO PK we can remove the is_train input to ebm_train_test_split once we've moved the pair scoring stuff
             #         to a background thread because we'll already have the validation split without re-splitting it
             _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
-                X, 
-                y, 
-                test_size=self.holdout_split, 
-                random_state=estimator.random_state, 
+                X,
+                y,
+                test_size=self.holdout_split,
+                random_state=estimator.random_state,
                 is_classification=is_classifier(self),
-                is_train=False
+                is_train=False,
             )
 
-            n_base_feature_combinations = len(estimator.feature_combinations_) - len(estimator.inter_indices_)
+            n_base_feature_combinations = len(estimator.feature_combinations_) - len(
+                estimator.inter_indices_
+            )
 
             base_forward_score = score_fn(
-                estimator.model_type, 
-                X_val, 
-                y_val, 
-                estimator.feature_combinations_[:n_base_feature_combinations], 
-                estimator.model_[:n_base_feature_combinations], 
-                estimator.intercept_
+                estimator.model_type,
+                X_val,
+                y_val,
+                estimator.feature_combinations_[:n_base_feature_combinations],
+                estimator.model_[:n_base_feature_combinations],
+                estimator.intercept_,
             )
             base_backward_score = score_fn(
-                estimator.model_type, 
-                X_val, 
-                y_val, 
-                estimator.feature_combinations_, 
-                estimator.model_, 
-                estimator.intercept_
+                estimator.model_type,
+                X_val,
+                y_val,
+                estimator.feature_combinations_,
+                estimator.model_,
+                estimator.intercept_,
             )
             for pair_idx, pair in enumerate(estimator.inter_indices_):
                 n_full_idx = n_base_feature_combinations + pair_idx
@@ -1030,20 +1060,23 @@ class BaseEBM(BaseEstimator):
                 pair_freq[pair] += 1
 
                 backward_score = score_fn(
-                    estimator.model_type, 
-                    X_val, 
-                    y_val, 
-                    estimator.feature_combinations_[:n_full_idx] + estimator.feature_combinations_[n_full_idx + 1:], 
-                    estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1:], 
-                    estimator.intercept_
+                    estimator.model_type,
+                    X_val,
+                    y_val,
+                    estimator.feature_combinations_[:n_full_idx]
+                    + estimator.feature_combinations_[n_full_idx + 1 :],
+                    estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1 :],
+                    estimator.intercept_,
                 )
                 forward_score = score_fn(
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_combinations_[:n_base_feature_combinations] + estimator.feature_combinations_[n_full_idx:n_full_idx + 1], 
-                    estimator.model_[:n_base_feature_combinations] + estimator.model_[n_full_idx:n_full_idx + 1], 
-                    estimator.intercept_
+                    estimator.feature_combinations_[:n_base_feature_combinations]
+                    + estimator.feature_combinations_[n_full_idx : n_full_idx + 1],
+                    estimator.model_[:n_base_feature_combinations]
+                    + estimator.model_[n_full_idx : n_full_idx + 1],
+                    estimator.intercept_,
                 )
                 # for both regression (mean square error) and classification (log loss), higher values are bad, so
                 # interactions with high positive values for backward_impact and forward_impact are good
@@ -1102,7 +1135,9 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, feature_combination in enumerate(self.attribute_sets_):
+        for feature_combination_index, feature_combination in enumerate(
+            self.attribute_sets_
+        ):
             errors = self.model_errors_[feature_combination_index]
             scores = self.attribute_set_models_[feature_combination_index]
 
@@ -1115,12 +1150,16 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_combination_index, feature_combination in enumerate(self.attribute_sets_):
+        for feature_combination_index, feature_combination in enumerate(
+            self.attribute_sets_
+        ):
             model_graph = self.attribute_set_models_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
             errors = self.model_errors_[feature_combination_index]
-            feature_indexes = self.attribute_sets_[feature_combination_index]["attributes"]
+            feature_indexes = self.attribute_sets_[feature_combination_index][
+                "attributes"
+            ]
 
             if len(feature_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
@@ -1154,9 +1193,7 @@ class BaseEBM(BaseEstimator):
                     "upper_bounds": model_graph + errors,
                     "lower_bounds": model_graph - errors,
                     "density": {
-                        "names": self.preprocessor_.get_hist_edges(
-                            feature_indexes[0]
-                        ),
+                        "names": self.preprocessor_.get_hist_edges(feature_indexes[0]),
                         "scores": self.preprocessor_.get_hist_counts(
                             feature_indexes[0]
                         ),
@@ -1164,12 +1201,8 @@ class BaseEBM(BaseEstimator):
                 }
                 data_dicts.append(data_dict)
             elif len(feature_indexes) == 2:
-                bin_labels_left = self.preprocessor_.get_bin_labels(
-                    feature_indexes[0]
-                )
-                bin_labels_right = self.preprocessor_.get_bin_labels(
-                    feature_indexes[1]
-                )
+                bin_labels_left = self.preprocessor_.get_bin_labels(feature_indexes[0])
+                bin_labels_right = self.preprocessor_.get_bin_labels(feature_indexes[1])
 
                 feature_dict = {
                     "type": "pairwise",
@@ -1266,9 +1299,19 @@ class BaseEBM(BaseEstimator):
                     data_dicts[row_idx]["values"].append("")
 
         if is_classifier(self):
-            scores = EBMUtils.classifier_predict_proba(instances, self.attribute_sets_, self.attribute_set_models_, self.intercept_)[:, 1]
+            scores = EBMUtils.classifier_predict_proba(
+                instances,
+                self.attribute_sets_,
+                self.attribute_set_models_,
+                self.intercept_,
+            )[:, 1]
         else:
-            scores = EBMUtils.regressor_predict(instances, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+            scores = EBMUtils.regressor_predict(
+                instances,
+                self.attribute_sets_,
+                self.attribute_set_models_,
+                self.intercept_,
+            )
 
         perf_list = []
         for row_idx in range(n_rows):
@@ -1387,7 +1430,9 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X = np.ascontiguousarray(X.T)
 
-        prob = EBMUtils.classifier_predict_proba(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+        prob = EBMUtils.classifier_predict_proba(
+            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+        )
         return prob
 
     def predict(self, X):
@@ -1399,7 +1444,13 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         X = np.ascontiguousarray(X.T)
 
-        return EBMUtils.classifier_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_, self.classes_)
+        return EBMUtils.classifier_predict(
+            X,
+            self.attribute_sets_,
+            self.attribute_set_models_,
+            self.intercept_,
+            self.classes_,
+        )
 
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
@@ -1479,4 +1530,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
 
         X = np.ascontiguousarray(X.T)
 
-        return EBMUtils.regressor_predict(X, self.attribute_sets_, self.attribute_set_models_, self.intercept_)
+        return EBMUtils.regressor_predict(
+            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+        )

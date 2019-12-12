@@ -47,6 +47,7 @@ def test_azureml_provider():
 def test_auto_visualize_provider(example_explanation):
     # NOTE: We know this environment is going to use Dash.
     from ...visual.dashboard import AppRunner
+
     ip = "127.0.0.1"
     port = "7200"
     app_runner = AppRunner(addr=(ip, port))

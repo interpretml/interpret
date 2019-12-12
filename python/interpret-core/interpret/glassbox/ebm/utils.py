@@ -23,30 +23,32 @@ class EBMUtils:
         return 1 if n_classes <= 2 else n_classes
 
     @staticmethod
-    def ebm_train_test_split(X, y, test_size, random_state, is_classification, is_train=True):
+    def ebm_train_test_split(
+        X, y, test_size, random_state, is_classification, is_train=True
+    ):
         # TODO PK Implement the following for memory efficiency and speed of initialization:
         #   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
-        #   - OBSERVATION: We want sparse feature support in our booster since we don't need to access 
+        #   - OBSERVATION: We want sparse feature support in our booster since we don't need to access
         #                  memory if there are long segments with a single value
-        #   - OBSERVATION: Sorting a dataset with sparse features will lead to unpredictably sized final memory sizes, 
+        #   - OBSERVATION: Sorting a dataset with sparse features will lead to unpredictably sized final memory sizes,
         #                  since more clumped data will be more compressed
-        #   - OBSERVATION: for interactions, from a CPU access point of view, we want all of our features to have the 
-        #                  same # of bits so that we can have one loop compare any tuple of features.  
+        #   - OBSERVATION: for interactions, from a CPU access point of view, we want all of our features to have the
+        #                  same # of bits so that we can have one loop compare any tuple of features.
         #                  We therefore do NOT want sparse feature support when looking for interactions
-        #   - OBSERVATION: sorting will be easier for non-sparse data, and we'll want non-sparse data for interactions anyways, 
+        #   - OBSERVATION: sorting will be easier for non-sparse data, and we'll want non-sparse data for interactions anyways,
         #                  so we should only do sparseness for our boosting dataset allocation
         #   - OBSERVATION: without sparse memory in the initial shared memory object, we can calculate the size without seeing the data.
-        #                  Even if we had sorted sparse features, we'd only find out the memory size after the sort, 
+        #                  Even if we had sorted sparse features, we'd only find out the memory size after the sort,
         #                  so we'd want dynamically allocated memory during the sort
-        #   - OBSERVATION: for boosting, we can compress memory to the right size per feature_combination, 
+        #   - OBSERVATION: for boosting, we can compress memory to the right size per feature_combination,
         #                  but for interactions, we want to compress all features by the same amount
-        #                  (all features use the same number of bits) so that we can compare any two/three/etc 
+        #                  (all features use the same number of bits) so that we can compare any two/three/etc
         #                  features and loop at the same points for each
         # STEPS:
         #   - We receive the data from the user in the cache inefficient format X[instances, features]
-        #   - Do preprocessing so that we know how many bins each feature has 
+        #   - Do preprocessing so that we know how many bins each feature has
         #     (we might want to process X[instances, features] in chunks, like below to do this)
-        #   - call into C to get back the exact size of the memory object that we need in order to store all the data.  
+        #   - call into C to get back the exact size of the memory object that we need in order to store all the data.
         #     We can do this because we won't store any of the data at this point as sparse
         #   - Allocate the buffer in python using RawArray (RawArray will be shared with other processes as read only data)
         #   - Divide the features into M chunks of N features.  Let's choose M to be 32, so that we don't increase memory usage by more than 3%
@@ -54,21 +56,21 @@ class EBMUtils:
         #     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
         #     - Loop over N:
         #       - take 1 feature and pass it into C for bit compression (don't use sparse coding here) into the RawArray
-        #   - NOTE: this transposes the matrix twice (once for preprocessing and once for adding to C), 
+        #   - NOTE: this transposes the matrix twice (once for preprocessing and once for adding to C),
         #     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
-        #   - Call a C function which will finalize the dataset (this function will accept the target array).  
+        #   - Call a C function which will finalize the dataset (this function will accept the target array).
         #     - The C function will create an index array and add this index to the dataset (it will be shared)
         #     - sort the index array by the target first, then the features with the highest counts of the mode value
         #     - sort the underlying data by the index array
         #   - Now the memory is read only from now on, and shareable.  Include a reverse index in the data for reconstructing the
-        #     original order inside the data structure.  
+        #     original order inside the data structure.
         #   - No pointers in the data structure, just offsets (for sharing cross process)!
-        #   - Start each child processes, and pass them our shared memory structure 
+        #   - Start each child processes, and pass them our shared memory structure
         #     (it will be mapped into each process address space, but not copied)
         #   - each child calls a train/validation splitter provided by our C that fills a numpy array of bools
-        #     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes, 
-        #     possibly sort them (if order in not guaranteed), then convert to bools in a caching inefficient way, 
-        #     whereas in C we can do a single pass without any memory array inputs (using just a random number generator) 
+        #     We do this in C instead of using the sklearn train_test_split because sklearn would require us to first split sequential indexes,
+        #     possibly sort them (if order in not guaranteed), then convert to bools in a caching inefficient way,
+        #     whereas in C we can do a single pass without any memory array inputs (using just a random number generator)
         #     and we can make the outputs consistent across languages.
         #   - with the RawArray complete data PLUS the train/validation bool list we can generate either interaction datasets OR boosting dataset as needed.
         #     We can reduce our memory footprint, by never having both an interaction AND boosting dataset in memory at the same time.
@@ -160,9 +162,7 @@ class EBMUtils:
         return feature_combinations
 
     @staticmethod
-    def scores_by_feature_combination(
-        X, feature_combinations, model
-    ):
+    def scores_by_feature_combination(X, feature_combinations, model):
         for set_idx, feature_combination in enumerate(feature_combinations):
             tensor = model[set_idx]
 
@@ -175,9 +175,7 @@ class EBMUtils:
             yield set_idx, feature_combination, scores
 
     @staticmethod
-    def decision_function(
-        X, feature_combinations, model, intercept
-    ):
+    def decision_function(X, feature_combinations, model, intercept):
         if X.ndim == 1:
             X = X.reshape(X.shape[0], 1)
 
@@ -205,10 +203,7 @@ class EBMUtils:
     @staticmethod
     def classifier_predict_proba(X, feature_combinations, model, intercept):
         log_odds_vector = EBMUtils.decision_function(
-            X,
-            feature_combinations,
-            model,
-            intercept
+            X, feature_combinations, model, intercept
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -220,10 +215,7 @@ class EBMUtils:
     @staticmethod
     def classifier_predict(X, feature_combinations, model, intercept, classes):
         log_odds_vector = EBMUtils.decision_function(
-            X,
-            feature_combinations,
-            model,
-            intercept
+            X, feature_combinations, model, intercept
         )
         if log_odds_vector.ndim == 1:
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
@@ -232,12 +224,7 @@ class EBMUtils:
 
     @staticmethod
     def regressor_predict(X, feature_combinations, model, intercept):
-        scores = EBMUtils.decision_function(
-            X,
-            feature_combinations,
-            model,
-            intercept
-        )
+        scores = EBMUtils.decision_function(X, feature_combinations, model, intercept)
         return scores
 
     @staticmethod
@@ -245,7 +232,11 @@ class EBMUtils:
         feature_name = []
         for feature_index in feature_idxs:
             col_name = col_names[feature_index]
-            feature_name.append("feature_" + str(col_name) if isinstance(col_name, int) else str(col_name))
+            feature_name.append(
+                "feature_" + str(col_name)
+                if isinstance(col_name, int)
+                else str(col_name)
+            )
         feature_name = " x ".join(feature_name)
         return feature_name
 

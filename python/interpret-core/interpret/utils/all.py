@@ -90,6 +90,7 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
     else:  # pragma: no cover
         return df
 
+
 def gen_local_selector(y, y_hat, round=3):
     records = []
 
