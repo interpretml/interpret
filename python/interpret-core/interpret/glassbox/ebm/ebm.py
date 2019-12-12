@@ -710,7 +710,7 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            schema=self.schema, binning_strategy=self.binning_strategy, feature_types=self.feature_types
+            schema=self.schema, binning_strategy=self.binning_strategy, feature_names=self.feature_names, feature_types=self.feature_types
         )
         self.preprocessor_.fit(X)
 
