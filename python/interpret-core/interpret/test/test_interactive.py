@@ -110,7 +110,7 @@ def test_init_show_server(explanation):
     show(explanation)
 
     # Assert that the address and url are passed to Dash
-    provider = interactive.visualize_provider.provider
+    provider = interactive.visualize_provider
     assert provider.app_runner.port == port
     assert provider.app_runner.base_url == base_url
 

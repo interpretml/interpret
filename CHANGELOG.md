@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.20] - 2019-12-11
+### Fixed
+- **Major bug fix** around EBM interactions. If you use interactions, please upgrade immediately.
+  Part of the pairwise selection was not operating as expected and has been corrected.
+- Various EBM fixes around corner-case datasets.
+- Fix for handling dataframes when no named columns are specified.
+### Changed
+- All top-level methods relating to show's backing web server now use visualize provider directly.
+  In theory this shouldn't affect top-level API usage, but please raise an issue in the event of failure.
+- Memory footprint heavily reduced for EBM at around 2-3 times.
+
 ## [v0.1.19] - 2019-10-25
 ### Changed
 - Changed classification metric exposed between C++/python for EBMs to log loss for future public use.
@@ -224,6 +235,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.20]: https://github.com/microsoft/interpret/releases/tag/v0.1.20
 [v0.1.19]: https://github.com/microsoft/interpret/releases/tag/v0.1.19
 [v0.1.18]: https://github.com/microsoft/interpret/releases/tag/v0.1.18
 [v0.1.17]: https://github.com/microsoft/interpret/releases/tag/v0.1.17
