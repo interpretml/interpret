@@ -190,6 +190,8 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
 
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
    if(0 != m_cFeatureCombinations) {
+      size_t cEquivalentSplitIndexesMax = 0;
+
       const IntegerDataType * pFeatureCombinationIndex = featureCombinationIndexes;
       size_t iFeatureCombination = 0;
       do {
@@ -249,6 +251,7 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
             pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
          } else {
             EBM_ASSERT(nullptr != featureCombinationIndexes);
+            size_t cEquivalentSplitIndexes = 1;
             size_t cTensorBins = 1;
             FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
             do {
@@ -269,15 +272,29 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
                      return true;
                   }
                   cTensorBins *= cBins;
+                  cEquivalentSplitIndexes *= cBins - 1;
                }
                ++pFeatureCombinationIndex;
             } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
+
+            if(cEquivalentSplitIndexesMax < cEquivalentSplitIndexes) {
+               cEquivalentSplitIndexesMax = cEquivalentSplitIndexes;
+            }
+
             // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
             const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorBins - 1);
             pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
          }
          ++iFeatureCombination;
       } while(iFeatureCombination < m_cFeatureCombinations);
+
+      if(0 != cEquivalentSplitIndexesMax) {
+         if(IsMultiplyError(cEquivalentSplitIndexesMax, sizeof(size_t))) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cEquivalentSplitIndexesMax, sizeof(size_t))");
+            return true;
+         }
+         m_aEquivalentSplitIndexes = static_cast<size_t *>(malloc(sizeof(size_t) * cEquivalentSplitIndexesMax));
+      }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
 

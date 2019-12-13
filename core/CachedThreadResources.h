@@ -54,16 +54,13 @@ public:
    }
 };
 
-
-
-
-
-
 template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
 template<bool bClassification>
 class CachedBoostingThreadResources {
+   // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
+
    // this allows us to share the memory between underlying data types
    void * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
@@ -90,6 +87,7 @@ public:
       , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
       , m_bestTreeNodeToSplit() {
+      EBM_ASSERT(0 < cVectorLength);
    }
 
    ~CachedBoostingThreadResources() {

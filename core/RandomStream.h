@@ -41,6 +41,9 @@ public:
    }
 
    EBM_INLINE size_t Next(const size_t maxValueInclusive) {
+      // anyone calling this function should wrap it in an try/catch.  We're not wrapping it here because if this is being called in a loop we'd rather
+      // move the try/catch overhead to ourside that loop
+
       // TODO : change this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
 
       // initializing uniform_int_distribution doesn't have official nothrow properties, but a random number generator should not have to throw

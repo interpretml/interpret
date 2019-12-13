@@ -83,6 +83,13 @@ public:
 
    RandomStream m_randomStream;
 
+   size_t * m_aEquivalentSplitIndexes;
+
+   // TODO CachedThreadResourcesUnion has a lot of things that aren't per thread.  Right now it's functioning as a place to put mostly things
+   // that are different between regression and classification.  In the future we'll want something like it for breaking the work into workable chunks
+   // so I'm leaving it here for now.  
+   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplitIndexes should eventually move into the per-chunk class
+   // and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
    EBM_INLINE EbmBoostingState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets, const IntegerDataType randomSeed)
@@ -101,6 +108,7 @@ public:
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
       , m_randomStream(randomSeed)
+      , m_aEquivalentSplitIndexes(nullptr)
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) {
    }
@@ -132,6 +140,8 @@ public:
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apBestModel);
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
+
+      free(m_aEquivalentSplitIndexes);
 
       LOG_0(TraceLevelInfo, "Exited ~EbmBoostingState");
    }
