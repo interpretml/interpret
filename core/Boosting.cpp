@@ -108,253 +108,248 @@ SegmentedTensor<ActiveDataType, FractionalDataType> ** EbmBoostingState::Initial
 
 bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores) {
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
-   try {
-      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
-         if(m_cachedThreadResourcesUnion.classification.IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
-            return true;
-         }
-      } else {
-         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
-         if(m_cachedThreadResourcesUnion.regression.IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
-            return true;
-         }
-      }
 
-      if(0 != m_cFeatures && nullptr == m_aFeatures) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatures && nullptr == m_aFeatures");
+   if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
+      if(m_cachedThreadResourcesUnion.classification.IsError()) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
          return true;
       }
-
-      if(UNLIKELY(0 != m_cFeatureCombinations && nullptr == m_apFeatureCombinations)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatureCombinations && nullptr == m_apFeatureCombinations");
+   } else {
+      EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+      if(m_cachedThreadResourcesUnion.regression.IsError()) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
          return true;
       }
+   }
 
-      if(UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
-         return true;
-      }
-
-      if(UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
-         return true;
-      }
-
-      if(UNLIKELY(m_randomStream.IsError())) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_randomStream.IsError()");
-         return true;
-      }
-
-      LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
-      if(0 != m_cFeatures) {
-         EBM_ASSERT(!IsMultiplyError(m_cFeatures, sizeof(*aFeatures))); // if this overflows then our caller should not have been able to allocate the array
-         const EbmCoreFeature * pFeatureInitialize = aFeatures;
-         const EbmCoreFeature * const pFeatureEnd = &aFeatures[m_cFeatures];
-         EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
-         size_t iFeatureInitialize = 0;
-         do {
-            static_assert(FeatureTypeCore::OrdinalCore == static_cast<FeatureTypeCore>(FeatureTypeOrdinal), "FeatureTypeCore::OrdinalCore must have the same value as FeatureTypeOrdinal");
-            static_assert(FeatureTypeCore::NominalCore == static_cast<FeatureTypeCore>(FeatureTypeNominal), "FeatureTypeCore::NominalCore must have the same value as FeatureTypeNominal");
-            EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
-            FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
-
-            IntegerDataType countBins = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
-               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
-               return true;
-            }
-            size_t cBins = static_cast<size_t>(countBins);
-            if(cBins <= 1) {
-               EBM_ASSERT(0 != cBins || 0 == cTrainingInstances && 0 == cValidationInstances);
-               LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 0/1 values");
-            }
-
-            EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
-            bool bMissing = 0 != pFeatureInitialize->hasMissing;
-
-            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
-            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
-
-            EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
-            EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
-
-            ++iFeatureInitialize;
-            ++pFeatureInitialize;
-         } while(pFeatureEnd != pFeatureInitialize);
-      }
-      LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
-
-      LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
-      if(0 != m_cFeatureCombinations) {
-         const IntegerDataType * pFeatureCombinationIndex = featureCombinationIndexes;
-         size_t iFeatureCombination = 0;
-         do {
-            const EbmCoreFeatureCombination * const pFeatureCombinationInterop = &aFeatureCombinations[iFeatureCombination];
-
-            IntegerDataType countFeaturesInCombination = pFeatureCombinationInterop->countFeaturesInCombination;
-            EBM_ASSERT(0 <= countFeaturesInCombination);
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)) {
-               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)");
-               return true;
-            }
-            size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
-            size_t cSignificantFeaturesInCombination = 0;
-            const IntegerDataType * const pFeatureCombinationIndexEnd = pFeatureCombinationIndex + cFeaturesInCombination;
-            if(UNLIKELY(0 == cFeaturesInCombination)) {
-               LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize empty feature combination");
-            } else {
-               EBM_ASSERT(nullptr != featureCombinationIndexes);
-               const IntegerDataType * pFeatureCombinationIndexTemp = pFeatureCombinationIndex;
-               do {
-                  const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndexTemp;
-                  EBM_ASSERT(0 <= indexFeatureInterop);
-                  if(!IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)) {
-                     LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)");
-                     return true;
-                  }
-                  const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-                  EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-                  FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-                  if(LIKELY(1 < pInputFeature->m_cBins)) {
-                     // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
-                     ++cSignificantFeaturesInCombination;
-                  } else {
-                     LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature combination with no useful features");
-                  }
-                  ++pFeatureCombinationIndexTemp;
-               } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndexTemp);
-
-               if(k_cDimensionsMax < cSignificantFeaturesInCombination) {
-                  // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
-                  LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize k_cDimensionsMax < cSignificantFeaturesInCombination");
-                  return true;
-               }
-            }
-
-            FeatureCombinationCore * pFeatureCombination = FeatureCombinationCore::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
-            if(nullptr == pFeatureCombination) {
-               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pFeatureCombination");
-               return true;
-            }
-            // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
-            m_apFeatureCombinations[iFeatureCombination] = pFeatureCombination;
-
-            if(LIKELY(0 == cSignificantFeaturesInCombination)) {
-               // move our index forward to the next feature.  
-               // We won't be executing the loop below that would otherwise increment it by the number of features in this feature combination
-               pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
-            } else {
-               EBM_ASSERT(nullptr != featureCombinationIndexes);
-               size_t cTensorBins = 1;
-               FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
-               do {
-                  const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
-                  EBM_ASSERT(0 <= indexFeatureInterop);
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // this was checked above
-                  const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-                  EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-                  const FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-                  const size_t cBins = pInputFeature->m_cBins;
-                  if(LIKELY(1 < cBins)) {
-                     // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
-                     pFeatureCombinationEntry->m_pFeature = pInputFeature;
-                     ++pFeatureCombinationEntry;
-                     if(IsMultiplyError(cTensorBins, cBins)) {
-                        // if this overflows, we definetly won't be able to allocate it
-                        LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cTensorStates, cBins)");
-                        return true;
-                     }
-                     cTensorBins *= cBins;
-                  }
-                  ++pFeatureCombinationIndex;
-               } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
-               // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
-               const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorBins - 1);
-               pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
-            }
-            ++iFeatureCombination;
-         } while(iFeatureCombination < m_cFeatureCombinations);
-      }
-      LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
-
-      const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
-      const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
-
-      LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
-      if(0 != cTrainingInstances) {
-         m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, cVectorLength);
-         if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
-            return true;
-         }
-      }
-      LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
-
-      LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
-      if(0 != cValidationInstances) {
-         m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(!bClassification, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, cVectorLength);
-         if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
-            return true;
-         }
-      }
-      LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
-
-      EBM_ASSERT(nullptr == m_apSamplingSets);
-      if(0 != cTrainingInstances) {
-         m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
-         if(UNLIKELY(nullptr == m_apSamplingSets)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
-            return true;
-         }
-      }
-
-      EBM_ASSERT(nullptr == m_apCurrentModel);
-      EBM_ASSERT(nullptr == m_apBestModel);
-      if(0 != m_cFeatureCombinations && (!bClassification || ptrdiff_t { 2 } <= m_runtimeLearningTypeOrCountTargetClasses)) {
-         m_apCurrentModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
-         if(nullptr == m_apCurrentModel) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apCurrentModel");
-            return true;
-         }
-         m_apBestModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
-         if(nullptr == m_apBestModel) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apBestModel");
-            return true;
-         }
-      }
-
-      if(bClassification) {
-         if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
-            if(0 != cTrainingInstances) {
-               InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });
-            }
-         } else {
-            if(0 != cTrainingInstances) {
-               InitializeResiduals<k_DynamicClassification>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), m_runtimeLearningTypeOrCountTargetClasses);
-            }
-         }
-      } else {
-         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
-         if(0 != cTrainingInstances) {
-            InitializeResiduals<k_Regression>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), k_Regression);
-         }
-         if(0 != cValidationInstances) {
-            InitializeResiduals<k_Regression>(cValidationInstances, aValidationTargets, aValidationPredictorScores, m_pValidationSet->GetResidualPointer(), k_Regression);
-         }
-      }
-
-      LOG_0(TraceLevelInfo, "Exited EbmBoostingState::Initialize");
-      return false;
-   } catch(...) {
-      // this is here to catch exceptions from RandomStream randomStream(randomSeed), but it could also catch errors if we put any other C++ types in here later
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize exception");
+   if(0 != m_cFeatures && nullptr == m_aFeatures) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatures && nullptr == m_aFeatures");
       return true;
    }
+
+   if(UNLIKELY(0 != m_cFeatureCombinations && nullptr == m_apFeatureCombinations)) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatureCombinations && nullptr == m_apFeatureCombinations");
+      return true;
+   }
+
+   if(UNLIKELY(nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelOverwriteSingleSamplingSet");
+      return true;
+   }
+
+   if(UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
+      return true;
+   }
+
+   if(UNLIKELY(!m_randomStream.IsSuccess())) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_randomStream.IsError()");
+      return true;
+   }
+
+   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
+   if(0 != m_cFeatures) {
+      EBM_ASSERT(!IsMultiplyError(m_cFeatures, sizeof(*aFeatures))); // if this overflows then our caller should not have been able to allocate the array
+      const EbmCoreFeature * pFeatureInitialize = aFeatures;
+      const EbmCoreFeature * const pFeatureEnd = &aFeatures[m_cFeatures];
+      EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
+      size_t iFeatureInitialize = 0;
+      do {
+         static_assert(FeatureTypeCore::OrdinalCore == static_cast<FeatureTypeCore>(FeatureTypeOrdinal), "FeatureTypeCore::OrdinalCore must have the same value as FeatureTypeOrdinal");
+         static_assert(FeatureTypeCore::NominalCore == static_cast<FeatureTypeCore>(FeatureTypeNominal), "FeatureTypeCore::NominalCore must have the same value as FeatureTypeNominal");
+         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
+         FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
+
+         IntegerDataType countBins = pFeatureInitialize->countBins;
+         EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
+         if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
+            return true;
+         }
+         size_t cBins = static_cast<size_t>(countBins);
+         if(cBins <= 1) {
+            EBM_ASSERT(0 != cBins || 0 == cTrainingInstances && 0 == cValidationInstances);
+            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 0/1 values");
+         }
+
+         EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
+         bool bMissing = 0 != pFeatureInitialize->hasMissing;
+
+         // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
+         new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
+         // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
+
+         EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
+         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
+
+         ++iFeatureInitialize;
+         ++pFeatureInitialize;
+      } while(pFeatureEnd != pFeatureInitialize);
+   }
+   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
+
+   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
+   if(0 != m_cFeatureCombinations) {
+      const IntegerDataType * pFeatureCombinationIndex = featureCombinationIndexes;
+      size_t iFeatureCombination = 0;
+      do {
+         const EbmCoreFeatureCombination * const pFeatureCombinationInterop = &aFeatureCombinations[iFeatureCombination];
+
+         IntegerDataType countFeaturesInCombination = pFeatureCombinationInterop->countFeaturesInCombination;
+         EBM_ASSERT(0 <= countFeaturesInCombination);
+         if(!IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)");
+            return true;
+         }
+         size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
+         size_t cSignificantFeaturesInCombination = 0;
+         const IntegerDataType * const pFeatureCombinationIndexEnd = pFeatureCombinationIndex + cFeaturesInCombination;
+         if(UNLIKELY(0 == cFeaturesInCombination)) {
+            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize empty feature combination");
+         } else {
+            EBM_ASSERT(nullptr != featureCombinationIndexes);
+            const IntegerDataType * pFeatureCombinationIndexTemp = pFeatureCombinationIndex;
+            do {
+               const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndexTemp;
+               EBM_ASSERT(0 <= indexFeatureInterop);
+               if(!IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)) {
+                  LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)");
+                  return true;
+               }
+               const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
+               EBM_ASSERT(iFeatureForCombination < m_cFeatures);
+               FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+               if(LIKELY(1 < pInputFeature->m_cBins)) {
+                  // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                  ++cSignificantFeaturesInCombination;
+               } else {
+                  LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature combination with no useful features");
+               }
+               ++pFeatureCombinationIndexTemp;
+            } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndexTemp);
+
+            if(k_cDimensionsMax < cSignificantFeaturesInCombination) {
+               // if we try to run with more than k_cDimensionsMax we'll exceed our memory capacity, so let's exit here instead
+               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize k_cDimensionsMax < cSignificantFeaturesInCombination");
+               return true;
+            }
+         }
+
+         FeatureCombinationCore * pFeatureCombination = FeatureCombinationCore::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
+         if(nullptr == pFeatureCombination) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pFeatureCombination");
+            return true;
+         }
+         // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
+         m_apFeatureCombinations[iFeatureCombination] = pFeatureCombination;
+
+         if(LIKELY(0 == cSignificantFeaturesInCombination)) {
+            // move our index forward to the next feature.  
+            // We won't be executing the loop below that would otherwise increment it by the number of features in this feature combination
+            pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
+         } else {
+            EBM_ASSERT(nullptr != featureCombinationIndexes);
+            size_t cTensorBins = 1;
+            FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+            do {
+               const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
+               EBM_ASSERT(0 <= indexFeatureInterop);
+               EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // this was checked above
+               const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
+               EBM_ASSERT(iFeatureForCombination < m_cFeatures);
+               const FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+               const size_t cBins = pInputFeature->m_cBins;
+               if(LIKELY(1 < cBins)) {
+                  // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
+                  pFeatureCombinationEntry->m_pFeature = pInputFeature;
+                  ++pFeatureCombinationEntry;
+                  if(IsMultiplyError(cTensorBins, cBins)) {
+                     // if this overflows, we definetly won't be able to allocate it
+                     LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cTensorStates, cBins)");
+                     return true;
+                  }
+                  cTensorBins *= cBins;
+               }
+               ++pFeatureCombinationIndex;
+            } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
+            // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
+            const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorBins - 1);
+            pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
+         }
+         ++iFeatureCombination;
+      } while(iFeatureCombination < m_cFeatureCombinations);
+   }
+   LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
+
+   const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
+   const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
+
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
+   if(0 != cTrainingInstances) {
+      m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(true, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, cVectorLength);
+      if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
+         return true;
+      }
+   }
+   LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
+
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
+   if(0 != cValidationInstances) {
+      m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(!bClassification, bClassification, bClassification, m_cFeatureCombinations, m_apFeatureCombinations, cValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, cVectorLength);
+      if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
+         return true;
+      }
+   }
+   LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
+
+   EBM_ASSERT(nullptr == m_apSamplingSets);
+   if(0 != cTrainingInstances) {
+      m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
+      if(UNLIKELY(nullptr == m_apSamplingSets)) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
+         return true;
+      }
+   }
+
+   EBM_ASSERT(nullptr == m_apCurrentModel);
+   EBM_ASSERT(nullptr == m_apBestModel);
+   if(0 != m_cFeatureCombinations && (!bClassification || ptrdiff_t { 2 } <= m_runtimeLearningTypeOrCountTargetClasses)) {
+      m_apCurrentModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
+      if(nullptr == m_apCurrentModel) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apCurrentModel");
+         return true;
+      }
+      m_apBestModel = InitializeSegmentedTensors(m_cFeatureCombinations, m_apFeatureCombinations, cVectorLength);
+      if(nullptr == m_apBestModel) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apBestModel");
+         return true;
+      }
+   }
+
+   if(bClassification) {
+      if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
+         if(0 != cTrainingInstances) {
+            InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });
+         }
+      } else {
+         if(0 != cTrainingInstances) {
+            InitializeResiduals<k_DynamicClassification>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), m_runtimeLearningTypeOrCountTargetClasses);
+         }
+      }
+   } else {
+      EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+      if(0 != cTrainingInstances) {
+         InitializeResiduals<k_Regression>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), k_Regression);
+      }
+      if(0 != cValidationInstances) {
+         InitializeResiduals<k_Regression>(cValidationInstances, aValidationTargets, aValidationPredictorScores, m_pValidationSet->GetResidualPointer(), k_Regression);
+      }
+   }
+
+   LOG_0(TraceLevelInfo, "Exited EbmBoostingState::Initialize");
+   return false;
 }
 
 // a*PredictorScores = logOdds for binary classification

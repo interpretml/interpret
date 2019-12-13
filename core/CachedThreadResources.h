@@ -25,12 +25,45 @@ public:
 };
 
 template<bool bClassification>
+class SafeTreeNodeQueue final {
+   bool m_bSuccess; // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
+
+public:
+   // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
+   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
+   std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>> m_queue;
+
+   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
+   SafeTreeNodeQueue() try
+      : m_bSuccess(false)
+      , m_queue() {
+      // an unfortunate thing about function exception handling is that accessing non-static data from the catch block gives undefined behavior
+      // so, we can't set m_bSuccess to false if an error occurs, so instead we set it to false in the static initialization
+      // C++ guarantees that initialization will occur in the order the variables are declared (not in the order of initialization)
+      // but since we put m_bSuccess at the top, if an exception occurs then our m_bSuccess will be left as false since it won't call the 
+      // initializer which sets it to true
+      // https://en.cppreference.com/w/cpp/language/function-try-block
+      m_bSuccess = true;
+   } catch(...) {
+      // the only reason we should potentially find outselves here is if there was an exception thrown during construction
+      // C++ exceptions are suposed to be thrown by value and caught by reference, so it shouldn't be a pointer, and we shouldn't leak memory
+   }
+
+   EBM_INLINE bool IsSuccess() const {
+      return m_bSuccess;
+   }
+};
+
+
+
+
+
+
+template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
 template<bool bClassification>
 class CachedBoostingThreadResources {
-   bool m_bError;
-
    // this allows us to share the memory between underlying data types
    void * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
@@ -45,14 +78,10 @@ public:
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntryBest;
    FractionalDataType * const m_aSumResidualErrors2;
 
-   // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
-   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
-   std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>> m_bestTreeNodeToSplit;
+   SafeTreeNodeQueue<bClassification> m_bestTreeNodeToSplit;
 
-   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
-   CachedBoostingThreadResources(const size_t cVectorLength) try
-      : m_bError(true)
-      , m_aThreadByteBuffer1(nullptr)
+   CachedBoostingThreadResources(const size_t cVectorLength)
+      : m_aThreadByteBuffer1(nullptr)
       , m_cThreadByteBufferCapacity1(0)
       , m_aThreadByteBuffer2(nullptr)
       , m_cThreadByteBufferCapacity2(0)
@@ -61,18 +90,6 @@ public:
       , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
       , m_bestTreeNodeToSplit() {
-
-      // an unfortunate thing about function exception handling is that accessing non-static data from the catch block gives undefined behavior
-      // so, we can't set m_bError to true if an error occurs, so instead we set it to true in the static initialization
-      // C++ guarantees that initialization will occur in the order the variables are declared (not in the order of initialization)
-      // but since we put m_bError above m_bestTreeNodeToSplit and since m_bestTreeNodeToSplit is the only thing that can throw an exception
-      // if an exception occurs then our m_bError will be left as true
-      m_bError = false;
-   } catch(...) {
-      // the only reason we should potentially find outselves here is if there was an exception thrown during construction of m_bestTreeNodeToSplit
-      // C++ exceptions are suposed to be thrown by value and caught by reference, so it shouldn't be a pointer, and we shouldn't leak memory
-      // according to the spec, it's undefined to access a non-static variable from a Function-try-block, so we can't access m_bError here  https://en.cppreference.com/w/cpp/language/function-try-block
-      // so instead of setting it to true here, we set it to true by default and flip it to false if our caller gets to the constructor part
    }
 
    ~CachedBoostingThreadResources() {
@@ -132,7 +149,7 @@ public:
    }
 
    EBM_INLINE bool IsError() const {
-      return m_bError || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumHistogramBucketVectorEntryBest || nullptr == m_aSumResidualErrors2;
+      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumHistogramBucketVectorEntryBest || nullptr == m_aSumResidualErrors2;
    }
 };
 
