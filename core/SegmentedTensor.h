@@ -54,6 +54,19 @@ public:
    // m_aDimensions must be the last item in this struct
    DimensionInfo m_aDimensions[1];
 
+   // TODO: In the future we'll be splitting our work into small sets of residuals and logits owned by
+   // a node in a distributed system.  After each node calculates it's model update (represented by this
+   // SegmentedTensor class), we'll need to reduce them accross all nodes, before adding together all the
+   // SegmentedTensor classes and sending back a full update to the Nodes.  Since we'll be ferrying info
+   // back and forth, we'll want to keep it in a more compressed format keeping division and not expanding
+   // to a direct indexable tensor until after recieved by the nodes.  We'll NEED to keep the entire strucutre
+   // as a single continuous chunk of memory.  At the very start will be our regular struct (containing the
+   // full size of the data region at the top (64 bit since we don't know what processor we'll be on)
+   // We know the number of dimensions for an feature combination at allocation, so we can put the values right below
+   // that.  When we find ourselves expanding dimensions, we can first figure out how much all the values and dimension
+   // need to grow and then we can directly move each dimension pointed to object without needing to move the full
+   // values array.
+
    EBM_INLINE static SegmentedTensor * Allocate(const size_t cDimensionsMax, const size_t cVectorLength) {
       EBM_ASSERT(cDimensionsMax <= k_cDimensionsMax);
       EBM_ASSERT(1 <= cVectorLength); // having 0 classes makes no sense, and having 1 class is useless

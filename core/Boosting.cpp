@@ -106,7 +106,7 @@ SegmentedTensor<ActiveDataType, FractionalDataType> ** EbmBoostingState::Initial
    return apSegmentedTensors;
 }
 
-bool EbmBoostingState::Initialize(const IntegerDataType randomSeed, const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores) {
+bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores) {
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
    try {
       if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
@@ -139,6 +139,11 @@ bool EbmBoostingState::Initialize(const IntegerDataType randomSeed, const EbmCor
 
       if(UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
+         return true;
+      }
+
+      if(UNLIKELY(m_randomStream.IsError())) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_randomStream.IsError()");
          return true;
       }
 
@@ -299,11 +304,9 @@ bool EbmBoostingState::Initialize(const IntegerDataType randomSeed, const EbmCor
       }
       LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
 
-      RandomStream randomStream(randomSeed);
-
       EBM_ASSERT(nullptr == m_apSamplingSets);
       if(0 != cTrainingInstances) {
-         m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&randomStream, m_pTrainingSet, m_cSamplingSets);
+         m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
          if(UNLIKELY(nullptr == m_apSamplingSets)) {
             LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
             return true;
@@ -969,13 +972,13 @@ EbmBoostingState * AllocateCoreBoosting(const IntegerDataType randomSeed, const 
 #endif // NDEBUG
 
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState");
-   EbmBoostingState * const pEbmBoostingState = new (std::nothrow) EbmBoostingState(runtimeLearningTypeOrCountTargetClasses, cFeatures, cFeatureCombinations, cInnerBags);
+   EbmBoostingState * const pEbmBoostingState = new (std::nothrow) EbmBoostingState(runtimeLearningTypeOrCountTargetClasses, cFeatures, cFeatureCombinations, cInnerBags, randomSeed);
    LOG_N(TraceLevelInfo, "Exited EbmBoostingState %p", static_cast<void *>(pEbmBoostingState));
    if(UNLIKELY(nullptr == pEbmBoostingState)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateCore nullptr == pEbmBoostingState");
       return nullptr;
    }
-   if(UNLIKELY(pEbmBoostingState->Initialize(randomSeed, features, featureCombinations, featureCombinationIndexes, cTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, cValidationInstances, validationTargets, validationBinnedData, validationPredictorScores))) {
+   if(UNLIKELY(pEbmBoostingState->Initialize(features, featureCombinations, featureCombinationIndexes, cTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, cValidationInstances, validationTargets, validationBinnedData, validationPredictorScores))) {
       LOG_0(TraceLevelWarning, "WARNING AllocateCore pEbmBoostingState->Initialize");
       delete pEbmBoostingState;
       return nullptr;
