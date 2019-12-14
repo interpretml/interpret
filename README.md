@@ -104,7 +104,7 @@ show([logistic_regression, decision_tree])
 ## Roadmap
 
 Currently we're working on:
-- R language interface
+- R language interface (R is currently a WIP. Basic EBM classification can be done via the ebm_classify & ebm_predict_proba functions, but the predictions are a bit less accurate than in python. No plotting included yet, but other R plotting tools can do a basic job visualizing EBM models)
 - Missing Values Support
 - Improved Categorical Encoding
 - Interaction effect purification (see citations for details)
