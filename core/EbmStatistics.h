@@ -29,26 +29,53 @@ public:
 
       // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification, and what about the possibility of using Newton-Raphson step in the gain?
 
-      return UNPREDICTABLE(0 == cInstances) ? FractionalDataType { 0 } : sumResidualError / cInstances * sumResidualError;
+      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
+      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
+      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
+      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
+
+      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
+      // when we're considering splits in the center we almost always have some buckets on either side with instances
+      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
+      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
+      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
+      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
+      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
+      return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FractionalDataType { 0 };
    }
 
-   WARNING_PUSH
-   WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
    EBM_INLINE static FractionalDataType ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType sumDenominator) {
-      if(LIKELY(FractionalDataType { 0 } != sumDenominator)) {
-         // this is a very predictable branch, so we'd prefer this to be an actual branch rather than an unpredictable one
-         return sumResidualError / sumDenominator;
-      } else {
-         return FractionalDataType { 0 };
-      }
-   }
-   WARNING_POP
+      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
+      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
+      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
+      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
 
-   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
-      // TODO: check again if we can ever have a zero here
-      // TODO: after we eliminate bin compression, we should be checking to see if cInstances is zero before divding by it.. Instead of doing that outside this function, we can move all instances of checking for zero into this function
-      EBM_ASSERT(0 != cInstances);
-      return sumResidualError / cInstances;
+      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
+      // when we're considering splits in the center we almost always have some buckets on either side with instances
+      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
+      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
+      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
+      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
+      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
+
+      return LIKELY(FractionalDataType { 0 } != sumDenominator) ? sumResidualError / sumDenominator : FractionalDataType { 0 };
+   }
+
+   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cInstances) {
+      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
+      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
+      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
+      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
+
+      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
+      // when we're considering splits in the center we almost always have some buckets on either side with instances
+      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
+      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
+      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
+      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
+      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
+
+      return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances : FractionalDataType { 0 };
    }
 
    EBM_INLINE static FractionalDataType ComputeRegressionResidualError(const FractionalDataType predictionScore, const FractionalDataType actualValue) {

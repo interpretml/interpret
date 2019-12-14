@@ -1012,6 +1012,36 @@ public:
    }
 };
 
+#ifndef LEGACY_COMPATIBILITY
+TEST_CASE("test random number generator equivalency") {
+   TestApi test = TestApi(2);
+   test.AddFeatures({ FeatureTest(2) });
+   test.AddFeatureCombinations({ { 0 } });
+
+   std::vector<ClassificationInstance> instances;
+   for(int i = 0; i < 1000; ++i) {
+      instances.push_back(ClassificationInstance(i % 2, { 0 == (i * 7) % 3 }));
+   }
+
+   test.AddTrainingInstances( instances );
+   test.AddValidationInstances({ ClassificationInstance(0, { 0 }), ClassificationInstance(1, { 1 }) });
+
+   test.InitializeBoosting(2);
+
+   for(int iEpoch = 0; iEpoch < 100; ++iEpoch) {
+      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
+         test.Boost(iFeatureCombination);
+      }
+   }
+
+   FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
+   // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
+   // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
+   // and if there are any differences between environments then this will catch those
+   CHECK(modelValue == -0.0088864318212834824);
+}
+#endif // LEGACY_COMPATIBILITY
+
 TEST_CASE("null validationMetricReturn, boosting, regression") {
    EbmCoreFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
@@ -2246,10 +2276,8 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
 
             FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 62.8849);
-            for(IntegerDataType iBin = 0; iBin < cBins; ++iBin) {
-               FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 0);
-               CHECK_APPROX(modelValue, 0.07);
-            }
+            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(modelValue, 0.07);
          }
       }
    }
@@ -2279,13 +2307,12 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
 
             FractionalDataType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 0.70319717972663420);
-            for(IntegerDataType iBin = 0; iBin < cBins; ++iBin) {
-               FractionalDataType modelValue;
-               modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 0);
-               CHECK_APPROX(modelValue, 0);
-               modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(iBin) }, 1);
-               CHECK_APPROX(modelValue, -0.02);
-            }
+
+            FractionalDataType modelValue;
+            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            CHECK_APPROX(modelValue, 0);
+            modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
+            CHECK_APPROX(modelValue, -0.02);
          }
       }
    }

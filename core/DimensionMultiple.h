@@ -388,7 +388,7 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
 //- implement a function that calcualtes the total of any volume using just the(0, 0, ..., 0, 0) totals ..as a debugging function.We might use this for trying out more complicated splits where we allow 2 splits on some axies
 // TODO: build a pair and triple specific version of this function.  For pairs we can get ride of the pPrevious and just use the actual cell at (-1,-1) from our current cell, and we can use two loops with everything in memory [look at code above from before we incoporated the previous totals].  Triples would also benefit from pulling things out since we have low iterations of the inner loop and we can access indicies directly without additional add/subtract/bit operations.  Beyond triples, the combinatorial choices start to explode, so we should probably use this general N-dimensional code.
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler countCompilerDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
-// TODO: sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
+// TODO: sort our N-dimensional combinations at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the cuts, we can undo the re-ordering for cutting the tensor, which has just a few cells, so will be efficient
 template<bool bClassification>
 struct FastTotalState {
    HistogramBucket<bClassification> * m_pDimensionalCur;
@@ -900,6 +900,68 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    return bestSplit;
 }
 
+// TODO: Implement a far more efficient boosting algorithm for higher dimensional interactions.  The algorithm works as follows:
+//   - instead of first calculating the sums at each point for the hyper-dimensional region from the origin to each point, and then later
+//     looking for cuts, we can do both at the same time.  We know the total sums for the entire hyper-dimensional region, and as we're doing our summing
+//     up, we can calcualte the gain at that point.  The catch is that we can only calculate the gain of the split between the hyper-dimensional region from
+//     our current point to the origin, and the rest of the hyper-dimensional area.  We're using boosting though, so as long as we find some cut that makes things
+//     a bit better, we can continue to improve the overall model, subject of course to overfitting.
+//   - After we find the best single cut from the origin to every point (and we've selected the best one), we can then go backwards from the point inside the
+//     hyper-dimensional volume back towards the origin to select the best interior region vs the entire remaining hyper-dimensional volume.  Potentially we could
+//     at this point then also calculate the sub regions that would be created if we had made planar cuts along both sides of each dimension.  
+//   - Example: if we're cutting a cube, we find the best gain from the (0,0,0) to (5,5,5) gives the highest gain, then we go backwards and find that (5,5,5) -> (1,2,3) gives the best overall cube.
+//     We can then either take the cube as one region and the larger entire volume minus the cube as the other region, or we can separate the entire space into 27 cubes (9 cubes on each plane)
+//   - We then need to generalize this algorithm because we don't only want cuts from a single origin, we need to start from each origin.
+//   - So, for an N dimensional region, we have 2^N ways to pick which dimensions we traverse in various orders.  So for 3 dimensions, there are 8 corners
+//   - So for a 4 dimensional space, we would need to compute the gains for 2^4 times, and for a 16x16x16x16 volume, we would need to check 1,048,576 cells.  That seems doable for a 1GHz machine.
+//     and if each cell consists of 16 bytes then it would be about 16 MB, which is cache fittable.  Probably anything larger than 4 dimensions would dilute the data too far to make reasonable cuts.  
+//     We can go deeper if some of the features are near binary, but in any case we'll probably always be on the edge of cache sufficiency.  As the # of dimensions the CPU cost goes by by factors of 2, 
+//     so we'd tend to be able to process smaller tensors for the same amount of time.
+//   - For each cell, when computing the totals we need to check N memory locations, so for the example above we would need 4 * 1,048,576 = 4,194,304 operations.
+//   - our main issue is that memory won't be layed our very well.  When we traverse from the origin along the default dimensional arragement then our memory accesses will be ordered well, but anything else will be a problem
+//   - transposing doesn't really help since we only visit each node after the transpose once, so why not pay the penalty when computing the totals rather than pay to transpose then process
+//     Our algorithm isn't like matrix multiplication where each cell is used many times.  We just check the cells once.
+//   - it might be the case that for pairs, we can get better results by using a traditional tree cutting algorithm (the existing one).  I should implement this algorithm above though regardless as it grows at less complexity than other algorithms,
+//     so it would be useful in any case.  After it's implemented, we can compare the results against the existing pair computation code
+//   - this pair splitting code should be templated for the numbrer of dimensions.  Nobody is really going to use it above 4-5 dimensions, but it's nice to have the option, but we don't want to implement 2,3,4,5 dimensional versions
+//   - consider writing a pair specific version of this algorithm, also because pairs have different algorithms that could be the same
+//   - once we have found our initial cut, we should start from the cut point and work backwards to the origin and find if there are any cubic cuts that maximize gain
+//   - we could in theory try and redo the first cut (lookback) like we'll do in the mains
+//   - each time we re-examine a sub region like this, or use lookback, we essentially need to re-do the algorithm, but we're only increasing the time by a small constant factor
+//   - if we find it's benefitial to make full hyper-plane cuts along all the dimensions that we find eg: if our cut points are (1,2,3) -> (5, 6,7) then we would have 27 smaller cut cubes (9 per 2-D plane)
+//     then we just need to do a single full-ish sweep of the space to calcualte the totals for each of the volumes we have under consideration, but that too isn't too costly
+// EXISTING ALGORITHM:
+//   - our existing algorithm first determins the totals.  It benefits in that we can do this in a cache efficient way where we process the main tensor in order, although we do use side
+//   - total N-1 planes that we also access per cut.  This first step can be ignored since it costs much less than the next part
+//   - after getting the totals, we do some kind of search for places to cut, but we need to calculate the total weights while we do so.  Determining the weights is the most expensive operation
+//   - the cost for determining volume totals is variable, but it's worst at the ends, where it takes 2^N checks per test point (and they are not very cache efficient lookups)
+//   - the cost is dominated by the worst case, so we can just assume it's the worst case, reduced by some reasonable factor like 2-ish.
+//   - if we generate a totals tensor and a reverse totals tensor (totals from the point opposite to the origin), then it takes 2^(N/2) at worst
+//   - In the abstract, if we were willing to generate 2^N totals matricies, we could calculate any total from any origin in O(1) time, but it would take 2^N times as much memory!
+//   - Probably the best solution is to just generate 2 sum total matricies one from origin (0,0,..,0,0) and the other at (1,1,..,1,1).  For a 6 dimensional space, that still only requires 8 operations instead of 64.
+//
+//   - we could in theory re-implement the above more restricted algorithm that looks for volume cuts from each dimension, but we'd then need either 2^N times more memory, or twice the memory and 2^(N/2), 
+//     and during the search we'd be using cache inefficient memory access anyways, so it seems like there would be not benefit to doing a volume from each origin search vs the method above
+//   - the other thing to note is that when training pairs after mains, any main cut in the pair is suposed to have limited gain (and the limited gain is overfitting too), so we really need to look for combinations of cuts for gain
+//     if we use the algorithm of picking a cut in one dimension, then picking a cut in a different dimension, until all the dimension have been fulfilled, that's the simplest possible set of cuts that divides the region in a way that
+//     cuts all dimensions (without which we could reduce the interaction by at least 1 dimension)
+//
+//   - there are really 2 algorithms that I know of that we can do otherwise.  
+//     1) The first one is a simple cross bar, where we choose a cut point inside, then divide the area up into volumes from that point to 
+//     each origin, which is the algorithm that we use for interaction detection.  At each point you need to calculate 2^N volumes, and each one of those takes 2^(N/2) operations
+//   - 2) The algorithm we use for interaction cuts.  We choose one dimension to cut, but we don't calculate gain, we choose the next, ect, and then sweep each dimension.  We get 1 cut along the main dimension,
+//        2 cuts on the second dimension, 4 cuts on the third, etc.  The problem is that to be fair, we probably want to permute the order of our dimension cuts, which means N! sweep variations
+//        Possilby we could randomize the sweep directions and just do 1 each time, but that seems like it would be problematic, or maybe we choose a sweep direction per inner bag, and then we at least get variability
+//        After we know our sweep direction, we need to visit each point.  Since all dimensions are fixed and we just sweep one at a time, we have 2^N sweep tubes, and each step requires computing at least one side, so we pay 2^(N/2) operations
+//    
+//   - the cross bar sweep seems a little too close to our regional cut while building appraoch, and it takes more work.  The 2^N operations and # of cells are common between that one and the add while sweep version, but the cross bar has an additional 2^(N/2) term vs N for the sum while working.  Sum while working would be much better for large numbers of dimensions
+//   - the permuted solution has the same number of points to examine as the cross bar, and it has 2^N tubes to sweep vs 2^N volumes on each side of the cross bar to examine, and calculating each costs region costs 2^(N/2), so the permuted solutoin takes N! times more time than the cross bar solution
+//   - so the sweep while gain calculation takes less time to examine cuts from each corner than the cross bar, all solutions have bad pipeline prediction fetch caracteristics and cache characteristics.
+//   - the gain calculate while add has the benefit in that it requires no more memory other than the side planes that are needed for addition calculation anyways, so it's more memory efficient than either of the other two algorithms
+//   
+//   - SO, regardless as to whether the other algorithms are better, we'll probably want some form of the corner volume while adding to explore higher dimensional spaces.  We can also give options for sweep cuts for lower dimensions. 2-3 dimensional regions seem reasonable.  Beyond that I'd say just do volume addition cuts
+//   - we should examine changing the interaction detection code to use our corner cut solution since we exectute that algorithm on a lot of potential pairs/interactions
+
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
@@ -1282,10 +1344,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               predictionLowLow = 0 == pTotals2LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowLowBest->m_cInstancesInBucket));
-               predictionLowHigh = 0 == pTotals2LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowHighBest->m_cInstancesInBucket));
-               predictionHighLow = 0 == pTotals2HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighLowBest->m_cInstancesInBucket));
-               predictionHighHigh = 0 == pTotals2HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighHighBest->m_cInstancesInBucket));
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowLowBest->m_cInstancesInBucket);
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowHighBest->m_cInstancesInBucket);
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighLowBest->m_cInstancesInBucket);
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_cInstancesInBucket);
             }
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1386,10 +1448,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               predictionLowLow = 0 == pTotals1LowLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowLowBest->m_cInstancesInBucket));
-               predictionLowHigh = 0 == pTotals1LowHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowHighBest->m_cInstancesInBucket));
-               predictionHighLow = 0 == pTotals1HighLowBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighLowBest->m_cInstancesInBucket));
-               predictionHighHigh = 0 == pTotals1HighHighBest->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighHighBest->m_cInstancesInBucket));
+               predictionLowLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowLowBest->m_cInstancesInBucket);
+               predictionLowHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowHighBest->m_cInstancesInBucket);
+               predictionHighLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighLowBest->m_cInstancesInBucket);
+               predictionHighHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighHighBest->m_cInstancesInBucket);
             }
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -1541,8 +1603,8 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = 0 == pTotalsOther->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1584,8 +1646,8 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = 0 == pTotalsOther->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1627,8 +1689,8 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = 0 == pTotalsOther->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1669,8 +1731,8 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = 0 == pTotalsTarget->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = 0 == pTotalsOther->m_cInstancesInBucket ? 0 : ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification

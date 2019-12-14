@@ -1227,7 +1227,21 @@ EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombination
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessages = 10;
 
-// TODO : we can make GenerateModelFeatureCombinationUpdate callable by multiple threads so that this step could be parallelized before making a decision and applying one of the updates.  Right now we're accessing scratch space in the pEbmBoostingState object, but we can move that to a thread resident object.  Do do this, we would need to have our caller allocate our tensor, but that is a manageable operation
+// TODO : change this so that our caller allocates the memory that contains the update, but this is complicated in various ways
+//        we don't want to just copy the internal tensor into the memory region that our caller provides, and we want to work with
+//        compressed representations of the SegmentedTensor object while we're building it, so we'll work within the memory the caller
+//        provides, but that means we'll potentially need more memory than the full tensor, and we'll need to put some header info
+//        at the start, so the caller can't treat this memory as a pure tensor.
+//        So:
+//          1) provide a function that returns the maximum memory needed.  A smart caller will call this once on each feature_combination, choose the max and allocate it once
+//          2) return a compressed complete SegmentedTensor to the caller inside an opaque memory region (return the exact size that we require to the caller for copying)
+//          3) if caller wants a simplified tensor, then they call a separate function that expands the tensor and returns a pointer to the memory inside the opaque object
+//          4) ApplyModelFeatureCombinationUpdate will take an opaque SegmentedTensor, and expand it if needed
+//        The benefit of returning a compressed object is that we don't have to do the work of expanding it if the caller decides not to use it (which might happen in greedy algorithms)
+//        The other benefit of returning a compressed object is that our caller can store/copy it faster
+//        The other benefit of returning a compressed object is that it can be copied from process to process faster
+//        Lastly, with the memory allocated by our caller, we can call GenerateModelFeatureCombinationUpdate in parallel on multiple feature_combinations.  Right now you can't call it in parallel since we're updating our internal single tensor
+
 EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmBoosting ebmBoosting,
    IntegerDataType indexFeatureCombination,

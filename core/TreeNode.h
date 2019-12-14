@@ -132,7 +132,7 @@ public:
    }
 
    EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
-      EBM_ASSERT(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0);
+      EBM_ASSERT(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0.000000001);
       return this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 
@@ -174,7 +174,7 @@ public:
             if(bClassification) {
                smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
             } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FractionalDataType>(this->GetInstances()));
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, this->GetInstances());
             }
             *pValuesCur = smallChangeToModel;
 

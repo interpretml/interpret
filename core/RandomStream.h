@@ -15,13 +15,15 @@
 class RandomStream final {
    bool m_bSuccess; // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
 
-   // TODO: change from std::default_random_engine to std::mt19937_64 m_randomGenerator for cross platform random number identical results
-   // TODO: uniform_int_distribution suposedly doesn't return cross platform identical results, so we should roll our own someday
-   //       https://stackoverflow.com/questions/40361041/achieve-same-random-number-sequence-on-different-os-with-same-seed
-
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
    // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
+
+#ifdef LEGACY_COMPATIBILITY
    std::default_random_engine m_randomGenerator;
+#else // LEGACY_COMPATIBILITY
+   // use std::mt19937_64 for cross platform random number identical results
+   std::mt19937_64 m_randomGenerator;
+#endif // LEGACY_COMPATIBILITY
 
 public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
@@ -45,6 +47,9 @@ public:
       // move the try/catch overhead to ourside that loop
 
       // TODO : change this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
+
+      // TODO: uniform_int_distribution suposedly doesn't return cross platform identical results, so we should roll our own someday.  Check first that we actually need to do this
+      //       https://stackoverflow.com/questions/40361041/achieve-same-random-number-sequence-on-different-os-with-same-seed
 
       // initializing uniform_int_distribution doesn't have official nothrow properties, but a random number generator should not have to throw
       std::uniform_int_distribution<size_t> distribution(size_t { 0 }, maxValueInclusive);

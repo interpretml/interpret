@@ -353,8 +353,4 @@ EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
 }
 #endif // FAST_LOG
 
-
-// TODO enable random ties in the future
-#define DISABLE_RANDOMIZED_TIES
-
 #endif // EBM_INTERNAL_H

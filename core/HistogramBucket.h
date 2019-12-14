@@ -70,7 +70,11 @@ public:
    // if we remove this bucketValue then it will slightly change our results because buckets where there are zeros are ambiguous in terms of choosing a split point.  We should remove this value as late as possible so that we preserve our comparison data sets over a longer
    // period of time
    // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
+
+#ifdef LEGACY_COMPATIBILITY
    ActiveDataType m_bucketValue;
+#endif LEGACY_COMPATIBILITY
+   
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
@@ -416,7 +420,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 ) {
    LOG_0(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+   EBM_ASSERT(1 <= cHistogramBuckets);
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;
@@ -433,9 +437,12 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long and have many different labels, 
    // we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the non-zero binned buckets, even though this
    // requires one more member variable in the binned bucket array
+#ifdef LEGACY_COMPATIBILITY
    ActiveDataType iBucket = 0;
+#endif LEGACY_COMPATIBILITY
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
+#ifdef LEGACY_COMPATIBILITY
       if(UNLIKELY(0 == pCopyFrom->m_cInstancesInBucket)) {
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyTo = pCopyFrom;
          goto skip_first_check;
@@ -463,20 +470,39 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
          pCopyFrom = pCopyTo;
          break;
       }
+#endif // LEGACY_COMPATIBILITY
 #ifndef NDEBUG
       cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
 #endif // NDEBUG
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+         // when building a tree, we start from one end and sweep to the other.  In order to caluculate
+         // gain on both sides, we need the sum on both sides, which means when starting from one end
+         // we need to know the sum of everything on the other side, so we need to calculate this sum
+         // somewhere.  If we have a continuous value and bin it such that many instances are in the same bin
+         // then it makes sense to calculate the total of all bins after generating the histograms of the bins
+         // since then we just need to sum N bins (where N is the number of bins) vs the # of instances.
+         // There is one case though where we might want to calculate the sum while looping the instances,
+         // and that is if almost all bins have either 0 or 1 instances, which would happen if we didn't bin at all
+         // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
+         // will be continuous in an ML problem.
          aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
       }
 
+#ifdef LEGACY_COMPATIBILITY
       pCopyFrom->m_bucketValue = static_cast<ActiveDataType>(iBucket);
-
       ++iBucket;
+#endif LEGACY_COMPATIBILITY
+
       pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
    EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
-   size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;
+
+#ifdef LEGACY_COMPATIBILITY
+   const size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;
+#else
+   // TODO : after we've eliminated the compression, we won't need to return cFinalItems, so we can return cInstancesTotal directly instead of using a pointer
+   const size_t cFinalItems = cHistogramBuckets;
+#endif
 
    const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
    EBM_ASSERT(cInstancesTotal == cInstancesTotalDebug);
