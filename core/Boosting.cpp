@@ -318,7 +318,7 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
       } while(iFeatureCombination < m_cFeatureCombinations);
 
       if(0 != cBytesArrayEquivalentSplitMax) {
-         void * aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
+         void * const aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
          if(bClassification) {
             m_cachedThreadResourcesUnion.classification.m_aEquivalentSplits = aEquivalentSplits;
          } else {
@@ -1133,7 +1133,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
                return nullptr;
             }
          } else if(1 == pFeatureCombination->m_cFeatures) {
-            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(&pEbmBoostingState->m_randomStream, pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          } else {

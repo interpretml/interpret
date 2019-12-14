@@ -17,25 +17,25 @@ template<bool bClassification>
 struct TreeNode;
 
 template<bool bClassification>
-EBM_INLINE size_t GetTreeNodeSizeOverflow(size_t cVectorLength) {
+EBM_INLINE size_t GetTreeNodeSizeOverflow(const size_t cVectorLength) {
    return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? true : IsAddError(sizeof(TreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>), sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength) ? true : false;
 }
 template<bool bClassification>
-EBM_INLINE size_t GetTreeNodeSize(size_t cVectorLength) {
+EBM_INLINE size_t GetTreeNodeSize(const size_t cVectorLength) {
    return sizeof(TreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
 }
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * pTreeNode, size_t countBytesAdd) {
-   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + countBytesAdd);
+EBM_INLINE TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
+   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + cBytesAdd);
 }
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * pTreeNodeChildren, size_t countBytesTreeNode) {
-   UNUSED(countBytesTreeNode);
+EBM_INLINE TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+   UNUSED(cBytesTreeNode);
    return pTreeNodeChildren;
 }
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * pTreeNodeChildren, size_t countBytesTreeNode) {
-   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, countBytesTreeNode);
+EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
 }
 
 template<bool bClassification>

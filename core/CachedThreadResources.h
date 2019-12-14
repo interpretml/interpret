@@ -72,7 +72,6 @@ public:
 
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry;
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry1;
-   HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntryBest;
    FractionalDataType * const m_aSumResidualErrors2;
 
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
@@ -86,7 +85,6 @@ public:
       , m_cThreadByteBufferCapacity2(0)
       , m_aSumHistogramBucketVectorEntry(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
-      , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
       , m_aEquivalentSplits(nullptr)
       , m_bestTreeNodeToSplit() {
@@ -100,7 +98,6 @@ public:
       free(m_aThreadByteBuffer2);
       delete[] m_aSumHistogramBucketVectorEntry;
       delete[] m_aSumHistogramBucketVectorEntry1;
-      delete[] m_aSumHistogramBucketVectorEntryBest;
       delete[] m_aSumResidualErrors2;
       free(m_aEquivalentSplits);
 
@@ -151,7 +148,7 @@ public:
    }
 
    EBM_INLINE bool IsError() const {
-      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumHistogramBucketVectorEntryBest || nullptr == m_aSumResidualErrors2;
+      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumResidualErrors2;
    }
 };
 
