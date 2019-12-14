@@ -109,7 +109,9 @@ SegmentedTensor<ActiveDataType, FractionalDataType> ** EbmBoostingState::Initial
 bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores) {
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
 
-   if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
+   const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
+
+   if(bClassification) {
       if(m_cachedThreadResourcesUnion.classification.IsError()) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
          return true;
@@ -189,7 +191,6 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
 
    const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
-   const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
    if(0 != m_cFeatureCombinations) {
@@ -317,7 +318,12 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
       } while(iFeatureCombination < m_cFeatureCombinations);
 
       if(0 != cBytesArrayEquivalentSplitMax) {
-         m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
+         void * aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
+         if(bClassification) {
+            m_cachedThreadResourcesUnion.classification.m_aEquivalentSplits = aEquivalentSplits;
+         } else {
+            m_cachedThreadResourcesUnion.regression.m_aEquivalentSplits = aEquivalentSplits;
+         }
       }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");

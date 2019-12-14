@@ -75,6 +75,8 @@ public:
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntryBest;
    FractionalDataType * const m_aSumResidualErrors2;
 
+   void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
+
    SafeTreeNodeQueue<bClassification> m_bestTreeNodeToSplit;
 
    CachedBoostingThreadResources(const size_t cVectorLength)
@@ -86,6 +88,7 @@ public:
       , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumHistogramBucketVectorEntryBest(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
+      , m_aEquivalentSplits(nullptr)
       , m_bestTreeNodeToSplit() {
       EBM_ASSERT(0 < cVectorLength);
    }
@@ -99,6 +102,7 @@ public:
       delete[] m_aSumHistogramBucketVectorEntry1;
       delete[] m_aSumHistogramBucketVectorEntryBest;
       delete[] m_aSumResidualErrors2;
+      free(m_aEquivalentSplits);
 
       LOG_0(TraceLevelInfo, "Exited ~CachedBoostingThreadResources");
    }

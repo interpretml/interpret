@@ -83,8 +83,6 @@ public:
 
    RandomStream m_randomStream;
 
-   void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
-
    // TODO CachedThreadResourcesUnion has a lot of things that aren't per thread.  Right now it's functioning as a place to put mostly things
    // that are different between regression and classification.  In the future we'll want something like it for breaking the work into workable chunks
    // so I'm leaving it here for now.  
@@ -108,7 +106,6 @@ public:
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
       , m_randomStream(randomSeed)
-      , m_aEquivalentSplits(nullptr)
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) {
    }
@@ -140,8 +137,6 @@ public:
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apBestModel);
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
       SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
-
-      free(m_aEquivalentSplits);
 
       LOG_0(TraceLevelInfo, "Exited ~EbmBoostingState");
    }
