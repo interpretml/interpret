@@ -43,7 +43,7 @@ EBM_INLINE SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<
 template<bool bClassification>
 EBM_INLINE size_t CountSweepTreeNode(const SweepTreeNode<bClassification> * const pSweepTreeNodeStart, const SweepTreeNode<bClassification> * const pSweepTreeNodeCur, const size_t cBytesPerSweepTreeNode) {
    EBM_ASSERT(pSweepTreeNodeStart <= pSweepTreeNodeCur);
-   size_t cBytesDiff = reinterpret_cast<const char *>(pSweepTreeNodeCur) - reinterpret_cast<const char *>(pSweepTreeNodeStart);
+   const size_t cBytesDiff = reinterpret_cast<const char *>(pSweepTreeNodeCur) - reinterpret_cast<const char *>(pSweepTreeNodeStart);
    EBM_ASSERT(0 == cBytesDiff % cBytesPerSweepTreeNode);
    return cBytesDiff / cBytesPerSweepTreeNode;
 }
@@ -86,7 +86,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
       const FractionalDataType sumResidualErrorLeft = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
       const FractionalDataType sumResidualErrorRight = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError - sumResidualErrorLeft;
 
-      BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, static_cast<FractionalDataType>(cInstancesLeft)) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, static_cast<FractionalDataType>(cInstancesRight));
+      BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
 
       aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
       pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError = sumResidualErrorLeft;
@@ -122,7 +122,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
          aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
 
          // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
-         const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, static_cast<FractionalDataType>(cInstancesLeft)) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, static_cast<FractionalDataType>(cInstancesRight));
+         const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
          EBM_ASSERT(0 <= nodeSplittingScore);
          nodeSplittingScore += nodeSplittingScoreOneVector;
       }
@@ -183,7 +183,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
       }
 
       const FractionalDataType sumResidualErrorParent = ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-      originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, static_cast<FractionalDataType>(cInstancesParent));
+      originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParent);
 
       ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualErrorParent - pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {

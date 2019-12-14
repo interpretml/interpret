@@ -879,9 +879,9 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
 
       FractionalDataType splittingScore = 0;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         splittingScore += 0 == pTotalsLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLow->m_cInstancesInBucket));
+         splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLow->m_cInstancesInBucket);
          EBM_ASSERT(0 <= splittingScore);
-         splittingScore += 0 == pTotalsHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHigh->m_cInstancesInBucket));
+         splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHigh->m_cInstancesInBucket);
          EBM_ASSERT(0 <= splittingScore);
       }
       EBM_ASSERT(0 <= splittingScore);
@@ -1855,10 +1855,10 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
             FractionalDataType splittingScore = 0;
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               splittingScore += 0 == pTotalsLowLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLowLow->m_cInstancesInBucket));
-               splittingScore += 0 == pTotalsLowHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsLowHigh->m_cInstancesInBucket));
-               splittingScore += 0 == pTotalsHighLow->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHighLow->m_cInstancesInBucket));
-               splittingScore += 0 == pTotalsHighHigh->m_cInstancesInBucket ? 0 : EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotalsHighHigh->m_cInstancesInBucket));
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowLow->m_cInstancesInBucket);
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowHigh->m_cInstancesInBucket);
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighLow->m_cInstancesInBucket);
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighHigh->m_cInstancesInBucket);
                EBM_ASSERT(0 <= splittingScore);
             }
             EBM_ASSERT(0 <= splittingScore);
