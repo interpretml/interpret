@@ -188,9 +188,26 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
 
+   const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
+   const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
    if(0 != m_cFeatureCombinations) {
-      size_t cEquivalentSplitIndexesMax = 0;
+      size_t cBytesPerSweepTreeNode = 0;
+      if(bClassification) {
+         if(GetSweepTreeNodeSizeOverflow<true>(cVectorLength)) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow<true>(cVectorLength)");
+            return true;
+         }
+         cBytesPerSweepTreeNode = GetSweepTreeNodeSize<true>(cVectorLength);
+      } else {
+         if(GetSweepTreeNodeSizeOverflow<false>(cVectorLength)) {
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow<false>(cVectorLength)");
+            return true;
+         }
+         cBytesPerSweepTreeNode = GetSweepTreeNodeSize<false>(cVectorLength);
+      }
+      size_t cBytesArrayEquivalentSplitMax = 0;
 
       const IntegerDataType * pFeatureCombinationIndex = featureCombinationIndexes;
       size_t iFeatureCombination = 0;
@@ -251,7 +268,7 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
             pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
          } else {
             EBM_ASSERT(nullptr != featureCombinationIndexes);
-            size_t cEquivalentSplitIndexes = 1;
+            size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
             FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
             do {
@@ -272,13 +289,24 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
                      return true;
                   }
                   cTensorBins *= cBins;
-                  cEquivalentSplitIndexes *= cBins - 1;
+                  cEquivalentSplits *= cBins - 1; // we can only split between the bins
                }
                ++pFeatureCombinationIndex;
             } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
-            if(cEquivalentSplitIndexesMax < cEquivalentSplitIndexes) {
-               cEquivalentSplitIndexesMax = cEquivalentSplitIndexes;
+            size_t cBytesArrayEquivalentSplit;
+            if(1 == cSignificantFeaturesInCombination) {
+               if(IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)) {
+                  LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cEquivalentSplits, cBytesPerSweepTreeNode)");
+                  return true;
+               }
+               cBytesArrayEquivalentSplit = cEquivalentSplits * cBytesPerSweepTreeNode;
+            } else {
+               // TODO : someday add equal gain multidimensional randomized picking.  It's rather hard though with the existing sweep functions for multidimensional right now
+               cBytesArrayEquivalentSplit = 0;
+            }
+            if(cBytesArrayEquivalentSplitMax < cBytesArrayEquivalentSplit) {
+               cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
             }
 
             // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
@@ -288,18 +316,11 @@ bool EbmBoostingState::Initialize(const EbmCoreFeature * const aFeatures, const 
          ++iFeatureCombination;
       } while(iFeatureCombination < m_cFeatureCombinations);
 
-      if(0 != cEquivalentSplitIndexesMax) {
-         if(IsMultiplyError(cEquivalentSplitIndexesMax, sizeof(size_t))) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize IsMultiplyError(cEquivalentSplitIndexesMax, sizeof(size_t))");
-            return true;
-         }
-         m_aEquivalentSplitIndexes = static_cast<size_t *>(malloc(sizeof(size_t) * cEquivalentSplitIndexesMax));
+      if(0 != cBytesArrayEquivalentSplitMax) {
+         m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
       }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
-
-   const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
-   const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
    if(0 != cTrainingInstances) {

@@ -70,7 +70,7 @@ public:
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
-   // aHistogramBucketVectorEntry must be the last item in this struct
+   // m_aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<true> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {

@@ -19,6 +19,29 @@
 
 #include "TreeNode.h"
 
+template<bool bClassification>
+struct SweepTreeNode {
+   size_t m_cBestInstancesLeft;
+   const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
+   
+   // use the "struct hack" since Flexible array member method is not available in C++
+   // m_aHistogramBucketVectorEntry must be the last item in this struct
+   HistogramBucketVectorEntry<bClassification> m_aBestHistogramBucketVectorEntry[1];
+};
+template<bool bClassification>
+EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const size_t cVectorLength) {
+   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? true : IsAddError(sizeof(SweepTreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>), sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength) ? true : false;
+}
+template<bool bClassification>
+EBM_INLINE size_t GetSweepTreeNodeSize(const size_t cVectorLength) {
+   return sizeof(SweepTreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
+}
+template<bool bClassification>
+EBM_INLINE SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<bClassification> * const pSweepTreeNode, const size_t countBytesAdd) {
+   return reinterpret_cast<SweepTreeNode<bClassification> *>(reinterpret_cast<char *>(pSweepTreeNode) + countBytesAdd);
+}
+
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
