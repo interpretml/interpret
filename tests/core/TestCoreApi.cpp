@@ -62,12 +62,55 @@ inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
 int g_countEqualityFailures = 0;
 
 inline bool IsApproxEqual(const double value, const double expected, const double percentage) {
-   bool ret = std::abs(expected - value) <= std::abs(expected * percentage);
-   if(!ret) {
+   bool isEqual = false;
+   if(!std::isnan(value)) {
+      if(!std::isnan(expected)) {
+         if(!std::isinf(value)) {
+            if(!std::isinf(expected)) {
+               const double smaller = double { 1 } - percentage;
+               const double bigger = double { 1 } + percentage;
+               if(0 < value) {
+                  if(0 < expected) {
+                     if(value <= expected) {
+                        // expected is the bigger number in absolute terms
+                        if(expected * smaller <= value && value <= expected * bigger) {
+                           isEqual = true;
+                        }
+                     } else {
+                        // value is the bigger number in absolute terms
+                        if(value * smaller <= expected && expected <= value * bigger) {
+                           isEqual = true;
+                        }
+                     }
+                  }
+               } else if(value < 0) {
+                  if(expected < 0) {
+                     if(expected <= value) {
+                        // expected is the bigger number in absolute terms (the biggest negative number)
+                        if(expected * bigger <= value && value <= expected * smaller) {
+                           isEqual = true;
+                        }
+                     } else {
+                        // value is the bigger number in absolute terms (the biggest negative number)
+                        if(value * bigger <= expected && expected <= value * smaller) {
+                           isEqual = true;
+                        }
+                     }
+                  }
+               } else {
+                  if(0 == expected) {
+                     isEqual = true;
+                  }
+               }
+            }
+         }
+      }
+   }
+   if(!isEqual) {
       // we're going to fail!
       ++g_countEqualityFailures; // this doesn't do anything useful but gives us something to break on
    }
-   return ret;
+   return isEqual;
 }
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
@@ -84,7 +127,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
 #define CHECK_APPROX(value, expected) \
    do { \
       const double valueHidden = (value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 0.01 }); \
+      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-7 }); \
       if(!bApproxEqualHidden) { \
          std::cout << " FAILED on \"" #value "(" << valueHidden << ") approx " #expected "\""; \
          testCaseHidden.m_bPassed = false; \
@@ -1038,7 +1081,7 @@ TEST_CASE("test random number generator equivalency") {
    // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those
-   CHECK(modelValue == -0.0088864318212834824);
+   CHECK_APPROX(modelValue, -0.0088864318212834824);
 }
 #endif // LEGACY_COMPATIBILITY
 
