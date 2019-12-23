@@ -55,9 +55,15 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
 
    memset(aCountOccurrences, 0, cBytesData);
 
-   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-      const size_t iCountOccurrences = pRandomStream->Next(cInstances);
-      ++aCountOccurrences[iCountOccurrences];
+   try {
+      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+         const size_t iCountOccurrences = pRandomStream->Next(cInstances);
+         ++aCountOccurrences[iCountOccurrences];
+      }
+   } catch(...) {
+      // pRandomStream->Next can throw exceptions from the random number generator, possibly (it's not documented)
+      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet random number generator exception");
+      return nullptr;
    }
 
    SamplingWithReplacement * pRet = new (std::nothrow) SamplingWithReplacement(pOriginDataSet, aCountOccurrences);
