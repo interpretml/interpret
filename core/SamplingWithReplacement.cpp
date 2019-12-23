@@ -55,16 +55,9 @@ SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(Ran
 
    memset(aCountOccurrences, 0, cBytesData);
 
-   try {
-      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-         const size_t iCountOccurrences = pRandomStream->Next(cInstances - 1);
-         ++aCountOccurrences[iCountOccurrences];
-      }
-   } catch(...) {
-      // Next could in theory throw an exception
-      LOG_0(TraceLevelWarning, "WARNING SamplingWithReplacement::GenerateSingleSamplingSet exception");
-      free(aCountOccurrences);
-      return nullptr;
+   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+      const size_t iCountOccurrences = pRandomStream->Next(cInstances);
+      ++aCountOccurrences[iCountOccurrences];
    }
 
    SamplingWithReplacement * pRet = new (std::nothrow) SamplingWithReplacement(pOriginDataSet, aCountOccurrences);

@@ -158,7 +158,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
 #else // LEGACY_COMPATIBILITY
    const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
    if(1 < cSweepItems) {
-      const size_t iRandom = pRandomStream->Next(cSweepItems - 1);
+      const size_t iRandom = pRandomStream->Next(cSweepItems);
       pSweepTreeNodeStart = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode * iRandom);
    }
 #endif // LEGACY_COMPATIBILITY
