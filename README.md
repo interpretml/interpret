@@ -75,6 +75,8 @@ show(ebm_global)
 ```
 ![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
+The graphs are the entire model.  For regression, sum the scores to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.
+
 <br/>
 
 Understand individual predictions
