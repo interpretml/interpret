@@ -1100,7 +1100,7 @@ EBM_INLINE CachedBoostingThreadResources<false> * GetCachedThreadResources<false
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetClasses function
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
@@ -1133,7 +1133,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
                return nullptr;
             }
          } else if(1 == pFeatureCombination->m_cFeatures) {
-            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(&pEbmBoostingState->m_randomStream, pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(&pEbmBoostingState->m_randomStream, pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, &gain, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          } else {
@@ -1202,25 +1202,25 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    if(possibleCompilerLearningTypeOrCountTargetClasses == runtimeLearningTypeOrCountTargetClasses) {
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return GenerateModelFeatureCombinationUpdatePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
+      return GenerateModelFeatureCombinationUpdatePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
    } else {
-      return CompilerRecursiveGenerateModelFeatureCombinationUpdate<possibleCompilerLearningTypeOrCountTargetClasses + 1>(runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
+      return CompilerRecursiveGenerateModelFeatureCombinationUpdate<possibleCompilerLearningTypeOrCountTargetClasses + 1>(runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
    }
 }
 
 template<>
-EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
+EBM_INLINE FractionalDataType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FractionalDataType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, const FractionalDataType * const aTrainingWeights, const FractionalDataType * const aValidationWeights, FractionalDataType * const pGainReturn) {
    UNUSED(runtimeLearningTypeOrCountTargetClasses);
    // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
+   return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, aTrainingWeights, aValidationWeights, pGainReturn);
 }
 
 // we made this a global because if we had put this variable inside the EbmBoostingState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmBoostingState object is sent into us
@@ -1282,6 +1282,12 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
       cInstancesRequiredForParentSplitMin = std::numeric_limits<size_t>::max();
    }
 
+#ifdef LEGACY_COMPATIBILITY
+   const size_t cInstancesRequiredForChildSplitMin = 0;
+#else // LEGACY_COMPATIBILITY
+   const size_t cInstancesRequiredForChildSplitMin = 10;
+#endif // LEGACY_COMPATIBILITY
+
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
    // validationMetricReturn can be nullptr
@@ -1297,10 +1303,10 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
          LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return nullptr;
       }
-      aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, trainingWeights, validationWeights, gainReturn);
+      aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
    } else {
       EBM_ASSERT(IsRegression(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses));
-      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, trainingWeights, validationWeights, gainReturn);
+      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
    }
 
    if(nullptr != gainReturn) {

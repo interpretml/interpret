@@ -52,14 +52,14 @@ EBM_INLINE size_t CountSweepTreeNode(const SweepTreeNode<bClassification> * cons
 }
 
 
-// ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
+// ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * const pRandomStream, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStream * const pRandomStream, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
-   LOG_N(TraceLevelVerbose, "Entered SplitTreeNode: pTreeNode=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p", static_cast<void *>(pTreeNode), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur));
+   LOG_N(TraceLevelVerbose, "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pRandomStream=%p, aHistogramBucket=%p, pTreeNode=%p, pCachedThreadResources=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p, cInstancesRequiredForChildSplitMin=%zu", static_cast<void *>(pRandomStream), static_cast<const void *>(aHistogramBucket), static_cast<void *>(pTreeNode), static_cast<void *>(pCachedThreadResources), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur), cInstancesRequiredForChildSplitMin);
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -70,7 +70,7 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
    const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
 
    SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeStart = static_cast<SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->m_aEquivalentSplits);
-   SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode);
+   SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntryCur = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntryLast = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
@@ -80,32 +80,21 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild1 = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
    pRightChild1->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
 
-   size_t cInstancesLeft = pHistogramBucketEntryCur->m_cInstancesInBucket;
-   size_t cInstancesRight = pTreeNode->GetInstances() - cInstancesLeft;
+   size_t cInstancesLeft = 0;
+   size_t cInstancesRight = pTreeNode->GetInstances();
 
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryLeft = pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
    FractionalDataType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
-   FractionalDataType BEST_nodeSplittingScore = 0;
+   FractionalDataType BEST_nodeSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      const FractionalDataType sumResidualErrorLeft = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-      const FractionalDataType sumResidualErrorRight = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError - sumResidualErrorLeft;
-
-      BEST_nodeSplittingScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
-
-      aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
-      pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError = sumResidualErrorLeft;
-      aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
+      aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+      aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = 0;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         FractionalDataType sumDenominator1 = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
-         aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(sumDenominator1);
-         pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].SetSumDenominator(sumDenominator1);
+         aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(0);
       }
    }
 
-   EBM_ASSERT(0 <= BEST_nodeSplittingScore);
-   pSweepTreeNodeStart->m_pBestHistogramBucketEntry = pHistogramBucketEntryCur;
-   pSweepTreeNodeStart->m_cBestInstancesLeft = cInstancesLeft;
-   for(pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1); pHistogramBucketEntryLast != pHistogramBucketEntryCur; pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1)) {
+   for( ; pHistogramBucketEntryLast != pHistogramBucketEntryCur; pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1)) {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
       const size_t CHANGE_cInstances = pHistogramBucketEntryCur->m_cInstancesInBucket;
@@ -132,33 +121,43 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
       }
       EBM_ASSERT(0 <= nodeSplittingScore);
 
-      if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
-         // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
-         // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
-         // we want to avoid any bias of always choosing the higher or lower value to split on, so what we should do is store the indexes of any ties in a stack
-         // and we reset the stack if we later find a gain that's larger than any we have in the stack.  The stack needs to be size_t to hold indexes, and we need
-         // the stack to be as long as the number of instances - 1, incase all gain for all bins are the same (potential_splits = bins - 1)
-         // after we exit the loop we can examine our stack and choose a random split from all the equivalent splits available
-         // eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random number between 0 -> 3 to select which one we actually split on
-         //
-         // TODO : implement the randomized splitting described above.  Also, do this for interaction effect which can be done the same althoug we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
+      if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft) && LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesRight))) {
+         if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
+            // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
+            // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
+            // we want to avoid any bias of always choosing the higher or lower value to split on, so what we should do is store the indexes of any ties in a stack
+            // and we reset the stack if we later find a gain that's larger than any we have in the stack.  The stack needs to be size_t to hold indexes, and we need
+            // the stack to be as long as the number of instances - 1, incase all gain for all bins are the same (potential_splits = bins - 1)
+            // after we exit the loop we can examine our stack and choose a random split from all the equivalent splits available
+            // eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random number between 0 -> 3 to select which one we actually split on
+            //
+            // TODO : implement the randomized splitting described above.  Also, do this for interaction effect which can be done the same althoug we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
 
-         pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
-         BEST_nodeSplittingScore = nodeSplittingScore;
+            pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
+            BEST_nodeSplittingScore = nodeSplittingScore;
 
-         pSweepTreeNodeCur->m_pBestHistogramBucketEntry = pHistogramBucketEntryCur;
-         pSweepTreeNodeCur->m_cBestInstancesLeft = cInstancesLeft;
-         memcpy(pSweepTreeNodeCur->m_aBestHistogramBucketVectorEntry, aSumHistogramBucketVectorEntryLeft, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
+            pSweepTreeNodeCur->m_pBestHistogramBucketEntry = pHistogramBucketEntryCur;
+            pSweepTreeNodeCur->m_cBestInstancesLeft = cInstancesLeft;
+            memcpy(pSweepTreeNodeCur->m_aBestHistogramBucketVectorEntry, aSumHistogramBucketVectorEntryLeft, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
-         pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeCur, cBytesPerSweepTreeNode);
+            pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeCur, cBytesPerSweepTreeNode);
+         }
       }
+   }
+
+   if(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur)) {
+      // we didn't find any valid splits
+      EBM_ASSERT(BEST_nodeSplittingScore == FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() });
+      return true;
+   } else {
+      EBM_ASSERT(BEST_nodeSplittingScore != FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() });
    }
         
 #ifdef LEGACY_COMPATIBILITY
    UNUSED(pRandomStream);
 #else // LEGACY_COMPATIBILITY
    const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
-   if(1 < cSweepItems) {
+   if(UNLIKELY(1 < cSweepItems)) {
       // pRandomStream->Next(cSweepItems) can throw exceptions from the random number generator.  We would catch any exceptions in our caller
       const size_t iRandom = pRandomStream->Next(cSweepItems);
       pSweepTreeNodeStart = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode * iRandom);
@@ -221,11 +220,13 @@ void ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint(RandomStream * co
 
    EBM_ASSERT(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
-   LOG_N(TraceLevelVerbose, "Exited SplitTreeNode: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue), pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
+   LOG_N(TraceLevelVerbose, "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue), pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
+
+   return false;
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool GrowDecisionTree(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cHistogramBuckets, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
+bool GrowDecisionTree(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cHistogramBuckets, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, const size_t cInstancesTotal, const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -241,6 +242,10 @@ bool GrowDecisionTree(RandomStream * const pRandomStream, CachedBoostingThreadRe
    // TODO: do we already have a separate solution for no splits, which we could use for 0 == cTreeSplitsMax
    if(UNLIKELY(cInstancesTotal < cInstancesRequiredForParentSplitMin || 1 == cHistogramBuckets || 0 == cTreeSplitsMax)) {
       // there will be no splits at all
+
+      // TODO : this section can probably be eliminated in the future when we disable cInstancesRequiredForParentSplitMin, and butcket comrpession (making 2 <= cHistogramBuckets), and 0 == cTreeSplitsMax can be handled by using our non-splitting specialty boosting function
+
+   no_splits:;
 
       if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
          LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
@@ -300,12 +305,14 @@ retry_with_bigger_tree_node_children_array:
 
    size_t cSplits;
    try {
-      // ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-      ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pRootTreeNode, pCachedThreadResources, AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesPerTreeNode), runtimeLearningTypeOrCountTargetClasses
+      // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
+      if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pRootTreeNode, pCachedThreadResources, AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesPerTreeNode), cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
 #endif // NDEBUG
-      );
+         )) {
+         goto no_splits;
+      }
 
       if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
@@ -391,15 +398,19 @@ retry_with_bigger_tree_node_children_array:
                goto retry_with_bigger_tree_node_children_array;
             }
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
-            // ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-            ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pLeftChild, pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, runtimeLearningTypeOrCountTargetClasses
+            // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
+            if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pLeftChild, pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
-            );
-            pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
-            pBestTreeNodeToSplit->push(pLeftChild);
+               )) {
+               pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+               pBestTreeNodeToSplit->push(pLeftChild);
+            } else {
+               goto no_left_split;
+            }
          } else {
+         no_left_split:;
             // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
             // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
             pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
@@ -416,15 +427,19 @@ retry_with_bigger_tree_node_children_array:
                goto retry_with_bigger_tree_node_children_array;
             }
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
-            // ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-            ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pRightChild, pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, runtimeLearningTypeOrCountTargetClasses
+            // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
+            if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pRightChild, pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
-            );
-            pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
-            pBestTreeNodeToSplit->push(pRightChild);
+               )) {
+               pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
+               pBestTreeNodeToSplit->push(pRightChild);
+            } else {
+               goto no_right_split;
+            }
          } else {
+         no_right_split:;
             // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
             // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
             pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
@@ -437,7 +452,7 @@ retry_with_bigger_tree_node_children_array:
       *pTotalGain = totalGain;
       EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
-      // ExamineNodeForPossibleSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
+      // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
       // calling anything inside pBestTreeNodeToSplit can throw exceptions, possibly (it's not documented)
       LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
@@ -512,7 +527,7 @@ bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compile
 
 // TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
@@ -564,7 +579,7 @@ bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingTh
    EBM_ASSERT(1 <= cInstancesTotal);
    EBM_ASSERT(1 <= cHistogramBuckets);
 
-   bool bRet = GrowDecisionTree<compilerLearningTypeOrCountTargetClasses>(pRandomStream, pCachedThreadResources, runtimeLearningTypeOrCountTargetClasses, cHistogramBuckets, aHistogramBuckets, cInstancesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
+   bool bRet = GrowDecisionTree<compilerLearningTypeOrCountTargetClasses>(pRandomStream, pCachedThreadResources, runtimeLearningTypeOrCountTargetClasses, cHistogramBuckets, aHistogramBuckets, cInstancesTotal, aSumHistogramBucketVectorEntry, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, pSmallChangeToModelOverwriteSingleSamplingSet, pTotalGain
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG

@@ -921,6 +921,13 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
 //   - our main issue is that memory won't be layed our very well.  When we traverse from the origin along the default dimensional arragement then our memory accesses will be ordered well, but anything else will be a problem
 //   - transposing doesn't really help since we only visit each node after the transpose once, so why not pay the penalty when computing the totals rather than pay to transpose then process
 //     Our algorithm isn't like matrix multiplication where each cell is used many times.  We just check the cells once.
+//   - I think though that we can still traverse our memory in whatever order we want, subject to the origin that we need to examine.  So, for example, in a 3 dimensional
+//     volume, if we were starting from the (1,1,0) corner, which will be very close to the end of the 1D memory layout, then we'll be starting very close to the end of the 1D
+//     array.  We can move backwards on the first dimension always, then backwards on the second dimension, then forwards on the third dimension.  We then at least get some locality
+//     on our inner loop which always travels in the best memory order, and I think we get the best memory ordering for the first N dimensions that have the same direction
+//     So in this example, we get good memory ordering for the first two dimensions since they are both backwards.  Have a closer look at this property.  I don't think we 
+//     Can travel in any arbitrary order though since we always need to be growing our totals from our starting origin given that we maintain a "tube" computations in N-1 dimensional space
+//   - to check these properties out, we probably want to first make a special version of our existing hyper-dimensional totals functions that can start from any given origin instead of just (0,0,0)
 //   - it might be the case that for pairs, we can get better results by using a traditional tree cutting algorithm (the existing one).  I should implement this algorithm above though regardless as it grows at less complexity than other algorithms,
 //     so it would be useful in any case.  After it's implemented, we can compare the results against the existing pair computation code
 //   - this pair splitting code should be templated for the numbrer of dimensions.  Nobody is really going to use it above 4-5 dimensions, but it's nice to have the option, but we don't want to implement 2,3,4,5 dimensional versions
