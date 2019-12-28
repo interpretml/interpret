@@ -101,27 +101,27 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       cInstancesLeft += CHANGE_cInstances;
       cInstancesRight -= CHANGE_cInstances;
 
-      FractionalDataType nodeSplittingScore = 0;
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-            aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-         }
-
-         const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-         const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
-         const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
-
-         aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
-         aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
-
-         // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
-         const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
-         EBM_ASSERT(0 <= nodeSplittingScore);
-         nodeSplittingScore += nodeSplittingScoreOneVector;
-      }
-      EBM_ASSERT(0 <= nodeSplittingScore);
-
       if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft) && LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesRight))) {
+         FractionalDataType nodeSplittingScore = 0;
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+            const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
+            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
+
+            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
+            aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
+
+            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
+            const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
+            EBM_ASSERT(0 <= nodeSplittingScore);
+            nodeSplittingScore += nodeSplittingScoreOneVector;
+
+            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+            }
+         }
+         EBM_ASSERT(0 <= nodeSplittingScore);
+
          if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
             // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
@@ -141,6 +141,19 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             memcpy(pSweepTreeNodeCur->m_aBestHistogramBucketVectorEntry, aSumHistogramBucketVectorEntryLeft, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
             pSweepTreeNodeCur = AddBytesSweepTreeNode(pSweepTreeNodeCur, cBytesPerSweepTreeNode);
+         }
+      } else {
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+            const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
+            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
+
+            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
+            aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
+
+            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+               aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+            }
          }
       }
    }
