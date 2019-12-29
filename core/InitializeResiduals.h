@@ -19,7 +19,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
    LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or runtimeLearningTypeOrCountTargetClasses for some of the addition
-   // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual.  Do we get exact equivalent results if we initialize them the correct way.  Try debugging this by first doing a binary as multiclass (2 == cVectorLength) and seeing if our algorithm is re-startable (do 2 cycles and then try doing 1 cycle and exiting then re-creating it with aPredictionScore values and doing a 2nd cycle and see if it gives the same results).  It would be a huge win to be able to consitently eliminate one residual value!).  Maybe try construcing a super-simple dataset with 10 cases and 1 feature and see how it behaves
+   // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != pResidualError);

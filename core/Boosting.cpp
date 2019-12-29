@@ -442,7 +442,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                FractionalDataType sumExp = 0;
                size_t iVector1 = 0;
                do {
-                  // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the copmiler could reason about their visibility and optimize small arrays into registers
+                  // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the compiler could reason about their visibility and optimize small arrays into registers
                   const FractionalDataType smallChangeToPredictorScores = pValues[iVector1];
                   // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                   const FractionalDataType trainingPredictorScores = pTrainingPredictorScores[iVector1] + smallChangeToPredictorScores;
@@ -1310,6 +1310,7 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
    }
 
    if(nullptr != gainReturn) {
+      // TODO: make all the epsilons a single constant in our header (e-7?)
       EBM_ASSERT(*gainReturn <= 0.000000001);
       LOG_COUNTED_N(&pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *gainReturn);
    } else {

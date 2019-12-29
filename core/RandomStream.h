@@ -60,17 +60,13 @@ public:
       // anyone calling this function should wrap it in an try/catch.  We're not wrapping it here because if this is being called in a loop we'd rather
       // move the try/catch overhead to ourside that loop
 
-      // TODO : change this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
-
-      // TODO: uniform_int_distribution suposedly doesn't return cross platform identical results, so we should roll our own someday.  Check first that we actually need to do this
-      //       https://stackoverflow.com/questions/40361041/achieve-same-random-number-sequence-on-different-os-with-same-seed
-
       // initializing uniform_int_distribution doesn't have official nothrow properties, but a random number generator should not have to throw
       std::uniform_int_distribution<size_t> distribution(size_t { 0 }, maxValueExclusive - 1);
       return distribution(m_randomGenerator);
    }
 #else // LEGACY_COMPATIBILITY
    EBM_INLINE size_t Next(const size_t maxValueExclusive) {
+      // std::uniform_int_distribution doesn't give cross platform identical results, so roll our own (it's more efficient too I think, or at least not worse)
       static_assert(std::numeric_limits<size_t>::max() <= k_max - k_min, "k_max - k_min isn't large enough to encompass size_t");
       static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint_fast64_t>::max(), "uint_fast64_t isn't large enough to encompass size_t");
       const uint_fast64_t maxValueExclusiveConverted = static_cast<uint_fast64_t>(maxValueExclusive);
@@ -92,6 +88,9 @@ public:
          if(randomRemainingTemp < randomRemainingIllegal) {
             break;
          }
+         // TODO : consider changing this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
+         // 
+         // this ridiculous round bracket operator overload of m_randomGenerator gets new random bits
          randomRemainingTemp = m_randomGenerator() - k_min;
          randomRemainingTempMax = k_max - k_min;
       }

@@ -63,13 +63,6 @@ struct HistogramBucket final {
 public:
 
    size_t m_cInstancesInBucket;
-   // TODO : we really want to eliminate this bucketValue at some point.  When doing the mains, if we change our algorithm so that we don't compress the arrays afterwards then we don't need it as the index is == to the bucketValue.
-   // The compresson step is actually really unnessary because we can pre-compress our data when we get it to ensure that there are no missing bin values.  The only way there could be a bin with an instance count of zero then
-   // would be if a value is not in a particular sampling set, which should be quite rare.
-   // even if we ended up keeping the bucket value, it may make sense to first build a non-compressed representation which is more compact and can fit into cache better while we stripe in our main instance data and then re-organize it to add the bucket afterwards, which we know from each bucket's index
-   // if we remove this bucketValue then it will slightly change our results because buckets where there are zeros are ambiguous in terms of choosing a split point.  We should remove this value as late as possible so that we preserve our comparison data sets over a longer
-   // period of time
-   // We don't use it in the pairs at all since we can't compress those.  Even if we chose not to change the algorithm
 
 #ifdef LEGACY_COMPATIBILITY
    ActiveDataType m_bucketValue;
@@ -411,7 +404,6 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
    LOG_0(TraceLevelVerbose, "Exited BinDataSetInteraction");
 }
 
-// TODO: change our downstream code to not need this Compression.  This compression often won't do anything because most of the time every bin will have data, and if there is sparse data with lots of values then maybe we don't want to do a complete sweep of this data moving it arround anyways.  We only do a minimial # of splits anyways.  I can calculate the sums in the loop that builds the bins instead of here!
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const size_t cHistogramBuckets, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, size_t * const pcInstancesTotal, HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
@@ -500,7 +492,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 #ifdef LEGACY_COMPATIBILITY
    const size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;
 #else
-   // TODO : after we've eliminated the compression, we won't need to return cFinalItems, so we can return cInstancesTotal directly instead of using a pointer
+   // TODO : after we've eliminated the compression and removed LEGACY_COMPATIBILITY, we won't need to return cFinalItems, so we can return cInstancesTotal directly instead of using a pointer
    const size_t cFinalItems = cHistogramBuckets;
 #endif
 

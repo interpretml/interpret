@@ -27,7 +27,7 @@ public:
    EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
-      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification, and what about the possibility of using Newton-Raphson step in the gain?
+      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification?  What about the possibility of using Newton-Raphson step in the gain?
 
       // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
       // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center

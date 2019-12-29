@@ -131,7 +131,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             // after we exit the loop we can examine our stack and choose a random split from all the equivalent splits available
             // eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random number between 0 -> 3 to select which one we actually split on
             //
-            // TODO : implement the randomized splitting described above.  Also, do this for interaction effect which can be done the same althoug we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
+            // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
+            // TODO : consider using an epsilon here for floating point instability.  Even with an epsilon we aren't guaranteed identical results, but there are more near zero conditions that we should treat identically than values near some epsilon, and realistically if we're just epsilon off, maybe we want some randomization anyways.  There are situations for instance [10 10000 10] where the gain should be the same but could be different for numerical reasons
 
             pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
@@ -299,7 +300,7 @@ retry_with_bigger_tree_node_children_array:
    size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
    const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode; // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
    if(cBytesBuffer2 < cBytesInitialNeededAllocation) {
-      // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode)
+      // TODO : we can eliminate this check as long as we ensure that the ThreadByteBuffer2 is always initialized to be equal to the size of three TreeNodes (left and right) == GET_SIZEOF_ONE_TREE_NODE_CHILDREN(cBytesPerTreeNode), or the number of bins (interactions multiply bins) on the highest bin count feature
       if(pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)) {
          LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pCachedThreadResources->GrowThreadByteBuffer2(cBytesInitialNeededAllocation)");
          return true;
@@ -390,7 +391,7 @@ retry_with_bigger_tree_node_children_array:
       do {
          // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
          pParentTreeNode = pBestTreeNodeToSplit->top();
-         // TODO : after we pop the TreeNode, we should peek to see if the next best one has exactly the same gain, and if so we should continue pulling them until we find a lower gain,
+         // TODO : after we pop the TreeNode, we should peek to see if the next best one has exactly the same gain, and if so we should continue pulling them until we find a lower gain (within epison difference),
          //        then we should randomly choose a node to split, and re-insert the remaining nodes back into the heap
          pBestTreeNodeToSplit->pop();
 
@@ -499,7 +500,7 @@ retry_with_bigger_tree_node_children_array:
    return false;
 }
 
-// TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
+// TODO : make call parameter ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
@@ -538,7 +539,7 @@ bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compile
    return false;
 }
 
-// TODO : make variable ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
+// TODO : make call parameter ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");

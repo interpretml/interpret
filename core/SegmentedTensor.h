@@ -13,7 +13,7 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FractionalDataType, so we don't need something generic which just complicates reading the code later for no benefit to this project
+// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FractionalDataType, so we don't need something generic which just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have to be C compatible
 template<typename TDivisions, typename TValues>
 struct SegmentedTensor final {
 private:

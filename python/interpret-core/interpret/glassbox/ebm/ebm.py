@@ -633,17 +633,15 @@ class BaseEBM(BaseEstimator):
         main_attr="all",
         # TODO PK v.2 we should probably have two types of interaction terms.
         #             The first is either a number or array of numbres that indicates
-        #             how many interactions at each dimension level(starting at two)
-        #             This parameter should be part of __init__
+        #             how many interactions at each dimension level (starting at two)
         #             The second parameter would be a list of specific interaction sets
-        #             that people may want to use
-        #             both at the same time, and there isn't a good way to separate the two concepts
-        #             without issues.  Also, the deserve to be in separate functions (init vs fit)
+        #             that people may want to use.  There isn't a good way to separate the two concepts
+        #             without issues.
         # TODO PK v.2 change interactions to n_interactions which can either be a number for pairs
         #             or can be a list/tuple of integers which denote the number of interactions per dimension
         #             so (3,2,1) would mean 3 pairs, 2 tripples, 1 quadruple
         # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
-        # Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
+        #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions=0,
         # TODO PK v.2 use validation_size instead of holdout_split, since sklearn uses "test_size"
