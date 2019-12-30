@@ -174,7 +174,7 @@ public:
             if(bClassification) {
                smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
             } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, this->GetInstances());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FractionalDataType>(this->GetInstances()));
             }
             *pValuesCur = smallChangeToModel;
 

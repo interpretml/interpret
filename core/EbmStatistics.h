@@ -24,14 +24,13 @@ public:
       return absResidualError * (FractionalDataType { 1 } - absResidualError);
    }
 
-   // TODO : AFTER we're removed LEGACY_COMPATIBILITY, change cInstances to be a FractionalDataType here, since we always end up converting it anyways, and makging it a FractionalDataType gives our caller flexibiliy in how to define it
-   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
+   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
       // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification?  What about the possibility of using Newton-Raphson step in the gain?
 
 #ifdef LEGACY_COMPATIBILITY
-      return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FractionalDataType { 0 };
+      return LIKELY(FractionalDataType { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FractionalDataType { 0 };
 #else // LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < cInstances); // we shouldn't be making splits with children with less than 1 instance
       return sumResidualError / cInstances * sumResidualError;
@@ -62,10 +61,9 @@ public:
 #endif // LEGACY_COMPATIBILITY
    }
 
-   // TODO : AFTER we're removed LEGACY_COMPATIBILITY, change cInstances to be a FractionalDataType here, since we always end up converting it anyways, and makging it a FractionalDataType gives our caller flexibiliy in how to define it
-   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cInstances) {
+   EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
 #ifdef LEGACY_COMPATIBILITY
-      return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances : FractionalDataType { 0 };
+      return LIKELY(FractionalDataType { 0 } != cInstances) ? sumResidualError / cInstances : FractionalDataType { 0 };
 #else // LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < cInstances); // we shouldn't be making splits with children with less than 1 instance
       return sumResidualError / cInstances;
