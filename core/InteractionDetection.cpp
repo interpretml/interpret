@@ -105,14 +105,14 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION Initialize
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
    if(nullptr == pCachedThreadResources) {
       return 1;
    }
 
-   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn)) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -121,25 +121,25 @@ static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState *
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
    static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    if(runtimeLearningTypeOrCountTargetClasses == possibleCompilerLearningTypeOrCountTargetClasses) {
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return GetInteractionScorePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+      return GetInteractionScorePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
    } else {
-      return CompilerRecursiveGetInteractionScore<possibleCompilerLearningTypeOrCountTargetClasses + 1>(runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+      return CompilerRecursiveGetInteractionScore<possibleCompilerLearningTypeOrCountTargetClasses + 1>(runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
    }
 }
 
 template<>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
    UNUSED(runtimeLearningTypeOrCountTargetClasses);
    // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, pInteractionScoreReturn);
+   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
 }
 
 // we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmInteractionState object is sent into us
@@ -245,10 +245,10 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
          }
          return 0;
       }
-      ret = CompilerRecursiveGetInteractionScore<2>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
+      ret = CompilerRecursiveGetInteractionScore<2>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, interactionScoreReturn);
    } else {
       EBM_ASSERT(IsRegression(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses));
-      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, interactionScoreReturn);
+      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, interactionScoreReturn);
    }
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);

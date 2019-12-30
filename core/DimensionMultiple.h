@@ -826,7 +826,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
+FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
 #ifndef NDEBUG
    , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -860,6 +860,10 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotalsHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
+#ifndef LEGACY_COMPATIBILITY
+   EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+#endif // LEGACY_COMPATIBILITY
+
    FractionalDataType bestSplit = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
    size_t iBin = 0;
    do {
@@ -877,22 +881,28 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
 #endif // NDEBUG
       );
 
-      FractionalDataType splittingScore = 0;
-      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLow->m_cInstancesInBucket);
+      if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->m_cInstancesInBucket))) {
+         FractionalDataType splittingScore = 0;
+#ifndef LEGACY_COMPATIBILITY
+         EBM_ASSERT(0 < pTotalsLow->m_cInstancesInBucket);
+         EBM_ASSERT(0 < pTotalsHigh->m_cInstancesInBucket);
+#endif // LEGACY_COMPATIBILITY
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLow->m_cInstancesInBucket);
+            EBM_ASSERT(0 <= splittingScore);
+            splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHigh->m_cInstancesInBucket);
+            EBM_ASSERT(0 <= splittingScore);
+         }
          EBM_ASSERT(0 <= splittingScore);
-         splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHigh->m_cInstancesInBucket);
-         EBM_ASSERT(0 <= splittingScore);
-      }
-      EBM_ASSERT(0 <= splittingScore);
 
-      if(bestSplit < splittingScore) {
-         bestSplit = splittingScore;
-         iBestCut = iBin;
+         if(bestSplit < splittingScore) {
+            bestSplit = splittingScore;
+            iBestCut = iBin;
 
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
-         ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
-         memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets);
+            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
+            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
+            memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
+         }
       }
       ++iBin;
    } while(iBin < cBins - 1);
@@ -976,7 +986,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
@@ -1179,6 +1189,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotal = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace - 1);
+
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
@@ -1189,33 +1201,36 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          size_t cutSecond1LowBest;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         splittingScore += SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, runtimeLearningTypeOrCountTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
+         const FractionalDataType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
-         EBM_ASSERT(0 <= splittingScore);
+         if(0 < splittingScoreNew1) {
+            splittingScore += splittingScoreNew1;
 
-         size_t cutSecond1HighBest;
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-         splittingScore += SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, runtimeLearningTypeOrCountTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
+            size_t cutSecond1HighBest;
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
+            const FractionalDataType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
-            );
-         EBM_ASSERT(0 <= splittingScore);
+               );
+            if(0 < splittingScoreNew2) {
+               splittingScore += splittingScoreNew2;
+               if(bestSplittingScoreFirst < splittingScore) {
+                  bestSplittingScoreFirst = splittingScore;
+                  cutFirst1Best = iBin1;
+                  cutFirst1LowBest = cutSecond1LowBest;
+                  cutFirst1HighBest = cutSecond1HighBest;
 
-         if(bestSplittingScoreFirst < splittingScore) {
-            bestSplittingScoreFirst = splittingScore;
-            cutFirst1Best = iBin1;
-            cutFirst1LowBest = cutSecond1LowBest;
-            cutFirst1HighBest = cutSecond1HighBest;
-
-            pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cVectorLength);
-            pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cVectorLength);
-            pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cVectorLength);
-            pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cVectorLength);
+                  pTotals1LowLowBest->Copy(*pTotals2LowLowBest, cVectorLength);
+                  pTotals1LowHighBest->Copy(*pTotals2LowHighBest, cVectorLength);
+                  pTotals1HighLowBest->Copy(*pTotals2HighLowBest, cVectorLength);
+                  pTotals1HighHighBest->Copy(*pTotals2HighHighBest, cVectorLength);
+               }
+            }
          }
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
@@ -1241,41 +1256,45 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          size_t cutSecond2LowBest;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         splittingScore += SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, runtimeLearningTypeOrCountTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
+         const FractionalDataType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
-         EBM_ASSERT(0 <= splittingScore);
+         if(0 < splittingScoreNew1) {
+            splittingScore += splittingScoreNew1;
 
-         size_t cutSecond2HighBest;
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-         splittingScore += SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, runtimeLearningTypeOrCountTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
+            size_t cutSecond2HighBest;
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
+            const FractionalDataType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
-            );
-         EBM_ASSERT(0 <= splittingScore);
+               );
+            if(0 < splittingScoreNew2) {
+               splittingScore += splittingScoreNew2;
+               if(bestSplittingScoreFirst < splittingScore) {
+                  bestSplittingScoreFirst = splittingScore;
+                  cutFirst2Best = iBin2;
+                  cutFirst2LowBest = cutSecond2LowBest;
+                  cutFirst2HighBest = cutSecond2HighBest;
 
-         if(bestSplittingScoreFirst < splittingScore) {
-            bestSplittingScoreFirst = splittingScore;
-            cutFirst2Best = iBin2;
-            cutFirst2LowBest = cutSecond2LowBest;
-            cutFirst2HighBest = cutSecond2HighBest;
+                  pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cVectorLength);
+                  pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cVectorLength);
+                  pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cVectorLength);
+                  pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cVectorLength);
 
-            pTotals2LowLowBest->Copy(*pTotals1LowLowBestInner, cVectorLength);
-            pTotals2LowHighBest->Copy(*pTotals1LowHighBestInner, cVectorLength);
-            pTotals2HighLowBest->Copy(*pTotals1HighLowBestInner, cVectorLength);
-            pTotals2HighHighBest->Copy(*pTotals1HighHighBestInner, cVectorLength);
-
-            bCutFirst2 = true;
+                  bCutFirst2 = true;
+               }
+            }
          }
          ++iBin2;
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Done sweep loops");
 
       if(bCutFirst2) {
+         // if bCutFirst2 is true, then there definetly was a cut, so we don't have to check for zero cuts
          if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
             LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
 #ifndef NDEBUG
@@ -1379,107 +1398,138 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             }
          }
       } else {
-         if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
-            LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-#ifndef NDEBUG
-            free(aHistogramBucketsDebugCopy);
-#endif // NDEBUG
-            return true;
-         }
-         pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
+         if(bestSplittingScoreFirst <= 0) {
+            // there were no good cuts found
 
-         if(cutFirst1LowBest < cutFirst1HighBest) {
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
 #ifndef NDEBUG
-               free(aHistogramBucketsDebugCopy);
+            bool bSetCountDivisions0 =
 #endif // NDEBUG
-               return true;
-            }
+               pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
+            EBM_ASSERT(!bSetCountDivisions0); // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
 
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
 #ifndef NDEBUG
-               free(aHistogramBucketsDebugCopy);
+            bool bSetCountDivisions1 =
 #endif // NDEBUG
-               return true;
-            }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
-         } else if(cutFirst1HighBest < cutFirst1LowBest) {
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
-#ifndef NDEBUG
-               free(aHistogramBucketsDebugCopy);
-#endif // NDEBUG
-               return true;
-            }
+               pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 0);
+            EBM_ASSERT(!bSetCountDivisions1); // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
 
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
-#ifndef NDEBUG
-               free(aHistogramBucketsDebugCopy);
-#endif // NDEBUG
-               return true;
+            // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, since our value capacity would be 1, which is pre-allocated
+
+            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               FractionalDataType prediction;
+
+               if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+                  prediction = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+               } else {
+                  EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                  prediction = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotal->m_cInstancesInBucket);
+               }
+
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = prediction;
             }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
          } else {
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+            if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
 #ifndef NDEBUG
                free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
                return true;
             }
-            if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-               LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
-#ifndef NDEBUG
-               free(aHistogramBucketsDebugCopy);
-#endif // NDEBUG
-               return true;
-            }
-            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
-         }
-
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FractionalDataType predictionLowLow;
-            FractionalDataType predictionLowHigh;
-            FractionalDataType predictionHighLow;
-            FractionalDataType predictionHighHigh;
-
-            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-               predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-               predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-               predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-               predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-            } else {
-               EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               predictionLowLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowLowBest->m_cInstancesInBucket);
-               predictionLowHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowHighBest->m_cInstancesInBucket);
-               predictionHighLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighLowBest->m_cInstancesInBucket);
-               predictionHighHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighHighBest->m_cInstancesInBucket);
-            }
+            pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = cutFirst1Best;
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
             } else if(cutFirst1HighBest < cutFirst1LowBest) {
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 2)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1HighBest;
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1LowBest;
             } else {
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
-               pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+               if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
+#ifndef NDEBUG
+                  free(aHistogramBucketsDebugCopy);
+#endif // NDEBUG
+                  return true;
+               }
+               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = cutFirst1LowBest;
+            }
+
+            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               FractionalDataType predictionLowLow;
+               FractionalDataType predictionLowHigh;
+               FractionalDataType predictionHighLow;
+               FractionalDataType predictionHighHigh;
+
+               if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+               } else {
+                  EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowLowBest->m_cInstancesInBucket);
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1LowHighBest->m_cInstancesInBucket);
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighLowBest->m_cInstancesInBucket);
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals1HighHighBest->m_cInstancesInBucket);
+               }
+
+               if(cutFirst1LowBest < cutFirst1HighBest) {
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+               } else if(cutFirst1HighBest < cutFirst1LowBest) {
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[4 * cVectorLength + iVector] = predictionLowHigh;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[5 * cVectorLength + iVector] = predictionHighHigh;
+               } else {
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionHighLow;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionLowHigh;
+                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionHighHigh;
+               }
             }
          }
       }
@@ -1781,7 +1831,7 @@ WARNING_POP
 
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, FractionalDataType * const pInteractionScoreReturn) {
+bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
    // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can use the denominator as part of the gain function!!!
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
@@ -1888,7 +1938,7 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
 
-      FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
+      FractionalDataType bestSplittingScore = FractionalDataType { 0 }; // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
 
       LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
       // note : if cBinsDimension1 can be 1 then we can't use a do loop
@@ -1922,18 +1972,20 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 #endif // NDEBUG
                );
 
-            FractionalDataType splittingScore = 0;
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowLow->m_cInstancesInBucket);
-               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowHigh->m_cInstancesInBucket);
-               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighLow->m_cInstancesInBucket);
-               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighHigh->m_cInstancesInBucket);
+            if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket))) {
+               FractionalDataType splittingScore = 0;
+               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowLow->m_cInstancesInBucket);
+                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsLowHigh->m_cInstancesInBucket);
+                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighLow->m_cInstancesInBucket);
+                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsHighHigh->m_cInstancesInBucket);
+                  EBM_ASSERT(0 <= splittingScore);
+               }
                EBM_ASSERT(0 <= splittingScore);
-            }
-            EBM_ASSERT(0 <= splittingScore);
 
-            if(bestSplittingScore < splittingScore) {
-               bestSplittingScore = splittingScore;
+               if(bestSplittingScore < splittingScore) {
+                  bestSplittingScore = splittingScore;
+               }
             }
          }
       }

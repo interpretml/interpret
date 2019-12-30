@@ -24,58 +24,52 @@ public:
       return absResidualError * (FractionalDataType { 1 } - absResidualError);
    }
 
+   // TODO : AFTER we're removed LEGACY_COMPATIBILITY, change cInstances to be a FractionalDataType here, since we always end up converting it anyways, and makging it a FractionalDataType gives our caller flexibiliy in how to define it
    EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const size_t cInstances) {
       // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
       // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification?  What about the possibility of using Newton-Raphson step in the gain?
 
-      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
-      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
-      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
-      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
-
-      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
-      // when we're considering splits in the center we almost always have some buckets on either side with instances
-      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
-      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
-      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
-      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
-      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
+#ifdef LEGACY_COMPATIBILITY
       return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FractionalDataType { 0 };
+#else // LEGACY_COMPATIBILITY
+      EBM_ASSERT(0 < cInstances); // we shouldn't be making splits with children with less than 1 instance
+      return sumResidualError / cInstances * sumResidualError;
+#endif // LEGACY_COMPATIBILITY
    }
 
    EBM_INLINE static FractionalDataType ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(const FractionalDataType sumResidualError, const FractionalDataType sumDenominator) {
-      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
-      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
-      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
-      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
-
-      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
-      // when we're considering splits in the center we almost always have some buckets on either side with instances
-      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
-      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
-      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
-      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
-      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
-
+#ifdef LEGACY_COMPATIBILITY
       return LIKELY(FractionalDataType { 0 } != sumDenominator) ? sumResidualError / sumDenominator : FractionalDataType { 0 };
+#else // LEGACY_COMPATIBILITY
+      // sumDenominator should really never be zero since we never allow childrent instances to be less than zero, and we special case 0 instances in the dataset.
+      // This means that we should only hit zero for the sumDenominator when we have very few instances AND ComputeNewtonRaphsonStep computed zero, which should only happen if absResidualError
+      // is either very close to zero or very close to 1, which implies 100% certainty in one direction.  If we have a dataset that has very few cases for one
+      // feature value, then we might see this, but we can also get NaN or infinities if we have extremely high values for something, like having SIZE_T_MAX - 1 instances
+      // or other such extreme situations, so we should probably detect results that lead to NaN or +- infinities as results and refuse to allow updates in such extreme
+      // conditions.  We can handle this in the caller though since they'll get back a NaN or inifinity in the log loss or MSE on the test set, or maybe we should
+      // just report NaN or infnity back to the user anyways, since it's a true reflection of the result.
+      // We can handle situations where the resulting update has a NaN or +-infinity or if adding the update to our model feature tensors leads to a NaN or +-infinity, but we can't easily
+      // check to see if we'll get a NaN or +-infinity in any validation instance, which can happen if we have two extreme features that individually don't overflow but together do
+      // So, we'll have to accept that it's possible for NaN or +- infinity to occur, and we'll just detect those conditions and treat them as really extreme outcomes
+      // Also, once we add in our small non-observed outcome values (based on # of instances) then we'll be more protected against extreme outcomes.
+      // 
+      // TODO : after we've generated our small tensor update, check the values to see if any are NaN or +- inf and make the update zero if so.  Also, check to see if we added the small tensor update to our existing model tensor if we'd get any NaN or +- inf, and zero the update if that's true also
+      //
+      // TODO : In the future we'll add a little bit of uncertainty floating point value to the residual error, because you can never get 100% certainty for any prediction
+      //        If you only see 100,000 cases, then you can't really make statements beyond that something happens less than arround 1/100,000 of the time
+      return sumResidualError / sumDenominator;
+#endif // LEGACY_COMPATIBILITY
    }
 
+   // TODO : AFTER we're removed LEGACY_COMPATIBILITY, change cInstances to be a FractionalDataType here, since we always end up converting it anyways, and makging it a FractionalDataType gives our caller flexibiliy in how to define it
    EBM_INLINE static FractionalDataType ComputeSmallChangeInRegressionPredictionForOneSegment(const FractionalDataType sumResidualError, const size_t cInstances) {
-      // TODO: currently, we disallow splits by the parent node (via countInstancesRequiredForParentSplitMin), but we don't limit splitting based on how many children a node has
-      // so in theory, if we had 3 input values with zeros in the left and right side, we'd be required to choose between splitting the left node with the center or the right node with the center
-      // In that case both sides will zero gain, but since a cut must be made, one of them will have a bin with zero instances.  For this reason we need the check below for zero
-      // IN THE FUTURE, DISALLOW cuts made when one of the children will have less than a certain size.  Once that changes is in, check back again to see if we still need the check for zero below
-
-      // it's fairly unlikley that we get zeros for cInstances since this only happens on the edges where we can still have zero instances on the left and right
-      // when we're considering splits in the center we almost always have some buckets on either side with instances
-      // the most optimal solution would be for the CPU to make the main calculation, then it compares to zero, then it uses
-      // a single instruction after the CMP to alternatively move a zero from annother permanent zero register into the result
-      // since the alternative would be to do a condition jump, but that conditional jump is 1 instruction compared to the conditional move instruction
-      // the optimizer will hopefully recognize this situation.  What we really don't want is for the computer to move the expensive
-      // multiplication/division work outside the pipeline since that's by far more common, so we tag it with LIKELY so that it keeps it in the main pipeline
-
+#ifdef LEGACY_COMPATIBILITY
       return LIKELY(size_t { 0 } != cInstances) ? sumResidualError / cInstances : FractionalDataType { 0 };
+#else // LEGACY_COMPATIBILITY
+      EBM_ASSERT(0 < cInstances); // we shouldn't be making splits with children with less than 1 instance
+      return sumResidualError / cInstances;
+#endif // LEGACY_COMPATIBILITY
    }
 
    EBM_INLINE static FractionalDataType ComputeRegressionResidualError(const FractionalDataType predictionScore, const FractionalDataType actualValue) {

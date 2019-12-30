@@ -94,6 +94,9 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       }
    }
 
+#ifndef LEGACY_COMPATIBILITY
+   EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+#endif // LEGACY_COMPATIBILITY
    for( ; pHistogramBucketEntryLast != pHistogramBucketEntryCur; pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1)) {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
@@ -111,6 +114,10 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
             aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
 
+#ifndef LEGACY_COMPATIBILITY
+            EBM_ASSERT(0 < cInstancesLeft);
+            EBM_ASSERT(0 < cInstancesRight);
+#endif // LEGACY_COMPATIBILITY
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators
             const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeft) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRight);
             EBM_ASSERT(0 <= nodeSplittingScore);
@@ -201,6 +208,11 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       }
 
       const FractionalDataType sumResidualErrorParent = ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+#ifndef LEGACY_COMPATIBILITY
+      // if the total instances is 0 then we should be using our specialty handling of that case
+      // if the total instances if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new parent should ever have zero instances
+      EBM_ASSERT(0 < cInstancesParent); 
+#endif // LEGACY_COMPATIBILITY
       originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParent);
 
       ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualErrorParent - pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;

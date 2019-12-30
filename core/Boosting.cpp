@@ -1137,7 +1137,7 @@ static FractionalDataType * GenerateModelFeatureCombinationUpdatePerTargetClasse
                return nullptr;
             }
          } else {
-            if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+            if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(pCachedThreadResources, pEbmBoostingState->m_apSamplingSets[iSamplingSet], pFeatureCombination, pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, cInstancesRequiredForChildSplitMin, pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
                return nullptr;
             }
          }
@@ -1282,12 +1282,6 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
       cInstancesRequiredForParentSplitMin = std::numeric_limits<size_t>::max();
    }
 
-#ifdef LEGACY_COMPATIBILITY
-   const size_t cInstancesRequiredForChildSplitMin = 0;
-#else // LEGACY_COMPATIBILITY
-   const size_t cInstancesRequiredForChildSplitMin = 10;
-#endif // LEGACY_COMPATIBILITY
-
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
    // validationMetricReturn can be nullptr
@@ -1303,10 +1297,10 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
          LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return nullptr;
       }
-      aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
+      aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
    } else {
       EBM_ASSERT(IsRegression(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses));
-      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
+      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(pEbmBoostingState, iFeatureCombination, learningRate, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, trainingWeights, validationWeights, gainReturn);
    }
 
    if(nullptr != gainReturn) {

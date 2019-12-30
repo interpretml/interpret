@@ -107,9 +107,10 @@
 #error compiler not recognized
 #endif // compiler type
 
+// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FractionalDataType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
+
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
-
 template<typename TTo, typename TFrom>
 constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    // the general rules of conversion are as follows:
@@ -159,7 +160,6 @@ constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    //   }
    //}
 }
-
 WARNING_POP
 
 enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};

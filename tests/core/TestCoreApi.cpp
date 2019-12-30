@@ -15,6 +15,10 @@
 // In case we want to use doctest in the future, use the format of the following: TEST_CASE, CHECK & FAIL_CHECK (continues testing) / REQUIRE & FAIL (stops the current test, but we could just terminate), INFO (print to log file)
 // Don't implement this since it would be harder to do: SUBCASE
 
+// TODO : add test for the condition where we overflow the small model update to NaN or +-infinity for regression by using exteme regression values and in classification by using certainty situations with big learning rates
+// TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression by using exteme regression values and in classification by using certainty situations with big learning rates
+// TODO : add test for the condition where we overflow the validation regression or classification residuals without overflowing the model update or the model tensors.  We can do this by having two extreme features that will overflow together
+
 #include <string>
 #include <stdio.h>
 #include <iostream>
@@ -1288,7 +1292,11 @@ TEST_CASE("negative learning rate, boosting, binary") {
 #ifdef EXPAND_BINARY_LOGITS
    CHECK(std::isnan(modelValue));
 #else // EXPAND_BINARY_LOGITS
+#ifdef LEGACY_COMPATIBILITY
    CHECK_APPROX(modelValue, 16785686302.358746);
+#else // LEGACY_COMPATIBILITY
+   CHECK(std::isinf(modelValue));
+#endif // LEGACY_COMPATIBILITY
 #endif // EXPAND_BINARY_LOGITS
 }
 
@@ -1327,7 +1335,11 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    }
    CHECK(std::isinf(validationMetric));
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
+#ifdef LEGACY_COMPATIBILITY
    CHECK_APPROX(modelValue, -10344932.919067673);
+#else // LEGACY_COMPATIBILITY
+   CHECK(std::isinf(modelValue));
+#endif // LEGACY_COMPATIBILITY
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
    CHECK_APPROX(modelValue, 19.907994122542746);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
@@ -2380,11 +2392,15 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             test.InitializeInteraction();
 
             FractionalDataType metric = test.InteractionScore({ 0, 1 });
+#ifdef LEGACY_COMPATIBILITY
             if(cBins == 1) {
                CHECK_APPROX(metric, 0);
             } else {
                CHECK_APPROX(metric, 49 * cInstances);
             }
+#else // LEGACY_COMPATIBILITY
+            CHECK_APPROX(metric, 0);
+#endif // LEGACY_COMPATIBILITY
          }
       }
    }
@@ -2409,6 +2425,8 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             test.InitializeInteraction();
 
             FractionalDataType metric = test.InteractionScore({ 0, 1 });
+
+#ifdef LEGACY_COMPATIBILITY
             if(cBins == 1) {
                CHECK_APPROX(metric, 0);
             } else {
@@ -2419,6 +2437,9 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
                CHECK_APPROX(metric, 0.25 * cInstances);
 #endif // EXPAND_BINARY_LOGITS
             }
+#else // LEGACY_COMPATIBILITY
+            CHECK_APPROX(metric, 0);
+#endif // LEGACY_COMPATIBILITY
          }
       }
    }
