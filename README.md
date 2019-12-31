@@ -75,7 +75,7 @@ show(ebm_global)
 ```
 ![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
-The graphs are the entire model.  For regression, sum the scores to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.
+The graphs themselves are the entire model.  For regression, sum the scores to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.  You can see everything.
 
 <br/>
 
@@ -484,6 +484,16 @@ We also build on top of many great packages. Please check them out!
   
   <hr/>
 </details>
+
+
+## External links
+
+- [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
+- [Benchmarking and MLI experiments on the Adult dataset](https://github.com/sayakpaul/Benchmarking-and-MLI-experiments-on-the-Adult-dataset/blob/master/Benchmarking_experiments_on_the_Adult_dataset_and_interpretability.ipynb)
+- [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
+- [On Model Explainability: From LIME, SHAP, to Explainable Boosting](https://everdark.github.io/k9/notebooks/ml/model_explain/model_explain.nb.html)
+- [PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
+
 
 ## Contact us
 
