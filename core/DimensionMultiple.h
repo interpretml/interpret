@@ -864,7 +864,7 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
 
-   FractionalDataType bestSplit = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
+   FractionalDataType bestSplit = k_illegalGain;
    size_t iBin = 0;
    do {
       *piBin = iBin;
@@ -893,11 +893,11 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
             splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
-            EBM_ASSERT(0 <= splittingScore);
+            EBM_ASSERT(-0.00000001 <= splittingScore);
             splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
-            EBM_ASSERT(0 <= splittingScore);
+            EBM_ASSERT(-0.00000001 <= splittingScore);
          }
-         EBM_ASSERT(0 <= splittingScore);
+         EBM_ASSERT(-0.00000001 <= splittingScore);
 
          if(bestSplit < splittingScore) {
             bestSplit = splittingScore;
@@ -1182,7 +1182,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      FractionalDataType bestSplittingScoreFirst = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
+      FractionalDataType bestSplittingScoreFirst = k_illegalGain;
 
       size_t cutFirst1Best;
       size_t cutFirst1LowBest;
@@ -1210,7 +1210,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
-         if(0 < splittingScoreNew1) {
+         EBM_ASSERT(k_illegalGain == splittingScoreNew1 || -0.00000001 <= splittingScoreNew1);
+         if(k_illegalGain != splittingScoreNew1) {
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond1HighBest;
@@ -1221,7 +1222,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            if(0 < splittingScoreNew2) {
+            EBM_ASSERT(k_illegalGain == splittingScoreNew2 || -0.00000001 <= splittingScoreNew2);
+            if(k_illegalGain != splittingScoreNew2) {
                splittingScore += splittingScoreNew2;
                if(bestSplittingScoreFirst < splittingScore) {
                   bestSplittingScoreFirst = splittingScore;
@@ -1265,7 +1267,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
-         if(0 < splittingScoreNew1) {
+         EBM_ASSERT(k_illegalGain == splittingScoreNew1 || -0.00000001 <= splittingScoreNew1);
+         if(k_illegalGain != splittingScoreNew1) {
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond2HighBest;
@@ -1276,7 +1279,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            if(0 < splittingScoreNew2) {
+            EBM_ASSERT(k_illegalGain == splittingScoreNew2 || -0.00000001 <= splittingScoreNew2);
+            if(k_illegalGain != splittingScoreNew2) {
                splittingScore += splittingScoreNew2;
                if(bestSplittingScoreFirst < splittingScore) {
                   bestSplittingScoreFirst = splittingScore;
@@ -1402,7 +1406,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             }
          }
       } else {
-         if(bestSplittingScoreFirst <= 0) {
+         if(k_illegalGain == bestSplittingScoreFirst) {
             // there were no good cuts found
 
 #ifndef NDEBUG

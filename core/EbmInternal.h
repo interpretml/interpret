@@ -108,6 +108,9 @@
 #endif // compiler type
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FractionalDataType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
+// when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+
+constexpr FractionalDataType k_illegalGain = std::numeric_limits<FractionalDataType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
 
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH

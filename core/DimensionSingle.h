@@ -85,7 +85,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryLeft = pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
    FractionalDataType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
-   FractionalDataType BEST_nodeSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
+   FractionalDataType BEST_nodeSplittingScore = k_illegalGain;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
       aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = 0;
@@ -124,7 +124,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 #endif // LEGACY_COMPATIBILITY
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
             const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeftFractionalDataType) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRightFractionalDataType);
-            EBM_ASSERT(0 <= nodeSplittingScore);
+            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreOneVector);
             nodeSplittingScore += nodeSplittingScoreOneVector;
 
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
@@ -132,7 +132,6 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             }
          }
          EBM_ASSERT(0 <= nodeSplittingScore);
-
          if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
             // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
@@ -172,12 +171,11 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
    if(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur)) {
       // we didn't find any valid splits
-      EBM_ASSERT(BEST_nodeSplittingScore == FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() });
+      EBM_ASSERT(k_illegalGain == BEST_nodeSplittingScore);
       return true;
-   } else {
-      EBM_ASSERT(BEST_nodeSplittingScore != FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() });
    }
-        
+   EBM_ASSERT(-0.0000001 <= BEST_nodeSplittingScore);
+
 #ifdef LEGACY_COMPATIBILITY
    UNUSED(pRandomStream);
 #else // LEGACY_COMPATIBILITY
@@ -234,12 +232,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
 
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildrenAvailableStorageSpaceCur;
-   FractionalDataType splitGain = originalParentScore - BEST_nodeSplittingScore;
-   if(UNLIKELY(std::isnan(splitGain))) {
-      // it is possible that nodeSplittingScoreParent could reach infinity and BEST_nodeSplittingScore infinity, and the subtraction of those values leads to NaN
-      // if gain became NaN via overlfow, that would be bad since we use NaN to indicate that a node has not been split
-      splitGain = FractionalDataType { 0 };
-   }
+   FractionalDataType splitGain = BEST_nodeSplittingScore - originalParentScore;
+   EBM_ASSERT(-0.0000000001 <= splitGain); // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
 #ifdef LEGACY_COMPATIBILITY
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = (BEST_pHistogramBucketEntry->m_bucketValue + BEST_pHistogramBucketEntryNext->m_bucketValue) / 2;
@@ -249,8 +243,6 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket;
 #endif // LEGACY_COMPATIBILITY
-
-   EBM_ASSERT(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0.0000000001); // within a set, no split should make our model worse.  It might in our validation set, but not within this set
 
    LOG_N(TraceLevelVerbose, "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: divisionValue=%zu, nodeSplittingScore=%" FractionalDataTypePrintf, static_cast<size_t>(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue), pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
 

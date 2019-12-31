@@ -24,11 +24,19 @@ class RandomStream final {
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
    // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
-
 #ifdef LEGACY_COMPATIBILITY
    std::default_random_engine m_randomGenerator;
 #else // LEGACY_COMPATIBILITY
-   // use std::mt19937_64 for cross platform random number identical results
+   // we won't be able to generate perfeclty identical results between platforms given that true floating point determinism would required
+   // that we implement our own floating poing processing in software, rather than use hardware, and that would be too slow.
+   // More Details: https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/
+   // And: https://randomascii.wordpress.com/2012/03/21/intermediate-floating-point-precision/
+   // but we can get very close down to just a few decimals, which for a lot of datasets probably allows 
+   // us to at least have identical splits in most cases, and if we round we can probably get identical floating point numbers displayed as well
+   // exp and log are both difficult to reproduct accross implementations as exact calculations often require hundreds of bits of precision, 
+   // and doing this better is an active area of reserach 
+
+   // use std::mt19937_64 for cross platform random number identical results for the random number generator
    std::mt19937_64 m_randomGenerator;
 #endif // LEGACY_COMPATIBILITY
 

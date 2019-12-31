@@ -132,12 +132,12 @@ public:
    }
 
    EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
-      EBM_ASSERT(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= 0.000000001);
+      EBM_ASSERT(-0.000000001 <= this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
       return this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 
    EBM_INLINE void SPLIT_THIS_NODE() {
-      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = k_illegalGain;
    }
 
    EBM_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
@@ -147,7 +147,7 @@ public:
    }
 
    EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
-      return std::isnan(this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
+      return k_illegalGain == this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
