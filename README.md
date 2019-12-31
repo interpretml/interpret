@@ -492,7 +492,7 @@ We also build on top of many great packages. Please check them out!
 - [Benchmarking and MLI experiments on the Adult dataset](https://github.com/sayakpaul/Benchmarking-and-MLI-experiments-on-the-Adult-dataset/blob/master/Benchmarking_experiments_on_the_Adult_dataset_and_interpretability.ipynb)
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
 - [On Model Explainability: From LIME, SHAP, to Explainable Boosting](https://everdark.github.io/k9/notebooks/ml/model_explain/model_explain.nb.html)
-- [PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
+- [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
 
 
 ## Contact us
