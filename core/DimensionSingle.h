@@ -148,8 +148,14 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             // after we exit the loop we can examine our stack and choose a random split from all the equivalent splits available
             // eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random number between 0 -> 3 to select which one we actually split on
             //
+            // DON'T use a floating point epsilon when comparing the gains.  It's not clear what the epsilon should be given that gain is continuously pushed to
+            // zero, so we can get very low numbers here eventually.  As an approximation, we should just take the assumption that if two numbers which have
+            // mathematically equality, end up with different gains due to floating point computation issues, that the error will be roughtly symetric such that either
+            // the first or the last could be chosen, which is fine for us since we just want to ensure randomized picking.
+            // Having two mathematically identical gains is pretty rare in any case, except for the situation where one bucket has bins with zero instances, but in that
+            // case we'll have floating point equality too since we'll be adding zero to the floating points values, which is an exact operation.
+            //
             // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
-            // TODO : consider using an epsilon here for floating point instability.  Even with an epsilon we aren't guaranteed identical results, but there are more near zero conditions that we should treat identically than values near some epsilon, and realistically if we're just epsilon off, maybe we want some randomization anyways.  There are situations for instance [10 10000 10] where the gain should be the same but could be different for numerical reasons
 
             pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
@@ -381,13 +387,14 @@ retry_with_bigger_tree_node_children_array:
          return false;
       }
 
-      // it's very very likely that there will be more than 1 split below this point.  The only case where we wouldn't split below is if both our children nodes dont't have enough cases
-      // to split, but that should be very rare
+      // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't split below is if both our children nodes dont't have enough cases
+      // to split, but that should rare
 
-      // TODO: there are three types of queues that we should try out -> dyamically picking a stragety is a single predictable if statement, so shouldn't cause a lot of overhead
-      //       1) When the data is the smallest(1-5 items), just iterate over all items in our TreeNode buffer looking for the best Node.  Zero the value on any nodes that have been removed from the queue.  For 1 or 2 instructions in the loop WITHOUT a branch we can probably save the pointer to the first TreeNode with data so that we can start from there next time we loop
-      //       2) When the data is a tiny bit bigger and there are holes in our array of TreeNodes, we can maintain a pointer and value in a separate list and zip through the values and then go to the pointer to the best node.  Since the list is unordered, when we find a TreeNode to remove, we just move the last one into the hole
-      //       3) The full fleged priority queue below
+      // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the overhead is too large to benefit, 
+      // but we also aren't bottlenecked if we only have 2-3 splits, so we don't care about performance issues.  On the other hand, we don't want
+      // to change this to an array scan because in theory the user can specify very deep trees, and we don't want to hang on an O(N^2) operation
+      // if they do.  So, let's keep the priority queue, and only the priority queue since it handles all scenarios without any real cost and is simpler
+      // than implementing an optional array scan PLUS a priority queue for deep trees.
       std::priority_queue<TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *, std::vector<TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>, CompareTreeNodeSplittingGain<IsClassification(compilerLearningTypeOrCountTargetClasses)>> * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit.m_queue;
 
       // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, and we want to ensure that the chunk of memory stays in L1 cache, so we pop all the previous garbage off instead of allocating a new one!
@@ -408,8 +415,15 @@ retry_with_bigger_tree_node_children_array:
       do {
          // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
          pParentTreeNode = pBestTreeNodeToSplit->top();
-         // TODO : after we pop the TreeNode, we should peek to see if the next best one has exactly the same gain, and if so we should continue pulling them until we find a lower gain (within epison difference),
-         //        then we should randomly choose a node to split, and re-insert the remaining nodes back into the heap
+         // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
+         // We handle equal gain values in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint because we 
+         // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
+         // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
+         // symetric distribution instances bin distributions AND two tail ends that happen to have the same statistics AND
+         // either this is our first cut, or we've only made a single cut in the center in the case where there is symetry in the center
+         // Even if all of these things are true, after one non-symetric cut, we won't see that scenario anymore since the residuals won't be
+         // symetric anymore.  This is so rare, and limited to one cut, so we shouldn't bother to handle it since the complexity of doing so
+         // outweights the benefits.
          pBestTreeNodeToSplit->pop();
 
       skip_first_push_pop:
@@ -428,7 +442,7 @@ retry_with_bigger_tree_node_children_array:
                }
                goto retry_with_bigger_tree_node_children_array;
             }
-            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
+            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-illegalGain value
             // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
             if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(pRandomStream, aHistogramBucket, pLeftChild, pCachedThreadResources, pTreeNodeChildrenAvailableStorageSpaceCur, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
