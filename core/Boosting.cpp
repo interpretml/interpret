@@ -1305,7 +1305,7 @@ EBMCORE_IMPORT_EXPORT_BODY FractionalDataType * EBMCORE_CALLING_CONVENTION Gener
 
    if(nullptr != gainReturn) {
       // TODO: make all the epsilons a single constant in our header (e-7?)
-      EBM_ASSERT(*gainReturn <= 0.000000001);
+      EBM_ASSERT(-0.000000001 <= *gainReturn);
       LOG_COUNTED_N(&pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate %" FractionalDataTypePrintf, *gainReturn);
    } else {
       LOG_COUNTED_0(&pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdate no gain");

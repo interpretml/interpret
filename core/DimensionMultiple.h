@@ -874,38 +874,38 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
          , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
       );
-
-      GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorHigh, runtimeLearningTypeOrCountTargetClasses, pTotalsHigh
-#ifndef NDEBUG
-         , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
-#endif // NDEBUG
-      );
-
-      if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->m_cInstancesInBucket))) {
-         FractionalDataType splittingScore = 0;
+      if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->m_cInstancesInBucket)) {
+         GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorHigh, runtimeLearningTypeOrCountTargetClasses, pTotalsHigh
+   #ifndef NDEBUG
+            , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+   #endif // NDEBUG
+         );
+         if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->m_cInstancesInBucket)) {
+            FractionalDataType splittingScore = 0;
 #ifndef LEGACY_COMPATIBILITY
-         EBM_ASSERT(0 < pTotalsLow->m_cInstancesInBucket);
-         EBM_ASSERT(0 < pTotalsHigh->m_cInstancesInBucket);
+            EBM_ASSERT(0 < pTotalsLow->m_cInstancesInBucket);
+            EBM_ASSERT(0 < pTotalsHigh->m_cInstancesInBucket);
 #endif // LEGACY_COMPATIBILITY
-         FractionalDataType cLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLow->m_cInstancesInBucket);
-         FractionalDataType cHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHigh->m_cInstancesInBucket);
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+            FractionalDataType cLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLow->m_cInstancesInBucket);
+            FractionalDataType cHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHigh->m_cInstancesInBucket);
+            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-            splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
+               EBM_ASSERT(-0.00000001 <= splittingScore);
+               splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
+               EBM_ASSERT(-0.00000001 <= splittingScore);
+            }
             EBM_ASSERT(-0.00000001 <= splittingScore);
-            splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
-            EBM_ASSERT(-0.00000001 <= splittingScore);
-         }
-         EBM_ASSERT(-0.00000001 <= splittingScore);
 
-         if(bestSplit < splittingScore) {
-            bestSplit = splittingScore;
-            iBestCut = iBin;
+            if(bestSplit < splittingScore) {
+               bestSplit = splittingScore;
+               iBestCut = iBin;
 
-            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
-            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
-            memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
+               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
+               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
+               memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
+            }
          }
       }
       ++iBin;
@@ -1949,11 +1949,13 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       FractionalDataType bestSplittingScore = FractionalDataType { 0 }; // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
 
       LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
-      // note : if cBinsDimension1 can be 1 then we can't use a do loop
-      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
+      EBM_ASSERT(1 < cBinsDimension1);
+      size_t iBin1 = 0;
+      do {
          aiStart[0] = iBin1;
-         // note : if cBinsDimension2 can be 1 then we can't use a do loop
-         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
+         EBM_ASSERT(1 < cBinsDimension2);
+         size_t iBin2 = 0;
+         do {
             aiStart[1] = iBin2;
 
             GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x00, runtimeLearningTypeOrCountTargetClasses, pTotalsLowLow
@@ -1961,50 +1963,54 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-
-            GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x02, runtimeLearningTypeOrCountTargetClasses, pTotalsLowHigh
+            if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket)) {
+               GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x02, runtimeLearningTypeOrCountTargetClasses, pTotalsLowHigh
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+                  , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
-               );
-
-            GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x01, runtimeLearningTypeOrCountTargetClasses, pTotalsHighLow
+                  );
+               if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket)) {
+                  GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x01, runtimeLearningTypeOrCountTargetClasses, pTotalsHighLow
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+                     , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
-               );
-
-            GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x03, runtimeLearningTypeOrCountTargetClasses, pTotalsHighHigh
+                     );
+                  if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket)) {
+                     GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x03, runtimeLearningTypeOrCountTargetClasses, pTotalsHighHigh
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+                        , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
-               );
+                        );
+                     if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket)) {
+                        FractionalDataType splittingScore = 0;
 
-            if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket) && LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket))) {
-               FractionalDataType splittingScore = 0;
+                        FractionalDataType cLowLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowLow->m_cInstancesInBucket);
+                        FractionalDataType cLowHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowHigh->m_cInstancesInBucket);
+                        FractionalDataType cHighLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighLow->m_cInstancesInBucket);
+                        FractionalDataType cHighHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighHigh->m_cInstancesInBucket);
 
-               FractionalDataType cLowLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowLow->m_cInstancesInBucket);
-               FractionalDataType cLowHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowHigh->m_cInstancesInBucket);
-               FractionalDataType cHighLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighLow->m_cInstancesInBucket);
-               FractionalDataType cHighHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighHigh->m_cInstancesInBucket);
+                        for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+                           // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+                           splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowLowInstancesInBucket);
+                           splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                           splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                           splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                           EBM_ASSERT(-0.00000001 <= splittingScore);
+                        }
+                        EBM_ASSERT(-0.00000001 <= splittingScore);
 
-                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowLowInstancesInBucket);
-                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
-                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
-                  splittingScore += EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
-                  EBM_ASSERT(0 <= splittingScore);
-               }
-               EBM_ASSERT(0 <= splittingScore);
-
-               if(bestSplittingScore < splittingScore) {
-                  bestSplittingScore = splittingScore;
+                        if(bestSplittingScore < splittingScore) {
+                           bestSplittingScore = splittingScore;
+                        }
+                     }
+                  }
                }
             }
-         }
-      }
+            ++iBin2;
+         } while(iBin2 < cBinsDimension2 - 1);
+         ++iBin1;
+      } while(iBin1 < cBinsDimension1 - 1);
       LOG_0(TraceLevelVerbose, "CalculateInteractionScore Done bin sweep loop");
 
       if(nullptr != pInteractionScoreReturn) {

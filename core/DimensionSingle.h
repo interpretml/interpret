@@ -62,8 +62,26 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
    LOG_N(TraceLevelVerbose, "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pRandomStream=%p, aHistogramBucket=%p, pTreeNode=%p, pCachedThreadResources=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p, cInstancesRequiredForChildSplitMin=%zu", static_cast<void *>(pRandomStream), static_cast<const void *>(aHistogramBucket), static_cast<void *>(pTreeNode), static_cast<void *>(pCachedThreadResources), static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur), cInstancesRequiredForChildSplitMin);
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+
+   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryLeft = pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
+   memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
+
+   FractionalDataType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
+   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+      aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+   }
+
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntryCur = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntryLast = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
+
    EBM_ASSERT(!GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+
+   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChildInit = GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   pLeftChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryCur;
+   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChildInit = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   pRightChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
+
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    EBM_ASSERT(!GetSweepTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
@@ -72,66 +90,55 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
    SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeStart = static_cast<SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->m_aEquivalentSplits);
    SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntryCur = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntryLast = pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
-
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild1 = GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   pLeftChild1->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryCur;
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild1 = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   pRightChild1->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
-
-   size_t cInstancesLeft = 0;
    size_t cInstancesRight = pTreeNode->GetInstances();
-
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryLeft = pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
-   FractionalDataType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
+   size_t cInstancesLeft = 0;
    FractionalDataType BEST_nodeSplittingScore = k_illegalGain;
-   for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-      aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = 0;
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(0);
-      }
-   }
-
 #ifndef LEGACY_COMPATIBILITY
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
-   for( ; pHistogramBucketEntryLast != pHistogramBucketEntryCur; pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1)) {
+   EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
+   do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
       const size_t CHANGE_cInstances = pHistogramBucketEntryCur->m_cInstancesInBucket;
-      cInstancesLeft += CHANGE_cInstances;
       cInstancesRight -= CHANGE_cInstances;
+      if(UNLIKELY(cInstancesRight < cInstancesRequiredForChildSplitMin)) {
+         break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
+      }
+      cInstancesLeft += CHANGE_cInstances;
+      if(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft)) {
+#ifndef LEGACY_COMPATIBILITY
+         EBM_ASSERT(0 < cInstancesRight);
+         EBM_ASSERT(0 < cInstancesLeft);
+#endif // LEGACY_COMPATIBILITY
 
-      if(LIKELY(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft) && LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesRight))) {
+         const FractionalDataType cInstancesRightFractionalDataType = static_cast<FractionalDataType>(cInstancesRight);
+         const FractionalDataType cInstancesLeftFractionalDataType = static_cast<FractionalDataType>(cInstancesLeft);
          FractionalDataType nodeSplittingScore = 0;
-
-         FractionalDataType cInstancesLeftFractionalDataType = static_cast<FractionalDataType>(cInstancesLeft);
-         FractionalDataType cInstancesRightFractionalDataType = static_cast<FractionalDataType>(cInstancesRight);
-
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-            const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
-            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
 
-            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
+            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
             aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
 
-#ifndef LEGACY_COMPATIBILITY
-            EBM_ASSERT(0 < cInstancesLeft);
-            EBM_ASSERT(0 < cInstancesRight);
-#endif // LEGACY_COMPATIBILITY
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FractionalDataType nodeSplittingScoreOneVector = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeftFractionalDataType) + EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRightFractionalDataType);
-            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreOneVector);
-            nodeSplittingScore += nodeSplittingScoreOneVector;
+            const FractionalDataType nodeSplittingScoreRight = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRightFractionalDataType);
+            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreRight);
+            nodeSplittingScore += nodeSplittingScoreRight;
+
+            const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
+            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
+
+            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+            const FractionalDataType nodeSplittingScoreLeft = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeftFractionalDataType);
+            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreLeft);
+            nodeSplittingScore += nodeSplittingScoreLeft;
 
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             }
          }
-         EBM_ASSERT(0 <= nodeSplittingScore);
+         EBM_ASSERT(-0.000001 <= nodeSplittingScore);
          if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
             // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
@@ -156,18 +163,16 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       } else {
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FractionalDataType CHANGE_sumResidualError = ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-            const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
-            const FractionalDataType sumResidualErrorRight = aSumResidualErrorsRight[iVector] - CHANGE_sumResidualError;
 
-            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError = sumResidualErrorLeft;
-            aSumResidualErrorsRight[iVector] = sumResidualErrorRight;
-
+            aSumResidualErrorsRight[iVector] -= CHANGE_sumResidualError;
+            aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError += CHANGE_sumResidualError;
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             }
          }
       }
-   }
+      pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
+   } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
    if(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur)) {
       // we didn't find any valid splits
@@ -188,7 +193,6 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 #endif // LEGACY_COMPATIBILITY
 
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild = GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->m_pBestHistogramBucketEntry;
    pLeftChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = BEST_pHistogramBucketEntry;
@@ -198,11 +202,13 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const BEST_pHistogramBucketEntryNext = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, aHistogramBucketsEndDebug);
 
+   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+
    pRightChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = BEST_pHistogramBucketEntryNext;
-   size_t cInstancesParent = pTreeNode->GetInstances();
+   const size_t cInstancesParent = pTreeNode->GetInstances();
    pRightChild->SetInstances(cInstancesParent - BEST_cInstancesLeft);
 
-   FractionalDataType cInstancesParentFractionalDataType = static_cast<FractionalDataType>(cInstancesParent);
+   const FractionalDataType cInstancesParentFractionalDataType = static_cast<FractionalDataType>(cInstancesParent);
 #ifndef LEGACY_COMPATIBILITY
    // if the total instances is 0 then we should be using our specialty handling of that case
    // if the total instances if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new parent should ever have zero instances
@@ -211,17 +217,18 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
    FractionalDataType originalParentScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-      ARRAY_TO_POINTER(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         ARRAY_TO_POINTER(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].GetSumDenominator());
-      }
+      const FractionalDataType BEST_sumResidualErrorLeft = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;
+      ARRAY_TO_POINTER(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = BEST_sumResidualErrorLeft;
 
       const FractionalDataType sumResidualErrorParent = ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+      ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
+
       originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParentFractionalDataType);
 
-      ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualErrorParent - pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-         ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() - pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].GetSumDenominator());
+         const FractionalDataType BEST_sumDenominatorLeft = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].GetSumDenominator();
+         ARRAY_TO_POINTER(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(BEST_sumDenominatorLeft);
+         ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() - BEST_sumDenominatorLeft);
       }
    }
 
