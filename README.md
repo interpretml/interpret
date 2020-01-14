@@ -497,6 +497,7 @@ We also build on top of many great packages. Please check them out!
 - [Benchmarking and MLI experiments on the Adult dataset](https://github.com/sayakpaul/Benchmarking-and-MLI-experiments-on-the-Adult-dataset/blob/master/Benchmarking_experiments_on_the_Adult_dataset_and_interpretability.ipynb)
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
 - [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
+- [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 
 
 ## Contact us
