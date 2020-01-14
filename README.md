@@ -75,7 +75,11 @@ show(ebm_global)
 ```
 ![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
-The graphs themselves are the entire model.  For regression, sum the scores to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.  You can see everything.
+The graphs are the entire model.<sup>[*](#intercept-footnote)</sup>  For regression, sum the scores from each graph to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.  You can inspect everything.
+
+<p align="right"><i>
+   <a name="intercept-footnote">*</a>A single global intercept score is also required for computation, but not visualization
+</i></p>
 
 <br/>
 
