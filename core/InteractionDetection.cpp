@@ -241,7 +241,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
       if(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
-            *interactionScoreReturn = 0; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+            *interactionScoreReturn = FractionalDataType { 0 }; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
          }
          return 0;
       }
@@ -254,7 +254,7 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
    }
    if(nullptr != interactionScoreReturn) {
-      EBM_ASSERT(0 <= *interactionScoreReturn);
+      EBM_ASSERT(FractionalDataType { 0 } <= *interactionScoreReturn); // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
       LOG_COUNTED_N(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FractionalDataTypePrintf, *interactionScoreReturn);
    } else {
       LOG_COUNTED_0(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");

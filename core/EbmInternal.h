@@ -111,6 +111,10 @@
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
 constexpr FractionalDataType k_illegalGain = std::numeric_limits<FractionalDataType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
+constexpr FractionalDataType k_epsilonNegativeGainAllowed = -1e-7;
+constexpr FractionalDataType k_epsilonNegativeValidationMetricAllowed = -1e-7;
+constexpr FractionalDataType k_epsilonResidualError = 1e-7;
+constexpr FractionalDataType k_epsilonLogLoss = 1e-7;
 
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
@@ -202,6 +206,9 @@ constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t learningTypeOrC
 #else // EXPAND_BINARY_LOGITS
    return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
+}
+constexpr EBM_INLINE bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) {
+   return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
 constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t learningTypeOrCountTargetClasses) {
@@ -320,6 +327,15 @@ EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
 
 #ifdef FAST_LOG
 
+// possible approaches:
+// NOTE: even though memory lookup table approaches look to be the fastest and reasonable approach, we probably want to avoid lookup tables
+//   in order to avoid using too much of our cache memory which we need for other things
+// https://www.icsi.berkeley.edu/pubs/techreports/TR-07-002.pdf
+// https ://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-i-the-basics/
+// https://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-ii-rounding-error/
+// https://tech.ebayinc.com/engineering/fast-approximate-logarithms-part-iii-the-formulas/
+
+
 // TODO move this include up into the VS specific parts
 #include <intrin.h>
 #pragma intrinsic(_BitScanReverse)
@@ -333,13 +349,18 @@ EBM_INLINE unsigned int MostSignificantBit(T val) {
 }
 
 EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+   // TODO: also look into whehter std::log1p has a good approximation directly
+
    // the log function is only used to calculate the log loss on the valididation set only
    // the log loss is calculated for the validation set and then returned as a single number to the caller
    // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
 
-   // TODO : this only handles numbers x > 1.  For numbers below 1, we should do 1/x and figure out how much to multiply below
+   // TODO : this only handles numbers x > 1.  I think I don't need results for less than x < 1 though, so check into that.   If we do have numbers below 1, we should do 1/x and figure out how much to multiply below
 
    // for various algorithms, see https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
+ 
+   // TODO: this isn't going to work for us since we will often get vlaues greater than 2^64 in exp terms.  Let's figure out how to do the alternate where
+   // we extract the exponent term directly via IEEE 754
    unsigned int shifts = MostSignificantBit(static_cast<uint64_t>(val));
    val = val / static_cast<FractionalDataType>(uint64_t { 1 } << shifts);
 
@@ -353,6 +374,8 @@ EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
 #else // FAST_LOG
 EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
    return std::log(val);
+   // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy in the low
+   // digits since we take the average, and the log loss will therefore be dominated by a few items that we predict strongly won't happen, but do happen.  
 }
 #endif // FAST_LOG
 

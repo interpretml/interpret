@@ -14,7 +14,7 @@
 #include <queue>
 
 #include <random>
-#include <cmath> // log, exp, sqrt, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
+#include <cmath> // log, exp, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
 
 #include <stdio.h> // snprintf/vsnprintf for logging
 #include <stdarg.h> // va_start, va_end

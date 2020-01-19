@@ -319,7 +319,7 @@ public:
 //   }
 //#endif // NDEBUG
 
-   EBM_INLINE void Multiply(const TValues v) {
+   EBM_INLINE bool MultiplyAndCheckForIssues(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1)); // we're accessing existing memory, so it can't overflow
@@ -328,11 +328,17 @@ public:
 
       TValues * pCur = &m_aValues[0];
       TValues * pEnd = &m_aValues[cValues * m_cVectorLength];
+      int bBad = 0;
       // we always have 1 value, even if we have zero divisions
       do {
-         *pCur *= v;
+         const TValues val = *pCur * v;
+         // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
+         // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential bits for FF and then OR a 1 if the test is true and 0 if the test is false
+         bBad |= std::isnan(val) || std::isinf(val);
+         *pCur = val;
          ++pCur;
       } while(pEnd != pCur);
+      return !!bBad;
    }
 
    bool Expand(const size_t * const acValuesPerDimension) {
@@ -498,7 +504,7 @@ public:
       return false;
    }
 
-   EBM_INLINE void AddExpanded(const TValues * const aFromValues) {
+   EBM_INLINE void AddExpandedWithBadValueProtection(const TValues * const aFromValues) {
       EBM_ASSERT(m_bExpanded);
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -510,7 +516,21 @@ public:
       TValues * pToValue = m_aValues;
       const TValues * const pToValueEnd = m_aValues + cItems;
       do {
-         *pToValue += *pFromValue;
+         // if we get a NaN value, then just consider it a no-op zero
+         // if we get a +infinity, then just make our value the maximum
+         // if we get a -infinity, then just make our value the minimum
+         // these changes will make us out of sync with the updates to our logits, but it should be at the extremes anyways
+         // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
+         // but we want to preserve the best model that we had
+
+         TValues val = *pFromValue;
+         val = std::isnan(val) ? FractionalDataType { 0 } : val;
+         val = *pToValue + val;
+         // this is a check for -infinity, without the -infinity value since some compilers make that illegal
+         val = val < std::numeric_limits<FractionalDataType>::lowest() ? std::numeric_limits<FractionalDataType>::lowest() : val;
+         // this is a check for +infinity, without the +infinity value since some compilers make that illegal
+         val = std::numeric_limits<FractionalDataType>::max() < val ? std::numeric_limits<FractionalDataType>::max() : val;
+         *pToValue = val;
          ++pFromValue;
          ++pToValue;
       } while(pToValueEnd != pToValue);

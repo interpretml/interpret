@@ -169,7 +169,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
          // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
       } while(iVector < cVectorLength);
 
-      EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || std::isnan(residualTotalDebug) || -0.00000000001 < residualTotalDebug && residualTotalDebug < 0.00000000001);
+      EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || std::isnan(residualTotalDebug) || -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError);
    } while(pResidualErrorEnd != pResidualError);
    LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
@@ -271,7 +271,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
             // the compiler seems to not mind if we make this a for loop or do loop in terms of collapsing away the loop
          } while(iVector < cVectorLength);
 
-         EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -0.0000001 < residualTotalDebug && residualTotalDebug < 0.0000001);
+         EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 0 <= k_iZeroResidual || -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError);
 
          iTensorBinCombined >>= cBitsPerItemMax;
          // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder for the compiler to optimize the loop away
@@ -392,11 +392,24 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
       pHistogramBucketEntry->m_cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FractionalDataType residualError = *pResidualError;
+         // residualError could be NaN
+         // for classification, residualError can be anything from -1 to +1 (it cannot be infinity!)
+         // for regression, residualError can be anything from +infinity or -infinity
          ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError += residualError;
+         // m_sumResidualError could be NaN, or anything from +infinity or -infinity in the case of regression
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+            EBM_ASSERT(std::isnan(residualError) || !std::isinf(residualError) && FractionalDataType { -1 } - k_epsilonResidualError <= residualError && residualError <= FractionalDataType { 1 });
+
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an accessor so that we can make the change entirely via macro
             const FractionalDataType denominator = EbmStatistics::ComputeNewtonRaphsonStep(residualError);
-            ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + denominator);
+            EBM_ASSERT(std::isnan(denominator) || !std::isinf(denominator) && -k_epsilonResidualError <= denominator && denominator <= FractionalDataType { 0.25 }); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
+
+            const FractionalDataType oldDenominator = ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
+            EBM_ASSERT(std::isnan(oldDenominator) || !std::isinf(oldDenominator) && -k_epsilonResidualError <= oldDenominator); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
+            const FractionalDataType newDenominator = oldDenominator + denominator;
+            EBM_ASSERT(std::isnan(newDenominator) || !std::isinf(newDenominator) && -k_epsilonResidualError <= newDenominator); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
+            // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
+            ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(newDenominator);
          }
          ++pResidualError;
       }

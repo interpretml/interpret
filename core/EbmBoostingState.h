@@ -100,7 +100,7 @@ public:
       , m_apSamplingSets(nullptr)
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
-      , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() })
+      , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::max() })
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)

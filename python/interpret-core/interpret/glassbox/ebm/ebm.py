@@ -700,6 +700,11 @@ class BaseEBM(BaseEstimator):
         # Arguments for preprocessor
         self.binning_strategy = binning_strategy
 
+    # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
+    #       doesn't like parameters in the fit function, other than ones like weights that have
+    #       the same length as the number of instances.  See:
+    #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
+    # 
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
         # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded

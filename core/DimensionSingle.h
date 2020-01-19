@@ -123,7 +123,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
             const FractionalDataType nodeSplittingScoreRight = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRightFractionalDataType);
-            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreRight);
+            EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FractionalDataType { 0 } <= nodeSplittingScoreRight);
             nodeSplittingScore += nodeSplittingScoreRight;
 
             const FractionalDataType sumResidualErrorLeft = aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError + CHANGE_sumResidualError;
@@ -131,15 +131,19 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
             const FractionalDataType nodeSplittingScoreLeft = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeftFractionalDataType);
-            EBM_ASSERT(-0.00000001 <= nodeSplittingScoreLeft);
+            EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FractionalDataType { 0 } <= nodeSplittingScoreLeft);
             nodeSplittingScore += nodeSplittingScoreLeft;
 
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             }
          }
-         EBM_ASSERT(-0.000001 <= nodeSplittingScore);
-         if(UNLIKELY(BEST_nodeSplittingScore <= nodeSplittingScore)) {
+         EBM_ASSERT(std::isnan(nodeSplittingScore) || FractionalDataType { 0 } <= nodeSplittingScore);
+
+         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
+         // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
+         // us soon and shut down boosting.
+         if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(nodeSplittingScore < BEST_nodeSplittingScore))) {
             // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain (think low count symetric data)
             // we want to avoid any bias of always choosing the higher or lower value to split on, so what we should do is store the indexes of any ties in a stack
@@ -157,6 +161,9 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
             //
             // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to include near matches since there is floating point noise there due to the way we sum interaction effect region totals
 
+            // if nodeSplittingScore becomes NaN, the first time we come through here we're comparing the non-NaN value in BEST_nodeSplittingScore with nodeSplittingScore,
+            // which is false.  Next time we come through here, both BEST_nodeSplittingScore and nodeSplittingScore, and that has a special case of being false!
+            // so, we always choose pSweepTreeNodeStart, which is great because we don't waste or fill memory unnessarily
             pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
 
@@ -180,12 +187,14 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
-   if(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur)) {
-      // we didn't find any valid splits
-      EBM_ASSERT(k_illegalGain == BEST_nodeSplittingScore);
+   if(UNLIKELY(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) || UNLIKELY(std::isinf(BEST_nodeSplittingScore)))) {
+      EBM_ASSERT((!IsClassification(compilerLearningTypeOrCountTargetClasses)) || !std::isinf(BEST_nodeSplittingScore));
+
+      // we didn't find any valid splits, or we hit an overflow
+      EBM_ASSERT(std::isnan(BEST_nodeSplittingScore) || std::isinf(BEST_nodeSplittingScore) || k_illegalGain == BEST_nodeSplittingScore);
       return true;
    }
-   EBM_ASSERT(-0.0000001 <= BEST_nodeSplittingScore);
+   EBM_ASSERT(FractionalDataType { 0 } <= BEST_nodeSplittingScore);
 
 #ifdef LEGACY_COMPATIBILITY
    UNUSED(pRandomStream);
@@ -221,6 +230,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
    EBM_ASSERT(0 < cInstancesParent);
 #endif // LEGACY_COMPATIBILITY
 
+   // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FractionalDataType originalParentScore = 0;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       const FractionalDataType BEST_sumResidualErrorLeft = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].m_sumResidualError;
@@ -229,7 +239,9 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
       const FractionalDataType sumResidualErrorParent = ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
       ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
 
-      originalParentScore += EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParentFractionalDataType);
+      const FractionalDataType originalParentScoreUpdate = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParentFractionalDataType);
+      EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FractionalDataType { 0 } <= originalParentScoreUpdate);
+      originalParentScore += originalParentScoreUpdate;
 
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
          const FractionalDataType BEST_sumDenominatorLeft = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].GetSumDenominator();
@@ -237,6 +249,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
          ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(ARRAY_TO_POINTER(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() - BEST_sumDenominatorLeft);
       }
    }
+   EBM_ASSERT(std::isnan(originalParentScore) || FractionalDataType { 0 } <= originalParentScore);
 
 
 
@@ -245,8 +258,15 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(RandomStrea
 
 
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildrenAvailableStorageSpaceCur;
-   FractionalDataType splitGain = BEST_nodeSplittingScore - originalParentScore;
-   EBM_ASSERT(-0.0000000001 <= splitGain); // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
+   const FractionalDataType splitGain = BEST_nodeSplittingScore - originalParentScore;
+   // mathematically BEST_nodeSplittingScore should be bigger than originalParentScore, and the result positive, but these are numbers that are calculated
+   //   from sumation, so they are inaccurate, and we could get a slighly negative number outcome
+
+   // for regression, BEST_nodeSplittingScore and originalParentScore can be infinity.  There is a super-super-super-rare case where we can have originalParentScore overflow to
+   // +infinity due to numeric issues, but not BEST_nodeSplittingScore, and then the subtration causes the result to be -infinity.
+   // The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could trigger it, 
+   // and we don't want someone giving us data to use a vulnerability in our system, so check for it!
+   EBM_ASSERT(std::isnan(splitGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain); // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
 #ifdef LEGACY_COMPATIBILITY
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = (BEST_pHistogramBucketEntry->m_bucketValue + BEST_pHistogramBucketEntryNext->m_bucketValue) / 2;
@@ -294,18 +314,18 @@ bool GrowDecisionTree(RandomStream * const pRandomStream, CachedBoostingThreadRe
       if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
          FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
+            FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
             aValues[iVector] = smallChangeToModel;
          }
       } else {
          EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-         const FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FractionalDataType>(cInstancesTotal));
+         const FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FractionalDataType>(cInstancesTotal));
          FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          pValues[0] = smallChangeToModel;
       }
 
       LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
-      *pTotalGain = 0;
+      *pTotalGain = FractionalDataType { 0 };
       return false;
    }
 
@@ -373,17 +393,20 @@ retry_with_bigger_tree_node_children_array:
          FractionalDataType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               aValues[iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-               aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+               aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+               aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            aValues[0] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, static_cast<FractionalDataType>(pLeftChild->GetInstances()));
-            aValues[1] = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, static_cast<FractionalDataType>(pRightChild->GetInstances()));
+            aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, static_cast<FractionalDataType>(pLeftChild->GetInstances()));
+            aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER_CONST(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, static_cast<FractionalDataType>(pRightChild->GetInstances()));
          }
 
          LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
-         *pTotalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         const FractionalDataType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         EBM_ASSERT(std::isnan(totalGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
+         // don't normalize totalGain here, because we normalize the average outside of this function!
+         *pTotalGain = totalGain;
          return false;
       }
 
@@ -408,7 +431,7 @@ retry_with_bigger_tree_node_children_array:
       // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
       TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceCur = AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesInitialNeededAllocation);
 
-      FractionalDataType totalGain = 0;
+      FractionalDataType totalGain = FractionalDataType { 0 };
 
       goto skip_first_push_pop;
 
@@ -429,7 +452,10 @@ retry_with_bigger_tree_node_children_array:
       skip_first_push_pop:
 
          // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
-         totalGain += pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         const FractionalDataType totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+         EBM_ASSERT(std::isnan(totalGainUpdate) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGainUpdate) || k_epsilonNegativeGainAllowed <= totalGainUpdate);
+         totalGain += totalGainUpdate;
+
          pParentTreeNode->SPLIT_THIS_NODE();
 
          TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild = GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
@@ -456,7 +482,7 @@ retry_with_bigger_tree_node_children_array:
             }
          } else {
          no_left_split:;
-            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
+            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be k_illegalGain (meaning the node was a branch)
             // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
             pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
@@ -485,7 +511,7 @@ retry_with_bigger_tree_node_children_array:
             }
          } else {
          no_right_split:;
-            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
+            // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be k_illegalGain (meaning the node was a branch)
             // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
             pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
@@ -493,7 +519,11 @@ retry_with_bigger_tree_node_children_array:
       } while(cSplits < cTreeSplitsMax && UNLIKELY(!pBestTreeNodeToSplit->empty()));
       // we DON'T need to call SetLeafAfterDone() on any items that remain in the pBestTreeNodeToSplit queue because everything in that queue has set a non-NaN nodeSplittingScore value
 
+      // regression can be -infinity or slightly negative in extremely rare circumstances.
+      // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
+      EBM_ASSERT(std::isnan(totalGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
       // we might as well dump this value out to our pointer, even if later fail the function below.  If the function is failed, we make no guarantees about what we did with the value pointed to at *pTotalGain
+      // don't normalize totalGain here, because we normalize the average outside of this function!
       *pTotalGain = totalGain;
       EBM_ASSERT(static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2);
    } catch(...) {
@@ -553,17 +583,16 @@ bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compile
    BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
 
    const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry);
+   FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-      FractionalDataType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
+         const FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator());
          aValues[iVector] = smallChangeToModel;
       }
    } else {
       EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-      FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FractionalDataType>(pHistogramBucket->m_cInstancesInBucket));
-      FractionalDataType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-      pValues[0] = smallChangeToModel;
+      const FractionalDataType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FractionalDataType>(pHistogramBucket->m_cInstancesInBucket));
+      aValues[0] = smallChangeToModel;
    }
 
    LOG_0(TraceLevelVerbose, "Exited BoostZeroDimensional");

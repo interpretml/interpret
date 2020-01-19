@@ -1261,7 +1261,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+   for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
@@ -1280,24 +1280,12 @@ TEST_CASE("negative learning rate, boosting, binary") {
          }
       }
    }
-#ifdef EXPAND_BINARY_LOGITS
-   CHECK(std::isnan(validationMetric));
-#else // EXPAND_BINARY_LOGITS
-   CHECK(std::isinf(validationMetric));
-#endif // EXPAND_BINARY_LOGITS
 
+   CHECK_APPROX(validationMetric, 1.7158914513238979);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
    CHECK_APPROX(modelValue, 0);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-#ifdef EXPAND_BINARY_LOGITS
-   CHECK(std::isnan(modelValue));
-#else // EXPAND_BINARY_LOGITS
-#ifdef LEGACY_COMPATIBILITY
-   CHECK_APPROX(modelValue, 16785686302.358746);
-#else // LEGACY_COMPATIBILITY
-   CHECK(std::isinf(modelValue));
-#endif // LEGACY_COMPATIBILITY
-#endif // EXPAND_BINARY_LOGITS
+   CHECK_APPROX(modelValue, 1.5176802847035755);
 }
 
 TEST_CASE("negative learning rate, boosting, multiclass") {
@@ -1310,7 +1298,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
 
    FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
    FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+   for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
          if(0 == iFeatureCombination && 0 == iEpoch) {
@@ -1333,17 +1321,13 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
          }
       }
    }
-   CHECK(std::isinf(validationMetric));
+   CHECK_APPROX(validationMetric, 2.0611718475324357);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 0);
-#ifdef LEGACY_COMPATIBILITY
-   CHECK_APPROX(modelValue, -10344932.919067673);
-#else // LEGACY_COMPATIBILITY
-   CHECK(std::isinf(modelValue));
-#endif // LEGACY_COMPATIBILITY
+   CHECK_APPROX(modelValue, -0.90755332487264362);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 1);
-   CHECK_APPROX(modelValue, 19.907994122542746);
+   CHECK_APPROX(modelValue, 0.32430253082567057);
    modelValue = test.GetCurrentModelPredictorScore(0, {}, 2);
-   CHECK_APPROX(modelValue, 19.907994122542746);
+   CHECK_APPROX(modelValue, 0.32430253082567057);
 }
 
 TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") {

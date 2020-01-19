@@ -132,8 +132,13 @@ public:
    }
 
    EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
-      EBM_ASSERT(-0.000000001 <= this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain);
-      return this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      // m_splitGain is the result of a subtraction between a memory location and a calculation
+      // if there is a difference in the number of bits between these two (some floating point processors store more bits)
+      // then we could get a negative number, even if mathematically it can't be less than zero
+      const FractionalDataType splitGain = this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      // in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint we can get a -infinity gain as a special extremely unlikely case for regression
+      EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
+      return splitGain;
    }
 
    EBM_INLINE void SPLIT_THIS_NODE() {
@@ -172,9 +177,9 @@ public:
          do {
             FractionalDataType smallChangeToModel;
             if(bClassification) {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInClassificationLogOddPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
             } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeInRegressionPredictionForOneSegment(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FractionalDataType>(this->GetInstances()));
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FractionalDataType>(this->GetInstances()));
             }
             *pValuesCur = smallChangeToModel;
 
