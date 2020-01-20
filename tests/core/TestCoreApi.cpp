@@ -131,7 +131,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
 #define CHECK_APPROX(value, expected) \
    do { \
       const double valueHidden = (value); \
-      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-7 }); \
+      const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-6 }); \
       if(!bApproxEqualHidden) { \
          std::cout << " FAILED on \"" #value "(" << valueHidden << ") approx " #expected "\""; \
          testCaseHidden.m_bPassed = false; \
