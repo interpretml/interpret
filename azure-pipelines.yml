@@ -71,16 +71,16 @@ jobs:
   - script: |
       sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+      /bin/sh ./tests/native/test_core_api.sh -nobuildcore
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Testing native code (Linux)'
   - script: |
-      /bin/sh ./tests/core/test_core_api.sh -nobuildcore
+      /bin/sh ./tests/native/test_core_api.sh -nobuildcore
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\tests\core\test_core_api.bat -nobuildcore
+      .\tests\native\test_core_api.bat -nobuildcore
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Testing native code (Windows)'
 
