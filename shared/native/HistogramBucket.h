@@ -10,13 +10,13 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <cmath> // abs
 
-#include "ebmcore.h" // FractionalDataType
+#include "ebm_native.h" // FractionalDataType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramBucketVectorEntry.h"
 #include "CachedThreadResources.h"
-#include "FeatureCore.h"
-#include "FeatureCombinationCore.h"
+#include "Feature.h"
+#include "FeatureCombination.h"
 #include "DataSetByFeatureCombination.h"
 #include "DataSetByFeature.h"
 #include "SamplingWithReplacement.h"

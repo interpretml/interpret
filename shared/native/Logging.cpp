@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebmcore.h" // FractionalDataType
+#include "ebm_native.h" // FractionalDataType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h"
 

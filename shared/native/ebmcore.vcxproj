@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{9C227F82-E92F-445C-9832-5A2EEDB7924B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ebmcore</RootNamespace>
+    <RootNamespace>ebm_native</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -74,25 +74,25 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>lib_ebmcore_win_x86_debug</TargetName>
+    <TargetName>lib_ebm_native_win_x86_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>lib_ebmcore_win_x64_debug</TargetName>
+    <TargetName>lib_ebm_native_win_x64_debug</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>lib_ebmcore_win_x86</TargetName>
+    <TargetName>lib_ebm_native_win_x86</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>lib_ebmcore_win_x64</TargetName>
+    <TargetName>lib_ebm_native_win_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -120,7 +120,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
@@ -165,7 +165,7 @@ EXIT /B 0
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
@@ -216,7 +216,7 @@ EXIT /B 0
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
@@ -267,7 +267,7 @@ EXIT /B 0
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <ModuleDefinitionFile>ebmcore.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>ebm_native_exports.def</ModuleDefinitionFile>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
@@ -288,9 +288,9 @@ EXIT /B 0
   <ItemGroup>
     <ClInclude Include="EbmInteractionState.h" />
     <ClInclude Include="EbmBoostingState.h" />
-    <ClInclude Include="inc\ebmcore.h" />
-    <ClInclude Include="FeatureCore.h" />
-    <ClInclude Include="FeatureCombinationCore.h" />
+    <ClInclude Include="inc\ebm_native.h" />
+    <ClInclude Include="Feature.h" />
+    <ClInclude Include="FeatureCombination.h" />
     <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="CachedThreadResources.h" />
     <ClInclude Include="DataSetByFeature.h" />
@@ -311,7 +311,7 @@ EXIT /B 0
   <ItemGroup>
     <ClCompile Include="DataSetByFeature.cpp" />
     <ClCompile Include="DataSetByFeatureCombination.cpp" />
-    <ClCompile Include="DllMainCore.cpp" />
+    <ClCompile Include="DllMainNative.cpp" />
     <ClCompile Include="InteractionDetection.cpp" />
     <ClCompile Include="Logging.cpp" />
     <ClCompile Include="PrecompiledHeader.cpp">
@@ -330,10 +330,10 @@ EXIT /B 0
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ebmcore.def" />
+    <None Include="ebm_native_exports.def" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ebmcore_exports.txt" />
+    <Text Include="ebm_native_exports.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

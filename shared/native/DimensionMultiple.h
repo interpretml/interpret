@@ -13,7 +13,7 @@
 #include "SegmentedTensor.h"
 #include "EbmStatistics.h"
 #include "CachedThreadResources.h"
-#include "FeatureCore.h"
+#include "Feature.h"
 #include "SamplingWithReplacement.h"
 #include "HistogramBucket.h"
 

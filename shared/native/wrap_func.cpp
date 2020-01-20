@@ -8,7 +8,7 @@
 // the C runtime libraries (libm.so and libc.so) can't be statically linked, or at least it's not advisable
 // we therefore want to ensure that we only use older versions of the functions in GLIBC
 //
-// if we run the command: objdump -T lib_ebmcore_linux_x64.so | grep GLIBC_
+// if we run the command: objdump -T lib_ebm_native_linux_x64.so | grep GLIBC_
 // we see the following entry:
 // 0000000000000000      DF *UND*  0000000000000000  GLIBC_2.14  memcpy
 // the version 2.14 for memcpy has been a problem for some of our users on CentOS

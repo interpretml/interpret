@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebmcore.h"
+#include "ebm_native.h"
 #include "EbmStatistics.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 

@@ -34,14 +34,14 @@ entry_points = {
 }
 package_data = {
     "interpret": [
-        "lib/lib_ebmcore_win_x64.dll",
-        "lib/lib_ebmcore_linux_x64.so",
-        "lib/lib_ebmcore_mac_x64.dylib",
-        "lib/lib_ebmcore_win_x64_debug.dll",
-        "lib/lib_ebmcore_linux_x64_debug.so",
-        "lib/lib_ebmcore_mac_x64_debug.dylib",
-        "lib/lib_ebmcore_win_x64.pdb",
-        "lib/lib_ebmcore_win_x64_debug.pdb",
+        "lib/lib_ebm_native_win_x64.dll",
+        "lib/lib_ebm_native_linux_x64.so",
+        "lib/lib_ebm_native_mac_x64.dylib",
+        "lib/lib_ebm_native_win_x64_debug.dll",
+        "lib/lib_ebm_native_linux_x64_debug.so",
+        "lib/lib_ebm_native_mac_x64_debug.dylib",
+        "lib/lib_ebm_native_win_x64.pdb",
+        "lib/lib_ebm_native_win_x64_debug.pdb",
         "lib/interpret-inline.js",
         "visual/assets/udash.css",
         "visual/assets/udash.js",

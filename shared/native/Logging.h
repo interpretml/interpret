@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-#include "ebmcore.h" // LOG_MESSAGE_FUNCTION
+#include "ebm_native.h" // LOG_MESSAGE_FUNCTION
 #include "EbmInternal.h" // UNLIKELY
 
 extern signed char g_traceLevel;

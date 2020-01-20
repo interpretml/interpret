@@ -7,10 +7,10 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebmcore.h" // FractionalDataType
+#include "ebm_native.h" // FractionalDataType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureCore.h"
+#include "Feature.h"
 
 class DataSetByFeature final {
    const FractionalDataType * const m_aResidualErrors;

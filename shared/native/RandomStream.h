@@ -9,7 +9,7 @@
 #include <random>
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebmcore.h" // IntegerDataType
+#include "ebm_native.h" // IntegerDataType
 #include "EbmInternal.h" // EBM_INLINE
 
 class RandomStream final {

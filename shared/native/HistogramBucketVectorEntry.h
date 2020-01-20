@@ -7,7 +7,7 @@
 
 #include <type_traits> // std::is_standard_layout
 
-#include "ebmcore.h" // FractionalDataType
+#include "ebm_native.h" // FractionalDataType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 

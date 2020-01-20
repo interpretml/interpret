@@ -4,7 +4,7 @@
 
 #include <cmath> // std::isnan, std::isinf
 
-#include "ebmcore.h"
+#include "ebm_native.h"
 #include "EbmBoostingState.h"
 #include "EbmInteractionState.h"
 

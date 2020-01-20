@@ -7,10 +7,10 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebmcore.h" // FractionalDataType
+#include "ebm_native.h" // FractionalDataType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureCore.h"
+#include "Feature.h"
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 

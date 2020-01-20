@@ -9,11 +9,11 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
-#include "ebmcore.h"
+#include "ebm_native.h"
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 // feature includes
-#include "FeatureCore.h"
+#include "Feature.h"
 // dataset depends on features
 #include "DataSetByFeature.h"
 // depends on the above

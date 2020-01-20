@@ -11,7 +11,7 @@
 #include <type_traits> // is_integral
 #include <cmath> // std::exp, std::log
 
-#include "ebmcore.h"
+#include "ebm_native.h"
 
 #define UNUSED(x) (void)(x)
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)

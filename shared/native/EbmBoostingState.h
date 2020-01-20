@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
-#include "ebmcore.h"
+#include "ebm_native.h"
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
@@ -18,9 +18,9 @@
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
 #include "CachedThreadResources.h"
 // feature includes
-#include "FeatureCore.h"
+#include "Feature.h"
 // FeatureCombination.h depends on FeatureInternal.h
-#include "FeatureCombinationCore.h"
+#include "FeatureCombination.h"
 // dataset depends on features
 #include "DataSetByFeatureCombination.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them

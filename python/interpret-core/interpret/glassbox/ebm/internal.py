@@ -331,15 +331,15 @@ class Native:
         log.info("Loading native on {0} | debug = {1}".format(platform, debug))
         if platform == "linux" or platform == "linux2" and is_64_bit:
             return os.path.join(
-                package_path, "lib", "lib_ebmcore_linux_x64{0}.so".format(debug_str)
+                package_path, "lib", "lib_ebm_native_linux_x64{0}.so".format(debug_str)
             )
         elif platform == "win32" and is_64_bit:
             return os.path.join(
-                package_path, "lib", "lib_ebmcore_win_x64{0}.dll".format(debug_str)
+                package_path, "lib", "lib_ebm_native_win_x64{0}.dll".format(debug_str)
             )
         elif platform == "darwin" and is_64_bit:
             return os.path.join(
-                package_path, "lib", "lib_ebmcore_mac_x64{0}.dylib".format(debug_str)
+                package_path, "lib", "lib_ebm_native_mac_x64{0}.dylib".format(debug_str)
             )
         else:
             msg = "Platform {0} at {1} bit not supported for EBM".format(
