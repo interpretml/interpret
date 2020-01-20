@@ -10,7 +10,7 @@
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "FeatureCore.h"
+#include "Feature.h"
 
 struct FeatureCombinationCore final {
 public:

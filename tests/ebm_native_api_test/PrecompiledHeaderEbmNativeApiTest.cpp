@@ -2,4 +2,4 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#include "PrecompiledHeaderTestCoreApi.h"
+#include "PrecompiledHeaderEbmNativeApiTest.h"
