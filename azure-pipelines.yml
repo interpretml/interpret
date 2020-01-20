@@ -42,7 +42,7 @@ jobs:
     displayName: 'Publish ebm_native library'
 
 - job: 'Test_ebm_native'
-  dependsOn: 'Build_ebm_native
+  dependsOn: 'Build_ebm_native'
   strategy:
     matrix:
       Linux:
