@@ -13,7 +13,7 @@ copy /Y "%root_path%src\Makevars.interpret" "%root_path%..\tmp\R\src\Makevars"
 
 copy /Y "%root_path%cran_lic.txt" "%root_path%..\tmp\R\LICENSE"
 
-robocopy "%root_path%..\shared\native" "%root_path%..\tmp\R\src\native" /S /PURGE /R:2 /NP /XF wrap_func.cpp /XF DllMainCore.cpp /XF ebmcore.def /XF ebmcore.vcxproj /XF ebmcore.vcxproj.user /XF ebmcore_exports.txt /XF PrecompiledHeader.cpp
+robocopy "%root_path%..\shared\ebm_native" "%root_path%..\tmp\R\src\ebm_native" /S /PURGE /R:2 /NP /XF wrap_func.cpp /XF DllMainNative.cpp /XF ebm_native_exports.def /XF ebm_native.vcxproj /XF ebm_native.vcxproj.user /XF ebm_native_exports.txt /XF PrecompiledHeader.cpp
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 8 (
    EXIT /B %ERRORLEVEL%

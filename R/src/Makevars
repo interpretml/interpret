@@ -2,7 +2,7 @@
 # Makevars needs to be named that exactly because it will get loaded from devtools::install_github and devtools will want it to be that name.  When being installed from devtools, we can refer to .cpp and .h files wherever they are in the repo, so we use the NATIVEDIR to point to them
 # Makevars.interpret is the CRAN version of Makevars.  When the interpret_*.tar.gz is created the Makevars.interpret file gets copied as Makevars into the R building directory
 
-NATIVEDIR=../../shared/native
+NATIVEDIR=../../shared/ebm_native
 
 CXX_STD = CXX11
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -DEBMCORE_R -DEBMCORE_EXPORTS
