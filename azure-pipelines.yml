@@ -1,5 +1,5 @@
 jobs:
-- job: 'Build_Native'
+- job: 'Build_ebm_native'
   strategy:
     matrix:
       Linux:
@@ -17,16 +17,16 @@ jobs:
       sudo apt-get -y install g++-multilib
       /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'Building native code (Linux)'
+    displayName: 'Building ebm_native code (Linux)'
   - script: |
       /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Building native code (Mac)'
+    displayName: 'Building ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
       .\build.bat -32bit
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Building native code (Windows)'
+    displayName: 'Building ebm_native code (Windows)'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -38,11 +38,11 @@ jobs:
     condition: succeeded()
     inputs:
       pathtoPublish: $(Build.ArtifactStagingDirectory)
-      artifactName: native-$(image.name)
-    displayName: 'Publish native library'
+      artifactName: ebm_native-$(image.name)
+    displayName: 'Publish ebm_native library'
 
-- job: 'Test_Native'
-  dependsOn: 'Build_Native'
+- job: 'Test_ebm_native'
+  dependsOn: 'Build_ebm_native
   strategy:
     matrix:
       Linux:
@@ -64,25 +64,25 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebmcore_*'
+      contents: '**/lib_ebm_native_*'
       targetFolder: 'staging'
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - script: |
       sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-      /bin/sh ./tests/native/test_core_api.sh -nobuildcore
+      /bin/sh ./tests/ebm_native_api_test/ebm_native_api_test.sh -nobuildcore
     condition: startsWith(variables['image.name'], 'ubuntu')
-    displayName: 'Testing native code (Linux)'
+    displayName: 'Testing ebm_native code (Linux)'
   - script: |
-      /bin/sh ./tests/native/test_core_api.sh -nobuildcore
+      /bin/sh ./tests/ebm_native_api_test/ebm_native_api_test.sh -nobuildcore
     condition: startsWith(variables['image.name'], 'macOS')
-    displayName: 'Testing native code (Mac)'
+    displayName: 'Testing ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\tests\native\test_core_api.bat -nobuildcore
+      .\tests\ebm_native_api_test\ebm_native_api_test.bat -nobuildcore
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Testing native code (Windows)'
+    displayName: 'Testing ebm_native code (Windows)'
 
 - job: 'Build_JS_Inline'
   pool:
@@ -110,7 +110,7 @@ jobs:
     displayName: 'Publish interpret-inline.js library'
 
 - job: 'Build_Package'
-  dependsOn: ['Build_Native', 'Build_JS_Inline']
+  dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
@@ -131,7 +131,7 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebmcore_*_x64*'
+      contents: '**/lib_ebm_native_*_x64*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
@@ -209,7 +209,7 @@ jobs:
     condition: succeeded()
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/lib_ebmcore_*'
+      contents: '**/lib_ebm_native_*'
       targetFolder: 'python/interpret-core/interpret/lib'
       flattenFolders: true
     displayName: 'Move binary to Python layer'
@@ -268,7 +268,7 @@ jobs:
     displayName: 'Publish test coverage results'
 
 - job: 'Publish_Package'
-  dependsOn: ['Test_Native', 'Test']
+  dependsOn: ['Test_ebm_native', 'Test']
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
