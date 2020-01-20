@@ -3,14 +3,14 @@ SETLOCAL
 
 SET root_path=%~dp0..\..\
 
-SET build_core=1
+SET build_ebm_native=1
 for %%x in (%*) do (
-   IF "%%x"=="-nobuildcore" (
-      SET build_core=0
+   IF "%%x"=="-nobuildebmnative" (
+      SET build_ebm_native=0
    )
 )
 
-IF %build_core% EQU 1 (
+IF %build_ebm_native% EQU 1 (
    ECHO Building ebm_native library...
    CALL "%root_path%build.bat" -32bit
 ) ELSE (

@@ -6,14 +6,14 @@ os_type=`uname`
 script_path=`dirname "$0"`
 root_path="$script_path/../.."
 
-build_core=1
+build_ebm_native=1
 for arg in "$@"; do
-   if [ "$arg" = "-nobuildcore" ]; then
-      build_core=0
+   if [ "$arg" = "-nobuildebmnative" ]; then
+      build_ebm_native=0
    fi
 done
 
-if [ $build_core -eq 1 ]; then
+if [ $build_ebm_native -eq 1 ]; then
    echo "Building ebm_native library..."
    /bin/sh "$root_path/build.sh" -32bit
 else
