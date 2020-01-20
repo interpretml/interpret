@@ -13,6 +13,7 @@
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
+#include "RandomStream.h"
 #include "SegmentedTensor.h"
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
 #include "CachedThreadResources.h"

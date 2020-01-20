@@ -66,7 +66,7 @@ public:
 
 #ifdef LEGACY_COMPATIBILITY
    ActiveDataType m_bucketValue;
-#endif LEGACY_COMPATIBILITY
+#endif // LEGACY_COMPATIBILITY
    
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
@@ -444,7 +444,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
    // requires one more member variable in the binned bucket array
 #ifdef LEGACY_COMPATIBILITY
    ActiveDataType iBucket = 0;
-#endif LEGACY_COMPATIBILITY
+#endif // LEGACY_COMPATIBILITY
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
 #ifdef LEGACY_COMPATIBILITY
@@ -496,7 +496,7 @@ size_t CompressHistogramBuckets(const SamplingMethod * const pTrainingSet, const
 #ifdef LEGACY_COMPATIBILITY
       pCopyFrom->m_bucketValue = static_cast<ActiveDataType>(iBucket);
       ++iBucket;
-#endif LEGACY_COMPATIBILITY
+#endif // LEGACY_COMPATIBILITY
 
       pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
