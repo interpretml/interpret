@@ -33,34 +33,34 @@ extern "C" {
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
-#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
+#ifdef EBM_NATIVE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern
-#else // EBMCORE_R
+#else // EBM_NATIVE_R
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
-#endif // EBMCORE_R
+#endif // EBM_NATIVE_R
 
 #define EBMCORE_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
 
-#ifdef EBMCORE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
+#ifdef EBM_NATIVE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern
-#else // EBMCORE_R
+#else // EBM_NATIVE_R
 
-#ifdef EBMCORE_EXPORTS
+#ifdef EBM_NATIVE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern
 #define EBMCORE_IMPORT_EXPORT_BODY extern
-#else // EBMCORE_EXPORTS
+#else // EBM_NATIVE_EXPORTS
 // __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
 #define EBMCORE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
 #define EBMCORE_IMPORT_EXPORT_BODY extern
-#endif // EBMCORE_EXPORTS
+#endif // EBM_NATIVE_EXPORTS
 
-#endif // EBMCORE_R
+#endif // EBM_NATIVE_R
 
 #ifdef _WIN64
 // _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64

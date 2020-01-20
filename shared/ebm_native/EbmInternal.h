@@ -180,12 +180,12 @@ enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
 // 4   => 8.31%
 // TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
 
-#ifdef EBMCORE_R
+#ifdef EBM_NATIVE_R
 // we get size NOTES if we compile with too many multiclass optimizations in CRAN, so reduce them to the bare minimum
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 2;
-#else // EBMCORE_R
+#else // EBM_NATIVE_R
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
-#endif // EBMCORE_R
+#endif // EBM_NATIVE_R
 
 static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
 
