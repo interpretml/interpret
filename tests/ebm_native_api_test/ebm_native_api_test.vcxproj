@@ -74,25 +74,25 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>test_ebm_native_api</TargetName>
+    <TargetName>ebm_native_api_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>test_ebm_native_api</TargetName>
+    <TargetName>ebm_native_api_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>test_ebm_native_api</TargetName>
+    <TargetName>ebm_native_api_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>test_ebm_native_api</TargetName>
+    <TargetName>ebm_native_api_test</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -243,8 +243,8 @@ EXIT /B 0
     <ClInclude Include="PrecompiledHeaderEbmNativeApiTest.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="test_ebm_native_api.bat" />
-    <None Include="test_ebm_native_api.sh" />
+    <None Include="ebm_native_api_test.bat" />
+    <None Include="ebm_native_api_test.sh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
