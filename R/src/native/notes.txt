@@ -1,1 +1,0 @@
-when building the R package we copy the $ROOT\shared\native\* files here
