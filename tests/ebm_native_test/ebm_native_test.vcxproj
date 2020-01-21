@@ -116,7 +116,7 @@
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x64_debug.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
+      <Message>Copying ebm_native DLL to ebm_native_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64_debug.dll lib_ebm_native_win_x64_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -148,7 +148,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x86_debug.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
+      <Message>Copying ebm_native DLL to ebm_native_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86_debug.dll lib_ebm_native_win_x86_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -184,7 +184,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x86.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
+      <Message>Copying ebm_native DLL to ebm_native_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86.dll lib_ebm_native_win_x86.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -220,7 +220,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x64.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
+      <Message>Copying ebm_native DLL to ebm_native_test</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64.dll lib_ebm_native_win_x64.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
