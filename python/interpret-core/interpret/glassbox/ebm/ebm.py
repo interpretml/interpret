@@ -663,6 +663,7 @@ class BaseEBM(BaseEstimator):
         random_state=42,
         # Preprocessor
         binning_strategy="uniform",
+        max_n_bins=255,
     ):
         # TODO PK sanity check all our inputs
 
@@ -699,6 +700,7 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for preprocessor
         self.binning_strategy = binning_strategy
+        self.max_n_bins = max_n_bins
 
     # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
     #       doesn't like parameters in the fit function, other than ones like weights that have
@@ -726,6 +728,7 @@ class BaseEBM(BaseEstimator):
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
             schema=self.schema,
+            max_n_bins=self.max_n_bins,
             binning_strategy=self.binning_strategy,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
@@ -1391,6 +1394,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         random_state=42,
         # Preprocessor
         binning_strategy="uniform",
+        max_n_bins=255,
     ):
 
         super(ExplainableBoostingClassifier, self).__init__(
@@ -1421,6 +1425,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             random_state=random_state,
             # Preprocessor
             binning_strategy=binning_strategy,
+            max_n_bins=max_n_bins,
         )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
@@ -1492,6 +1497,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         random_state=42,
         # Preprocessor
         binning_strategy="uniform",
+        max_n_bins=255,
     ):
 
         super(ExplainableBoostingRegressor, self).__init__(
@@ -1522,6 +1528,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             random_state=random_state,
             # Preprocessor
             binning_strategy=binning_strategy,
+            max_n_bins=max_n_bins,
         )
 
     def predict(self, X):
