@@ -15,7 +15,7 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, FractionalDataType * pResidualError, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+static void InitializeResiduals(const size_t cInstances, const void * const aTargetData, const FloatEbmType * const aPredictorScores, FloatEbmType * pResidualError, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
    // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or runtimeLearningTypeOrCountTargetClasses for some of the addition
@@ -29,7 +29,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
    EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances)); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    const size_t cVectoredItems = cVectorLength * cInstances;
    EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0]))); // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
-   const FractionalDataType * const pResidualErrorEnd = pResidualError + cVectoredItems;
+   const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
    if(nullptr == aPredictorScores) {
       // TODO: do we really need to handle the case where pPredictorScores is null? In the future, we'll probably initialize our data with the intercept, in which case we'll always have existing predictions
@@ -41,15 +41,15 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          // TODO: NaN target values essentially mean missing, so we should be filtering those instances out, but our caller should do that so that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
          memcpy(pResidualError, aTargetData, cInstances * sizeof(pResidualError[0]));
 #ifndef NDEBUG
-         const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
+         const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
          do {
-            const FractionalDataType data = *pTargetData;
+            const FloatEbmType data = *pTargetData;
             // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance from the input data
 
             // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.  
             // There is no need to check it here since we already have graceful detection later for other reasons.
-            const FractionalDataType predictionScore = 0;
-            const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
+            const FloatEbmType predictionScore = 0;
+            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
             EBM_ASSERT(std::abs(*pResidualError - residualError) <= k_epsilonResidualError);
             ++pTargetData;
             ++pResidualError;
@@ -58,31 +58,31 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
 
-         const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
+         const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
 
-         const FractionalDataType matchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(true, runtimeLearningTypeOrCountTargetClasses);
-         const FractionalDataType nonMatchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(false, runtimeLearningTypeOrCountTargetClasses);
+         const FloatEbmType matchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(true, runtimeLearningTypeOrCountTargetClasses);
+         const FloatEbmType nonMatchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(false, runtimeLearningTypeOrCountTargetClasses);
 
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
-            const IntegerDataType targetOriginal = *pTargetData;
+            const IntEbmType targetOriginal = *pTargetData;
             EBM_ASSERT(0 <= targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
             const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
             EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
             EBM_ASSERT(target < static_cast<StorageDataTypeCore>(runtimeLearningTypeOrCountTargetClasses));
 
             if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
-               const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorBinaryClassificationInitZero(target);
+               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassificationInitZero(target);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorMulticlassInitZero(target, iVector, matchValue, nonMatchValue);
+                  const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlassInitZero(target, iVector, matchValue, nonMatchValue);
                   EBM_ASSERT(!std::isnan(residualError)); // without a aPredictorScores value, the logits are all zero, and we can't really overflow the exps
-                  EBM_ASSERT(std::abs(EbmStatistics::ComputeResidualErrorMulticlass(static_cast<FractionalDataType>(runtimeLearningTypeOrCountTargetClasses), FractionalDataType { 0 }, target, iVector) - residualError) <= k_epsilonResidualError);
+                  EBM_ASSERT(std::abs(EbmStatistics::ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(runtimeLearningTypeOrCountTargetClasses), FloatEbmType { 0 }, target, iVector) - residualError) <= k_epsilonResidualError);
                   *pResidualError = residualError;
                   ++pResidualError;
                }
@@ -103,19 +103,19 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          } while(pResidualErrorEnd != pResidualError);
       }
    } else {
-      const FractionalDataType * pPredictorScores = aPredictorScores;
+      const FloatEbmType * pPredictorScores = aPredictorScores;
       if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-         const FractionalDataType * pTargetData = static_cast<const FractionalDataType *>(aTargetData);
+         const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
          do {
             // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance from the input data
 
             // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
             // There is no need to check it here since we already have graceful detection later for other reasons.
 
-            const FractionalDataType data = *pTargetData;
+            const FloatEbmType data = *pTargetData;
             // TODO: NaN target values essentially mean missing, so we should be filtering those instances out, but our caller should do that so that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-            const FractionalDataType predictionScore = *pPredictorScores;
-            const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
+            const FloatEbmType predictionScore = *pPredictorScores;
+            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
             *pResidualError = residualError;
             ++pTargetData;
             ++pPredictorScores;
@@ -124,31 +124,31 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
 
-         const IntegerDataType * pTargetData = static_cast<const IntegerDataType *>(aTargetData);
+         const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
 
          EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
          const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
 
          do {
-            const IntegerDataType targetOriginal = *pTargetData;
+            const IntEbmType targetOriginal = *pTargetData;
             EBM_ASSERT(0 <= targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
+            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
             const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
             EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
             EBM_ASSERT(target < static_cast<StorageDataTypeCore>(runtimeLearningTypeOrCountTargetClasses));
             if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
-               const FractionalDataType predictionScore = *pPredictorScores;
-               const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
+               const FloatEbmType predictionScore = *pPredictorScores;
+               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
                *pResidualError = residualError;
                ++pPredictorScores;
                ++pResidualError;
             } else {
-               FractionalDataType sumExp = 0;
+               FloatEbmType sumExp = 0;
                // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
-               const FractionalDataType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
+               const FloatEbmType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictorScores - subtract;
+                  const FloatEbmType predictionScore = *pPredictorScores - subtract;
                   sumExp += EbmExp(predictionScore);
                   ++pPredictorScores;
                }
@@ -157,9 +157,9 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
                pPredictorScores -= cVectorLengthStorage;
 
                for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-                  const FractionalDataType predictionScore = *pPredictorScores - subtract;
+                  const FloatEbmType predictionScore = *pPredictorScores - subtract;
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
-                  const FractionalDataType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, predictionScore, target, iVector);
+                  const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, predictionScore, target, iVector);
                   *pResidualError = residualError;
                   ++pPredictorScores;
                   ++pResidualError;

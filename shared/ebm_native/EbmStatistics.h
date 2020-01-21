@@ -13,7 +13,7 @@
 
 // TODO: surprisingly, neither ComputeResidualErrorMulticlass, nor ComputeResidualErrorBinaryClassification seems to be able to generate an infinity, even if we had an infinite logit!  Walk through the implications of this!
 // TODO: I've used std::isnan in many asserts.  I should also include std::isinf to document where these can be, and also for correctness where we have maximum values.  Residual errors can overflow, so continue from there looking for infinity values
-// TODO: rename FractionalDataType to DecimalDataType (or something else)
+// TODO: rename FloatEbmType to DecimalDataType (or something else)
 // TODO: enable SSE on x86 Intel to avoid floating point slowdowns, and for almost exact floating point equivalence between machines -> https://stackoverflow.com/questions/7517588/different-floating-point-result-with-optimization-enabled-compiler-bug
 // TODO: before applying a small model update, check to see that the probability implied by the logit exceeds 1/number_of_instances in either the positive or negative direction.
 //       If it does, then modify the update so that the probabily does not exceed a certainty of 1/number_of_instances, since we really can't make statements of probability beyond close to that threshold.
@@ -23,11 +23,11 @@
 
 
 
-static_assert(std::numeric_limits<FractionalDataType>::is_iec559, "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way.  We can't even guarantee that infinity exists as a concept.");
+static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way.  We can't even guarantee that infinity exists as a concept.");
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):
 // - it should be virtually impossible to get NaN values anywhere in this code without being given an adversarial dataset or adversarial input parameters [see notes below]
 // - it should be virtually impossible to get +-infinity values in classification.  We could get +infinity values if the user gives us regression targets above 
-//   sqrt(std::numeric_limits<FractionalDataType>::max()) [see notes below], but those regression targets are HUGE and the user should just avoid them.  
+//   sqrt(std::numeric_limits<FloatEbmType>::max()) [see notes below], but those regression targets are HUGE and the user should just avoid them.  
 //   We can't avoid possibility of the user passing us ridiculously huge regression targets, so HUGE inputs is something that has no good solution anyways.
 // - we don't crash or really cause any problems if denormals are disabled.  We'd prefer denormals to be enabled since we'll get better and more accurate results, 
 //   but we don't rely on them.  We also like getting consisent results between environments, so we'd prefer denormals to exist in all environments.
@@ -107,7 +107,7 @@ static_assert(std::numeric_limits<FractionalDataType>::is_iec559, "If IEEE 754 i
 //     much that we can do with such large numbers, so pushing the error back to them is the best solution anyways.
 //     If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value (of 7.2e+134)
 //   - In regression, if the user gives us regression targets (either positive or negative) with absolute values greater than 
-//     sqrt(std::numeric_limits<FractionalDataType>::max()), or if several rounds of boosting lead to large square errors, 
+//     sqrt(std::numeric_limits<FloatEbmType>::max()), or if several rounds of boosting lead to large square errors, 
 //     then we'll overflow to +infinity in ComputeSingleInstanceSquaredErrorRegression. This won't infect any of our exisisting 
 //     training instance residuals, or model graphs, but it will lead to us returning to our caller a +infinity mean squared error value.
 //     The normal repsonse to any big mean squared error would be for our caller to terminate via early stopping, which is a fine outcome.  
@@ -115,10 +115,10 @@ static_assert(std::numeric_limits<FractionalDataType>::is_iec559, "If IEEE 754 i
 //     will end up as NaN.  Our caller can detect the +infinity means squared error themselves and optionally throw a nice exception plus a message 
 //     for the end user so that they understand what happened.  The user just needs to not give us such high regression targets.
 //     If we really wanted to, we could eliminate this error by limiting the user to a maximum regression target value.  The maximum value would be:
-//     sqrt(std::numeric_limits<FractionalDataType>::max()) / 2^64 = 7.2e+134.  Since there must be less than 2^64 instances, the square of that number
+//     sqrt(std::numeric_limits<FloatEbmType>::max()) / 2^64 = 7.2e+134.  Since there must be less than 2^64 instances, the square of that number
 //     occuring 2^64 times won't overflow a double
 //   - In regression, if the user gives us regression targets (either positive or negative) with values below but close to
-//     +-std::numeric_limits<FractionalDataType>::max(), the sumResidualError can reach +-infinity since they are a sum.
+//     +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.
 //     After sumResidualError reaches +-infinity, we'll get a graph update with a +infinity, and some instances with +-infinity residuals
 //     Then, on the next feature that we boost on, we'll calculate a model update for some instances  
 //     inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
@@ -233,7 +233,7 @@ class EbmStatistics final {
 
 public:
 
-   EBM_INLINE static FractionalDataType ComputeNewtonRaphsonStep(const FractionalDataType residualError) {
+   EBM_INLINE static FloatEbmType ComputeNewtonRaphsonStep(const FloatEbmType residualError) {
       // this function IS performance critical as it's called on every instance
 
       // residualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -257,7 +257,7 @@ public:
 
       // propagate NaN or deliver weird results if NaNs aren't properly propaged.  This is acceptable considering how hard you have to 
       // work to generate such an illegal value, and given that we won't crash
-      EBM_ASSERT(std::isnan(residualError) || !std::isinf(residualError) && FractionalDataType { -1 } - k_epsilonResidualError <= residualError && residualError <= FractionalDataType { 1 });
+      EBM_ASSERT(std::isnan(residualError) || !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 });
 
       // this function pre-computes a portion of an equation that we'll use later.  We're computing it now since we can share
       // the work of computing it between inner bags.  It's not possible to reason about this function in isolation though.
@@ -308,8 +308,8 @@ public:
       //   the overall effect is that we train more on errors (error is +-1), and less on things with close to zero residuals
 
       // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that they are using t * (2 - t) since they have a 2 in their objective
-      const FractionalDataType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
-      const FractionalDataType ret = absResidualError * (FractionalDataType { 1 } - absResidualError);
+      const FloatEbmType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
+      const FloatEbmType ret = absResidualError * (FloatEbmType { 1 } - absResidualError);
 
       // - it would be somewhat bad if absResidualError could get larger than 1, even if just due to floating point error reasons, 
       //   since this would flip the sign on ret to negative.  Later in ComputeSmallChangeForOneSegmentClassificationLogOdds, 
@@ -328,12 +328,12 @@ public:
       // when we get to this point, we're already in a position where we'll get a NaN or infinity or something else that will stop boosting
 
       // with our abs inputs confined to the range of -k_epsilonResidualError -> 1, we can't get a new NaN value here, so only check against propaged NaN values from residualError
-      EBM_ASSERT(std::isnan(residualError) || !std::isinf(ret) && -k_epsilonResidualError <= ret && ret <= FractionalDataType { 0.25 });
+      EBM_ASSERT(std::isnan(residualError) || !std::isinf(ret) && -k_epsilonResidualError <= ret && ret <= FloatEbmType { 0.25 });
 
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeNodeSplittingScore(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
+   EBM_INLINE static FloatEbmType ComputeNodeSplittingScore(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this function can SOMETIMES be performance critical as it's called on every histogram bin
       // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality creates many bins
 
@@ -351,7 +351,7 @@ public:
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
       // for regression, residualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FractionalDataType>::max(), the sumResidualError can reach +-infinity since they are a sum.
+      //   +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.
       //   After sumResidualError reaches +-infinity, we'll get a graph update with a +infinity, and some instances with +-infinity residuals
       //   Then, on the next feature that we boost on, we'll calculate a model update for some instances  
       //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
@@ -375,10 +375,10 @@ public:
       EBM_ASSERT(!std::isinf(cInstances)); // this starts as an integer
 
 #ifdef LEGACY_COMPATIBILITY
-      const FractionalDataType ret = LIKELY(FractionalDataType { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FractionalDataType { 0 };
+      const FloatEbmType ret = LIKELY(FloatEbmType { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FloatEbmType { 0 };
 #else // LEGACY_COMPATIBILITY
-      EBM_ASSERT(FractionalDataType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
-      const FractionalDataType ret = sumResidualError / cInstances * sumResidualError;
+      EBM_ASSERT(FloatEbmType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
+      const FloatEbmType ret = sumResidualError / cInstances * sumResidualError;
 #endif // LEGACY_COMPATIBILITY
 
       // for both classification and regression, we're squaring sumResidualError, and cInstances is positive.  No reasonable floating point implementation should turn this negative
@@ -390,11 +390,11 @@ public:
 
       // for regression, the output can be any positive number from zero to +infinity
 
-      EBM_ASSERT(std::isnan(sumResidualError) || FractionalDataType { 0 } <= ret);
+      EBM_ASSERT(std::isnan(sumResidualError) || FloatEbmType { 0 } <= ret);
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeSmallChangeForOneSegmentClassificationLogOdds(const FractionalDataType sumResidualError, const FractionalDataType sumDenominator) {
+   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(const FloatEbmType sumResidualError, const FloatEbmType sumDenominator) {
       // this is NOT a performance critical function.  It only gets called AFTER we've decided where to split, so only a few times per Boosting step
 
       // sumResidualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -452,11 +452,11 @@ public:
       // return can be any other positive or negative number
    }
 
-   EBM_INLINE static FractionalDataType ComputeSmallChangeForOneSegmentRegression(const FractionalDataType sumResidualError, const FractionalDataType cInstances) {
+   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_combination boost
 
       // sumResidualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
-      //   +-std::numeric_limits<FractionalDataType>::max(), the sumResidualError can reach +-infinity since they are a sum.
+      //   +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.
       //   After sumResidualError reaches +-infinity, we'll get a graph update with a +infinity, and some instances with +-infinity residuals
       //   Then, on the next feature that we boost on, we'll calculate a model update for some instances  
       //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
@@ -471,24 +471,24 @@ public:
       EBM_ASSERT(!std::isinf(cInstances)); // this starts as an integer
 
 #ifdef LEGACY_COMPATIBILITY
-      return LIKELY(FractionalDataType { 0 } != cInstances) ? sumResidualError / cInstances : FractionalDataType { 0 };
+      return LIKELY(FloatEbmType { 0 } != cInstances) ? sumResidualError / cInstances : FloatEbmType { 0 };
 #else // LEGACY_COMPATIBILITY
       // -infinity <= sumResidualError && sumResidualError <= infinity (it's regression which has a larger range)
 
-      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FractionalDataType>::max() or std::numeric_limits<FractionalDataType>::min(), 
+      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatEbmType>::max() or std::numeric_limits<FloatEbmType>::min(), 
       // we'll still reach +-infinity if we add a bunch of them together, so sumResidualError can reach +-infinity.
       // After sumResidualError reaches +-infinity, we'll get an update and some instances with +-infinity residuals
       // Then, on the next feature we boost on, we'll calculate an model update for some instances (inside this function) as 
       // +-infinity/cInstances, which will be +-infinity (of the same sign).  Then, when we go to find our new instance residuals, we'll
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
-      EBM_ASSERT(FractionalDataType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
+      EBM_ASSERT(FloatEbmType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
       return sumResidualError / cInstances;
 #endif // LEGACY_COMPATIBILITY
       
       // since the sumResidualError inputs can be anything, we can return can be anything, including NaN, or +-infinity
    }
 
-   EBM_INLINE static FractionalDataType ComputeResidualErrorRegressionInit(const FractionalDataType predictionScore, const FractionalDataType actualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorRegressionInit(const FloatEbmType predictionScore, const FloatEbmType actualValue) {
       // this function is NOT performance critical as it's called on every instance, but only during initialization.
 
       // it's possible to reach NaN or +-infinity within this module, so predictionScore can be those values
@@ -496,14 +496,14 @@ public:
       // NaN or +-infinity values in one of our boosting rounds and then terminate the algorithm once those special values
       // have propagaged, which we need to handle anyways
 
-      const FractionalDataType result = actualValue - predictionScore;
+      const FloatEbmType result = actualValue - predictionScore;
 
       // if actualValue and predictionScore are both +infinity or both -infinity, then we'll generate a NaN value
 
       return result;
    }
 
-   EBM_INLINE static FractionalDataType ComputeResidualErrorRegression(const FractionalDataType value) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorRegression(const FloatEbmType value) {
       // this function IS performance critical as it's called on every instance
 
       // value can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression
@@ -512,7 +512,7 @@ public:
       return value;
    }
 
-   EBM_INLINE static FractionalDataType ComputeResidualErrorBinaryClassification(const FractionalDataType trainingLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(const FloatEbmType trainingLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
       // this IS a performance critical function.  It gets called per instance!
 
       // trainingLogOddsPrediction can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -531,7 +531,7 @@ public:
       // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having trainingLogOddsPrediction be 0
 
       // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
-      const FractionalDataType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -1 } : FractionalDataType { 1 }) / (FractionalDataType { 1 } + EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
+      const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
@@ -544,12 +544,12 @@ public:
       // ret can only be NaN if our inputs are NaN
 
       // So...
-      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || !std::isinf(ret) && FractionalDataType { -1 } <= ret && ret <= FractionalDataType { 1 });
+      EBM_ASSERT(std::isnan(trainingLogOddsPrediction) || !std::isinf(ret) && FloatEbmType { -1 } <= ret && ret <= FloatEbmType { 1 });
 
       // ret can't be +-infinity, since an infinity in the denominator would just lead us to zero for the ret value!
 
 #ifndef NDEBUG
-      const FractionalDataType retDebug = ComputeResidualErrorMulticlass(FractionalDataType { 1 } + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
+      const FloatEbmType retDebug = ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
       // the ComputeResidualErrorMulticlass can't be +-infinity per notes in ComputeResidualErrorMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -559,16 +559,16 @@ public:
    }
 
    // if trainingLogOddsPrediction is zero (so, 50%/50% odds), then we can call this function
-   EBM_INLINE static FractionalDataType ComputeResidualErrorBinaryClassificationInitZero(const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassificationInitZero(const StorageDataTypeCore binnedActualValue) {
       // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
-      const FractionalDataType ret = UNPREDICTABLE(0 == binnedActualValue) ? FractionalDataType { -0.5 } : FractionalDataType { 0.5 };
+      const FloatEbmType ret = UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -0.5 } : FloatEbmType { 0.5 };
       EBM_ASSERT(std::abs(ComputeResidualErrorBinaryClassification(0, binnedActualValue) - ret) < k_epsilonResidualError); // no possible funny floats here
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeResidualErrorMulticlass(const FractionalDataType sumExp, const FractionalDataType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(const FloatEbmType sumExp, const FloatEbmType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
       // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -581,11 +581,11 @@ public:
 
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
-      EBM_ASSERT(std::isnan(sumExp) || FractionalDataType { 0 } <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || FloatEbmType { 0 } <= sumExp);
 
-      const FractionalDataType ourExp = EbmExp(trainingLogWeight);
+      const FloatEbmType ourExp = EbmExp(trainingLogWeight);
       // ourExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(trainingLogWeight) || FractionalDataType { 0 } <= ourExp); // no reasonable implementation should lead to a negative exp value
+      EBM_ASSERT(std::isnan(trainingLogWeight) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation should lead to a negative exp value
 
       // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
@@ -597,7 +597,7 @@ public:
 
       EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
 
-      const FractionalDataType expFraction = ourExp / sumExp;
+      const FloatEbmType expFraction = ourExp / sumExp;
 
       // expFraction can be NaN -> 
       // - If ourExp AND sumExp are exactly zero or exactly infinity then ourExp / sumExp will lead to NaN
@@ -628,56 +628,56 @@ public:
       // expFraction can't be infinity -> even if ourExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
       //   we can't really get an infinity in ourExp without also getting an infinity in sumExp, so expFraction can't be infinity without getting a NaN
 
-      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(expFraction) && FractionalDataType { 0 } <= expFraction && expFraction <= FractionalDataType { 1 } + k_epsilonResidualError);
+      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(expFraction) && FloatEbmType { 0 } <= expFraction && expFraction <= FloatEbmType { 1 } + k_epsilonResidualError);
 
 
-      const FractionalDataType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FractionalDataType { 1 } : FractionalDataType { 0 };
+      const FloatEbmType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FloatEbmType { 1 } : FloatEbmType { 0 };
 
       // if expFraction cannot be +infinity, and needs to be between 0 and 1 + small_value, or NaN, then ret can't be inifinity either
 
-      const FractionalDataType ret = yi - expFraction;
+      const FloatEbmType ret = yi - expFraction;
 
       // mathematicaly we're limited to the range of range 0 <= expFraction && expFraction <= 1, but with floating point issues
       // we can get an expFraction value slightly larger than 1, which could lead to -1.00000000001-ish results
       // just like for the division by zero conditions, we'd need many many boosting rounds for expFraction to get to 1, since
       // the sum of e^logit must be about equal to e^logit for this class, which should require thousands of rounds (70,900 or so)
       // also, the boosting algorthm tends to push results to zero, so a result more negative than -1 would be very exceptional
-      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(ret) && FractionalDataType { -1 } - k_epsilonResidualError <= ret && ret <= FractionalDataType { 1 });
+      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(ret) && FloatEbmType { -1 } - k_epsilonResidualError <= ret && ret <= FloatEbmType { 1 });
       return ret;
    }
 
    // if trainingLogWeight is defaulted to zero during initialization, we can call this simpler function
-   EBM_INLINE static FractionalDataType ComputeResidualErrorMulticlassInitZero(const bool isMatch, const size_t countTargetClasses) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const bool isMatch, const size_t countTargetClasses) {
       // this is NOT a performance critical function.  It gets called only twice, and during initialization!
 
       // sometimes for debugging we treat binary as multiclass, so allow 2
       // we also have the super odd case of 1 class, which we handle here too.
       EBM_ASSERT(1 <= countTargetClasses);
 
-      const FractionalDataType yi = UNPREDICTABLE(isMatch) ? FractionalDataType { 1 } : FractionalDataType { 0 };
-      const FractionalDataType ret = yi - FractionalDataType { 1 } / countTargetClasses;
+      const FloatEbmType yi = UNPREDICTABLE(isMatch) ? FloatEbmType { 1 } : FloatEbmType { 0 };
+      const FloatEbmType ret = yi - FloatEbmType { 1 } / countTargetClasses;
 
 #ifndef NDEBUG
-      EBM_ASSERT(!isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FractionalDataType>(countTargetClasses), 0, 1, 1) - ret) < k_epsilonResidualError);
-      EBM_ASSERT(isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FractionalDataType>(countTargetClasses), 0, 0, 1) - ret) < k_epsilonResidualError);
+      EBM_ASSERT(!isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(countTargetClasses), 0, 1, 1) - ret) < k_epsilonResidualError);
+      EBM_ASSERT(isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(countTargetClasses), 0, 0, 1) - ret) < k_epsilonResidualError);
 #endif
       // if countTargetClasses is 1, then ret can be -1 for the impossible case of us getting the class incorrect.  Even though that can't legally
       //   happen, we calculate the probability before entering the loop, so we still get the value even if it's impossible
       
       // ret can't be 1, even if countTargetClasses is 1, since we subtract something from 1 in the isMatch == true case, and the something can't be zero
-      EBM_ASSERT(FractionalDataType { -1 } <= ret && ret < FractionalDataType { 1 });
+      EBM_ASSERT(FloatEbmType { -1 } <= ret && ret < FloatEbmType { 1 });
       return ret;
    }
 
    // if trainingLogWeight is zero, we can call this simpler function
-   EBM_INLINE static FractionalDataType ComputeResidualErrorMulticlassInitZero(const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector, const FractionalDataType matchValue, const FractionalDataType nonMatchValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector, const FloatEbmType matchValue, const FloatEbmType nonMatchValue) {
       // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
 
-      const FractionalDataType ret = UNPREDICTABLE(iVector == binnedActualValue) ? matchValue : nonMatchValue;
+      const FloatEbmType ret = UNPREDICTABLE(iVector == binnedActualValue) ? matchValue : nonMatchValue;
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeSingleInstanceLogLossBinaryClassification(const FractionalDataType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(const FloatEbmType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
@@ -690,14 +690,14 @@ public:
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
-      const FractionalDataType ourExp = EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
-      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FractionalDataType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
+      const FloatEbmType ourExp = EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
+      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
 
       // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative numbers
       // the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits one way to a very very certain outcome (essentially 100%)
       // and the validation set has the opposite, but in that case our ultimate convergence is infinity anyways, and we'll be generaly driving up the log loss, so we legitimately
       // want our loop to terminate training since we're getting a worse and worse model, so going to infinity isn't bad in that case
-      const FractionalDataType ret = EbmLog(FractionalDataType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
+      const FloatEbmType ret = EbmLog(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
       // ret can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, so we should only get propagation NaN values
 
@@ -708,21 +708,21 @@ public:
       // 1 has an exact floating point number representation, and it computes to another exact floating point number, and who would seriously make a log function that
       // take 1 and returns a negative.
       // So, 
-      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FractionalDataType { 0 } <= ret); // log(1) == 0
+      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ret); // log(1) == 0
       // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
-      FractionalDataType scores[2];
+      FloatEbmType scores[2];
       scores[0] = 0;
       scores[1] = validationLogOddsPrediction;
-      const FractionalDataType retDebug = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(1 + EbmExp(validationLogOddsPrediction), scores, binnedActualValue);
+      const FloatEbmType retDebug = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(1 + EbmExp(validationLogOddsPrediction), scores, binnedActualValue);
       EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualError);
 #endif // NDEBUG
 
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeSingleInstanceLogLossMulticlass(const FractionalDataType sumExp, const FractionalDataType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(const FloatEbmType sumExp, const FloatEbmType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
@@ -738,15 +738,15 @@ public:
       // sumExp can be any number from 0 to +infinity -> each e^logit term can't be less than zero, and I can't imagine any implementation 
       //   that would result in a negative exp result from adding a series of positive values.
 
-      EBM_ASSERT(std::isnan(sumExp) || FractionalDataType { 0 } <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || FloatEbmType { 0 } <= sumExp);
 
-      const FractionalDataType validationLogWeight = aValidationLogWeight[binnedActualValue];
+      const FloatEbmType validationLogWeight = aValidationLogWeight[binnedActualValue];
 
       // validationLogWeight can be any number between -infinity to +infinity, or NaN
 
-      const FractionalDataType ourExp = EbmExp(validationLogWeight);
+      const FloatEbmType ourExp = EbmExp(validationLogWeight);
       // ourExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(validationLogWeight) || FractionalDataType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
+      EBM_ASSERT(std::isnan(validationLogWeight) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
 
       // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
@@ -758,7 +758,7 @@ public:
 
       EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
 
-      const FractionalDataType expFraction = sumExp / ourExp;
+      const FloatEbmType expFraction = sumExp / ourExp;
 
       // expFraction can be NaN -> 
       // - If ourExp AND sumExp are exactly zero or exactly infinity then sumExp / ourExp will lead to NaN
@@ -785,9 +785,9 @@ public:
       // we can tollerate numbers very very slightly less than 1.  These make the log loss go down slightly as they lead to negative log
       // values, but we can tollerate this drop and rely on other features for the log loss calculation
 
-      EBM_ASSERT(std::isnan(expFraction) || FractionalDataType { 1 } - k_epsilonLogLoss <= expFraction);
+      EBM_ASSERT(std::isnan(expFraction) || FloatEbmType { 1 } - k_epsilonLogLoss <= expFraction);
 
-      const FractionalDataType ret = EbmLog(expFraction);
+      const FloatEbmType ret = EbmLog(expFraction);
 
       // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS expFraction was already NaN and we're NaN propegating
 
@@ -798,7 +798,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FractionalDataType ComputeSingleInstanceSquaredErrorRegression(const FractionalDataType residualError) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceSquaredErrorRegression(const FloatEbmType residualError) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // residualError can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression

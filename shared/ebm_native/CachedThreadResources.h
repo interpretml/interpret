@@ -72,7 +72,7 @@ public:
 
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry;
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry1;
-   FractionalDataType * const m_aSumResidualErrors2;
+   FloatEbmType * const m_aSumResidualErrors2;
 
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
@@ -85,7 +85,7 @@ public:
       , m_cThreadByteBufferCapacity2(0)
       , m_aSumHistogramBucketVectorEntry(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
-      , m_aSumResidualErrors2(new (std::nothrow) FractionalDataType[cVectorLength])
+      , m_aSumResidualErrors2(new (std::nothrow) FloatEbmType[cVectorLength])
       , m_aEquivalentSplits(nullptr)
       , m_bestTreeNodeToSplit() {
       EBM_ASSERT(0 < cVectorLength);

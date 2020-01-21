@@ -178,17 +178,17 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasse
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr IntegerDataType randomSeed = 42;
-enum class FeatureType : IntegerDataType { Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal };
+constexpr IntEbmType randomSeed = 42;
+enum class FeatureType : IntEbmType { Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal };
 
 class FeatureTest final {
 public:
 
    const FeatureType m_featureType;
    const bool m_hasMissing;
-   const IntegerDataType m_countBins;
+   const IntEbmType m_countBins;
 
-   FeatureTest(const IntegerDataType countBins, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
+   FeatureTest(const IntEbmType countBins, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
       m_featureType(featureType),
       m_hasMissing(hasMissing),
       m_countBins(countBins) {
@@ -200,19 +200,19 @@ public:
 
 class RegressionInstance final {
 public:
-   const FractionalDataType m_target;
-   const std::vector<IntegerDataType> m_binnedDataPerFeatureArray;
-   const FractionalDataType m_priorPredictorPrediction;
+   const FloatEbmType m_target;
+   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
+   const FloatEbmType m_priorPredictorPrediction;
    const bool m_bNullPredictionScores;
 
-   RegressionInstance(const FractionalDataType target, const std::vector<IntegerDataType> binnedDataPerFeatureArray) :
+   RegressionInstance(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(0),
       m_bNullPredictionScores(true) {
    }
 
-   RegressionInstance(const FractionalDataType target, const std::vector<IntegerDataType> binnedDataPerFeatureArray, const FractionalDataType priorPredictorPrediction) :
+   RegressionInstance(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType priorPredictorPrediction) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(priorPredictorPrediction),
@@ -222,18 +222,18 @@ public:
 
 class ClassificationInstance final {
 public:
-   const IntegerDataType m_target;
-   const std::vector<IntegerDataType> m_binnedDataPerFeatureArray;
-   const std::vector<FractionalDataType> m_priorPredictorPerClassLogits;
+   const IntEbmType m_target;
+   const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
+   const std::vector<FloatEbmType> m_priorPredictorPerClassLogits;
    const bool m_bNullPredictionScores;
 
-   ClassificationInstance(const IntegerDataType target, const std::vector<IntegerDataType> binnedDataPerFeatureArray) :
+   ClassificationInstance(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_bNullPredictionScores(true) {
    }
 
-   ClassificationInstance(const IntegerDataType target, const std::vector<IntegerDataType> binnedDataPerFeatureArray, const std::vector<FractionalDataType> priorPredictorPerClassLogits) :
+   ClassificationInstance(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const std::vector<FloatEbmType> priorPredictorPerClassLogits) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPerClassLogits(priorPredictorPerClassLogits),
@@ -242,10 +242,10 @@ public:
 };
 
 static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
-static constexpr IntegerDataType k_countInnerBagsDefault = IntegerDataType { 0 };
-static constexpr FractionalDataType k_learningRateDefault = FractionalDataType { 0.01 };
-static constexpr IntegerDataType k_countTreeSplitsMaxDefault = IntegerDataType { 4 };
-static constexpr IntegerDataType k_countInstancesRequiredForParentSplitMinDefault = IntegerDataType { 2 };
+static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
+static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
+static constexpr IntEbmType k_countTreeSplitsMaxDefault = IntEbmType { 4 };
+static constexpr IntEbmType k_countInstancesRequiredForParentSplitMinDefault = IntEbmType { 2 };
 
 class TestApi {
    enum class Stage {
@@ -256,35 +256,35 @@ class TestApi {
    const ptrdiff_t m_learningTypeOrCountTargetClasses;
    const ptrdiff_t m_iZeroClassificationLogit;
 
-   std::vector<EbmCoreFeature> m_features;
-   std::vector<EbmCoreFeatureCombination> m_featureCombinations;
-   std::vector<IntegerDataType> m_featureCombinationIndexes;
+   std::vector<EbmNativeFeature> m_features;
+   std::vector<EbmNativeFeatureCombination> m_featureCombinations;
+   std::vector<IntEbmType> m_featureCombinationIndexes;
 
    std::vector<std::vector<size_t>> m_countBinsByFeatureCombination;
 
-   std::vector<FractionalDataType> m_trainingRegressionTargets;
-   std::vector<IntegerDataType> m_trainingClassificationTargets;
-   std::vector<IntegerDataType> m_trainingBinnedData;
-   std::vector<FractionalDataType> m_trainingPredictionScores;
+   std::vector<FloatEbmType> m_trainingRegressionTargets;
+   std::vector<IntEbmType> m_trainingClassificationTargets;
+   std::vector<IntEbmType> m_trainingBinnedData;
+   std::vector<FloatEbmType> m_trainingPredictionScores;
    bool m_bNullTrainingPredictionScores;
 
-   std::vector<FractionalDataType> m_validationRegressionTargets;
-   std::vector<IntegerDataType> m_validationClassificationTargets;
-   std::vector<IntegerDataType> m_validationBinnedData;
-   std::vector<FractionalDataType> m_validationPredictionScores;
+   std::vector<FloatEbmType> m_validationRegressionTargets;
+   std::vector<IntEbmType> m_validationClassificationTargets;
+   std::vector<IntEbmType> m_validationBinnedData;
+   std::vector<FloatEbmType> m_validationPredictionScores;
    bool m_bNullValidationPredictionScores;
 
    PEbmBoosting m_pEbmBoosting;
 
-   std::vector<FractionalDataType> m_interactionRegressionTargets;
-   std::vector<IntegerDataType> m_interactionClassificationTargets;
-   std::vector<IntegerDataType> m_interactionBinnedData;
-   std::vector<FractionalDataType> m_interactionPredictionScores;
+   std::vector<FloatEbmType> m_interactionRegressionTargets;
+   std::vector<IntEbmType> m_interactionClassificationTargets;
+   std::vector<IntEbmType> m_interactionBinnedData;
+   std::vector<FloatEbmType> m_interactionPredictionScores;
    bool m_bNullInteractionPredictionScores;
 
    PEbmInteraction m_pEbmInteraction;
 
-   const FractionalDataType * GetPredictorScores(const size_t iFeatureCombination, const FractionalDataType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) const {
+   const FloatEbmType * GetPredictorScores(const size_t iFeatureCombination, const FloatEbmType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
@@ -311,8 +311,8 @@ class TestApi {
       return &pModelFeatureCombination[iValue];
    }
 
-   FractionalDataType GetPredictorScore(const size_t iFeatureCombination, const FractionalDataType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
-      const FractionalDataType * const aScores = GetPredictorScores(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures);
+   FloatEbmType GetPredictorScore(const size_t iFeatureCombination, const FloatEbmType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+      const FloatEbmType * const aScores = GetPredictorScores(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures);
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          if(0 != iTargetClassOrZero) {
             exit(1);
@@ -329,7 +329,7 @@ class TestApi {
             return aScores[iTargetClassOrZero];
          } else {
             if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-               return FractionalDataType { 0 };
+               return FloatEbmType { 0 };
             } else {
                return aScores[iTargetClassOrZero] - aScores[m_iZeroClassificationLogit];
             }
@@ -337,13 +337,13 @@ class TestApi {
 #else // EXPAND_BINARY_LOGITS
          if(m_iZeroClassificationLogit < 0) {
             if(0 == iTargetClassOrZero) {
-               return FractionalDataType { 0 };
+               return FloatEbmType { 0 };
             } else {
                return aScores[0];
             }
          } else {
             if(static_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-               return FractionalDataType { 0 };
+               return FloatEbmType { 0 };
             } else {
                return aScores[0];
             }
@@ -354,13 +354,13 @@ class TestApi {
 #ifdef REDUCE_MULTICLASS_LOGITS
          if(m_iZeroClassificationLogit < 0) {
             if(0 == iTargetClassOrZero) {
-               return FractionalDataType { 0 };
+               return FloatEbmType { 0 };
             } else {
                return aScores[iTargetClassOrZero - 1];
             }
          } else {
             if(staitc_cast<size_t>(m_iZeroClassificationLogit) == iTargetClassOrZero) {
-               return FractionalDataType { 0 };
+               return FloatEbmType { 0 };
             } else if(staitc_cast<size_t>(m_iZeroClassificationLogit) < iTargetClassOrZero) {
                return aScores[iTargetClassOrZero - 1];
             } else {
@@ -418,9 +418,9 @@ public:
       }
 
       for(const FeatureTest oneFeature : features) {
-         EbmCoreFeature feature;
-         feature.featureType = static_cast<IntegerDataType>(oneFeature.m_featureType);
-         feature.hasMissing = oneFeature.m_hasMissing ? IntegerDataType { 1 } : IntegerDataType { 0 };
+         EbmNativeFeature feature;
+         feature.featureType = static_cast<IntEbmType>(oneFeature.m_featureType);
+         feature.hasMissing = oneFeature.m_hasMissing ? IntEbmType { 1 } : IntEbmType { 0 };
          feature.countBins = oneFeature.m_countBins;
          m_features.push_back(feature);
       }
@@ -434,7 +434,7 @@ public:
       }
 
       for(const std::vector<size_t> oneFeatureCombination : featureCombinations) {
-         EbmCoreFeatureCombination featureCombination;
+         EbmNativeFeatureCombination featureCombination;
          featureCombination.countFeaturesInCombination = oneFeatureCombination.size();
          m_featureCombinations.push_back(featureCombination);
          std::vector<size_t> countBins;
@@ -471,7 +471,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const FractionalDataType target = oneInstance.m_target;
+            const FloatEbmType target = oneInstance.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -480,7 +480,7 @@ public:
             }
             m_trainingRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FractionalDataType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -491,9 +491,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -527,7 +527,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntegerDataType target = oneInstance.m_target;
+            const IntEbmType target = oneInstance.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -540,7 +540,7 @@ public:
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FractionalDataType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -591,9 +591,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -627,7 +627,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const FractionalDataType target = oneInstance.m_target;
+            const FloatEbmType target = oneInstance.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -636,7 +636,7 @@ public:
             }
             m_validationRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FractionalDataType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -647,9 +647,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -683,7 +683,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntegerDataType target = oneInstance.m_target;
+            const IntEbmType target = oneInstance.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -696,7 +696,7 @@ public:
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FractionalDataType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -747,9 +747,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -763,11 +763,11 @@ public:
       m_stage = Stage::ValidationAdded;
    }
 
-   void InitializeBoosting(const IntegerDataType countInnerBags = k_countInnerBagsDefault) {
+   void InitializeBoosting(const IntEbmType countInnerBags = k_countInnerBagsDefault) {
       if(Stage::ValidationAdded != m_stage) {
          exit(1);
       }
-      if(countInnerBags < IntegerDataType { 0 }) {
+      if(countInnerBags < IntEbmType { 0 }) {
          exit(1);
       }
 
@@ -785,11 +785,11 @@ public:
       m_stage = Stage::InitializedBoosting;
    }
 
-   FractionalDataType Boost(const IntegerDataType indexFeatureCombination, const std::vector<FractionalDataType> trainingWeights = {}, const std::vector<FractionalDataType> validationWeights = {}, const FractionalDataType learningRate = k_learningRateDefault, const IntegerDataType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntegerDataType countInstancesRequiredForParentSplitMin = k_countInstancesRequiredForParentSplitMinDefault) {
+   FloatEbmType Boost(const IntEbmType indexFeatureCombination, const std::vector<FloatEbmType> trainingWeights = {}, const std::vector<FloatEbmType> validationWeights = {}, const FloatEbmType learningRate = k_learningRateDefault, const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntEbmType countInstancesRequiredForParentSplitMin = k_countInstancesRequiredForParentSplitMinDefault) {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(indexFeatureCombination < IntegerDataType { 0 }) {
+      if(indexFeatureCombination < IntEbmType { 0 }) {
          exit(1);
       }
       if(m_featureCombinations.size() <= static_cast<size_t>(indexFeatureCombination)) {
@@ -801,64 +801,64 @@ public:
       if(std::isinf(learningRate)) {
          exit(1);
       }
-      if(countTreeSplitsMax < FractionalDataType { 0 }) {
+      if(countTreeSplitsMax < FloatEbmType { 0 }) {
          exit(1);
       }
-      if(countInstancesRequiredForParentSplitMin < FractionalDataType { 0 }) {
+      if(countInstancesRequiredForParentSplitMin < FloatEbmType { 0 }) {
          exit(1);
       }
 
-      FractionalDataType validationMetricReturn = FractionalDataType { 0 };
-      const IntegerDataType ret = BoostingStep(m_pEbmBoosting, indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
+      FloatEbmType validationMetricReturn = FloatEbmType { 0 };
+      const IntEbmType ret = BoostingStep(m_pEbmBoosting, indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
       if(0 != ret) {
          exit(1);
       }
       return validationMetricReturn;
    }
 
-   FractionalDataType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
+   FloatEbmType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
          exit(1);
       }
-      FractionalDataType * pModelFeatureCombination = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
-      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, indexes, iScore);
+      FloatEbmType * pModelFeatureCombination = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, indexes, iScore);
       return predictorScore;
    }
 
-   const FractionalDataType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+   const FloatEbmType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType * pModel = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
       return pModel;
    }
 
-   FractionalDataType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+   FloatEbmType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
          exit(1);
       }
-      FractionalDataType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
-      FractionalDataType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
+      FloatEbmType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
       return predictorScore;
    }
 
-   const FractionalDataType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+   const FloatEbmType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
       if(m_featureCombinations.size() <= iFeatureCombination) {
          exit(1);
       }
-      FractionalDataType * pModel = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType * pModel = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
       return pModel;
    }
 
@@ -882,7 +882,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const FractionalDataType target = oneInstance.m_target;
+            const FloatEbmType target = oneInstance.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -891,7 +891,7 @@ public:
             }
             m_interactionRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FractionalDataType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -902,9 +902,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -938,7 +938,7 @@ public:
             if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntegerDataType target = oneInstance.m_target;
+            const IntEbmType target = oneInstance.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -951,7 +951,7 @@ public:
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FractionalDataType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -1002,9 +1002,9 @@ public:
             }
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
-            const EbmCoreFeature feature = m_features[iFeature];
+            const EbmNativeFeature feature = m_features[iFeature];
             for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntegerDataType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -1037,12 +1037,12 @@ public:
       m_stage = Stage::InitializedInteraction;
    }
 
-   FractionalDataType InteractionScore(const std::vector<IntegerDataType> featuresInCombination) const {
+   FloatEbmType InteractionScore(const std::vector<IntEbmType> featuresInCombination) const {
       if(Stage::InitializedInteraction != m_stage) {
          exit(1);
       }
-      for(const IntegerDataType oneFeatureIndex : featuresInCombination) {
-         if(oneFeatureIndex < IntegerDataType { 0 }) {
+      for(const IntEbmType oneFeatureIndex : featuresInCombination) {
+         if(oneFeatureIndex < IntEbmType { 0 }) {
             exit(1);
          }
          if(m_features.size() <= static_cast<size_t>(oneFeatureIndex)) {
@@ -1050,8 +1050,8 @@ public:
          }
       }
 
-      FractionalDataType interactionScoreReturn = FractionalDataType { 0 };
-      const IntegerDataType ret = GetInteractionScore(m_pEbmInteraction, featuresInCombination.size(), 0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], &interactionScoreReturn);
+      FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
+      const IntEbmType ret = GetInteractionScore(m_pEbmInteraction, featuresInCombination.size(), 0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], &interactionScoreReturn);
       if(0 != ret) {
          exit(1);
       }
@@ -1081,7 +1081,7 @@ TEST_CASE("test random number generator equivalency") {
       }
    }
 
-   FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
+   FloatEbmType modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 1);
    // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those
@@ -1090,52 +1090,52 @@ TEST_CASE("test random number generator equivalency") {
 #endif // LEGACY_COMPATIBILITY
 
 TEST_CASE("null validationMetricReturn, boosting, regression") {
-   EbmCoreFeatureCombination combinations[1];
+   EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null validationMetricReturn, boosting, binary") {
-   EbmCoreFeatureCombination combinations[1];
+   EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(2, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null validationMetricReturn, boosting, multiclass") {
-   EbmCoreFeatureCombination combinations[1];
+   EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(3, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntegerDataType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, regression") {
    PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr);
-   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr);
-   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr);
-   const IntegerDataType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
@@ -1148,8 +1148,8 @@ TEST_CASE("zero learning rate, boosting, regression") {
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
@@ -1171,8 +1171,8 @@ TEST_CASE("zero learning rate, boosting, binary") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
@@ -1198,8 +1198,8 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
@@ -1229,8 +1229,8 @@ TEST_CASE("negative learning rate, boosting, regression") {
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
@@ -1259,8 +1259,8 @@ TEST_CASE("negative learning rate, boosting, binary") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
@@ -1296,8 +1296,8 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
@@ -1344,9 +1344,9 @@ TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") 
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
+   FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
-   FractionalDataType modelValue;
+   FloatEbmType modelValue;
    modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
    CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
@@ -1366,9 +1366,9 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
+   FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
    CHECK_APPROX(validationMetric, 141.61);
-   FractionalDataType modelValue;
+   FloatEbmType modelValue;
    modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
    CHECK_APPROX(modelValue, 0.1000000000000000);
    CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
@@ -1380,14 +1380,14 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
 //   test.AddFeatureCombinations({ { 0 } });
-//   test.AddTrainingInstances({ RegressionInstance(FractionalDataType { std::numeric_limits<FractionalDataType>::infinity() }, { 1 }) });
+//   test.AddTrainingInstances({ RegressionInstance(FloatEbmType { std::numeric_limits<FloatEbmType>::infinity() }, { 1 }) });
 //   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
 //   test.InitializeBoosting();
 //
 //   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-//      FractionalDataType validationMetric = test.Boost(0);
+//      FloatEbmType validationMetric = test.Boost(0);
 //      CHECK_APPROX(validationMetric, 12);
-//      FractionalDataType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
+//      FloatEbmType modelValue = test.GetCurrentModelValue(0, { 0 }, 0);
 //      CHECK_APPROX(modelValue, 0);
 //   }
 //}
@@ -1403,9 +1403,9 @@ TEST_CASE("Zero training instances, boosting, regression") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 144);
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
       CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
@@ -1421,9 +1421,9 @@ TEST_CASE("Zero training instances, boosting, binary") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 0.69314718055994529);
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
       CHECK_APPROX(modelValue, test.GetCurrentModelPredictorScore(0, { 1 }, 0));
@@ -1443,9 +1443,9 @@ TEST_CASE("Zero training instances, boosting, multiclass") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK_APPROX(validationMetric, 1.0986122886681098);
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
 
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
@@ -1468,10 +1468,10 @@ TEST_CASE("Zero validation instances, boosting, regression") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       if(0 == iEpoch) {
          CHECK_APPROX(modelValue, 0.1000000000000000);
@@ -1497,10 +1497,10 @@ TEST_CASE("Zero validation instances, boosting, binary") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
 
       modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
       CHECK_APPROX(modelValue, 0);
@@ -1535,10 +1535,10 @@ TEST_CASE("Zero validation instances, boosting, multiclass") {
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric = test.Boost(0);
+      FloatEbmType validationMetric = test.Boost(0);
       CHECK(0 == validationMetric);
       // the current model will continue to update, even though we have no way of evaluating it
-      FractionalDataType modelValue;
+      FloatEbmType modelValue;
       if(0 == iEpoch) {
          modelValue = test.GetCurrentModelPredictorScore(0, { 0 }, 0);
          CHECK_APPROX(modelValue, 0.03000000000000000);
@@ -1580,7 +1580,7 @@ TEST_CASE("Zero interaction instances, interaction, regression") {
    test.AddInteractionInstances(std::vector<RegressionInstance> {});
    test.InitializeInteraction();
 
-   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -1590,7 +1590,7 @@ TEST_CASE("Zero interaction instances, interaction, binary") {
    test.AddInteractionInstances(std::vector<ClassificationInstance> {});
    test.InitializeInteraction();
 
-   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -1600,7 +1600,7 @@ TEST_CASE("Zero interaction instances, interaction, multiclass") {
    test.AddInteractionInstances(std::vector<ClassificationInstance> {});
    test.InitializeInteraction();
 
-   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -1613,7 +1613,7 @@ TEST_CASE("features with 0 states, boosting") {
    test.AddValidationInstances(std::vector<RegressionInstance> {});
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = test.Boost(0);
+   FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
@@ -1627,7 +1627,7 @@ TEST_CASE("features with 0 states, interaction") {
    test.AddInteractionInstances(std::vector<RegressionInstance> {});
    test.InitializeInteraction();
 
-   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   FloatEbmType validationMetric = test.InteractionScore({ 0 });
    CHECK(0 == validationMetric);
 }
 
@@ -1643,7 +1643,7 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
-   FractionalDataType validationMetric = test.Boost(0);
+   FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
@@ -1656,7 +1656,7 @@ TEST_CASE("classification with 0 possible target states, interaction") {
    test.AddInteractionInstances(std::vector<ClassificationInstance> {});
    test.InitializeInteraction();
 
-   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   FloatEbmType validationMetric = test.InteractionScore({ 0 });
    CHECK(0 == validationMetric);
 }
 
@@ -1671,7 +1671,7 @@ TEST_CASE("classification with 1 possible target, boosting") {
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
    CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
 
-   FractionalDataType validationMetric = test.Boost(0);
+   FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
    CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
@@ -1684,7 +1684,7 @@ TEST_CASE("classification with 1 possible target, interaction") {
    test.AddInteractionInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeInteraction();
 
-   FractionalDataType validationMetric = test.InteractionScore({ 0 });
+   FloatEbmType validationMetric = test.InteractionScore({ 0 });
    CHECK(0 == validationMetric);
 }
 
@@ -1723,46 +1723,46 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      FractionalDataType validationMetric00 = test0.Boost(0);
-      FractionalDataType validationMetric10 = test1.Boost(1);
+      FloatEbmType validationMetric00 = test0.Boost(0);
+      FloatEbmType validationMetric10 = test1.Boost(1);
       CHECK_APPROX(validationMetric00, validationMetric10);
-      FractionalDataType validationMetric20 = test2.Boost(2);
+      FloatEbmType validationMetric20 = test2.Boost(2);
       CHECK_APPROX(validationMetric00, validationMetric20);
 
-      FractionalDataType validationMetric01 = test0.Boost(1);
-      FractionalDataType validationMetric11 = test1.Boost(2);
+      FloatEbmType validationMetric01 = test0.Boost(1);
+      FloatEbmType validationMetric11 = test1.Boost(2);
       CHECK_APPROX(validationMetric01, validationMetric11);
-      FractionalDataType validationMetric21 = test2.Boost(0);
+      FloatEbmType validationMetric21 = test2.Boost(0);
       CHECK_APPROX(validationMetric01, validationMetric21);
 
-      FractionalDataType validationMetric02 = test0.Boost(2);
-      FractionalDataType validationMetric12 = test1.Boost(0);
+      FloatEbmType validationMetric02 = test0.Boost(2);
+      FloatEbmType validationMetric12 = test1.Boost(0);
       CHECK_APPROX(validationMetric02, validationMetric12);
-      FractionalDataType validationMetric22 = test2.Boost(1);
+      FloatEbmType validationMetric22 = test2.Boost(1);
       CHECK_APPROX(validationMetric02, validationMetric22);
 
-      FractionalDataType modelValue000 = test0.GetCurrentModelPredictorScore(0, { 0 }, 0);
-      FractionalDataType modelValue010 = test0.GetCurrentModelPredictorScore(1, { 0 }, 0);
-      FractionalDataType modelValue011 = test0.GetCurrentModelPredictorScore(1, { 1 }, 0);
-      FractionalDataType modelValue020 = test0.GetCurrentModelPredictorScore(2, { 0 }, 0);
-      FractionalDataType modelValue021 = test0.GetCurrentModelPredictorScore(2, { 1 }, 0);
+      FloatEbmType modelValue000 = test0.GetCurrentModelPredictorScore(0, { 0 }, 0);
+      FloatEbmType modelValue010 = test0.GetCurrentModelPredictorScore(1, { 0 }, 0);
+      FloatEbmType modelValue011 = test0.GetCurrentModelPredictorScore(1, { 1 }, 0);
+      FloatEbmType modelValue020 = test0.GetCurrentModelPredictorScore(2, { 0 }, 0);
+      FloatEbmType modelValue021 = test0.GetCurrentModelPredictorScore(2, { 1 }, 0);
 
-      FractionalDataType modelValue110 = test1.GetCurrentModelPredictorScore(1, { 0 }, 0);
-      FractionalDataType modelValue120 = test1.GetCurrentModelPredictorScore(2, { 0 }, 0);
-      FractionalDataType modelValue121 = test1.GetCurrentModelPredictorScore(2, { 1 }, 0);
-      FractionalDataType modelValue100 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
-      FractionalDataType modelValue101 = test1.GetCurrentModelPredictorScore(0, { 1 }, 0);
+      FloatEbmType modelValue110 = test1.GetCurrentModelPredictorScore(1, { 0 }, 0);
+      FloatEbmType modelValue120 = test1.GetCurrentModelPredictorScore(2, { 0 }, 0);
+      FloatEbmType modelValue121 = test1.GetCurrentModelPredictorScore(2, { 1 }, 0);
+      FloatEbmType modelValue100 = test1.GetCurrentModelPredictorScore(0, { 0 }, 0);
+      FloatEbmType modelValue101 = test1.GetCurrentModelPredictorScore(0, { 1 }, 0);
       CHECK_APPROX(modelValue110, modelValue000);
       CHECK_APPROX(modelValue120, modelValue010);
       CHECK_APPROX(modelValue121, modelValue011);
       CHECK_APPROX(modelValue100, modelValue020);
       CHECK_APPROX(modelValue101, modelValue021);
 
-      FractionalDataType modelValue220 = test2.GetCurrentModelPredictorScore(2, { 0 }, 0);
-      FractionalDataType modelValue200 = test2.GetCurrentModelPredictorScore(0, { 0 }, 0);
-      FractionalDataType modelValue201 = test2.GetCurrentModelPredictorScore(0, { 1 }, 0);
-      FractionalDataType modelValue210 = test2.GetCurrentModelPredictorScore(1, { 0 }, 0);
-      FractionalDataType modelValue211 = test2.GetCurrentModelPredictorScore(1, { 1 }, 0);
+      FloatEbmType modelValue220 = test2.GetCurrentModelPredictorScore(2, { 0 }, 0);
+      FloatEbmType modelValue200 = test2.GetCurrentModelPredictorScore(0, { 0 }, 0);
+      FloatEbmType modelValue201 = test2.GetCurrentModelPredictorScore(0, { 1 }, 0);
+      FloatEbmType modelValue210 = test2.GetCurrentModelPredictorScore(1, { 0 }, 0);
+      FloatEbmType modelValue211 = test2.GetCurrentModelPredictorScore(1, { 1 }, 0);
       CHECK_APPROX(modelValue220, modelValue000);
       CHECK_APPROX(modelValue200, modelValue010);
       CHECK_APPROX(modelValue201, modelValue011);
@@ -1815,8 +1815,8 @@ TEST_CASE("FeatureCombination with zero features, boosting, regression") {
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination);
@@ -1845,8 +1845,8 @@ TEST_CASE("FeatureCombination with zero features, boosting, binary") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination);
@@ -1881,8 +1881,8 @@ TEST_CASE("FeatureCombination with zero features, boosting, multiclass") {
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
 
-   FractionalDataType validationMetric = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
-   FractionalDataType modelValue = FractionalDataType { std::numeric_limits<FractionalDataType>::quiet_NaN() };
+   FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
          validationMetric = test.Boost(iFeatureCombination);
@@ -1920,7 +1920,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, regression") {
    test.AddFeatures({});
    test.AddInteractionInstances({ RegressionInstance(10, {}) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({});
+   FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
 }
 
@@ -1929,7 +1929,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, binary") {
    test.AddFeatures({});
    test.AddInteractionInstances({ ClassificationInstance(0, {}) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({});
+   FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
 }
 
@@ -1938,7 +1938,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, multiclass") {
    test.AddFeatures({});
    test.AddInteractionInstances({ ClassificationInstance(0, {}) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({});
+   FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
 }
 
@@ -1968,16 +1968,16 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
+         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroFeaturesInCombination = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FractionalDataType modelValueOneState = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
+         FloatEbmType modelValueZeroFeaturesInCombination = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         FloatEbmType modelValueOneState = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueOneState);
-         FractionalDataType modelValueTwoStates = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
+         FloatEbmType modelValueTwoStates = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueTwoStates);
       }
    }
@@ -2009,22 +2009,22 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
+         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
+         FloatEbmType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
-         FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
+         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
 
-         FractionalDataType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
-         FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
+         FloatEbmType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
          CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
-         FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
+         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
          CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
       }
    }
@@ -2056,28 +2056,28 @@ TEST_CASE("FeatureCombination with one feature with one or two states is the exa
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
       assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FractionalDataType validationMetricOneState = testOneState.Boost(iFeatureCombination);
+         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FractionalDataType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
 
-         FractionalDataType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FractionalDataType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
+         FloatEbmType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
-         FractionalDataType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
+         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
          CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
 
-         FractionalDataType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
-         FractionalDataType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
+         FloatEbmType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
          CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
-         FractionalDataType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
+         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
          CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
 
-         FractionalDataType modelValueZeroFeaturesInCombination2 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
-         FractionalDataType modelValueOneState2 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 2);
+         FloatEbmType modelValueZeroFeaturesInCombination2 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+         FloatEbmType modelValueOneState2 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 2);
          CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueOneState2);
-         FractionalDataType modelValueTwoStates2 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 2);
+         FloatEbmType modelValueTwoStates2 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 2);
          CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueTwoStates2);
       }
    }
@@ -2124,30 +2124,30 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
       assert(test0.GetFeatureCombinationsCount() == test1.GetFeatureCombinationsCount());
       assert(test0.GetFeatureCombinationsCount() == test2.GetFeatureCombinationsCount());
       for(size_t iFeatureCombination = 0; iFeatureCombination < test0.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FractionalDataType validationMetric0 = test0.Boost(iFeatureCombination);
-         FractionalDataType validationMetric1 = test1.Boost(iFeatureCombination);
+         FloatEbmType validationMetric0 = test0.Boost(iFeatureCombination);
+         FloatEbmType validationMetric1 = test1.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetric0, validationMetric1);
-         FractionalDataType validationMetric2 = test2.Boost(iFeatureCombination);
+         FloatEbmType validationMetric2 = test2.Boost(iFeatureCombination);
          CHECK_APPROX(validationMetric0, validationMetric2);
 
-         FractionalDataType modelValue01 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FractionalDataType modelValue02 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
-         FractionalDataType modelValue03 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
-         FractionalDataType modelValue04 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 1 }, 0);
+         FloatEbmType modelValue01 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue02 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
+         FloatEbmType modelValue03 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
+         FloatEbmType modelValue04 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 1 }, 0);
 
-         FractionalDataType modelValue11 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FractionalDataType modelValue12 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
-         FractionalDataType modelValue13 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
-         FractionalDataType modelValue14 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 1 }, 0);
+         FloatEbmType modelValue11 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue12 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
+         FloatEbmType modelValue13 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
+         FloatEbmType modelValue14 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 1 }, 0);
          CHECK_APPROX(modelValue11, modelValue01);
          CHECK_APPROX(modelValue12, modelValue02);
          CHECK_APPROX(modelValue13, modelValue03);
          CHECK_APPROX(modelValue14, modelValue04);
 
-         FractionalDataType modelValue21 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FractionalDataType modelValue22 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
-         FractionalDataType modelValue23 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
-         FractionalDataType modelValue24 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 1, 0 }, 0);
+         FloatEbmType modelValue21 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue22 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
+         FloatEbmType modelValue23 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
+         FloatEbmType modelValue24 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 1, 0 }, 0);
          CHECK_APPROX(modelValue21, modelValue01);
          CHECK_APPROX(modelValue22, modelValue02);
          CHECK_APPROX(modelValue23, modelValue03);
@@ -2161,7 +2161,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, regr
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ RegressionInstance(10, { 0 }) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -2170,7 +2170,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, bina
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({ 0 });
+   FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
@@ -2179,7 +2179,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, mult
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
    test.InitializeInteraction();
-   FractionalDataType metricReturn = test.InteractionScore({0});
+   FloatEbmType metricReturn = test.InteractionScore({0});
    CHECK(0 == metricReturn);
 }
 
@@ -2191,11 +2191,11 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    testContinuous.AddValidationInstances({ RegressionInstance(12, {}) });
    testContinuous.InitializeBoosting();
 
-   FractionalDataType model0 = 0;
+   FloatEbmType model0 = 0;
 
-   FractionalDataType validationMetricContinuous;
-   FractionalDataType modelValueContinuous;
-   FractionalDataType validationMetricRestart;
+   FloatEbmType validationMetricContinuous;
+   FloatEbmType modelValueContinuous;
+   FloatEbmType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(k_learningTypeRegression);
       testRestart.AddFeatures({});
@@ -2222,12 +2222,12 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
    testContinuous.InitializeBoosting();
 
-   FractionalDataType model0 = 0;
-   FractionalDataType model1 = 0;
+   FloatEbmType model0 = 0;
+   FloatEbmType model1 = 0;
 
-   FractionalDataType validationMetricContinuous;
-   FractionalDataType modelValueContinuous;
-   FractionalDataType validationMetricRestart;
+   FloatEbmType validationMetricContinuous;
+   FloatEbmType modelValueContinuous;
+   FloatEbmType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
@@ -2258,13 +2258,13 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
    testContinuous.InitializeBoosting();
 
-   FractionalDataType model0 = 0;
-   FractionalDataType model1 = 0;
-   FractionalDataType model2 = 0;
+   FloatEbmType model0 = 0;
+   FloatEbmType model1 = 0;
+   FloatEbmType model2 = 0;
 
-   FractionalDataType validationMetricContinuous;
-   FractionalDataType modelValueContinuous;
-   FractionalDataType validationMetricRestart;
+   FloatEbmType validationMetricContinuous;
+   FloatEbmType modelValueContinuous;
+   FloatEbmType validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(3);
       testRestart.AddFeatures({});
@@ -2293,10 +2293,10 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
 
 TEST_CASE("Test data bit packing extremes, boosting, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
-         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
+         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(k_learningTypeRegression);
@@ -2313,9 +2313,9 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
             test.AddValidationInstances(validationInstances);
             test.InitializeBoosting();
 
-            FractionalDataType validationMetric = test.Boost(0);
+            FloatEbmType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 62.8849);
-            FractionalDataType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
+            FloatEbmType modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0.07);
          }
       }
@@ -2324,10 +2324,10 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
 
 TEST_CASE("Test data bit packing extremes, boosting, binary") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
-         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
+         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(2, 0);
@@ -2344,10 +2344,10 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
             test.AddValidationInstances(validationInstances);
             test.InitializeBoosting();
 
-            FractionalDataType validationMetric = test.Boost(0);
+            FloatEbmType validationMetric = test.Boost(0);
             CHECK_APPROX(validationMetric, 0.70319717972663420);
 
-            FractionalDataType modelValue;
+            FloatEbmType modelValue;
             modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 0);
             CHECK_APPROX(modelValue, 0);
             modelValue = test.GetCurrentModelPredictorScore(0, { static_cast<size_t>(cBins - 1) }, 1);
@@ -2359,10 +2359,10 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
 
 TEST_CASE("Test data bit packing extremes, interaction, regression") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
-         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
+         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(k_learningTypeRegression);
@@ -2375,7 +2375,7 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             test.AddInteractionInstances(instances);
             test.InitializeInteraction();
 
-            FractionalDataType metric = test.InteractionScore({ 0, 1 });
+            FloatEbmType metric = test.InteractionScore({ 0, 1 });
 #ifdef LEGACY_COMPATIBILITY
             if(cBins == 1) {
                CHECK_APPROX(metric, 0);
@@ -2392,10 +2392,10 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
 
 TEST_CASE("Test data bit packing extremes, interaction, binary") {
    for(size_t exponentialBins = 1; exponentialBins < 10; ++exponentialBins) {
-      IntegerDataType exponential = static_cast<IntegerDataType>(std::pow(2, exponentialBins));
+      IntEbmType exponential = static_cast<IntEbmType>(std::pow(2, exponentialBins));
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
-      for(IntegerDataType iRange = IntegerDataType { -1 }; iRange <= IntegerDataType { 1 }; ++iRange) {
-         IntegerDataType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
+      for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
+         IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
          // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(2, 0);
@@ -2408,7 +2408,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
             test.AddInteractionInstances(instances);
             test.InitializeInteraction();
 
-            FractionalDataType metric = test.InteractionScore({ 0, 1 });
+            FloatEbmType metric = test.InteractionScore({ 0, 1 });
 
 #ifdef LEGACY_COMPATIBILITY
             if(cBins == 1) {
@@ -2430,7 +2430,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
 }
 
 
-void EBMCORE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
+void EBM_NATIVE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
    UNUSED(traceLevel);
    // don't display the message, but we want to test all our messages, so have them call us here
    strlen(message); // test that the string memory is accessible

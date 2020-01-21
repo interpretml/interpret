@@ -4,8 +4,8 @@
 
 // to minimize confusion, we try whenever possible to use common terms with scikit-learn -> https://scikit-learn.org/stable/glossary.html
 
-#ifndef EBMCORE_H
-#define EBMCORE_H
+#ifndef EBM_NATIVE_H
+#define EBM_NATIVE_H
 
 #include <inttypes.h>
 
@@ -36,30 +36,30 @@ https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #ifdef EBM_NATIVE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
-#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
-#define EBMCORE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
-#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
-#define EBMCORE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY extern __attribute__ ((visibility ("default")))
 #endif // EBM_NATIVE_R
 
-#define EBMCORE_CALLING_CONVENTION
+#define EBM_NATIVE_CALLING_CONVENTION
 
 #elif defined(_MSC_VER) // compiler type
 
 #ifdef EBM_NATIVE_R // R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   Also, we export R specific functions rather than the generic ones that we can consume from other languages
-#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
-#define EBMCORE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
 
 #ifdef EBM_NATIVE_EXPORTS
 // we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
-#define EBMCORE_IMPORT_EXPORT_INCLUDE extern
-#define EBMCORE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
+#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_EXPORTS
 // __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
-#define EBMCORE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
-#define EBMCORE_IMPORT_EXPORT_BODY extern
+#define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
+#define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #endif // EBM_NATIVE_EXPORTS
 
 #endif // EBM_NATIVE_R
@@ -67,10 +67,10 @@ https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
 #ifdef _WIN64
 // _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64
 // in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for future compatibility (not specifying it means it can be the new default if somehting new comes along later)
-#define EBMCORE_CALLING_CONVENTION
+#define EBM_NATIVE_CALLING_CONVENTION
 #else // _WIN64
 // in Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined by Windows and all languages essentially support it within the Windows ecosystem since they all need to call win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
-#define EBMCORE_CALLING_CONVENTION __stdcall
+#define EBM_NATIVE_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
 #else // compiler type
@@ -90,25 +90,31 @@ typedef struct _EbmInteraction {
 // this should really be defined, but some compilers aren't compliant
 #define PRId64 "lld"
 #endif
+#ifndef PRIu64
+// this should really be defined, but some compilers aren't compliant
+#define PRIu64 "llu"
+#endif
 
-typedef double FractionalDataType;
-#define FractionalDataTypePrintf "f"
-typedef int64_t IntegerDataType;
-#define IntegerDataTypePrintf PRId64
+typedef double FloatEbmType;
+#define FloatEbmTypePrintf "f"
+typedef int64_t IntEbmType;
+#define IntEbmTypePrintf PRId64
+typedef uint64_t UIntEbmType;
+#define UIntEbmTypePrintf PRIu64
 
-const IntegerDataType FeatureTypeOrdinal = 0;
-const IntegerDataType FeatureTypeNominal = 1;
+const IntEbmType FeatureTypeOrdinal = 0;
+const IntEbmType FeatureTypeNominal = 1;
 
-typedef struct _EbmCoreFeature {
-   IntegerDataType featureType; // enums aren't standardized accross languages, so use IntegerDataType values
-   IntegerDataType hasMissing;
+typedef struct _EbmNativeFeature {
+   IntEbmType featureType; // enums aren't standardized accross languages, so use IntEbmType values
+   IntEbmType hasMissing;
    // TODO make the order (countBins, hasMissing, featureType).  In languages that default values countBins is the only item in this struct that can't really be defaulted, so put it at the top, as it will be in our caller's language.  hasMissing is TRUE/FALSE, so the user doesn't need to remember much there, make the featureType last since it's the most forgettable in terms of possible values
-   IntegerDataType countBins;
-} EbmCoreFeature;
+   IntEbmType countBins;
+} EbmNativeFeature;
 
-typedef struct _EbmCoreFeatureCombination {
-   IntegerDataType countFeaturesInCombination;
-} EbmCoreFeatureCombination;
+typedef struct _EbmNativeFeatureCombination {
+   IntEbmType countFeaturesInCombination;
+} EbmNativeFeatureCombination;
 
 const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
 const signed char TraceLevelError = 1;
@@ -117,10 +123,10 @@ const signed char TraceLevelInfo = 3;
 const signed char TraceLevelVerbose = 4;
 
 // all our logging messages are pure ASCII (127 values), and therefore also UTF-8
-typedef void (EBMCORE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
+typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
 
-EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
-EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
 // - I initially considered storing our model files as negated logits [storing them as (0 - mathematical_logit)], but that's a bad choice because:
@@ -197,104 +203,104 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION SetTraceLevel(sign
 //       - we'll probably want to have special categorical processing since each slice in a tensoor can be considered completely independently.  I don't see any reason to have intermediate versions where we have 3 missing / categorical values and 4 ordinal values
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoostingClassification(
-   IntegerDataType countTargetClasses,
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countFeatureCombinations,
-   const EbmCoreFeatureCombination * featureCombinations,
-   const IntegerDataType * featureCombinationIndexes,
-   IntegerDataType countTrainingInstances,
-   const IntegerDataType * trainingBinnedData,
-   const IntegerDataType * trainingTargets,
-   const FractionalDataType * trainingPredictorScores,
-   IntegerDataType countValidationInstances,
-   const IntegerDataType * validationBinnedData,
-   const IntegerDataType * validationTargets,
-   const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags,
-   IntegerDataType randomSeed
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
+   IntEbmType countTargetClasses,
+   IntEbmType countFeatures,
+   const EbmNativeFeature * features,
+   IntEbmType countFeatureCombinations,
+   const EbmNativeFeatureCombination * featureCombinations,
+   const IntEbmType * featureCombinationIndexes,
+   IntEbmType countTrainingInstances,
+   const IntEbmType * trainingBinnedData,
+   const IntEbmType * trainingTargets,
+   const FloatEbmType * trainingPredictorScores,
+   IntEbmType countValidationInstances,
+   const IntEbmType * validationBinnedData,
+   const IntEbmType * validationTargets,
+   const FloatEbmType * validationPredictorScores,
+   IntEbmType countInnerBags,
+   IntEbmType randomSeed
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBMCORE_CALLING_CONVENTION InitializeBoostingRegression(
-   IntegerDataType countFeatures, 
-   const EbmCoreFeature * features,
-   IntegerDataType countFeatureCombinations, 
-   const EbmCoreFeatureCombination * featureCombinations,
-   const IntegerDataType * featureCombinationIndexes, 
-   IntegerDataType countTrainingInstances, 
-   const IntegerDataType * trainingBinnedData, 
-   const FractionalDataType * trainingTargets,
-   const FractionalDataType * trainingPredictorScores,
-   IntegerDataType countValidationInstances, 
-   const IntegerDataType * validationBinnedData, 
-   const FractionalDataType * validationTargets,
-   const FractionalDataType * validationPredictorScores,
-   IntegerDataType countInnerBags,
-   IntegerDataType randomSeed
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
+   IntEbmType countFeatures, 
+   const EbmNativeFeature * features,
+   IntEbmType countFeatureCombinations, 
+   const EbmNativeFeatureCombination * featureCombinations,
+   const IntEbmType * featureCombinationIndexes, 
+   IntEbmType countTrainingInstances, 
+   const IntEbmType * trainingBinnedData, 
+   const FloatEbmType * trainingTargets,
+   const FloatEbmType * trainingPredictorScores,
+   IntEbmType countValidationInstances, 
+   const IntEbmType * validationBinnedData, 
+   const FloatEbmType * validationTargets,
+   const FloatEbmType * validationPredictorScores,
+   IntEbmType countInnerBags,
+   IntEbmType randomSeed
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmBoosting ebmBoosting, 
-   IntegerDataType indexFeatureCombination, 
-   FractionalDataType learningRate, 
-   IntegerDataType countTreeSplitsMax, 
-   IntegerDataType countInstancesRequiredForParentSplitMin, 
-   const FractionalDataType * trainingWeights, 
-   const FractionalDataType * validationWeights, 
-   FractionalDataType * gainReturn
+   IntEbmType indexFeatureCombination, 
+   FloatEbmType learningRate, 
+   IntEbmType countTreeSplitsMax, 
+   IntEbmType countInstancesRequiredForParentSplitMin, 
+   const FloatEbmType * trainingWeights, 
+   const FloatEbmType * validationWeights, 
+   FloatEbmType * gainReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
    PEbmBoosting ebmBoosting, 
-   IntegerDataType indexFeatureCombination, 
-   const FractionalDataType * modelFeatureCombinationUpdateTensor,
-   FractionalDataType * validationMetricReturn
+   IntEbmType indexFeatureCombination, 
+   const FloatEbmType * modelFeatureCombinationUpdateTensor,
+   FloatEbmType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION BoostingStep(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
-   IntegerDataType indexFeatureCombination,
-   FractionalDataType learningRate,
-   IntegerDataType countTreeSplitsMax,
-   IntegerDataType countInstancesRequiredForParentSplitMin,
-   const FractionalDataType * trainingWeights,
-   const FractionalDataType * validationWeights,
-   FractionalDataType * validationMetricReturn
+   IntEbmType indexFeatureCombination,
+   FloatEbmType learningRate,
+   IntEbmType countTreeSplitsMax,
+   IntEbmType countInstancesRequiredForParentSplitMin,
+   const FloatEbmType * trainingWeights,
+   const FloatEbmType * validationWeights,
+   FloatEbmType * validationMetricReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetBestModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureCombination(
    PEbmBoosting ebmBoosting, 
-   IntegerDataType indexFeatureCombination
+   IntEbmType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE FractionalDataType * EBMCORE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
    PEbmBoosting ebmBoosting,
-   IntegerDataType indexFeatureCombination
+   IntEbmType indexFeatureCombination
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeBoosting(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
    PEbmBoosting ebmBoosting
 );
 
 
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
-   IntegerDataType countTargetClasses,
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countInstances,
-   const IntegerDataType * binnedData,
-   const IntegerDataType * targets,
-   const FractionalDataType * predictorScores
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+   IntEbmType countTargetClasses,
+   IntEbmType countFeatures,
+   const EbmNativeFeature * features,
+   IntEbmType countInstances,
+   const IntEbmType * binnedData,
+   const IntEbmType * targets,
+   const FloatEbmType * predictorScores
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
-   IntegerDataType countFeatures, 
-   const EbmCoreFeature * features,
-   IntegerDataType countInstances, 
-   const IntegerDataType * binnedData, 
-   const FractionalDataType * targets,
-   const FractionalDataType * predictorScores
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+   IntEbmType countFeatures, 
+   const EbmNativeFeature * features,
+   IntEbmType countInstances, 
+   const IntEbmType * binnedData, 
+   const FloatEbmType * targets,
+   const FloatEbmType * predictorScores
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction, 
-   IntegerDataType countFeaturesInCombination, 
-   const IntegerDataType * featureIndexes, 
-   FractionalDataType * interactionScoreReturn
+   IntEbmType countFeaturesInCombination, 
+   const IntEbmType * featureIndexes, 
+   FloatEbmType * interactionScoreReturn
 );
-EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeInteraction(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
 );
 
@@ -414,4 +420,4 @@ EBMCORE_IMPORT_EXPORT_INCLUDE void EBMCORE_CALLING_CONVENTION FreeInteraction(
 }
 #endif // __cplusplus
 
-#endif  // EBMCORE_H
+#endif  // EBM_NATIVE_H

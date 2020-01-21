@@ -8,15 +8,15 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCombination.h"
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
 class DataSetByFeatureCombination final {
-   FractionalDataType * const m_aResidualErrors;
-   FractionalDataType * const m_aPredictorScores;
+   FloatEbmType * const m_aResidualErrors;
+   FloatEbmType * const m_aPredictorScores;
    const StorageDataTypeCore * const m_aTargetData;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cInstances;
@@ -28,22 +28,22 @@ class DataSetByFeatureCombination final {
 
 public:
 
-   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength);
+   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength);
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
       return (m_bAllocateResidualErrors && nullptr == m_aResidualErrors) || (m_bAllocatePredictorScores && nullptr == m_aPredictorScores) || (m_bAllocateTargetData && nullptr == m_aTargetData) || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
    }
 
-   EBM_INLINE FractionalDataType * GetResidualPointer() {
+   EBM_INLINE FloatEbmType * GetResidualPointer() {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   EBM_INLINE const FractionalDataType * GetResidualPointer() const {
+   EBM_INLINE const FloatEbmType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   EBM_INLINE FractionalDataType * GetPredictorScores() {
+   EBM_INLINE FloatEbmType * GetPredictorScores() {
       EBM_ASSERT(nullptr != m_aPredictorScores);
       return m_aPredictorScores;
    }

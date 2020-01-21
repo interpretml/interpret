@@ -602,12 +602,12 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 //      pHistogramBucket->m_cInstancesInBucket = cInstancesInBucket;
 //      pPrevious->m_cInstancesInBucket = cInstancesInBucket;
 //      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//         const FractionalDataType sumResidualError = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+//         const FloatEbmType sumResidualError = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
 //         ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
 //         ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
 //
 //         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-//            const FractionalDataType sumDenominator = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
+//            const FloatEbmType sumDenominator = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
 //            ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
 //            ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
 //         }
@@ -826,7 +826,7 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
+FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
 #ifndef NDEBUG
    , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -864,7 +864,7 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
 
-   FractionalDataType bestSplit = k_illegalGain;
+   FloatEbmType bestSplit = k_illegalGain;
    size_t iBin = 0;
    do {
       *piBin = iBin;
@@ -881,24 +881,24 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    #endif // NDEBUG
          );
          if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->m_cInstancesInBucket)) {
-            FractionalDataType splittingScore = FractionalDataType { 0 };
+            FloatEbmType splittingScore = FloatEbmType { 0 };
 #ifndef LEGACY_COMPATIBILITY
             EBM_ASSERT(0 < pTotalsLow->m_cInstancesInBucket);
             EBM_ASSERT(0 < pTotalsHigh->m_cInstancesInBucket);
 #endif // LEGACY_COMPATIBILITY
-            FractionalDataType cLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLow->m_cInstancesInBucket);
-            FractionalDataType cHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHigh->m_cInstancesInBucket);
+            FloatEbmType cLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLow->m_cInstancesInBucket);
+            FloatEbmType cHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHigh->m_cInstancesInBucket);
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               const FractionalDataType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
-               EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FractionalDataType { 0 } <= splittingScoreUpdate1);
+               const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
+               EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
-               const FractionalDataType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
-               EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FractionalDataType { 0 } <= splittingScoreUpdate2);
+               const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
+               EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
-            EBM_ASSERT(std::isnan(splittingScore) || FractionalDataType { 0 } <= splittingScore); // sumation of positive numbers should be positive
+            EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumation of positive numbers should be positive
 
             // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
             // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
@@ -919,7 +919,7 @@ FractionalDataType SweepMultiDiemensional(const HistogramBucket<IsClassification
    } while(iBin < cBins - 1);
    *piBestCut = iBestCut;
 
-   EBM_ASSERT(std::isnan(bestSplit) || FractionalDataType { 0 } <= bestSplit); // sumation of positive numbers should be positive
+   EBM_ASSERT(std::isnan(bestSplit) || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
 
    return bestSplit;
 }
@@ -1000,7 +1000,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
 // TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
@@ -1186,14 +1186,14 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
    size_t aiStart[k_cDimensionsMax];
 
    if(2 == cDimensions) {
-      FractionalDataType splittingScore;
+      FloatEbmType splittingScore;
 
       const size_t cBinsDimension1 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
       const size_t cBinsDimension2 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
-      FractionalDataType bestSplittingScore = k_illegalGain;
+      FloatEbmType bestSplittingScore = k_illegalGain;
 
       size_t cutFirst1Best;
       size_t cutFirst1LowBest;
@@ -1211,31 +1211,31 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
 
-      FractionalDataType splittingScoreParent = FractionalDataType { 0 };
+      FloatEbmType splittingScoreParent = FloatEbmType { 0 };
 #ifndef LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < pTotal->m_cInstancesInBucket);
 #endif // LEGACY_COMPATIBILITY
-      FractionalDataType cInstancesInParentBucket = static_cast<FractionalDataType>(pTotal->m_cInstancesInBucket);
+      FloatEbmType cInstancesInParentBucket = static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          // TODO : we can make this faster by doing the division in ComputeNodeSplittingScoreParent after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-         const FractionalDataType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER_CONST(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cInstancesInParentBucket);
-         EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FractionalDataType { 0 } <= splittingScoreParentUpdate);
+         const FloatEbmType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER_CONST(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cInstancesInParentBucket);
+         EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
          splittingScoreParent += splittingScoreParentUpdate;
       }
-      EBM_ASSERT(std::isnan(splittingScoreParent) || FractionalDataType { 0 } <= splittingScoreParent); // sumation of positive numbers should be positive
+      EBM_ASSERT(std::isnan(splittingScoreParent) || FloatEbmType { 0 } <= splittingScoreParent); // sumation of positive numbers should be positive
 
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
       do {
          aiStart[0] = iBin1;
 
-         splittingScore = FractionalDataType { 0 };
+         splittingScore = FloatEbmType { 0 };
 
          size_t cutSecond1LowBest;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         const FractionalDataType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
+         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1245,13 +1245,13 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
          // us soon and shut down boosting.
          if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
-            EBM_ASSERT(std::isnan(splittingScoreNew1) || FractionalDataType { 0 } <= splittingScoreNew1);
+            EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond1HighBest;
             HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
             HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-            const FractionalDataType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
+            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1260,7 +1260,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
             // us soon and shut down boosting.
             if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew2))) {
-               EBM_ASSERT(std::isnan(splittingScoreNew2) || FractionalDataType { 0 } <= splittingScoreNew2);
+               EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
                splittingScore += splittingScoreNew2;
 
                // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
@@ -1306,12 +1306,12 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       do {
          aiStart[1] = iBin2;
 
-         splittingScore = FractionalDataType { 0 };
+         splittingScore = FloatEbmType { 0 };
 
          size_t cutSecond2LowBest;
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
          HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         const FractionalDataType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
+         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1321,13 +1321,13 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
          // us soon and shut down boosting.
          if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
-            EBM_ASSERT(std::isnan(splittingScoreNew1) || FractionalDataType { 0 } <= splittingScoreNew1);
+            EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond2HighBest;
             HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
             HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-            const FractionalDataType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
+            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
 #ifndef NDEBUG
                , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1336,7 +1336,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
             // us soon and shut down boosting.
             if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew2))) {
-               EBM_ASSERT(std::isnan(splittingScoreNew2) || FractionalDataType { 0 } <= splittingScoreNew2);
+               EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
                splittingScore += splittingScoreNew2;
                // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
                // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
@@ -1368,7 +1368,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       } while(iBin2 < cBinsDimension2 - 1);
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Done sweep loops");
 
-      FractionalDataType gain;
+      FloatEbmType gain;
       // if we get a NaN result for bestSplittingScore, we might as well do less work and just create a zero split update right now.  The rules for NaN values say that non equality comparisons are all false
       // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
       // us soon and shut down boosting.
@@ -1389,17 +1389,17 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, since our value capacity would be 1, which is pre-allocated
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FractionalDataType prediction;
+            FloatEbmType prediction;
 
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                prediction = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotal->m_cInstancesInBucket));
+               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket));
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = prediction;
          }
-         gain = FractionalDataType { 0 }; // no splits means no gain
+         gain = FloatEbmType { 0 }; // no splits means no gain
       } else {
          EBM_ASSERT(!std::isnan(bestSplittingScore));
          EBM_ASSERT(k_illegalGain != bestSplittingScore);
@@ -1468,10 +1468,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             }
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FractionalDataType predictionLowLow;
-               FractionalDataType predictionLowHigh;
-               FractionalDataType predictionHighLow;
-               FractionalDataType predictionHighHigh;
+               FloatEbmType predictionLowLow;
+               FloatEbmType predictionLowHigh;
+               FloatEbmType predictionHighLow;
+               FloatEbmType predictionHighHigh;
 
                if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
@@ -1480,10 +1480,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowLowBest->m_cInstancesInBucket));
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2LowHighBest->m_cInstancesInBucket));
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighLowBest->m_cInstancesInBucket));
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals2HighHighBest->m_cInstancesInBucket));
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2LowLowBest->m_cInstancesInBucket));
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2LowHighBest->m_cInstancesInBucket));
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2HighLowBest->m_cInstancesInBucket));
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2HighHighBest->m_cInstancesInBucket));
                }
 
                if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1572,10 +1572,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
             }
 
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FractionalDataType predictionLowLow;
-               FractionalDataType predictionLowHigh;
-               FractionalDataType predictionHighLow;
-               FractionalDataType predictionHighHigh;
+               FloatEbmType predictionLowLow;
+               FloatEbmType predictionLowHigh;
+               FloatEbmType predictionHighLow;
+               FloatEbmType predictionHighHigh;
 
                if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
@@ -1584,10 +1584,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowLowBest->m_cInstancesInBucket));
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1LowHighBest->m_cInstancesInBucket));
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighLowBest->m_cInstancesInBucket));
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FractionalDataType>(pTotals1HighHighBest->m_cInstancesInBucket));
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1LowLowBest->m_cInstancesInBucket));
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1LowHighBest->m_cInstancesInBucket));
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1HighLowBest->m_cInstancesInBucket));
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1HighHighBest->m_cInstancesInBucket));
                }
                if(cutFirst1LowBest < cutFirst1HighBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
@@ -1645,7 +1645,7 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
 WARNING_POP
 
 //template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-//bool BoostMultiDimensionalPaulAlgorithm(CachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FractionalDataType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//bool BoostMultiDimensionalPaulAlgorithm(CachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingMethod const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
 //   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pFeatureCombination, pTrainingSet, pTargetFeature);
 //   if(UNLIKELY(nullptr == aHistogramBuckets)) {
 //      return true;
@@ -1668,7 +1668,7 @@ WARNING_POP
 //      const size_t cBinsDimension1 = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
 //      const size_t cBinsDimension2 = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
 //
-//      FractionalDataType bestSplittingScore = FractionalDataType { -std::numeric_limits<FractionalDataType>::infinity() };
+//      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
 //
 //      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
 //         free(aDynamicHistogramBuckets);
@@ -1694,7 +1694,7 @@ WARNING_POP
 //
 //      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
 //         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
-//            FractionalDataType splittingScore;
+//            FloatEbmType splittingScore;
 //
 //            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
 //            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 1);
@@ -1746,8 +1746,8 @@ WARNING_POP
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FractionalDataType predictionTarget;
-//                  FractionalDataType predictionOther;
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1789,8 +1789,8 @@ WARNING_POP
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FractionalDataType predictionTarget;
-//                  FractionalDataType predictionOther;
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1832,8 +1832,8 @@ WARNING_POP
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FractionalDataType predictionTarget;
-//                  FractionalDataType predictionOther;
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1874,8 +1874,8 @@ WARNING_POP
 //               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
 //
 //               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//                  FractionalDataType predictionTarget;
-//                  FractionalDataType predictionOther;
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
@@ -1922,7 +1922,7 @@ WARNING_POP
 
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
+bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
    // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can use the denominator as part of the gain function!!!
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
@@ -2033,7 +2033,7 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
 
-      FractionalDataType bestSplittingScore = FractionalDataType { 0 }; // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
+      FloatEbmType bestSplittingScore = FloatEbmType { 0 }; // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
 
       LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
       EBM_ASSERT(1 < cBinsDimension1);
@@ -2069,30 +2069,30 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 #endif // NDEBUG
                         );
                      if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket)) {
-                        FractionalDataType splittingScore = 0;
+                        FloatEbmType splittingScore = 0;
 
-                        FractionalDataType cLowLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowLow->m_cInstancesInBucket);
-                        FractionalDataType cLowHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsLowHigh->m_cInstancesInBucket);
-                        FractionalDataType cHighLowInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighLow->m_cInstancesInBucket);
-                        FractionalDataType cHighHighInstancesInBucket = static_cast<FractionalDataType>(pTotalsHighHigh->m_cInstancesInBucket);
+                        FloatEbmType cLowLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->m_cInstancesInBucket);
+                        FloatEbmType cLowHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->m_cInstancesInBucket);
+                        FloatEbmType cHighLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->m_cInstancesInBucket);
+                        FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->m_cInstancesInBucket);
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           const FractionalDataType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowLowInstancesInBucket);
-                           EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FractionalDataType { 0 } <= splittingScoreUpdate1);
+                           const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowLowInstancesInBucket);
+                           EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
-                           const FractionalDataType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
-                           EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FractionalDataType { 0 } <= splittingScoreUpdate2);
+                           const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                           EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
-                           const FractionalDataType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
-                           EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FractionalDataType { 0 } <= splittingScoreUpdate3);
+                           const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                           EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
-                           const FractionalDataType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
-                           EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FractionalDataType { 0 } <= splittingScoreUpdate4);
+                           const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                           EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
-                        EBM_ASSERT(std::isnan(splittingScore) || FractionalDataType { 0 } <= splittingScore); // sumations of positive numbers should be positive
+                        EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumations of positive numbers should be positive
 
                         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
                         // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
@@ -2115,14 +2115,14 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       if(nullptr != pInteractionScoreReturn) {
          // we started our score at zero, and didn't replace with anything lower, so it can't be below zero
          // if we collected a NaN value, then we kept it
-         EBM_ASSERT(std::isnan(bestSplittingScore) || FractionalDataType { 0 } <= bestSplittingScore);
+         EBM_ASSERT(std::isnan(bestSplittingScore) || FloatEbmType { 0 } <= bestSplittingScore);
          EBM_ASSERT((!IsClassification(compilerLearningTypeOrCountTargetClasses)) || !std::isinf(bestSplittingScore));
 
          // if bestSplittingScore was NaN we make it zero so that it's not included.  If infinity, also don't include it since we overloaded something
          // even though bestSplittingScore shouldn't be +-infinity for classification, we check it for +-infinity 
          // here since it's most efficient to check that the exponential is all ones, which is the case only for +-infinity and NaN, but not others
          if(UNLIKELY(UNLIKELY(std::isnan(bestSplittingScore)) || UNLIKELY(std::isinf(bestSplittingScore)))) {
-            bestSplittingScore = FractionalDataType { 0 };
+            bestSplittingScore = FloatEbmType { 0 };
          }
          *pInteractionScoreReturn = bestSplittingScore;
       }
@@ -2132,7 +2132,7 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
-         *pInteractionScoreReturn = FractionalDataType { 0 }; // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
+         *pInteractionScoreReturn = FloatEbmType { 0 }; // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
       }
    }
 

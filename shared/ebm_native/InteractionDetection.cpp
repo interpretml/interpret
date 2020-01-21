@@ -24,7 +24,7 @@
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, const EbmCoreFeature * features, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, IntegerDataType countInstances, const void * targets, const IntegerDataType * binnedData, const FractionalDataType * predictorScores) {
+EbmInteractionState * AllocateCoreInteraction(IntEbmType countFeatures, const EbmNativeFeature * features, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, IntEbmType countInstances, const void * targets, const IntEbmType * binnedData, const FloatEbmType * predictorScores) {
    // TODO : give AllocateCoreInteraction the same calling parameter order as InitializeInteractionClassification
 
    EBM_ASSERT(0 <= countFeatures);
@@ -35,12 +35,12 @@ EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, con
    EBM_ASSERT(0 == countInstances || 0 == countFeatures || nullptr != binnedData);
    // predictorScores can be null
 
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countFeatures)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countFeatures)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
+      LOG_0(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntegerDataType>(countInstances)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countInstances)) {
+      LOG_0(TraceLevelWarning, "WARNING AllocateCoreInteraction !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
       return nullptr;
    }
 
@@ -62,16 +62,16 @@ EbmInteractionState * AllocateCoreInteraction(IntegerDataType countFeatures, con
    return pEbmInteractionState;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionClassification(
-   IntegerDataType countTargetClasses,
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countInstances,
-   const IntegerDataType * binnedData,
-   const IntegerDataType * targets,
-   const FractionalDataType * predictorScores
+EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionClassification(
+   IntEbmType countTargetClasses,
+   IntEbmType countFeatures,
+   const EbmNativeFeature * features,
+   IntEbmType countInstances,
+   const IntEbmType * binnedData,
+   const IntEbmType * targets,
+   const FloatEbmType * predictorScores
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionClassification: countTargetClasses=%" IntegerDataTypePrintf ", countFeatures=%" IntegerDataTypePrintf ", features=%p, countInstances=%" IntegerDataTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countTargetClasses, countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
+   LOG_N(TraceLevelInfo, "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countTargetClasses, countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
    if(countTargetClasses < 0) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be negative");
       return nullptr;
@@ -80,8 +80,8 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION Initialize
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no instances");
       return nullptr;
    }
-   if(!IsNumberConvertable<ptrdiff_t, IntegerDataType>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeInteractionClassification !IsNumberConvertable<ptrdiff_t, IntegerDataType>(countTargetClasses)");
+   if(!IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeInteractionClassification !IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)");
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
@@ -90,22 +90,22 @@ EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION Initialize
    return pEbmInteraction;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY PEbmInteraction EBMCORE_CALLING_CONVENTION InitializeInteractionRegression(
-   IntegerDataType countFeatures,
-   const EbmCoreFeature * features,
-   IntegerDataType countInstances,
-   const IntegerDataType * binnedData,
-   const FractionalDataType * targets,
-   const FractionalDataType * predictorScores
+EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
+   IntEbmType countFeatures,
+   const EbmNativeFeature * features,
+   IntEbmType countInstances,
+   const IntEbmType * binnedData,
+   const FloatEbmType * targets,
+   const FloatEbmType * predictorScores
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntegerDataTypePrintf ", features=%p, countInstances=%" IntegerDataTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
+   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateCoreInteraction(countFeatures, features, k_Regression, countInstances, targets, binnedData, predictorScores));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
+static IntEbmType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
    if(nullptr == pCachedThreadResources) {
@@ -121,7 +121,7 @@ static IntegerDataType GetInteractionScorePerTargetClasses(EbmInteractionState *
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
    static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    if(runtimeLearningTypeOrCountTargetClasses == possibleCompilerLearningTypeOrCountTargetClasses) {
@@ -133,7 +133,7 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore(const ptrdiff_t 
 }
 
 template<>
-EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FractionalDataType * const pInteractionScoreReturn) {
+EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombinationCore * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
    UNUSED(runtimeLearningTypeOrCountTargetClasses);
    // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
@@ -146,13 +146,13 @@ EBM_INLINE IntegerDataType CompilerRecursiveGetInteractionScore<k_cCompilerOptim
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
 
-EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction,
-   IntegerDataType countFeaturesInCombination,
-   const IntegerDataType * featureIndexes,
-   FractionalDataType * interactionScoreReturn
+   IntEbmType countFeaturesInCombination,
+   const IntEbmType * featureIndexes,
+   FloatEbmType * interactionScoreReturn
 ) {
-   LOG_COUNTED_N(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntegerDataTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(featureIndexes), static_cast<void *>(interactionScoreReturn));
+   LOG_COUNTED_N(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntEbmTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(featureIndexes), static_cast<void *>(interactionScoreReturn));
 
    EBM_ASSERT(nullptr != ebmInteraction);
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
@@ -163,8 +163,8 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
    EBM_ASSERT(0 == countFeaturesInCombination || nullptr != featureIndexes);
    // interactionScoreReturn can be nullptr
 
-   if(!IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)) {
+      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)");
       return 1;
    }
    size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
@@ -186,14 +186,14 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
    }
 
    const FeatureCore * const aFeatures = pEbmInteractionState->m_aFeatures;
-   const IntegerDataType * pFeatureCombinationIndex = featureIndexes;
-   const IntegerDataType * const pFeatureCombinationIndexEnd = featureIndexes + cFeaturesInCombination;
+   const IntEbmType * pFeatureCombinationIndex = featureIndexes;
+   const IntEbmType * const pFeatureCombinationIndexEnd = featureIndexes + cFeaturesInCombination;
 
    do {
-      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
+      const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);
-      if(!IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)) {
-         LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop)");
+      if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
+         LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)");
          return 1;
       }
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
@@ -223,9 +223,9 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
    pFeatureCombinationIndex = featureIndexes; // restart from the start
    FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
    do {
-      const IntegerDataType indexFeatureInterop = *pFeatureCombinationIndex;
+      const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);
-      EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
+      EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const FeatureCore * const pFeature = &aFeatures[iFeatureForCombination];
@@ -236,12 +236,12 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
       ++pFeatureCombinationIndex;
    } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
-   IntegerDataType ret;
+   IntEbmType ret;
    if(IsClassification(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses)) {
       if(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
-            *interactionScoreReturn = FractionalDataType { 0 }; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+            *interactionScoreReturn = FloatEbmType { 0 }; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
          }
          return 0;
       }
@@ -251,18 +251,18 @@ EBMCORE_IMPORT_EXPORT_BODY IntegerDataType EBMCORE_CALLING_CONVENTION GetInterac
       ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, interactionScoreReturn);
    }
    if(0 != ret) {
-      LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntegerDataTypePrintf, ret);
+      LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntEbmTypePrintf, ret);
    }
    if(nullptr != interactionScoreReturn) {
-      EBM_ASSERT(FractionalDataType { 0 } <= *interactionScoreReturn); // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
-      LOG_COUNTED_N(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FractionalDataTypePrintf, *interactionScoreReturn);
+      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn); // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
+      LOG_COUNTED_N(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FloatEbmTypePrintf, *interactionScoreReturn);
    } else {
       LOG_COUNTED_0(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");
    }
    return ret;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION FreeInteraction(
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));

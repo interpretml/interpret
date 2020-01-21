@@ -7,27 +7,27 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
 class DataSetByFeature final {
-   const FractionalDataType * const m_aResidualErrors;
+   const FloatEbmType * const m_aResidualErrors;
    const StorageDataTypeCore * const * const m_aaInputData;
    const size_t m_cInstances;
    const size_t m_cFeatures;
 
 public:
 
-   DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses);
+   DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses);
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
       return nullptr == m_aResidualErrors || (0 != m_cFeatures && nullptr == m_aaInputData);
    }
 
-   EBM_INLINE const FractionalDataType * GetResidualPointer() const {
+   EBM_INLINE const FloatEbmType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }

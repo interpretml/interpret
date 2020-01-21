@@ -8,14 +8,14 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 #include "FeatureCombination.h"
 #include "DataSetByFeatureCombination.h"
 
-EBM_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
+EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -28,19 +28,19 @@ EBM_INLINE static FractionalDataType * ConstructResidualErrors(const size_t cIns
 
    const size_t cElements = cInstances * cVectorLength;
 
-   if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
+   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructResidualErrors IsMultiplyError(sizeof(FloatEbmType), cElements)");
       return nullptr;
    }
 
-   const size_t cBytes = sizeof(FractionalDataType) * cElements;
-   FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
+   const size_t cBytes = sizeof(FloatEbmType) * cElements;
+   FloatEbmType * aResidualErrors = static_cast<FloatEbmType *>(malloc(cBytes));
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructResidualErrors");
    return aResidualErrors;
 }
 
-EBM_INLINE static FractionalDataType * ConstructPredictorScores(const size_t cInstances, const size_t cVectorLength, const FractionalDataType * const aPredictorScoresFrom) {
+EBM_INLINE static FloatEbmType * ConstructPredictorScores(const size_t cInstances, const size_t cVectorLength, const FloatEbmType * const aPredictorScoresFrom) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cInstances);
@@ -53,13 +53,13 @@ EBM_INLINE static FractionalDataType * ConstructPredictorScores(const size_t cIn
 
    const size_t cElements = cInstances * cVectorLength;
 
-   if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(sizeof(FractionalDataType), cElements)");
+   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(sizeof(FloatEbmType), cElements)");
       return nullptr;
    }
 
-   const size_t cBytes = sizeof(FractionalDataType) * cElements;
-   FractionalDataType * const aPredictorScoresTo = static_cast<FractionalDataType *>(malloc(cBytes));
+   const size_t cBytes = sizeof(FloatEbmType) * cElements;
+   FloatEbmType * const aPredictorScoresTo = static_cast<FloatEbmType *>(malloc(cBytes));
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
@@ -72,11 +72,11 @@ EBM_INLINE static FractionalDataType * ConstructPredictorScores(const size_t cIn
       constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
       if(bZeroingLogits) {
          // TODO : integrate this subtraction into the copy instead of doing it afterwards
-         FractionalDataType * pScore = aPredictorScoresTo;
-         const FractionalDataType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
+         FloatEbmType * pScore = aPredictorScoresTo;
+         const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
          do {
-            FractionalDataType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
-            const FractionalDataType * const pScoreInteriorEnd = pScore + cVectorLength;
+            FloatEbmType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
+            const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
             do {
                *pScore -= scoreShift;
                ++pScore;
@@ -89,7 +89,7 @@ EBM_INLINE static FractionalDataType * ConstructPredictorScores(const size_t cIn
    return aPredictorScoresTo;
 }
 
-EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cInstances, const IntegerDataType * const aTargets) {
+EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cInstances);
@@ -106,13 +106,13 @@ EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
       return nullptr;
    }
 
-   const IntegerDataType * pTargetFrom = aTargets;
-   const IntegerDataType * const pTargetFromEnd = aTargets + cInstances;
+   const IntEbmType * pTargetFrom = aTargets;
+   const IntEbmType * const pTargetFromEnd = aTargets + cInstances;
    StorageDataTypeCore * pTargetTo = aTargetData;
    do {
-      const IntegerDataType data = *pTargetFrom;
+      const IntEbmType data = *pTargetFrom;
       EBM_ASSERT(0 <= data);
-      EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
+      EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(data)));
       // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point that checks it there.  See CheckTargets(..)
       *pTargetTo = static_cast<StorageDataTypeCore>(data);
       ++pTargetTo;
@@ -124,11 +124,11 @@ EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
 }
 
 struct InputDataPointerAndCountBins {
-   const IntegerDataType * m_pInputData;
+   const IntEbmType * m_pInputData;
    size_t m_cBins;
 };
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureCombinations);
@@ -213,12 +213,12 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
                size_t tensorIndex = 0;
                pDimensionInfo = &dimensionInfo[0];
                do {
-                  const IntegerDataType * pInputData = pDimensionInfo->m_pInputData;
-                  const IntegerDataType inputData = *pInputData;
+                  const IntEbmType * pInputData = pDimensionInfo->m_pInputData;
+                  const IntEbmType inputData = *pInputData;
                   pDimensionInfo->m_pInputData = pInputData + 1;
 
                   EBM_ASSERT(0 <= inputData);
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(inputData))); // data must be lower than inputData and inputData fits into a size_t which we checked earlier
+                  EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(inputData))); // data must be lower than inputData and inputData fits into a size_t which we checked earlier
                   EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cBins);
                   EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins)); // we check for overflows during FeatureCombination construction, but let's check here again
 
@@ -262,10 +262,10 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntegerDataType * const aInputDataFrom, const void * const aTargets, const FractionalDataType * const aPredictorScoresFrom, const size_t cVectorLength)
-   : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FractionalDataType *>(nullptr))
-   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FractionalDataType *>(nullptr))
-   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntegerDataType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(nullptr))
+DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength)
+   : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FloatEbmType *>(nullptr))
+   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FloatEbmType *>(nullptr))
+   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(nullptr))
    , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
    , m_cInstances(cInstances)
    , m_cFeatureCombinations(cFeatureCombinations) 

@@ -70,13 +70,13 @@ public:
    const size_t m_cSamplingSets;
 
    SamplingMethod ** m_apSamplingSets;
-   SegmentedTensor<ActiveDataType, FractionalDataType> ** m_apCurrentModel;
-   SegmentedTensor<ActiveDataType, FractionalDataType> ** m_apBestModel;
+   SegmentedTensor<ActiveDataType, FloatEbmType> ** m_apCurrentModel;
+   SegmentedTensor<ActiveDataType, FloatEbmType> ** m_apBestModel;
 
-   FractionalDataType m_bestModelMetric;
+   FloatEbmType m_bestModelMetric;
 
-   SegmentedTensor<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   SegmentedTensor<ActiveDataType, FractionalDataType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   SegmentedTensor<ActiveDataType, FloatEbmType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   SegmentedTensor<ActiveDataType, FloatEbmType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
@@ -91,7 +91,7 @@ public:
    // and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
-   EBM_INLINE EbmBoostingState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets, const IntegerDataType randomSeed)
+   EBM_INLINE EbmBoostingState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets, const IntEbmType randomSeed)
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatureCombinations(cFeatureCombinations)
       , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombinationCore::AllocateFeatureCombinations(cFeatureCombinations))
@@ -101,9 +101,9 @@ public:
       , m_apSamplingSets(nullptr)
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
-      , m_bestModelMetric(FractionalDataType { std::numeric_limits<FractionalDataType>::max() })
-      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
-      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FractionalDataType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
+      , m_bestModelMetric(FloatEbmType { std::numeric_limits<FloatEbmType>::max() })
+      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
+      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
       , m_randomStream(randomSeed)
@@ -136,15 +136,15 @@ public:
 
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apCurrentModel);
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apBestModel);
-      SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      SegmentedTensor<ActiveDataType, FractionalDataType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      SegmentedTensor<ActiveDataType, FloatEbmType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      SegmentedTensor<ActiveDataType, FloatEbmType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
       LOG_0(TraceLevelInfo, "Exited ~EbmBoostingState");
    }
 
-   static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FractionalDataType> ** const apSegmentedTensors);
-   static SegmentedTensor<ActiveDataType, FractionalDataType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombinations, const size_t cVectorLength);
-   bool Initialize(const EbmCoreFeature * const aFeatures, const EbmCoreFeatureCombination * const aFeatureCombinations, const IntegerDataType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntegerDataType * const aTrainingBinnedData, const FractionalDataType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntegerDataType * const aValidationBinnedData, const FractionalDataType * const aValidationPredictorScores);
+   static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors);
+   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombinations, const size_t cVectorLength);
+   bool Initialize(const EbmNativeFeature * const aFeatures, const EbmNativeFeatureCombination * const aFeatureCombinations, const IntEbmType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntEbmType * const aTrainingBinnedData, const FloatEbmType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntEbmType * const aValidationBinnedData, const FloatEbmType * const aValidationPredictorScores);
 };
 
 #endif // EBM_BOOSTING_STATE_H

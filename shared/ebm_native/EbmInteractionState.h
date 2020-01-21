@@ -47,7 +47,7 @@ public:
       LOG_0(TraceLevelInfo, "Exited ~EbmInteractionState");
    }
 
-   EBM_INLINE bool InitializeInteraction(const EbmCoreFeature * const aFeatures, const size_t cInstances, const void * const aTargets, const IntegerDataType * const aBinnedData, const FractionalDataType * const aPredictorScores) {
+   EBM_INLINE bool InitializeInteraction(const EbmNativeFeature * const aFeatures, const size_t cInstances, const void * const aTargets, const IntEbmType * const aBinnedData, const FloatEbmType * const aPredictorScores) {
       LOG_0(TraceLevelInfo, "Entered InitializeInteraction");
 
       if(0 != m_cFeatures && nullptr == m_aFeatures) {
@@ -58,8 +58,8 @@ public:
       LOG_0(TraceLevelInfo, "InitializeInteraction starting feature processing");
       if(0 != m_cFeatures) {
          EBM_ASSERT(!IsMultiplyError(m_cFeatures, sizeof(*aFeatures))); // if this overflows then our caller should not have been able to allocate the array
-         const EbmCoreFeature * pFeatureInitialize = aFeatures;
-         const EbmCoreFeature * const pFeatureEnd = &aFeatures[m_cFeatures];
+         const EbmNativeFeature * pFeatureInitialize = aFeatures;
+         const EbmNativeFeature * const pFeatureEnd = &aFeatures[m_cFeatures];
          EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
          size_t iFeatureInitialize = 0;
          do {
@@ -68,10 +68,10 @@ public:
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
             FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
 
-            IntegerDataType countBins = pFeatureInitialize->countBins;
+            IntEbmType countBins = pFeatureInitialize->countBins;
             EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
-            if(!IsNumberConvertable<size_t, IntegerDataType>(countBins)) {
-               LOG_0(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntegerDataType>(countBins)");
+            if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
+               LOG_0(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntEbmType>(countBins)");
                return true;
             }
             size_t cBins = static_cast<size_t>(countBins);

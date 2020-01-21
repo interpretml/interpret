@@ -33,7 +33,7 @@ EBM_INLINE bool IsSingleIntVector(const SEXP sexp) {
    return true;
 }
 
-EBM_INLINE bool IsDoubleToIntegerDataTypeIndexValid(const double val) {
+EBM_INLINE bool IsDoubleToIntEbmTypeIndexValid(const double val) {
    if(std::isnan(val)) {
       return false;
    }
@@ -41,7 +41,7 @@ EBM_INLINE bool IsDoubleToIntegerDataTypeIndexValid(const double val) {
    if(val < double { 0 }) {
       return false;
    }
-   if(std::min(static_cast<double>(std::numeric_limits<size_t>::max()), std::min(double { R_XLEN_T_MAX }, static_cast<double>(std::numeric_limits<IntegerDataType>::max()))) < val) {
+   if(std::min(static_cast<double>(std::numeric_limits<size_t>::max()), std::min(double { R_XLEN_T_MAX }, static_cast<double>(std::numeric_limits<IntEbmType>::max()))) < val) {
       return false;
    }
    return true;
@@ -69,7 +69,7 @@ void InteractionFinalizer(SEXP interactionRPointer) {
    }
 }
 
-EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures) {
+EbmNativeFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures) {
    if(VECSXP != TYPEOF(features)) {
       LOG_0(TraceLevelError, "ERROR ConvertFeatures VECSXP != TYPEOF(features)");
       return nullptr;
@@ -80,15 +80,15 @@ EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures)
       return nullptr;
    }
    const size_t cFeatures = static_cast<size_t>(countFeaturesR);
-   if(!IsNumberConvertable<IntegerDataType, size_t>(cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsNumberConvertable<IntegerDataType, size_t>(cFeatures)");
+   if(!IsNumberConvertable<IntEbmType, size_t>(cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsNumberConvertable<IntEbmType, size_t>(cFeatures)");
       return nullptr;
    }
    *pcFeatures = cFeatures;
 
-   EbmCoreFeature * const aFeatures = reinterpret_cast<EbmCoreFeature *>(R_alloc(cFeatures, static_cast<int>(sizeof(EbmCoreFeature))));
+   EbmNativeFeature * const aFeatures = reinterpret_cast<EbmNativeFeature *>(R_alloc(cFeatures, static_cast<int>(sizeof(EbmNativeFeature))));
    // R_alloc doesn't return nullptr, so we don't need to check aFeatures
-   EbmCoreFeature * pFeature = aFeatures;
+   EbmNativeFeature * pFeature = aFeatures;
    for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
       const SEXP oneFeature = VECTOR_ELT(features, iFeature);
       EBM_ASSERT(nullptr != oneFeature);
@@ -139,11 +139,11 @@ EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures)
             }
 
             double countBinsDouble = REAL(val)[0];
-            if(!IsDoubleToIntegerDataTypeIndexValid(countBinsDouble)) {
-               LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsDoubleToIntegerDataTypeIndexValid(countBinsDouble)");
+            if(!IsDoubleToIntEbmTypeIndexValid(countBinsDouble)) {
+               LOG_0(TraceLevelError, "ERROR ConvertFeatures !IsDoubleToIntEbmTypeIndexValid(countBinsDouble)");
                return nullptr;
             }
-            pFeature->countBins = static_cast<IntegerDataType>(countBinsDouble);
+            pFeature->countBins = static_cast<IntEbmType>(countBinsDouble);
             bCountBinsFound = true;
          } else if(0 == strcmp("has_missing", pName)) {
             if(bHasMissingFound) {
@@ -219,7 +219,7 @@ EbmCoreFeature * ConvertFeatures(const SEXP features, size_t * const pcFeatures)
    return aFeatures;
 }
 
-EbmCoreFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombinations, size_t * const pcFeatureCombinations) {
+EbmNativeFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombinations, size_t * const pcFeatureCombinations) {
    if(VECSXP != TYPEOF(featureCombinations)) {
       LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations VECSXP != TYPEOF(featureCombinations)");
       return nullptr;
@@ -231,15 +231,15 @@ EbmCoreFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombina
       return nullptr;
    }
    const size_t cFeatureCombinations = static_cast<size_t>(countFeatureCombinationsR);
-   if(!IsNumberConvertable<IntegerDataType, size_t>(cFeatureCombinations)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsNumberConvertable<IntegerDataType, size_t>(cFeatureCombinations)");
+   if(!IsNumberConvertable<IntEbmType, size_t>(cFeatureCombinations)) {
+      LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsNumberConvertable<IntEbmType, size_t>(cFeatureCombinations)");
       return nullptr;
    }
    *pcFeatureCombinations = cFeatureCombinations;
 
-   EbmCoreFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmCoreFeatureCombination *>(R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmCoreFeatureCombination))));
+   EbmNativeFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmNativeFeatureCombination *>(R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmNativeFeatureCombination))));
    // R_alloc doesn't return nullptr, so we don't need to check aFeatureCombinations
-   EbmCoreFeatureCombination * pFeatureCombination = aFeatureCombinations;
+   EbmNativeFeatureCombination * pFeatureCombination = aFeatureCombinations;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
       const SEXP oneFeatureCombination = VECTOR_ELT(featureCombinations, iFeatureCombination);
       EBM_ASSERT(nullptr != oneFeatureCombination);
@@ -286,26 +286,26 @@ EbmCoreFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombina
       }
 
       double countFeaturesInCombinationDouble = REAL(val)[0];
-      if(!IsDoubleToIntegerDataTypeIndexValid(countFeaturesInCombinationDouble)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsDoubleToIntegerDataTypeIndexValid(countFeaturesInCombinationDouble)");
+      if(!IsDoubleToIntEbmTypeIndexValid(countFeaturesInCombinationDouble)) {
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsDoubleToIntEbmTypeIndexValid(countFeaturesInCombinationDouble)");
          return nullptr;
       }
-      pFeatureCombination->countFeaturesInCombination = static_cast<IntegerDataType>(countFeaturesInCombinationDouble);
+      pFeatureCombination->countFeaturesInCombination = static_cast<IntEbmType>(countFeaturesInCombinationDouble);
 
       ++pFeatureCombination;
    }
    return aFeatureCombinations;
 }
 
-size_t CountFeatureCombinationsIndexes(const size_t cFeatureCombinations, const EbmCoreFeatureCombination * const aFeatureCombinations) {
+size_t CountFeatureCombinationsIndexes(const size_t cFeatureCombinations, const EbmNativeFeatureCombination * const aFeatureCombinations) {
    size_t cFeatureCombinationsIndexes = 0;
    if(0 != cFeatureCombinations) {
-      const EbmCoreFeatureCombination * pFeatureCombination = aFeatureCombinations;
-      const EbmCoreFeatureCombination * const pFeatureCombinationEnd = aFeatureCombinations + cFeatureCombinations;
+      const EbmNativeFeatureCombination * pFeatureCombination = aFeatureCombinations;
+      const EbmNativeFeatureCombination * const pFeatureCombinationEnd = aFeatureCombinations + cFeatureCombinations;
       do {
-         const IntegerDataType countFeaturesInCombination = pFeatureCombination->countFeaturesInCombination;
-         if(!IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureCombinationsIndexes !IsNumberConvertable<size_t, IntegerDataType>(countFeaturesInCombination)");
+         const IntEbmType countFeaturesInCombination = pFeatureCombination->countFeaturesInCombination;
+         if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureCombinationsIndexes !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)");
             return SIZE_MAX;
          }
          const size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
@@ -320,7 +320,7 @@ size_t CountFeatureCombinationsIndexes(const size_t cFeatureCombinations, const 
    return cFeatureCombinationsIndexes;
 }
 
-bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntegerDataType * * const pRet) {
+bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntEbmType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
    if(REALSXP != TYPEOF(items)) {
@@ -333,26 +333,26 @@ bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const Int
       return true;
    }
    const size_t cItems = static_cast<size_t>(countItemsR);
-   if(!IsNumberConvertable<IntegerDataType, size_t>(cItems)) {
-      LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<IntegerDataType, size_t>(cItems)");
+   if(!IsNumberConvertable<IntEbmType, size_t>(cItems)) {
+      LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsNumberConvertable<IntEbmType, size_t>(cItems)");
       return true;
    }
    *pcItems = cItems;
 
-   IntegerDataType * aItems = nullptr;
+   IntEbmType * aItems = nullptr;
    if(0 != cItems) {
-      aItems = reinterpret_cast<IntegerDataType *>(R_alloc(cItems, static_cast<int>(sizeof(IntegerDataType))));
+      aItems = reinterpret_cast<IntEbmType *>(R_alloc(cItems, static_cast<int>(sizeof(IntEbmType))));
       // R_alloc doesn't return nullptr, so we don't need to check aItems
-      IntegerDataType * pItem = aItems;
-      const IntegerDataType * const pItemEnd = aItems + cItems;
+      IntEbmType * pItem = aItems;
+      const IntEbmType * const pItemEnd = aItems + cItems;
       const double * pOriginal = REAL(items);
       do {
          const double val = *pOriginal;
-         if(!IsDoubleToIntegerDataTypeIndexValid(val)) {
-            LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsDoubleToIntegerDataTypeIndexValid(val)");
+         if(!IsDoubleToIntEbmTypeIndexValid(val)) {
+            LOG_0(TraceLevelError, "ERROR ConvertDoublesToIndexes !IsDoubleToIntEbmTypeIndexValid(val)");
             return true;
          }
-         *pItem = static_cast<IntegerDataType>(val);
+         *pItem = static_cast<IntEbmType>(val);
          ++pItem;
          ++pOriginal;
       } while(pItemEnd != pItem);
@@ -361,7 +361,7 @@ bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const Int
    return false;
 }
 
-bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const FractionalDataType * * const pRet) {
+bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const FloatEbmType * * const pRet) {
    EBM_ASSERT(nullptr != items);
    EBM_ASSERT(nullptr != pcItems);
    if(REALSXP != TYPEOF(items)) {
@@ -374,22 +374,22 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Fra
       return true;
    }
    const size_t cItems = static_cast<size_t>(countItemsR);
-   if(!IsNumberConvertable<IntegerDataType, size_t>(cItems)) {
-      LOG_0(TraceLevelError, "ERROR ConvertDoublesToDoubles !IsNumberConvertable<IntegerDataType, size_t>(cItems)");
+   if(!IsNumberConvertable<IntEbmType, size_t>(cItems)) {
+      LOG_0(TraceLevelError, "ERROR ConvertDoublesToDoubles !IsNumberConvertable<IntEbmType, size_t>(cItems)");
       return true;
    }
    *pcItems = cItems;
 
-   FractionalDataType * aItems = nullptr;
+   FloatEbmType * aItems = nullptr;
    if(0 != cItems) {
-      aItems = reinterpret_cast<FractionalDataType *>(R_alloc(cItems, static_cast<int>(sizeof(FractionalDataType))));
+      aItems = reinterpret_cast<FloatEbmType *>(R_alloc(cItems, static_cast<int>(sizeof(FloatEbmType))));
       // R_alloc doesn't return nullptr, so we don't need to check aItems
-      FractionalDataType * pItem = aItems;
-      const FractionalDataType * const pItemEnd = aItems + cItems;
+      FloatEbmType * pItem = aItems;
+      const FloatEbmType * const pItemEnd = aItems + cItems;
       const double * pOriginal = REAL(items);
       do {
          const double val = *pOriginal;
-         *pItem = static_cast<FractionalDataType>(val);
+         *pItem = static_cast<FloatEbmType>(val);
          ++pItem;
          ++pOriginal;
       } while(pItemEnd != pItem);
@@ -430,8 +430,8 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
    double countTargetClassesDouble = REAL(countTargetClasses)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsDoubleToIntegerDataTypeIndexValid(countTargetClassesDouble)");
+   if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
       return R_NilValue;
    }
    const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
@@ -442,20 +442,20 @@ SEXP InitializeBoostingClassification_R(
    const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
    if(nullptr == aFeatures) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cFeatureCombinations;
-   EbmCoreFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
+   EbmNativeFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
    if(nullptr == aFeatureCombinations) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatureCombinations = static_cast<IntegerDataType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
 
    const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
    if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
@@ -464,7 +464,7 @@ SEXP InitializeBoostingClassification_R(
    }
 
    size_t cFeatureCombinationsIndexesActual;
-   const IntegerDataType * aFeatureCombinationIndexes;
+   const IntEbmType * aFeatureCombinationIndexes;
    if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
       // we've already logged any errors
       return R_NilValue;
@@ -475,19 +475,19 @@ SEXP InitializeBoostingClassification_R(
    }
 
    size_t cTrainingBinnedData;
-   const IntegerDataType * aTrainingBinnedData;
+   const IntEbmType * aTrainingBinnedData;
    if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cTrainingInstances;
-   const IntegerDataType * aTrainingTargets;
+   const IntEbmType * aTrainingTargets;
    if(ConvertDoublesToIndexes(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countTrainingInstances = static_cast<IntegerDataType>(cTrainingInstances);
+   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
 
    if(IsMultiplyError(cTrainingInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cFeatures)");
@@ -498,7 +498,7 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aTrainingPredictorScores = nullptr;
+   const FloatEbmType * aTrainingPredictorScores = nullptr;
    if(NILSXP != TYPEOF(trainingPredictorScores)) {
       size_t cTrainingPredictorScores;
       if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
@@ -516,19 +516,19 @@ SEXP InitializeBoostingClassification_R(
    }
 
    size_t cValidationBinnedData;
-   const IntegerDataType * aValidationBinnedData;
+   const IntEbmType * aValidationBinnedData;
    if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cValidationInstances;
-   const IntegerDataType * aValidationTargets;
+   const IntEbmType * aValidationTargets;
    if(ConvertDoublesToIndexes(validationTargets, &cValidationInstances, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countValidationInstances = static_cast<IntegerDataType>(cValidationInstances);
+   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
 
    if(IsMultiplyError(cValidationInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cFeatures)");
@@ -539,7 +539,7 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aValidationPredictorScores = nullptr;
+   const FloatEbmType * aValidationPredictorScores = nullptr;
    if(NILSXP != TYPEOF(validationPredictorScores)) {
       size_t cValidationPredictorScores;
       if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
@@ -561,20 +561,20 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
    int countInnerBagsInt = INTEGER(countInnerBags)[0];
-   if(!IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)");
+   if(!IsNumberConvertable<IntEbmType, int>(countInnerBagsInt)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<IntEbmType, int>(countInnerBagsInt)");
       return nullptr;
    }
-   IntegerDataType countInnerBagsLocal = static_cast<IntegerDataType>(countInnerBagsInt);
+   IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntegerDataType randomSeedLocal = static_cast<IntegerDataType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(static_cast<IntegerDataType>(cTargetClasses), countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
+   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(static_cast<IntEbmType>(cTargetClasses), countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
 
    if(nullptr == pEbmBoosting) {
       return R_NilValue;
@@ -615,20 +615,20 @@ SEXP InitializeBoostingRegression_R(
    EBM_ASSERT(nullptr != randomSeed);
 
    size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
    if(nullptr == aFeatures) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cFeatureCombinations;
-   EbmCoreFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
+   EbmNativeFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
    if(nullptr == aFeatureCombinations) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatureCombinations = static_cast<IntegerDataType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
 
    const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
    if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
@@ -637,7 +637,7 @@ SEXP InitializeBoostingRegression_R(
    }
 
    size_t cFeatureCombinationsIndexesActual;
-   const IntegerDataType * aFeatureCombinationIndexes;
+   const IntEbmType * aFeatureCombinationIndexes;
    if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
       // we've already logged any errors
       return R_NilValue;
@@ -648,19 +648,19 @@ SEXP InitializeBoostingRegression_R(
    }
 
    size_t cTrainingBinnedData;
-   const IntegerDataType * aTrainingBinnedData;
+   const IntEbmType * aTrainingBinnedData;
    if(ConvertDoublesToIndexes(trainingBinnedData, &cTrainingBinnedData, &aTrainingBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cTrainingInstances;
-   const FractionalDataType * aTrainingTargets;
+   const FloatEbmType * aTrainingTargets;
    if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countTrainingInstances = static_cast<IntegerDataType>(cTrainingInstances);
+   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
 
    if(IsMultiplyError(cTrainingInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingInstances, cFeatures)");
@@ -671,7 +671,7 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aTrainingPredictorScores = nullptr;
+   const FloatEbmType * aTrainingPredictorScores = nullptr;
    if(NILSXP != TYPEOF(trainingPredictorScores)) {
       size_t cTrainingPredictorScores;
       if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
@@ -685,19 +685,19 @@ SEXP InitializeBoostingRegression_R(
    }
 
    size_t cValidationBinnedData;
-   const IntegerDataType * aValidationBinnedData;
+   const IntEbmType * aValidationBinnedData;
    if(ConvertDoublesToIndexes(validationBinnedData, &cValidationBinnedData, &aValidationBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cValidationInstances;
-   const FractionalDataType * aValidationTargets;
+   const FloatEbmType * aValidationTargets;
    if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countValidationInstances = static_cast<IntegerDataType>(cValidationInstances);
+   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
 
    if(IsMultiplyError(cValidationInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationInstances, cFeatures)");
@@ -708,7 +708,7 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aValidationPredictorScores = nullptr;
+   const FloatEbmType * aValidationPredictorScores = nullptr;
    if(NILSXP != TYPEOF(validationPredictorScores)) {
       size_t cValidationPredictorScores;
       if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
@@ -726,18 +726,18 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
    int countInnerBagsInt = INTEGER(countInnerBags)[0];
-   if(!IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsNumberConvertable<IntegerDataType, int>(countInnerBagsInt)");
+   if(!IsNumberConvertable<IntEbmType, int>(countInnerBagsInt)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsNumberConvertable<IntEbmType, int>(countInnerBagsInt)");
       return nullptr;
    }
-   IntegerDataType countInnerBagsLocal = static_cast<IntegerDataType>(countInnerBagsInt);
+   IntEbmType countInnerBagsLocal = static_cast<IntEbmType>(countInnerBagsInt);
 
    if(!IsSingleIntVector(randomSeed)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
    // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
-   const IntegerDataType randomSeedLocal = static_cast<IntegerDataType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
+   const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
 
@@ -786,11 +786,11 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
    double doubleIndex = REAL(indexFeatureCombination)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
+   if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
+   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
 
    if(!IsSingleDoubleVector(learningRate)) {
       LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(learningRate)");
@@ -803,16 +803,16 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
    double doubleCountTreeSplitsMax = REAL(countTreeSplitsMax)[0];
-   IntegerDataType cTreeSplitsMax;
+   IntEbmType cTreeSplitsMax;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountTreeSplitsMax) || static_cast<double>(std::numeric_limits<IntegerDataType>::max()) < doubleCountTreeSplitsMax) {
+   if(std::isnan(doubleCountTreeSplitsMax) || static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountTreeSplitsMax) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax overflow");
-      cTreeSplitsMax = std::numeric_limits<IntegerDataType>::max();
-   } else if(doubleCountTreeSplitsMax < static_cast<double>(std::numeric_limits<IntegerDataType>::lowest())) {
+      cTreeSplitsMax = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountTreeSplitsMax < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countTreeSplitsMax underflow");
-      cTreeSplitsMax = std::numeric_limits<IntegerDataType>::lowest();
+      cTreeSplitsMax = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cTreeSplitsMax = static_cast<IntegerDataType>(doubleCountTreeSplitsMax);
+      cTreeSplitsMax = static_cast<IntEbmType>(doubleCountTreeSplitsMax);
    }
 
    if(!IsSingleDoubleVector(countInstancesRequiredForParentSplitMin)) {
@@ -820,16 +820,16 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
    double doubleCountInstancesRequiredForParentSplitMin = REAL(countInstancesRequiredForParentSplitMin)[0];
-   IntegerDataType cInstancesRequiredForParentSplitMin;
+   IntEbmType cInstancesRequiredForParentSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForParentSplitMin) || static_cast<double>(std::numeric_limits<IntegerDataType>::max()) < doubleCountInstancesRequiredForParentSplitMin) {
+   if(std::isnan(doubleCountInstancesRequiredForParentSplitMin) || static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForParentSplitMin) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForParentSplitMin overflow");
-      cInstancesRequiredForParentSplitMin = std::numeric_limits<IntegerDataType>::max();
-   } else if(doubleCountInstancesRequiredForParentSplitMin < static_cast<double>(std::numeric_limits<IntegerDataType>::lowest())) {
+      cInstancesRequiredForParentSplitMin = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountInstancesRequiredForParentSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForParentSplitMin underflow");
-      cInstancesRequiredForParentSplitMin = std::numeric_limits<IntegerDataType>::lowest();
+      cInstancesRequiredForParentSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cInstancesRequiredForParentSplitMin = static_cast<IntegerDataType>(doubleCountInstancesRequiredForParentSplitMin);
+      cInstancesRequiredForParentSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForParentSplitMin);
    }
 
    double * pTrainingWeights = nullptr;
@@ -868,7 +868,7 @@ SEXP BoostingStep_R(
       pValidationWeights = REAL(validationWeights);
    }
 
-   FractionalDataType validationMetricReturn;
+   FloatEbmType validationMetricReturn;
    if(0 != BoostingStep(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination, learningRateLocal, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pTrainingWeights, pValidationWeights, &validationMetricReturn)) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R BoostingStep returned error code");
       return R_NilValue;
@@ -902,18 +902,18 @@ SEXP GetBestModelFeatureCombination_R(
       return R_NilValue;
    }
    double doubleIndex = REAL(indexFeatureCombination)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
+   if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
-   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntegerDataTypeIndexValid
+   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
+   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
    if(pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
       return R_NilValue;
    }
 
-   FractionalDataType * pModelFeatureCombinationTensor = GetBestModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
+   FloatEbmType * pModelFeatureCombinationTensor = GetBestModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
    if(nullptr == pModelFeatureCombinationTensor) {
       // if nullptr == pModelFeatureCombinationTensor then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
@@ -967,18 +967,18 @@ SEXP GetCurrentModelFeatureCombination_R(
       return R_NilValue;
    }
    double doubleIndex = REAL(indexFeatureCombination)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsDoubleToIntegerDataTypeIndexValid(doubleIndex)");
+   if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntegerDataType iFeatureCombination = static_cast<IntegerDataType>(doubleIndex);
-   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntegerDataTypeIndexValid
+   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
+   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
    if(pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
       return R_NilValue;
    }
 
-   FractionalDataType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
+   FloatEbmType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
    if(nullptr == pModelFeatureCombinationTensor) {
       // if nullptr == pModelFeatureCombinationTensor then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
@@ -1036,8 +1036,8 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
    double countTargetClassesDouble = REAL(countTargetClasses)[0];
-   if(!IsDoubleToIntegerDataTypeIndexValid(countTargetClassesDouble)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsDoubleToIntegerDataTypeIndexValid(countTargetClassesDouble)");
+   if(!IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsDoubleToIntEbmTypeIndexValid(countTargetClassesDouble)");
       return R_NilValue;
    }
    const size_t cTargetClasses = static_cast<size_t>(countTargetClassesDouble);
@@ -1048,27 +1048,27 @@ SEXP InitializeInteractionClassification_R(
    const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
    if(nullptr == aFeatures) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cBinnedData;
-   const IntegerDataType * aBinnedData;
+   const IntEbmType * aBinnedData;
    if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cInstances;
-   const IntegerDataType * aTargets;
+   const IntEbmType * aTargets;
    if(ConvertDoublesToIndexes(targets, &cInstances, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
+   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
 
    if(IsMultiplyError(cInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cFeatures)");
@@ -1079,7 +1079,7 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aPredictorScores = nullptr;
+   const FloatEbmType * aPredictorScores = nullptr;
    if(NILSXP != TYPEOF(predictorScores)) {
       size_t cPredictorScores;
       if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
@@ -1096,7 +1096,7 @@ SEXP InitializeInteractionClassification_R(
       }
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(static_cast<IntegerDataType>(cTargetClasses), countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(static_cast<IntEbmType>(cTargetClasses), countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;
@@ -1123,27 +1123,27 @@ SEXP InitializeInteractionRegression_R(
    EBM_ASSERT(nullptr != predictorScores);
 
    size_t cFeatures;
-   EbmCoreFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
+   EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
    if(nullptr == aFeatures) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countFeatures = static_cast<IntegerDataType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
+   const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
    size_t cBinnedData;
-   const IntegerDataType * aBinnedData;
+   const IntEbmType * aBinnedData;
    if(ConvertDoublesToIndexes(binnedData, &cBinnedData, &aBinnedData)) {
       // we've already logged any errors
       return R_NilValue;
    }
 
    size_t cInstances;
-   const FractionalDataType * aTargets;
+   const FloatEbmType * aTargets;
    if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntegerDataType countInstances = static_cast<IntegerDataType>(cInstances);
+   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
 
    if(IsMultiplyError(cInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
@@ -1154,7 +1154,7 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   const FractionalDataType * aPredictorScores = nullptr;
+   const FloatEbmType * aPredictorScores = nullptr;
    if(NILSXP != TYPEOF(predictorScores)) {
       size_t cPredictorScores;
       if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
@@ -1200,14 +1200,14 @@ SEXP GetInteractionScore_R(
    }
 
    size_t cFeaturesInCombination;
-   const IntegerDataType * aFeatureIndexes;
+   const IntEbmType * aFeatureIndexes;
    if(ConvertDoublesToIndexes(featureIndexes, &cFeaturesInCombination, &aFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   IntegerDataType countFeaturesInCombination = static_cast<IntegerDataType>(cFeaturesInCombination);
+   IntEbmType countFeaturesInCombination = static_cast<IntEbmType>(cFeaturesInCombination);
 
-   FractionalDataType interactionScoreReturn;
+   FloatEbmType interactionScoreReturn;
    if(0 != GetInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInCombination, aFeatureIndexes, &interactionScoreReturn)) {
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R GetInteractionScore returned error code");
       return R_NilValue;

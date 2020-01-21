@@ -7,14 +7,14 @@
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_t cInstances, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+EBM_INLINE static const FloatEbmType * ConstructResidualErrors(const size_t cInstances, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -30,13 +30,13 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_
 
    const size_t cElements = cInstances * cVectorLength;
 
-   if(IsMultiplyError(sizeof(FractionalDataType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FractionalDataType), cElements)");
+   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FloatEbmType), cElements)");
       return nullptr;
    }
 
-   const size_t cBytes = sizeof(FractionalDataType) * cElements;
-   FractionalDataType * aResidualErrors = static_cast<FractionalDataType *>(malloc(cBytes));
+   const size_t cBytes = sizeof(FloatEbmType) * cElements;
+   FloatEbmType * aResidualErrors = static_cast<FloatEbmType *>(malloc(cBytes));
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
@@ -53,7 +53,7 @@ EBM_INLINE static const FractionalDataType * ConstructResidualErrors(const size_
    return aResidualErrors;
 }
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData) {
+EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntEbmType * const aBinnedData) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
@@ -91,14 +91,14 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntegerDataType * pInputDataFrom = &aBinnedData[pFeature->m_iFeatureData * cInstances];
-      const IntegerDataType * pInputDataFromEnd = &pInputDataFrom[cInstances];
+      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->m_iFeatureData * cInstances];
+      const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cInstances];
       do {
-         const IntegerDataType data = *pInputDataFrom;
+         const IntEbmType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntegerDataType>(data))); // data must be lower than cBins and cBins fits into a size_t which we checked earlier
+         EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(data))); // data must be lower than cBins and cBins fits into a size_t which we checked earlier
          EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cBins);
-         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntegerDataType>(data)));
+         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(data)));
          *pInputDataTo = static_cast<StorageDataTypeCore>(data);
          ++pInputDataTo;
          ++pInputDataFrom;
@@ -119,7 +119,7 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntegerDataType * const aBinnedData, const void * const aTargetData, const FractionalDataType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
+DataSetByFeature::DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntEbmType * const aBinnedData, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
    : m_aResidualErrors(ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
@@ -131,7 +131,7 @@ DataSetByFeature::DataSetByFeature(const size_t cFeatures, const FeatureCore * c
 DataSetByFeature::~DataSetByFeature() {
    LOG_0(TraceLevelInfo, "Entered ~DataSetByFeature");
 
-   FractionalDataType * aResidualErrors = const_cast<FractionalDataType *>(m_aResidualErrors);
+   FloatEbmType * aResidualErrors = const_cast<FloatEbmType *>(m_aResidualErrors);
    free(aResidualErrors);
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(1 <= m_cFeatures);

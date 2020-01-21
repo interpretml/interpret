@@ -84,7 +84,7 @@
 //     - the top item in our MAIN_DATA_STRUCTURE MUST be offset_to_DIMENSION_0_COUNT_or_zero_if_value_array_expanded_and_zero_offset_to_MAIN_DATA_STRUCTURE for
 //       our efficient tripple use above!
 
-// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FractionalDataType, so we don't need something generic which just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have to be C compatible
+// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FloatEbmType, so we don't need something generic which just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have to be C compatible
 template<typename TDivisions, typename TValues>
 struct SegmentedTensor final {
 private:
@@ -595,12 +595,12 @@ public:
          // but we want to preserve the best model that we had
 
          TValues val = *pFromValue;
-         val = std::isnan(val) ? FractionalDataType { 0 } : val;
+         val = std::isnan(val) ? FloatEbmType { 0 } : val;
          val = *pToValue + val;
          // this is a check for -infinity, without the -infinity value since some compilers make that illegal
-         val = val < std::numeric_limits<FractionalDataType>::lowest() ? std::numeric_limits<FractionalDataType>::lowest() : val;
+         val = val < std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
          // this is a check for +infinity, without the +infinity value since some compilers make that illegal
-         val = std::numeric_limits<FractionalDataType>::max() < val ? std::numeric_limits<FractionalDataType>::max() : val;
+         val = std::numeric_limits<FloatEbmType>::max() < val ? std::numeric_limits<FloatEbmType>::max() : val;
          *pToValue = val;
          ++pFromValue;
          ++pToValue;
@@ -921,6 +921,6 @@ public:
    static_assert(std::is_standard_layout<TDivisions>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
    static_assert(std::is_standard_layout<TValues>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
-static_assert(std::is_standard_layout<SegmentedTensor<ActiveDataType, FractionalDataType>>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(std::is_standard_layout<SegmentedTensor<ActiveDataType, FloatEbmType>>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_TENSOR_H

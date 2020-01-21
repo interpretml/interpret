@@ -1,6 +1,9 @@
 @ECHO OFF
 SETLOCAL
 
+REM The free version of Visual Studio (Community) is sufficient for compiling InterpretML for Windows.
+REM Visual Studio Community can be downloaded for free here:  https://visualstudio.microsoft.com/vs/
+
 SET root_path=%~dp0
 
 SET build_32_bit=0

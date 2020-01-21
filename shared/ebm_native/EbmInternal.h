@@ -107,14 +107,14 @@
 #error compiler not recognized
 #endif // compiler type
 
-// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FractionalDataType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
+// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
-constexpr FractionalDataType k_illegalGain = std::numeric_limits<FractionalDataType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
-constexpr FractionalDataType k_epsilonNegativeGainAllowed = -1e-7;
-constexpr FractionalDataType k_epsilonNegativeValidationMetricAllowed = -1e-7;
-constexpr FractionalDataType k_epsilonResidualError = 1e-7;
-constexpr FractionalDataType k_epsilonLogLoss = 1e-7;
+constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
+constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
+constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
+constexpr FloatEbmType k_epsilonResidualError = 1e-7;
+constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
@@ -292,7 +292,7 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 //#define FAST_LOG
 
 #ifdef FAST_EXP
-EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
+EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
    // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from the target and our logits
    // so if we introduce some noise in the residual error from approximations to exp, it will be seen and corrected by later boosting steps
    // so it's largely self correcting
@@ -307,7 +307,7 @@ EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
 
    // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
    // TODO make the number of multiplications below a copmile time constant so we can try different values (9 in the code below)
-   val = FractionalDataType { 1 } + val / FractionalDataType { 512 };
+   val = FloatEbmType { 1 } + val / FloatEbmType { 512 };
    val *= val;
    val *= val;
    val *= val;
@@ -320,7 +320,7 @@ EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
    return val;
 }
 #else // FAST_EXP
-EBM_INLINE FractionalDataType EbmExp(FractionalDataType val) {
+EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
    return std::exp(val);
 }
 #endif // FAST_EXP
@@ -348,7 +348,7 @@ EBM_INLINE unsigned int MostSignificantBit(T val) {
    return _BitScanReverse64(&index, static_cast<unsigned __int64>(val)) ? static_cast<unsigned int>(index) : static_cast<unsigned int>(0);
 }
 
-EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
    // TODO: also look into whehter std::log1p has a good approximation directly
 
    // the log function is only used to calculate the log loss on the valididation set only
@@ -362,17 +362,17 @@ EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
    // TODO: this isn't going to work for us since we will often get vlaues greater than 2^64 in exp terms.  Let's figure out how to do the alternate where
    // we extract the exponent term directly via IEEE 754
    unsigned int shifts = MostSignificantBit(static_cast<uint64_t>(val));
-   val = val / static_cast<FractionalDataType>(uint64_t { 1 } << shifts);
+   val = val / static_cast<FloatEbmType>(uint64_t { 1 } << shifts);
 
    // this works sorta kinda well for numbers between 1 to 2 (we shifted our number to be within this range)
    // TODO : increase precision of these magic numbers
-   val = FractionalDataType { -1.7417939 } + (FractionalDataType { 2.8212026 } + (FractionalDataType { -1.4699568 } + (FractionalDataType { 0.44717955 } + FractionalDataType { -0.056570851 } * val) * val) * val) * val;
-   val += static_cast<FractionalDataType>(shifts) * FractionalDataType { 0.69314718 };
+   val = FloatEbmType { -1.7417939 } + (FloatEbmType { 2.8212026 } + (FloatEbmType { -1.4699568 } + (FloatEbmType { 0.44717955 } + FloatEbmType { -0.056570851 } * val) * val) * val) * val;
+   val += static_cast<FloatEbmType>(shifts) * FloatEbmType { 0.69314718 };
 
    return val;
 }
 #else // FAST_LOG
-EBM_INLINE FractionalDataType EbmLog(FractionalDataType val) {
+EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
    return std::log(val);
    // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy in the low
    // digits since we take the average, and the log loss will therefore be dominated by a few items that we predict strongly won't happen, but do happen.  

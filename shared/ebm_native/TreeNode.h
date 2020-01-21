@@ -55,7 +55,7 @@ public:
 
    struct AfterExaminationForPossibleSplitting {
       TreeNode<true> * m_pTreeNodeChildren;
-      FractionalDataType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      FloatEbmType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
       ActiveDataType m_divisionValue;
    };
 
@@ -93,7 +93,7 @@ public:
 
    struct AfterExaminationForPossibleSplitting {
       TreeNode<false> * m_pTreeNodeChildren;
-      FractionalDataType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
+      FloatEbmType m_splitGain; // put this at the top so that our priority queue can access it directly without adding anything to the pointer (this is slightly more efficient on intel systems at least)
       ActiveDataType m_divisionValue;
    };
 
@@ -131,11 +131,11 @@ public:
       return this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast != this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst && cInstancesRequiredForParentSplitMin <= this->GetInstances();
    }
 
-   EBM_INLINE FractionalDataType EXTRACT_GAIN_BEFORE_SPLITTING() {
+   EBM_INLINE FloatEbmType EXTRACT_GAIN_BEFORE_SPLITTING() {
       // m_splitGain is the result of a subtraction between a memory location and a calculation
       // if there is a difference in the number of bits between these two (some floating point processors store more bits)
       // then we could get a negative number, even if mathematically it can't be less than zero
-      const FractionalDataType splitGain = this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      const FloatEbmType splitGain = this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
       // in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint we can get a -infinity gain as a special extremely unlikely case for regression
       EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
       return splitGain;
@@ -148,7 +148,7 @@ public:
    EBM_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage that could be NaN (meaning the node was a branch)
       // we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
-      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FractionalDataType { 0 };
+      this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FloatEbmType { 0 };
    }
 
    EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
@@ -157,7 +157,7 @@ public:
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this recursive function to handle that
    // TODO: specialize this function for cases where we have hard coded vector lengths so that we don't have to pass in the cVectorLength parameter
-   void Flatten(ActiveDataType ** const ppDivisions, FractionalDataType ** const ppValues, const size_t cVectorLength) const {
+   void Flatten(ActiveDataType ** const ppDivisions, FloatEbmType ** const ppValues, const size_t cVectorLength) const {
       // don't log this since we call it recursively.  Log where the root is called
       if(UNPREDICTABLE(WAS_THIS_NODE_SPLIT())) {
          EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
@@ -169,17 +169,17 @@ public:
          const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(this->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
          pRightChild->Flatten(ppDivisions, ppValues, cVectorLength);
       } else {
-         FractionalDataType * pValuesCur = *ppValues;
-         FractionalDataType * const pValuesNext = pValuesCur + cVectorLength;
+         FloatEbmType * pValuesCur = *ppValues;
+         FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
          *ppValues = pValuesNext;
 
          const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER_CONST(this->m_aHistogramBucketVectorEntry);
          do {
-            FractionalDataType smallChangeToModel;
+            FloatEbmType smallChangeToModel;
             if(bClassification) {
                smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
             } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FractionalDataType>(this->GetInstances()));
+               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(this->GetInstances()));
             }
             *pValuesCur = smallChangeToModel;
 

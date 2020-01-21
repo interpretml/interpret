@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // FeatureTypeCore
 #include "Logging.h"
 
@@ -18,13 +18,13 @@ constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameter
 signed char g_traceLevel = TraceLevelOff;
 LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
 
-EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(nullptr != logMessageFunction);
    assert(nullptr == g_pLogMessageFunc); /* "SetLogMessageFunction should only be called once" */
    g_pLogMessageFunc = logMessageFunction;
 }
 
-EBMCORE_IMPORT_EXPORT_BODY void EBMCORE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
+EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel) {
    assert(TraceLevelOff <= traceLevel);
    assert(traceLevel <= TraceLevelVerbose);
    assert(nullptr != g_pLogMessageFunc); /* "call SetLogMessageFunction before calling SetTraceLevel" */

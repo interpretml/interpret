@@ -7,7 +7,7 @@
 
 #include <type_traits> // std::is_standard_layout
 
-#include "ebm_native.h" // FractionalDataType
+#include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
@@ -18,14 +18,14 @@ template<>
 struct HistogramBucketVectorEntry<true> final {
    // classification version of the HistogramBucketVectorEntry class
 
-   FractionalDataType m_sumResidualError;
+   FloatEbmType m_sumResidualError;
    // TODO: for single features, we probably want to just do a single pass of the data and collect our m_sumDenominator during that sweep.  This is probably also true for pairs since calculating pair sums can be done fairly efficiently, but for tripples and higher dimensions we might be better off calculating JUST the sumResidualError which is the only thing required for choosing splits and we could then do a second pass of the data to find the denominators once we know the splits.  Tripples and higher dimensions tend to re-add/subtract the same cells many times over which is why it might be better there.  Test these theories out on large datasets
-   FractionalDataType m_sumDenominator;
+   FloatEbmType m_sumDenominator;
 
-   EBM_INLINE FractionalDataType GetSumDenominator() const {
+   EBM_INLINE FloatEbmType GetSumDenominator() const {
       return m_sumDenominator;
    }
-   EBM_INLINE void SetSumDenominator(FractionalDataType sumDenominatorSet) {
+   EBM_INLINE void SetSumDenominator(FloatEbmType sumDenominatorSet) {
       m_sumDenominator = sumDenominatorSet;
    }
    EBM_INLINE void Add(const HistogramBucketVectorEntry<true> & other) {
@@ -50,13 +50,13 @@ template<>
 struct HistogramBucketVectorEntry<false> final {
    // regression version of the HistogramBucketVectorEntry class
 
-   FractionalDataType m_sumResidualError;
+   FloatEbmType m_sumResidualError;
 
-   EBM_INLINE FractionalDataType GetSumDenominator() const {
+   EBM_INLINE FloatEbmType GetSumDenominator() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
-      return FractionalDataType { 0 };
+      return FloatEbmType { 0 };
    }
-   EBM_INLINE void SetSumDenominator(FractionalDataType sumDenominator) {
+   EBM_INLINE void SetSumDenominator(FloatEbmType sumDenominator) {
       UNUSED(sumDenominator);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }

@@ -48,7 +48,7 @@ class Native:
     # Nominal = 1
     FeatureTypeNominal = 1
 
-    class EbmCoreFeature(ct.Structure):
+    class EbmNativeFeature(ct.Structure):
         _fields_ = [
             # FeatureType featureType;
             ("featureType", ct.c_longlong),
@@ -58,7 +58,7 @@ class Native:
             ("countBins", ct.c_longlong),
         ]
 
-    class EbmCoreFeatureCombination(ct.Structure):
+    class EbmNativeFeatureCombination(ct.Structure):
         _fields_ = [
             # int64_t countFeaturesInCombination;
             ("countFeaturesInCombination", ct.c_longlong)
@@ -96,12 +96,12 @@ class Native:
             ct.c_longlong,
             # int64_t countFeatures
             ct.c_longlong,
-            # EbmCoreFeature * features
-            ct.POINTER(self.EbmCoreFeature),
+            # EbmNativeFeature * features
+            ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureCombinations
             ct.c_longlong,
-            # EbmCoreFeatureCombination * featureCombinations
-            ct.POINTER(self.EbmCoreFeatureCombination),
+            # EbmNativeFeatureCombination * featureCombinations
+            ct.POINTER(self.EbmNativeFeatureCombination),
             # int64_t * featureCombinationIndexes
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t countTrainingInstances
@@ -132,12 +132,12 @@ class Native:
         self.lib.InitializeBoostingRegression.argtypes = [
             # int64_t countFeatures
             ct.c_longlong,
-            # EbmCoreFeature * features
-            ct.POINTER(self.EbmCoreFeature),
+            # EbmNativeFeature * features
+            ct.POINTER(self.EbmNativeFeature),
             # int64_t countFeatureCombinations
             ct.c_longlong,
-            # EbmCoreFeatureCombination * featureCombinations
-            ct.POINTER(self.EbmCoreFeatureCombination),
+            # EbmNativeFeatureCombination * featureCombinations
+            ct.POINTER(self.EbmNativeFeatureCombination),
             # int64_t * featureCombinationIndexes
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t countTrainingInstances
@@ -223,8 +223,8 @@ class Native:
             ct.c_longlong,
             # int64_t countFeatures
             ct.c_longlong,
-            # EbmCoreFeature * features
-            ct.POINTER(self.EbmCoreFeature),
+            # EbmNativeFeature * features
+            ct.POINTER(self.EbmNativeFeature),
             # int64_t countInstances
             ct.c_longlong,
             # int64_t * binnedData
@@ -240,8 +240,8 @@ class Native:
         self.lib.InitializeInteractionRegression.argtypes = [
             # int64_t countFeatures
             ct.c_longlong,
-            # EbmCoreFeature * features
-            ct.POINTER(self.EbmCoreFeature),
+            # EbmNativeFeature * features
+            ct.POINTER(self.EbmNativeFeature),
             # int64_t countInstances
             ct.c_longlong,
             # int64_t * binnedData
@@ -385,7 +385,7 @@ class Native:
     def convert_features_to_c(features):
         # Create C form of features
 
-        feature_ar = (Native.EbmCoreFeature * len(features))()
+        feature_ar = (Native.EbmNativeFeature * len(features))()
         for idx, feature in enumerate(features):
             if feature["type"] == "categorical":
                 feature_ar[idx].featureType = Native.FeatureTypeNominal
@@ -404,7 +404,7 @@ class Native:
 
         feature_combination_indexes = []
         feature_combinations_ar = (
-            Native.EbmCoreFeatureCombination * len(feature_combinations)
+            Native.EbmNativeFeatureCombination * len(feature_combinations)
         )()
         for idx, feature_combination in enumerate(feature_combinations):
             features_in_combination = feature_combination["attributes"]

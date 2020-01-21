@@ -9,7 +9,7 @@
 #include <random>
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "ebm_native.h" // IntegerDataType
+#include "ebm_native.h" // IntEbmType
 #include "EbmInternal.h" // EBM_INLINE
 
 class RandomStream final {
@@ -42,7 +42,7 @@ class RandomStream final {
 
 public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
-   RandomStream(const IntegerDataType seed) try
+   RandomStream(const IntEbmType seed) try
       : m_bSuccess(false)
       , randomRemainingMax(0)
       , randomRemaining(0)
