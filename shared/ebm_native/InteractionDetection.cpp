@@ -33,7 +33,7 @@ EbmInteractionState * AllocateInteraction(IntEbmType countFeatures, const EbmNat
    EBM_ASSERT(0 <= countInstances);
    EBM_ASSERT(0 == countInstances || nullptr != targets);
    EBM_ASSERT(0 == countInstances || 0 == countFeatures || nullptr != binnedData);
-   // predictorScores can be null
+   EBM_ASSERT(0 == countInstances || nullptr != predictorScores);
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");

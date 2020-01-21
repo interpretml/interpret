@@ -19,6 +19,7 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(const size_t cIns
 
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
+   EBM_ASSERT(nullptr != aPredictorScores);
 
    const size_t cVectorLength = GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);

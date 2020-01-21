@@ -76,17 +76,22 @@ ebm_classify <- function(
    X_val_vec <- vector(mode = "numeric") # , ncol(X_val) * nrow(X_val)
    for(col_name in col_names) X_val_vec[(length(X_val_vec) + 1):(length(X_val_vec) + length(X_val[[col_name]]))] <- X_val[[col_name]]
 
+   n_classes = 2
+   num_scores <- get_count_scores_c(n_classes) # only binary classification for now
+   scores_train <- numeric(num_scores * length(y_train))
+   scores_val <- numeric(num_scores * length(y_val))
+
    result_list = cyclic_gradient_boost(
       "classification",
-      2,
+      n_classes,
       features,
       feature_combinations,
       X_train_vec,
       y_train,
-      NULL,
+      scores_train,
       X_val_vec,
       y_val,
-      NULL,
+      scores_val,
       0,
       random_state,
       learning_rate,
@@ -107,6 +112,14 @@ convert_probability <- function(logit) {
   odds <- exp(logit)
   proba <- odds / (1 + odds)
   return(proba)
+}
+
+get_count_scores_c <- function(n_classes) {
+   if(n_classes <= 2) {
+      return (1)
+   } else {
+      return (n_classes)
+   }
 }
 
 ebm_predict_proba <- function (model, X) {

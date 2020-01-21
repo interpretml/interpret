@@ -987,11 +987,11 @@ EbmBoostingState * AllocateBoosting(const IntEbmType randomSeed, const IntEbmTyp
    EBM_ASSERT(0 <= countTrainingInstances);
    EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingTargets);
    EBM_ASSERT(0 == countTrainingInstances || 0 == countFeatures || nullptr != trainingBinnedData);
-   // trainingPredictorScores can be null
+   EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingPredictorScores);
    EBM_ASSERT(0 <= countValidationInstances);
    EBM_ASSERT(0 == countValidationInstances || nullptr != validationTargets);
    EBM_ASSERT(0 == countValidationInstances || 0 == countFeatures || nullptr != validationBinnedData);
-   // validationPredictorScores can be null
+   EBM_ASSERT(0 == countValidationInstances || nullptr != validationPredictorScores);
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
@@ -1128,6 +1128,8 @@ EBM_INLINE CachedBoostingThreadResources<false> * GetCachedThreadResources<false
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmBoostingState * const pEbmBoostingState, const size_t iFeatureCombination, const FloatEbmType learningRate, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, const FloatEbmType * const aTrainingWeights, const FloatEbmType * const aValidationWeights, FloatEbmType * const pGainReturn) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetClasses function
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
@@ -1135,7 +1137,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmB
    LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdatePerTargetClasses");
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmBoostingState);
+   CachedBoostingThreadResources<bClassification> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmBoostingState);
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 

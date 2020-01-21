@@ -558,16 +558,6 @@ public:
       return ret;
    }
 
-   // if trainingLogOddsPrediction is zero (so, 50%/50% odds), then we can call this function
-   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassificationInitZero(const StorageDataType binnedActualValue) {
-      // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
-
-      EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
-      const FloatEbmType ret = UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -0.5 } : FloatEbmType { 0.5 };
-      EBM_ASSERT(std::abs(ComputeResidualErrorBinaryClassification(0, binnedActualValue) - ret) < k_epsilonResidualError); // no possible funny floats here
-      return ret;
-   }
-
    EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(const FloatEbmType sumExp, const FloatEbmType trainingLogWeight, const StorageDataType binnedActualValue, const StorageDataType iVector) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
@@ -643,37 +633,6 @@ public:
       // the sum of e^logit must be about equal to e^logit for this class, which should require thousands of rounds (70,900 or so)
       // also, the boosting algorthm tends to push results to zero, so a result more negative than -1 would be very exceptional
       EBM_ASSERT(std::isnan(expFraction) || !std::isinf(ret) && FloatEbmType { -1 } - k_epsilonResidualError <= ret && ret <= FloatEbmType { 1 });
-      return ret;
-   }
-
-   // if trainingLogWeight is defaulted to zero during initialization, we can call this simpler function
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const bool isMatch, const size_t countTargetClasses) {
-      // this is NOT a performance critical function.  It gets called only twice, and during initialization!
-
-      // sometimes for debugging we treat binary as multiclass, so allow 2
-      // we also have the super odd case of 1 class, which we handle here too.
-      EBM_ASSERT(1 <= countTargetClasses);
-
-      const FloatEbmType yi = UNPREDICTABLE(isMatch) ? FloatEbmType { 1 } : FloatEbmType { 0 };
-      const FloatEbmType ret = yi - FloatEbmType { 1 } / countTargetClasses;
-
-#ifndef NDEBUG
-      EBM_ASSERT(!isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(countTargetClasses), 0, 1, 1) - ret) < k_epsilonResidualError);
-      EBM_ASSERT(isMatch || std::abs(ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(countTargetClasses), 0, 0, 1) - ret) < k_epsilonResidualError);
-#endif
-      // if countTargetClasses is 1, then ret can be -1 for the impossible case of us getting the class incorrect.  Even though that can't legally
-      //   happen, we calculate the probability before entering the loop, so we still get the value even if it's impossible
-      
-      // ret can't be 1, even if countTargetClasses is 1, since we subtract something from 1 in the isMatch == true case, and the something can't be zero
-      EBM_ASSERT(FloatEbmType { -1 } <= ret && ret < FloatEbmType { 1 });
-      return ret;
-   }
-
-   // if trainingLogWeight is zero, we can call this simpler function
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const StorageDataType binnedActualValue, const StorageDataType iVector, const FloatEbmType matchValue, const FloatEbmType nonMatchValue) {
-      // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
-
-      const FloatEbmType ret = UNPREDICTABLE(iVector == binnedActualValue) ? matchValue : nonMatchValue;
       return ret;
    }
 

@@ -499,20 +499,18 @@ SEXP InitializeBoostingClassification_R(
    }
 
    const FloatEbmType * aTrainingPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(trainingPredictorScores)) {
-      size_t cTrainingPredictorScores;
-      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(IsMultiplyError(cTrainingInstances, cVectorLength)) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cVectorLength)");
-         return R_NilValue;
-      }
-      if(cVectorLength * cTrainingInstances != cTrainingPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingInstances != cTrainingPredictorScores");
-         return R_NilValue;
-      }
+   size_t cTrainingPredictorScores;
+   if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(IsMultiplyError(cTrainingInstances, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cVectorLength)");
+      return R_NilValue;
+   }
+   if(cVectorLength * cTrainingInstances != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingInstances != cTrainingPredictorScores");
+      return R_NilValue;
    }
 
    size_t cValidationBinnedData;
@@ -540,20 +538,18 @@ SEXP InitializeBoostingClassification_R(
    }
 
    const FloatEbmType * aValidationPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(validationPredictorScores)) {
-      size_t cValidationPredictorScores;
-      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(IsMultiplyError(cValidationInstances, cVectorLength)) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cVectorLength)");
-         return R_NilValue;
-      }
-      if(cVectorLength * cValidationInstances != cValidationPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationInstances != cValidationPredictorScores");
-         return R_NilValue;
-      }
+   size_t cValidationPredictorScores;
+   if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(IsMultiplyError(cValidationInstances, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cVectorLength)");
+      return R_NilValue;
+   }
+   if(cVectorLength * cValidationInstances != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationInstances != cValidationPredictorScores");
+      return R_NilValue;
    }
 
    if(!IsSingleIntVector(countInnerBags)) {
@@ -672,16 +668,14 @@ SEXP InitializeBoostingRegression_R(
    }
 
    const FloatEbmType * aTrainingPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(trainingPredictorScores)) {
-      size_t cTrainingPredictorScores;
-      if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cTrainingInstances != cTrainingPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances != cTrainingPredictorScores");
-         return R_NilValue;
-      }
+   size_t cTrainingPredictorScores;
+   if(ConvertDoublesToDoubles(trainingPredictorScores, &cTrainingPredictorScores, &aTrainingPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cTrainingInstances != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances != cTrainingPredictorScores");
+      return R_NilValue;
    }
 
    size_t cValidationBinnedData;
@@ -709,16 +703,14 @@ SEXP InitializeBoostingRegression_R(
    }
 
    const FloatEbmType * aValidationPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(validationPredictorScores)) {
-      size_t cValidationPredictorScores;
-      if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cValidationInstances != cValidationPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances != cValidationPredictorScores");
-         return R_NilValue;
-      }
+   size_t cValidationPredictorScores;
+   if(ConvertDoublesToDoubles(validationPredictorScores, &cValidationPredictorScores, &aValidationPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cValidationInstances != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances != cValidationPredictorScores");
+      return R_NilValue;
    }
 
    if(!IsSingleIntVector(countInnerBags)) {
@@ -1080,20 +1072,18 @@ SEXP InitializeInteractionClassification_R(
    }
 
    const FloatEbmType * aPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(predictorScores)) {
-      size_t cPredictorScores;
-      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(IsMultiplyError(cInstances, cVectorLength)) {
-         LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cVectorLength)");
-         return R_NilValue;
-      }
-      if(cVectorLength * cInstances != cPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cInstances != cPredictorScores");
-         return R_NilValue;
-      }
+   size_t cPredictorScores;
+   if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(IsMultiplyError(cInstances, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cVectorLength)");
+      return R_NilValue;
+   }
+   if(cVectorLength * cInstances != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cInstances != cPredictorScores");
+      return R_NilValue;
    }
 
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(static_cast<IntEbmType>(cTargetClasses), countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
@@ -1155,16 +1145,14 @@ SEXP InitializeInteractionRegression_R(
    }
 
    const FloatEbmType * aPredictorScores = nullptr;
-   if(NILSXP != TYPEOF(predictorScores)) {
-      size_t cPredictorScores;
-      if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
-         // we've already logged any errors
-         return R_NilValue;
-      }
-      if(cInstances != cPredictorScores) {
-         LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
-         return R_NilValue;
-      }
+   size_t cPredictorScores;
+   if(ConvertDoublesToDoubles(predictorScores, &cPredictorScores, &aPredictorScores)) {
+      // we've already logged any errors
+      return R_NilValue;
+   }
+   if(cInstances != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
+      return R_NilValue;
    }
 
    PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);

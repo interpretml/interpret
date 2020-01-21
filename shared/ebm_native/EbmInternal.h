@@ -110,6 +110,11 @@
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
+
+// TODO: do a full top to bottom review of EbmStatistics.h (not the diff, which we've already checked)
+// TODO: starting from the input functions, follow all places that we use/create floating point numbers and look for overflow possibilities
+// TODO: search on all my epsilon values and see if they are being used consistently
+
 constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
 constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;

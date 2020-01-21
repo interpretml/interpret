@@ -19,6 +19,9 @@
 // TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression by using exteme regression values and in classification by using certainty situations with big learning rates
 // TODO : add test for the condition where we overflow the validation regression or classification residuals without overflowing the model update or the model tensors.  We can do this by having two extreme features that will overflow together
 
+// TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one feature has duplicates for all 0 and 1 values, then the split if we control it should give us the same gain
+// TODO: write some NaN and +infinity tests to check propagation at various points
+
 #include <string>
 #include <stdio.h>
 #include <iostream>
@@ -771,10 +774,56 @@ public:
          exit(1);
       }
 
+      const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmBoosting = InitializeBoostingClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingClassificationTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationClassificationTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
+         if(m_bNullTrainingPredictionScores) {
+            m_trainingPredictionScores.resize(cVectorLength * m_trainingClassificationTargets.size());
+         }
+         if(m_bNullValidationPredictionScores) {
+            m_validationPredictionScores.resize(cVectorLength * m_validationClassificationTargets.size());
+         }
+         m_pEbmBoosting = InitializeBoostingClassification(
+            m_learningTypeOrCountTargetClasses, 
+            m_features.size(), 
+            0 == m_features.size() ? nullptr : &m_features[0], 
+            m_featureCombinations.size(), 
+            0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 
+            0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], 
+            m_trainingClassificationTargets.size(), 
+            0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 
+            0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], 
+            0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingPredictionScores[0], 
+            m_validationClassificationTargets.size(), 
+            0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 
+            0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], 
+            0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0], 
+            countInnerBags, 
+            randomSeed
+         );
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmBoosting = InitializeBoostingRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_featureCombinations.size(), 0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], m_trainingRegressionTargets.size(), 0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], m_bNullTrainingPredictionScores ? nullptr : &m_trainingPredictionScores[0], m_validationRegressionTargets.size(), 0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], m_bNullValidationPredictionScores ? nullptr : &m_validationPredictionScores[0], countInnerBags, randomSeed);
+         if(m_bNullTrainingPredictionScores) {
+            m_trainingPredictionScores.resize(cVectorLength * m_trainingRegressionTargets.size());
+         }
+         if(m_bNullValidationPredictionScores) {
+            m_validationPredictionScores.resize(cVectorLength * m_validationRegressionTargets.size());
+         }
+         m_pEbmBoosting = InitializeBoostingRegression(
+            m_features.size(), 
+            0 == m_features.size() ? nullptr : &m_features[0], 
+            m_featureCombinations.size(), 
+            0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 
+            0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], 
+            m_trainingRegressionTargets.size(), 
+            0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 
+            0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], 
+            0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingPredictionScores[0], 
+            m_validationRegressionTargets.size(), 
+            0 == m_validationBinnedData.size() ? nullptr : &m_validationBinnedData[0], 
+            0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], 
+            0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0], 
+            countInnerBags, 
+            randomSeed
+         );
       } else {
          exit(1);
       }
@@ -1023,10 +1072,31 @@ public:
          exit(1);
       }
 
+      const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
       if(IsClassification(m_learningTypeOrCountTargetClasses)) {
-         m_pEbmInteraction = InitializeInteractionClassification(m_learningTypeOrCountTargetClasses, m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionClassificationTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         if(m_bNullInteractionPredictionScores) {
+            m_interactionPredictionScores.resize(cVectorLength * m_interactionClassificationTargets.size());
+         }
+         m_pEbmInteraction = InitializeInteractionClassification(
+            m_learningTypeOrCountTargetClasses, 
+            m_features.size(), 
+            0 == m_features.size() ? nullptr : &m_features[0], 
+            m_interactionClassificationTargets.size(), 
+            0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 
+            0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], 
+            0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionPredictionScores[0]);
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
-         m_pEbmInteraction = InitializeInteractionRegression(m_features.size(), 0 == m_features.size() ? nullptr : &m_features[0], m_interactionRegressionTargets.size(), 0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], m_bNullInteractionPredictionScores ? nullptr : &m_interactionPredictionScores[0]);
+         if(m_bNullInteractionPredictionScores) {
+            m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
+         }
+         m_pEbmInteraction = InitializeInteractionRegression(
+            m_features.size(), 
+            0 == m_features.size() ? nullptr : &m_features[0], 
+            m_interactionRegressionTargets.size(), 
+            0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 
+            0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], 
+            0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionPredictionScores[0]
+         );
       } else {
          exit(1);
       }
