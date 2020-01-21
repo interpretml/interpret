@@ -176,7 +176,7 @@ void BinDataSetTrainingZeroDimensions(HistogramBucket<IsClassification(compilerL
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -202,7 +202,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(compilerLearningTypeOrC
 
    const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
    const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
-   const StorageDataTypeCore * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
+   const StorageDataType * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
    const FloatEbmType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
 
    // this shouldn't overflow since we're accessing existing memory
@@ -300,7 +300,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDim
 class RecursiveBinDataSetTraining {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -327,7 +327,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, k_cDimensionsMax> {
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
-   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   EBM_INLINE static void Recursive(const size_t cRuntimeDimensions, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const SamplingMethod * const pTrainingSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -344,7 +344,7 @@ public:
 
 // TODO: make the number of dimensions (pFeatureCombination->m_cFeatures) a template parameter so that we don't have to have the inner loop that is very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombinationCore * const pFeatureCombination, const DataSetByFeature * const pDataSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const DataSetByFeature * const pDataSet, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -374,12 +374,12 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(compilerLearningType
       size_t iBucket = 0;
       size_t iDimension = 0;
       do {
-         const FeatureCore * const pInputFeature = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
+         const Feature * const pInputFeature = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
          const size_t cBins = pInputFeature->m_cBins;
-         const StorageDataTypeCore * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
+         const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
          pInputData += iInstance;
-         StorageDataTypeCore iBinOriginal = *pInputData;
-         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataTypeCore>(iBinOriginal)));
+         StorageDataType iBinOriginal = *pInputData;
+         EBM_ASSERT((IsNumberConvertable<size_t, StorageDataType>(iBinOriginal)));
          size_t iBin = static_cast<size_t>(iBinOriginal);
          EBM_ASSERT(iBin < cBins);
          iBucket += cBuckets * iBin;

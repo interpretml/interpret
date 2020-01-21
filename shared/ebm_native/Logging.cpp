@@ -9,7 +9,7 @@
 #include <stdarg.h>
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // FeatureTypeCore
+#include "EbmInternal.h" // FeatureType
 #include "Logging.h"
 
 extern const char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";

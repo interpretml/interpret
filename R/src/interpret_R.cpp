@@ -439,7 +439,7 @@ SEXP InitializeBoostingClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsNumberConvertable<ptrdiff_t, size_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cVectorLength = GetVectorLengthFlat(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);
@@ -922,12 +922,12 @@ SEXP GetBestModelFeatureCombination_R(
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
       return ret;
    }
-   size_t cValues = GetVectorLengthFlatCore(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureCombinationCore * const pFeatureCombinationCore = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
-   const size_t cFeatures = pFeatureCombinationCore->m_cFeatures;
+   size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
+   const FeatureCombination * const pFeatureCombination = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
+   const size_t cFeatures = pFeatureCombination->m_cFeatures;
    if(0 != cFeatures) {
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombinationCore->m_FeatureCombinationEntry[0];
-      const FeatureCombinationCore::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
+      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+      const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
       do {
          const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -987,12 +987,12 @@ SEXP GetCurrentModelFeatureCombination_R(
       LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
       return ret;
    }
-   size_t cValues = GetVectorLengthFlatCore(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureCombinationCore * const pFeatureCombinationCore = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
-   const size_t cFeatures = pFeatureCombinationCore->m_cFeatures;
+   size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
+   const FeatureCombination * const pFeatureCombination = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
+   const size_t cFeatures = pFeatureCombination->m_cFeatures;
    if(0 != cFeatures) {
-      const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombinationCore->m_FeatureCombinationEntry[0];
-      const FeatureCombinationCore::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
+      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
+      const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
       do {
          const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
@@ -1045,7 +1045,7 @@ SEXP InitializeInteractionClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R !IsNumberConvertable<ptrdiff_t, size_t>(cTargetClasses)");
       return R_NilValue;
    }
-   const size_t cVectorLength = GetVectorLengthFlatCore(static_cast<ptrdiff_t>(cTargetClasses));
+   const size_t cVectorLength = GetVectorLengthFlat(static_cast<ptrdiff_t>(cTargetClasses));
 
    size_t cFeatures;
    EbmNativeFeature * const aFeatures = ConvertFeatures(features, &cFeatures);

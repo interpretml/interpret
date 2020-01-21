@@ -50,7 +50,7 @@ void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations,
    LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
 
-SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombinations, const size_t cVectorLength) {
+SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombinations, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered InitializeSegmentedTensors");
 
    EBM_ASSERT(0 < cFeatureCombinations);
@@ -66,7 +66,7 @@ SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSeg
 
    SegmentedTensor<ActiveDataType, FloatEbmType> ** ppSegmentedTensors = apSegmentedTensors;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
-      const FeatureCombinationCore * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
+      const FeatureCombination * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
       SegmentedTensor<ActiveDataType, FloatEbmType> * const pSegmentedTensors = SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
@@ -157,10 +157,10 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
       EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
       size_t iFeatureInitialize = 0;
       do {
-         static_assert(FeatureTypeCore::OrdinalCore == static_cast<FeatureTypeCore>(FeatureTypeOrdinal), "FeatureTypeCore::OrdinalCore must have the same value as FeatureTypeOrdinal");
-         static_assert(FeatureTypeCore::NominalCore == static_cast<FeatureTypeCore>(FeatureTypeNominal), "FeatureTypeCore::NominalCore must have the same value as FeatureTypeNominal");
+         static_assert(FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal");
+         static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal");
          EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
-         FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
+         FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
          IntEbmType countBins = pFeatureInitialize->countBins;
          EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the features would require a value, even if it was 0
@@ -178,7 +178,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
          bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
          // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-         new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
+         new (&m_aFeatures[iFeatureInitialize]) Feature(cBins, iFeatureInitialize, featureType, bMissing);
          // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
          EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -190,7 +190,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize done feature processing");
 
-   const size_t cVectorLength = GetVectorLengthFlatCore(m_runtimeLearningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLengthFlat(m_runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
    if(0 != m_cFeatureCombinations) {
@@ -238,7 +238,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
                }
                const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-               FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+               Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                if(LIKELY(1 < pInputFeature->m_cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
                   ++cSignificantFeaturesInCombination;
@@ -255,7 +255,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
             }
          }
 
-         FeatureCombinationCore * pFeatureCombination = FeatureCombinationCore::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
+         FeatureCombination * pFeatureCombination = FeatureCombination::Allocate(cSignificantFeaturesInCombination, iFeatureCombination);
          if(nullptr == pFeatureCombination) {
             LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pFeatureCombination");
             return true;
@@ -271,14 +271,14 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
             EBM_ASSERT(nullptr != featureCombinationIndexes);
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
-            FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+            FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
             do {
                const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
                EBM_ASSERT(0 <= indexFeatureInterop);
                EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop))); // this was checked above
                const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                EBM_ASSERT(iFeatureForCombination < m_cFeatures);
-               const FeatureCore * const pInputFeature = &m_aFeatures[iFeatureForCombination];
+               const Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
                const size_t cBins = pInputFeature->m_cBins;
                if(LIKELY(1 < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is otherwise indistinquishable from the original data
@@ -311,7 +311,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
             }
 
             // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
-            const size_t cBitsRequiredMin = CountBitsRequiredCore(cTensorBins - 1);
+            const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
             pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
          }
          ++iFeatureCombination;
@@ -400,7 +400,7 @@ bool EbmBoostingState::Initialize(const EbmNativeFeature * const aFeatures, cons
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+static void TrainingSetTargetFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -421,11 +421,11 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
-         const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
+         const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
          if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
             do {
-               StorageDataTypeCore targetData = *pTargetData;
+               StorageDataType targetData = *pTargetData;
                // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
                const FloatEbmType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
                *pTrainingPredictorScores = trainingPredictorScore;
@@ -438,7 +438,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          } else {
             const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
             do {
-               StorageDataTypeCore targetData = *pTargetData;
+               StorageDataType targetData = *pTargetData;
                FloatEbmType sumExp = 0;
                size_t iVector1 = 0;
                do {
@@ -451,9 +451,9 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                   ++iVector1;
                } while(iVector1 < cVectorLength);
 
-               EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-               const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
-               StorageDataTypeCore iVector2 = 0;
+               EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+               const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
+               StorageDataType iVector2 = 0;
                do {
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, pTrainingPredictorScores[iVector2], targetData, iVector2);
@@ -490,7 +490,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-   const StorageDataTypeCore * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
+   const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
    FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
 
    if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
@@ -541,7 +541,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
    } else {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
-      const StorageDataTypeCore * pTargetData = pTrainingSet->GetTargetDataPointer();
+      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
@@ -563,7 +563,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            StorageDataTypeCore targetData = *pTargetData;
+            StorageDataType targetData = *pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
@@ -588,9 +588,9 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
                   ++iVector1;
                } while(iVector1 < cVectorLength);
 
-               EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-               const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
-               StorageDataTypeCore iVector2 = 0;
+               EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+               const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
+               StorageDataType iVector2 = 0;
                do {
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, pTrainingPredictorScores[iVector2], targetData, iVector2);
@@ -639,7 +639,7 @@ static void TrainingSetTargetFeatureLoop(const FeatureCombinationCore * const pF
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+static void TrainingSetInputFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pTrainingSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    if(static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses) <= 1 << 1) {
       TrainingSetTargetFeatureLoop<cInputBits, 1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pTrainingSet, aModelFeatureCombinationUpdateTensor, runtimeLearningTypeOrCountTargetClasses);
    } else if(static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses) <= 1 << 2) {
@@ -668,7 +668,7 @@ static void TrainingSetInputFeatureLoop(const FeatureCombinationCore * const pFe
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<unsigned int cInputBits, unsigned int cTargetBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -699,7 +699,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
       } else {
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
-         const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
+         const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
 
          const FloatEbmType * const pValidationPredictionEnd = pValidationPredictorScores + cVectorLength * cInstances;
 
@@ -707,7 +707,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
          if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
             const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
             do {
-               StorageDataTypeCore targetData = *pTargetData;
+               StorageDataType targetData = *pTargetData;
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
                const FloatEbmType validationPredictorScores = *pValidationPredictorScores + smallChangeToPredictorScores;
                *pValidationPredictorScores = validationPredictorScores;
@@ -720,7 +720,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
          } else {
             const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
             do {
-               StorageDataTypeCore targetData = *pTargetData;
+               StorageDataType targetData = *pTargetData;
                FloatEbmType sumExp = 0;
                size_t iVector = 0;
                do {
@@ -753,7 +753,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-      const StorageDataTypeCore * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
 
       if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
          FloatEbmType sumSquareError = FloatEbmType { 0 };
@@ -813,7 +813,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
          EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
          FloatEbmType sumLogLoss = 0;
 
-         const StorageDataTypeCore * pTargetData = pValidationSet->GetTargetDataPointer();
+         const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
          FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
 
          // this shouldn't overflow since we're accessing existing memory
@@ -836,7 +836,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
             size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
             ++pInputData;
             do {
-               StorageDataTypeCore targetData = *pTargetData;
+               StorageDataType targetData = *pTargetData;
 
                const size_t iTensorBin = maskBits & iTensorBinCombined;
                const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
@@ -925,7 +925,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(const FeatureCombinationCore 
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<unsigned int cInputBits, ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FloatEbmType ValidationSetInputFeatureLoop(const FeatureCombinationCore * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+static FloatEbmType ValidationSetInputFeatureLoop(const FeatureCombination * const pFeatureCombination, DataSetByFeatureCombination * const pValidationSet, const FloatEbmType * const aModelFeatureCombinationUpdateTensor, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    if(static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses) <= 1 << 1) {
       return ValidationSetTargetFeatureLoop<cInputBits, 1, compilerLearningTypeOrCountTargetClasses>(pFeatureCombination, pValidationSet, aModelFeatureCombinationUpdateTensor, runtimeLearningTypeOrCountTargetClasses);
    } else if(static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses) <= 1 << 2) {
@@ -973,8 +973,8 @@ void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmBoostingState * AllocateCoreBoosting(const IntEbmType randomSeed, const IntEbmType countFeatures, const EbmNativeFeature * const features, const IntEbmType countFeatureCombinations, const EbmNativeFeatureCombination * const featureCombinations, const IntEbmType * const featureCombinationIndexes, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const IntEbmType countTrainingInstances, const void * const trainingTargets, const IntEbmType * const trainingBinnedData, const FloatEbmType * const trainingPredictorScores, const IntEbmType countValidationInstances, const void * const validationTargets, const IntEbmType * const validationBinnedData, const FloatEbmType * const validationPredictorScores, const IntEbmType countInnerBags) {
-   // TODO : give AllocateCoreBoosting the same calling parameter order as InitializeBoostingClassification
+EbmBoostingState * AllocateBoosting(const IntEbmType randomSeed, const IntEbmType countFeatures, const EbmNativeFeature * const features, const IntEbmType countFeatureCombinations, const EbmNativeFeatureCombination * const featureCombinations, const IntEbmType * const featureCombinationIndexes, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const IntEbmType countTrainingInstances, const void * const trainingTargets, const IntEbmType * const trainingBinnedData, const FloatEbmType * const trainingPredictorScores, const IntEbmType countValidationInstances, const void * const validationTargets, const IntEbmType * const validationBinnedData, const FloatEbmType * const validationPredictorScores, const IntEbmType countInnerBags) {
+   // TODO : give AllocateBoosting the same calling parameter order as InitializeBoostingClassification
    // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
    // randomSeed can be any value
@@ -995,23 +995,23 @@ EbmBoostingState * AllocateCoreBoosting(const IntEbmType randomSeed, const IntEb
    EBM_ASSERT(0 <= countInnerBags); // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countInnerBags)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore !IsNumberConvertable<size_t, IntEbmType>(countInnerBags)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countInnerBags)");
       return nullptr;
    }
 
@@ -1021,14 +1021,14 @@ EbmBoostingState * AllocateCoreBoosting(const IntEbmType randomSeed, const IntEb
    size_t cValidationInstances = static_cast<size_t>(countValidationInstances);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
-   size_t cVectorLength = GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses);
+   size_t cVectorLength = GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses);
 
    if(IsMultiplyError(cVectorLength, cTrainingInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cTrainingInstances)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting IsMultiplyError(cVectorLength, cTrainingInstances)");
       return nullptr;
    }
    if(IsMultiplyError(cVectorLength, cValidationInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore IsMultiplyError(cVectorLength, cValidationInstances)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting IsMultiplyError(cVectorLength, cValidationInstances)");
       return nullptr;
    }
 
@@ -1041,11 +1041,11 @@ EbmBoostingState * AllocateCoreBoosting(const IntEbmType randomSeed, const IntEb
    EbmBoostingState * const pEbmBoostingState = new (std::nothrow) EbmBoostingState(runtimeLearningTypeOrCountTargetClasses, cFeatures, cFeatureCombinations, cInnerBags, randomSeed);
    LOG_N(TraceLevelInfo, "Exited EbmBoostingState %p", static_cast<void *>(pEbmBoostingState));
    if(UNLIKELY(nullptr == pEbmBoostingState)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore nullptr == pEbmBoostingState");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting nullptr == pEbmBoostingState");
       return nullptr;
    }
    if(UNLIKELY(pEbmBoostingState->Initialize(features, featureCombinations, featureCombinationIndexes, cTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, cValidationInstances, validationTargets, validationBinnedData, validationPredictorScores))) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateCore pEbmBoostingState->Initialize");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting pEbmBoostingState->Initialize");
       delete pEbmBoostingState;
       return nullptr;
    }
@@ -1084,7 +1084,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, runtimeLearningTypeOrCountTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
+   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, runtimeLearningTypeOrCountTargetClasses, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;
 }
@@ -1107,7 +1107,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    IntEbmType randomSeed
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countFeatureCombinations=%" IntEbmTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntEbmTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf ", randomSeed=%" IntEbmTypePrintf, countFeatures, static_cast<const void *>(features), countFeatureCombinations, static_cast<const void *>(featureCombinations), static_cast<const void *>(featureCombinationIndexes), countTrainingInstances, static_cast<const void *>(trainingBinnedData), static_cast<const void *>(trainingTargets), static_cast<const void *>(trainingPredictorScores), countValidationInstances, static_cast<const void *>(validationBinnedData), static_cast<const void *>(validationTargets), static_cast<const void *>(validationPredictorScores), countInnerBags, randomSeed);
-   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateCoreBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
+   const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(randomSeed, countFeatures, features, countFeatureCombinations, featureCombinations, featureCombinationIndexes, k_Regression, countTrainingInstances, trainingTargets, trainingBinnedData, trainingPredictorScores, countValidationInstances, validationTargets, validationBinnedData, validationPredictorScores, countInnerBags));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;
 }
@@ -1136,7 +1136,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(EbmB
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
    CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources = GetCachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pEbmBoostingState);
-   const FeatureCombinationCore * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
    pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
@@ -1398,7 +1398,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(EbmBoosting
    // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the model
    pEbmBoostingState->m_apCurrentModel[iFeatureCombination]->AddExpandedWithBadValueProtection(aModelFeatureCombinationUpdateTensor);
 
-   const FeatureCombinationCore * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
 
    // if the count of training instances is zero, then pEbmBoostingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmBoostingState->m_pTrainingSet) {

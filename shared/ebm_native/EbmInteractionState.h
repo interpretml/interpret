@@ -23,7 +23,7 @@ public:
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   FeatureCore * const m_aFeatures;
+   Feature * const m_aFeatures;
    DataSetByFeature * m_pDataSet;
 
    unsigned int m_cLogEnterMessages;
@@ -32,7 +32,7 @@ public:
    EBM_INLINE EbmInteractionState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures)
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatures(cFeatures)
-      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_pDataSet(nullptr)
       , m_cLogEnterMessages(1000)
       , m_cLogExitMessages(1000) {
@@ -63,10 +63,10 @@ public:
          EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
          size_t iFeatureInitialize = 0;
          do {
-            static_assert(FeatureTypeCore::OrdinalCore == static_cast<FeatureTypeCore>(FeatureTypeOrdinal), "FeatureTypeCore::OrdinalCore must have the same value as FeatureTypeOrdinal");
-            static_assert(FeatureTypeCore::NominalCore == static_cast<FeatureTypeCore>(FeatureTypeNominal), "FeatureTypeCore::NominalCore must have the same value as FeatureTypeNominal");
+            static_assert(FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal");
+            static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal");
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
-            FeatureTypeCore featureTypeCore = static_cast<FeatureTypeCore>(pFeatureInitialize->featureType);
+            FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
             IntEbmType countBins = pFeatureInitialize->countBins;
             EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
@@ -84,7 +84,7 @@ public:
             bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
             // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
-            new (&m_aFeatures[iFeatureInitialize]) FeatureCore(cBins, iFeatureInitialize, featureTypeCore, bMissing);
+            new (&m_aFeatures[iFeatureInitialize]) Feature(cBins, iFeatureInitialize, featureType, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert

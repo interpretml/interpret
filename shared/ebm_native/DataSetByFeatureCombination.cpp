@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // FeatureTypeCore
+#include "EbmInternal.h" // FeatureType
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 #include "FeatureCombination.h"
@@ -89,18 +89,18 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(const size_t cInstance
    return aPredictorScoresTo;
 }
 
-EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
+EBM_INLINE static const StorageDataType * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargets);
 
-   if(IsMultiplyError(sizeof(StorageDataTypeCore), cInstances)) {
+   if(IsMultiplyError(sizeof(StorageDataType), cInstances)) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructTargetData");
       return nullptr;
    }
-   const size_t cTargetArrayBytes = sizeof(StorageDataTypeCore) * cInstances;
-   StorageDataTypeCore * const aTargetData = static_cast<StorageDataTypeCore *>(malloc(cTargetArrayBytes));
+   const size_t cTargetArrayBytes = sizeof(StorageDataType) * cInstances;
+   StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(cTargetArrayBytes));
    if(nullptr == aTargetData) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
       return nullptr;
@@ -108,13 +108,13 @@ EBM_INLINE static const StorageDataTypeCore * ConstructTargetData(const size_t c
 
    const IntEbmType * pTargetFrom = aTargets;
    const IntEbmType * const pTargetFromEnd = aTargets + cInstances;
-   StorageDataTypeCore * pTargetTo = aTargetData;
+   StorageDataType * pTargetTo = aTargetData;
    do {
       const IntEbmType data = *pTargetFrom;
       EBM_ASSERT(0 <= data);
-      EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(data)));
+      EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(data)));
       // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point that checks it there.  See CheckTargets(..)
-      *pTargetTo = static_cast<StorageDataTypeCore>(data);
+      *pTargetTo = static_cast<StorageDataType>(data);
       ++pTargetTo;
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
@@ -128,7 +128,7 @@ struct InputDataPointerAndCountBins {
    size_t m_cBins;
 };
 
-EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureCombinations);
@@ -141,36 +141,36 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
       return nullptr;
    }
    const size_t cBytesMemoryArray = sizeof(void *) * cFeatureCombinations;
-   StorageDataTypeCore ** const aaInputDataTo = static_cast<StorageDataTypeCore * *>(malloc(cBytesMemoryArray));
+   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType * *>(malloc(cBytesMemoryArray));
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
-   StorageDataTypeCore ** paInputDataTo = aaInputDataTo;
-   const FeatureCombinationCore * const * ppFeatureCombination = apFeatureCombination;
-   const FeatureCombinationCore * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
+   StorageDataType ** paInputDataTo = aaInputDataTo;
+   const FeatureCombination * const * ppFeatureCombination = apFeatureCombination;
+   const FeatureCombination * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
    do {
-      const FeatureCombinationCore * const pFeatureCombination = *ppFeatureCombination;
+      const FeatureCombination * const pFeatureCombination = *ppFeatureCombination;
       EBM_ASSERT(nullptr != pFeatureCombination);
       const size_t cFeatures = pFeatureCombination->m_cFeatures;
       if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
       } else {
          const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
-         EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
+         EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>()); // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
-         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataTypeCore>()); // if we have 1 item, it can't be larger than the number of bits of storage
+         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>()); // if we have 1 item, it can't be larger than the number of bits of storage
 
          EBM_ASSERT(0 < cInstances);
          const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
 
-         if(IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataTypeCore), cDataUnits)");
+         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
+            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
             goto free_all;
          }
-         const size_t cBytesData = sizeof(StorageDataTypeCore) * cDataUnits;
-         StorageDataTypeCore * pInputDataTo = static_cast<StorageDataTypeCore *>(malloc(cBytesData));
+         const size_t cBytesData = sizeof(StorageDataType) * cDataUnits;
+         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(cBytesData));
          if(nullptr == pInputDataTo) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
@@ -178,18 +178,18 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          *paInputDataTo = pInputDataTo;
 
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
-         const StorageDataTypeCore * const pInputDataToLast = reinterpret_cast<const StorageDataTypeCore *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
+         const StorageDataType * const pInputDataToLast = reinterpret_cast<const StorageDataType *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
          EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombinationCore::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
+         const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);
          const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
-            const FeatureCore * const pFeature = pFeatureCombinationEntry->m_pFeature;
+            const Feature * const pFeature = pFeatureCombinationEntry->m_pFeature;
             pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->m_iFeatureData * cInstances];
             pDimensionInfo->m_cBins = pFeature->m_cBins;
             ++pFeatureCombinationEntry;
@@ -204,7 +204,7 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
          size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPackDataUnit;
          while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
          one_last_loop:;
-            EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataTypeCore>());
+            EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataType>());
 
             size_t bits = 0;
             size_t shift = 0;
@@ -231,12 +231,12 @@ EBM_INLINE static const StorageDataTypeCore * const * ConstructInputData(const s
                // unpacking the indexes, we can just AND our mask with the bitfield to get the index and in subsequent loops
                // we can just shift down.  This eliminates one extra shift that we'd otherwise need to make if the first
                // item was in the MSB
-               EBM_ASSERT(shift < CountBitsRequiredPositiveMax<StorageDataTypeCore>());
+               EBM_ASSERT(shift < CountBitsRequiredPositiveMax<StorageDataType>());
                bits |= tensorIndex << shift;
                shift += cBitsPerItemMax;
             } while(shiftEnd != shift);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(bits)));
-            *pInputDataTo = static_cast<StorageDataTypeCore>(bits);
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(bits)));
+            *pInputDataTo = static_cast<StorageDataType>(bits);
             ++pInputDataTo;
          }
 
@@ -262,10 +262,10 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength)
+DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength)
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FloatEbmType *>(nullptr))
    , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FloatEbmType *>(nullptr))
-   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataTypeCore *>(nullptr))
+   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataType *>(nullptr))
    , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
    , m_cInstances(cInstances)
    , m_cFeatureCombinations(cFeatureCombinations) 
@@ -280,17 +280,17 @@ DataSetByFeatureCombination::~DataSetByFeatureCombination() {
 
    free(m_aResidualErrors);
    free(m_aPredictorScores);
-   free(const_cast<StorageDataTypeCore *>(m_aTargetData));
+   free(const_cast<StorageDataType *>(m_aTargetData));
 
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(0 < m_cFeatureCombinations);
-      const StorageDataTypeCore * const * paInputData = m_aaInputData;
-      const StorageDataTypeCore * const * const paInputDataEnd = m_aaInputData + m_cFeatureCombinations;
+      const StorageDataType * const * paInputData = m_aaInputData;
+      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureCombinations;
       do {
-         free(const_cast<StorageDataTypeCore *>(*paInputData));
+         free(const_cast<StorageDataType *>(*paInputData));
          ++paInputData;
       } while(paInputDataEnd != paInputData);
-      free(const_cast<StorageDataTypeCore **>(m_aaInputData));
+      free(const_cast<StorageDataType **>(m_aaInputData));
    }
 
    LOG_0(TraceLevelInfo, "Exited ~DataSetByFeatureCombination");

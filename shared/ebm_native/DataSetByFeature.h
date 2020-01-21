@@ -14,13 +14,13 @@
 
 class DataSetByFeature final {
    const FloatEbmType * const m_aResidualErrors;
-   const StorageDataTypeCore * const * const m_aaInputData;
+   const StorageDataType * const * const m_aaInputData;
    const size_t m_cInstances;
    const size_t m_cFeatures;
 
 public:
 
-   DataSetByFeature(const size_t cFeatures, const FeatureCore * const aFeatures, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses);
+   DataSetByFeature(const size_t cFeatures, const Feature * const aFeatures, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses);
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {
@@ -32,7 +32,7 @@ public:
       return m_aResidualErrors;
    }
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
-   EBM_INLINE const StorageDataTypeCore * GetInputDataPointer(const FeatureCore * const pFeature) const {
+   EBM_INLINE const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
       EBM_ASSERT(nullptr != pFeature);
       EBM_ASSERT(pFeature->m_iFeatureData < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);

@@ -63,23 +63,23 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
          const FloatEbmType matchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(true, runtimeLearningTypeOrCountTargetClasses);
          const FloatEbmType nonMatchValue = EbmStatistics::ComputeResidualErrorMulticlassInitZero(false, runtimeLearningTypeOrCountTargetClasses);
 
-         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-         const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
+         EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+         const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
 
          do {
             const IntEbmType targetOriginal = *pTargetData;
             EBM_ASSERT(0 <= targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
-            const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
-            EBM_ASSERT(target < static_cast<StorageDataTypeCore>(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataType size!
+            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
+            EBM_ASSERT(target < static_cast<StorageDataType>(runtimeLearningTypeOrCountTargetClasses));
 
             if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassificationInitZero(target);
                *pResidualError = residualError;
                ++pResidualError;
             } else {
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
+               for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlassInitZero(target, iVector, matchValue, nonMatchValue);
                   EBM_ASSERT(!std::isnan(residualError)); // without a aPredictorScores value, the logits are all zero, and we can't really overflow the exps
                   EBM_ASSERT(std::abs(EbmStatistics::ComputeResidualErrorMulticlass(static_cast<FloatEbmType>(runtimeLearningTypeOrCountTargetClasses), FloatEbmType { 0 }, target, iVector) - residualError) <= k_epsilonResidualError);
@@ -126,16 +126,16 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
 
          const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
 
-         EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, size_t>(cVectorLength)));
-         const StorageDataTypeCore cVectorLengthStorage = static_cast<StorageDataTypeCore>(cVectorLength);
+         EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+         const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
 
          do {
             const IntEbmType targetOriginal = *pTargetData;
             EBM_ASSERT(0 <= targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataTypeCore size!
-            const StorageDataTypeCore target = static_cast<StorageDataTypeCore>(targetOriginal);
-            EBM_ASSERT((IsNumberConvertable<StorageDataTypeCore, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
-            EBM_ASSERT(target < static_cast<StorageDataTypeCore>(runtimeLearningTypeOrCountTargetClasses));
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(targetOriginal))); // if we can't fit it, then we should increase our StorageDataType size!
+            const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
+            EBM_ASSERT(target < static_cast<StorageDataType>(runtimeLearningTypeOrCountTargetClasses));
             if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
                const FloatEbmType predictionScore = *pPredictorScores;
                const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
@@ -147,7 +147,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
                // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
                const FloatEbmType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
 
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
+               for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FloatEbmType predictionScore = *pPredictorScores - subtract;
                   sumExp += EbmExp(predictionScore);
                   ++pPredictorScores;
@@ -156,7 +156,7 @@ static void InitializeResiduals(const size_t cInstances, const void * const aTar
                // go back to the start so that we can iterate again
                pPredictorScores -= cVectorLengthStorage;
 
-               for(StorageDataTypeCore iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
+               for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
                   const FloatEbmType predictionScore = *pPredictorScores - subtract;
                   // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is expensive so we should just do it once instead and store the result in a small memory array here
                   const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, predictionScore, target, iVector);

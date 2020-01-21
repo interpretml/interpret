@@ -169,7 +169,7 @@ constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
 }
 WARNING_POP
 
-enum class FeatureTypeCore { OrdinalCore = 0, NominalCore = 1};
+enum class FeatureType { Ordinal = 0, Nominal = 1};
 
 // there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
@@ -189,7 +189,7 @@ constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
 
 static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
 
-typedef size_t StorageDataTypeCore;
+typedef size_t StorageDataType;
 typedef size_t ActiveDataType;
 
 constexpr ptrdiff_t k_Regression = -1;
@@ -211,7 +211,7 @@ constexpr EBM_INLINE bool IsMulticlass(const ptrdiff_t learningTypeOrCountTarget
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr EBM_INLINE size_t GetVectorLengthFlat(const ptrdiff_t learningTypeOrCountTargetClasses) {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
@@ -225,7 +225,7 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t learningType
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) (GetVectorLengthFlatCore(k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : (MACRO_compilerLearningTypeOrCountTargetClasses)))
+#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) (GetVectorLengthFlat(k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : (MACRO_compilerLearningTypeOrCountTargetClasses)))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
@@ -235,22 +235,22 @@ constexpr EBM_INLINE size_t GetVectorLengthFlatCore(const ptrdiff_t learningType
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
 template<typename T>
-constexpr size_t CountBitsRequiredCore(const T maxValue) {
+constexpr size_t CountBitsRequired(const T maxValue) {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return 0 == maxValue ? 0 : 1 + CountBitsRequiredCore<T>(maxValue / 2);
+   return 0 == maxValue ? 0 : 1 + CountBitsRequired<T>(maxValue / 2);
 }
 template<typename T>
 constexpr size_t CountBitsRequiredPositiveMax() {
-   return CountBitsRequiredCore(std::numeric_limits<T>::max());
+   return CountBitsRequired(std::numeric_limits<T>::max());
 }
 
-constexpr size_t k_cBitsForSizeTCore = CountBitsRequiredPositiveMax<size_t>();
+constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 // it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
 // TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
-constexpr size_t k_cDimensionsMax = k_cBitsForSizeTCore - 1;
-static_assert(k_cDimensionsMax < k_cBitsForSizeTCore, "reserve the highest bit for bit manipulation space");
+constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
+static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
-constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataTypeCore>();
+constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
 constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    return k_cBitsForStorageType / cBits;

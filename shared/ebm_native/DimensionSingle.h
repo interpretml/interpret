@@ -601,7 +601,7 @@ bool BoostZeroDimensional(CachedBoostingThreadResources<IsClassification(compile
 
 // TODO : make call parameter ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombinationCore * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FloatEbmType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+bool BoostSingleDimensional(RandomStream * const pRandomStream, CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombination * const pFeatureCombination, const size_t cTreeSplitsMax, const size_t cInstancesRequiredForParentSplitMin, const size_t cInstancesRequiredForChildSplitMin, SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, FloatEbmType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);

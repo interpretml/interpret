@@ -512,7 +512,7 @@ public:
       return value;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(const FloatEbmType trainingLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(const FloatEbmType trainingLogOddsPrediction, const StorageDataType binnedActualValue) {
       // this IS a performance critical function.  It gets called per instance!
 
       // trainingLogOddsPrediction can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -559,7 +559,7 @@ public:
    }
 
    // if trainingLogOddsPrediction is zero (so, 50%/50% odds), then we can call this function
-   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassificationInitZero(const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassificationInitZero(const StorageDataType binnedActualValue) {
       // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
@@ -568,7 +568,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(const FloatEbmType sumExp, const FloatEbmType trainingLogWeight, const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(const FloatEbmType sumExp, const FloatEbmType trainingLogWeight, const StorageDataType binnedActualValue, const StorageDataType iVector) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
       // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -670,14 +670,14 @@ public:
    }
 
    // if trainingLogWeight is zero, we can call this simpler function
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const StorageDataTypeCore binnedActualValue, const StorageDataTypeCore iVector, const FloatEbmType matchValue, const FloatEbmType nonMatchValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlassInitZero(const StorageDataType binnedActualValue, const StorageDataType iVector, const FloatEbmType matchValue, const FloatEbmType nonMatchValue) {
       // this is NOT a performance critical function.  It gets called per instance, but only during initialization!
 
       const FloatEbmType ret = UNPREDICTABLE(iVector == binnedActualValue) ? matchValue : nonMatchValue;
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(const FloatEbmType validationLogOddsPrediction, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(const FloatEbmType validationLogOddsPrediction, const StorageDataType binnedActualValue) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
@@ -722,7 +722,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(const FloatEbmType sumExp, const FloatEbmType * const aValidationLogWeight, const StorageDataTypeCore binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(const FloatEbmType sumExp, const FloatEbmType * const aValidationLogWeight, const StorageDataType binnedActualValue) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification

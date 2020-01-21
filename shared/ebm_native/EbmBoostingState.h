@@ -32,7 +32,7 @@ union CachedThreadResourcesUnion {
 
    EBM_INLINE CachedThreadResourcesUnion(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       LOG_N(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
-      const size_t cVectorLength = GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses);
+      const size_t cVectorLength = GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses);
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to constructor
          new(&classification) CachedBoostingThreadResources<true>(cVectorLength);
@@ -61,7 +61,7 @@ public:
    const ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    const size_t m_cFeatureCombinations;
-   FeatureCombinationCore ** const m_apFeatureCombinations;
+   FeatureCombination ** const m_apFeatureCombinations;
 
    // TODO : can we internalize these so that they are not pointers and are therefore subsumed into our class
    DataSetByFeatureCombination * m_pTrainingSet;
@@ -80,7 +80,7 @@ public:
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   FeatureCore * const m_aFeatures;
+   Feature * const m_aFeatures;
 
    RandomStream m_randomStream;
 
@@ -94,7 +94,7 @@ public:
    EBM_INLINE EbmBoostingState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets, const IntEbmType randomSeed)
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatureCombinations(cFeatureCombinations)
-      , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombinationCore::AllocateFeatureCombinations(cFeatureCombinations))
+      , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombination::AllocateFeatureCombinations(cFeatureCombinations))
       , m_pTrainingSet(nullptr)
       , m_pValidationSet(nullptr)
       , m_cSamplingSets(cSamplingSets)
@@ -102,10 +102,10 @@ public:
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
       , m_bestModelMetric(FloatEbmType { std::numeric_limits<FloatEbmType>::max() })
-      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
-      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlatCore(runtimeLearningTypeOrCountTargetClasses)))
+      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
+      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
-      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(FeatureCore), cFeatures) ? nullptr : static_cast<FeatureCore *>(malloc(sizeof(FeatureCore) * cFeatures)))
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)
       // we catch any errors in the constructor, so this should not be able to throw
       , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) {
@@ -130,7 +130,7 @@ public:
       delete m_pTrainingSet;
       delete m_pValidationSet;
 
-      FeatureCombinationCore::FreeFeatureCombinations(m_cFeatureCombinations, m_apFeatureCombinations);
+      FeatureCombination::FreeFeatureCombinations(m_cFeatureCombinations, m_apFeatureCombinations);
 
       free(m_aFeatures);
 
@@ -143,7 +143,7 @@ public:
    }
 
    static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors);
-   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombinationCore * const * const apFeatureCombinations, const size_t cVectorLength);
+   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombinations, const size_t cVectorLength);
    bool Initialize(const EbmNativeFeature * const aFeatures, const EbmNativeFeatureCombination * const aFeatureCombinations, const IntEbmType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntEbmType * const aTrainingBinnedData, const FloatEbmType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntEbmType * const aValidationBinnedData, const FloatEbmType * const aValidationPredictorScores);
 };
 
