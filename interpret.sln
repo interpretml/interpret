@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native_api_test", "tests\ebm_native_api_test\ebm_native_api_test.vcxproj", "{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native_test", "tests\ebm_native_test\ebm_native_test.vcxproj", "{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B} = {9C227F82-E92F-445C-9832-5A2EEDB7924B}
 	EndProjectSection
