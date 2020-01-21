@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ebm_native_api_test</RootNamespace>
+    <RootNamespace>ebm_native_test</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -74,25 +74,25 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebm_native_api_test</TargetName>
+    <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebm_native_api_test</TargetName>
+    <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebm_native_api_test</TargetName>
+    <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</OutDir>
     <IntDir>$(ProjectDir)..\..\tmp\vs\intermediate\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\</IntDir>
-    <TargetName>ebm_native_api_test</TargetName>
+    <TargetName>ebm_native_test</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeApiTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -116,7 +116,7 @@
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x64_debug.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeApiTest</Message>
+      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64_debug.dll lib_ebm_native_win_x64_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -135,7 +135,7 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeApiTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -148,7 +148,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86_debug.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x86_debug.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeApiTest</Message>
+      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86_debug.dll lib_ebm_native_win_x86_debug.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -169,7 +169,7 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeApiTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -184,7 +184,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x86.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x86.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeApiTest</Message>
+      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x86.dll lib_ebm_native_win_x86.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -205,7 +205,7 @@ EXIT /B 0
       <PreprocessorDefinitions>_CONSOLE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\shared\ebm_native\inc</AdditionalIncludeDirectories>
-      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeApiTest.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>PrecompiledHeaderEbmNativeTest.h</PrecompiledHeaderFile>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -220,7 +220,7 @@ EXIT /B 0
     <CustomBuildStep>
       <Outputs>$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)\lib_ebm_native_win_x64.dll</Outputs>
       <Inputs>$(ProjectDir)..\..\staging\lib_ebm_native_win_x64.dll</Inputs>
-      <Message>Copying ebm_native DLL to EbmNativeApiTest</Message>
+      <Message>Copying ebm_native DLL to EbmNativeTest</Message>
       <Command>robocopy /R:2 /NP "$(ProjectDir)..\..\staging" "$(ProjectDir)..\..\tmp\vs\bin\$(Configuration)\win\$(Platform)\$(MSBuildProjectName)" lib_ebm_native_win_x64.dll lib_ebm_native_win_x64.pdb
 ECHO robocopy returned error code %ERRORLEVEL%
 IF %ERRORLEVEL% GEQ 2 (
@@ -231,20 +231,20 @@ EXIT /B 0
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="PrecompiledHeaderEbmNativeApiTest.cpp">
+    <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="EbmNativeApiTest.cpp" />
+    <ClCompile Include="EbmNativeTest.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="PrecompiledHeaderEbmNativeApiTest.h" />
+    <ClInclude Include="PrecompiledHeaderEbmNativeTest.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ebm_native_api_test.bat" />
-    <None Include="ebm_native_api_test.sh" />
+    <None Include="ebm_native_test.bat" />
+    <None Include="ebm_native_test.sh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

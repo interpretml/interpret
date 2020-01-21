@@ -71,16 +71,16 @@ jobs:
   - script: |
       sudo apt-get -y update
       sudo apt-get -y install g++-multilib
-      /bin/sh ./tests/ebm_native_api_test/ebm_native_api_test.sh -nobuildebmnative
+      /bin/sh ./tests/ebm_native_test/ebm_native_test.sh -nobuildebmnative
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
-      /bin/sh ./tests/ebm_native_api_test/ebm_native_api_test.sh -nobuildebmnative
+      /bin/sh ./tests/ebm_native_test/ebm_native_test.sh -nobuildebmnative
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\tests\ebm_native_api_test\ebm_native_api_test.bat -nobuildebmnative
+      .\tests\ebm_native_test\ebm_native_test.bat -nobuildebmnative
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Testing ebm_native code (Windows)'
 
