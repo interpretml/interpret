@@ -574,6 +574,7 @@ class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
     # Interface modeled after:
+    # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
     # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html

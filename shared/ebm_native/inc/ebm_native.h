@@ -20,7 +20,9 @@ extern "C" {
 #ifdef LEGACY_COMPATIBILITY
 #define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  0
 #else // LEGACY_COMPATIBILITY
-#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  10
+// Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" says use 6 as the minimum instances
+https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
+#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  6
 #endif // LEGACY_COMPATIBILITY
 
 
