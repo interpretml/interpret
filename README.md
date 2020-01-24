@@ -75,6 +75,12 @@ show(ebm_global)
 ```
 ![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
+The graphs are the entire model.<sup>[*](#intercept-footnote)</sup>  For regression, sum the scores from each graph to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.  You can inspect everything.
+
+<p align="right"><i>
+   <a name="intercept-footnote">*</a>A single global intercept score is also required for computation, but not visualization
+</i></p>
+
 <br/>
 
 Understand individual predictions
@@ -104,7 +110,7 @@ show([logistic_regression, decision_tree])
 ## Roadmap
 
 Currently we're working on:
-- R language interface
+- R language interface (R is currently a WIP. Basic EBM classification can be done via the ebm_classify & ebm_predict_proba functions, but the predictions are a bit less accurate than in python. No plotting included yet, but other R plotting tools can do a basic job visualizing EBM models)
 - Missing Values Support
 - Improved Categorical Encoding
 - Interaction effect purification (see citations for details)
@@ -482,6 +488,17 @@ We also build on top of many great packages. Please check them out!
   
   <hr/>
 </details>
+
+
+## External links
+
+- [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
+- [On Model Explainability: From LIME, SHAP, to Explainable Boosting](https://everdark.github.io/k9/notebooks/ml/model_explain/model_explain.nb.html)
+- [Benchmarking and MLI experiments on the Adult dataset](https://github.com/sayakpaul/Benchmarking-and-MLI-experiments-on-the-Adult-dataset/blob/master/Benchmarking_experiments_on_the_Adult_dataset_and_interpretability.ipynb)
+- [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
+- [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
+- [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
+
 
 ## Contact us
 
