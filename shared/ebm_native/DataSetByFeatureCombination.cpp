@@ -40,7 +40,11 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances
    return aResidualErrors;
 }
 
-EBM_INLINE static FloatEbmType * ConstructPredictorScores(const size_t cInstances, const size_t cVectorLength, const FloatEbmType * const aPredictorScoresFrom) {
+EBM_INLINE static FloatEbmType * ConstructPredictorScores(
+   const size_t cInstances, 
+   const size_t cVectorLength, 
+   const FloatEbmType * const aPredictorScoresFrom
+) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cInstances);
@@ -113,7 +117,8 @@ EBM_INLINE static const StorageDataType * ConstructTargetData(const size_t cInst
       const IntEbmType data = *pTargetFrom;
       EBM_ASSERT(0 <= data);
       EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(data)));
-      // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point that checks it there.  See CheckTargets(..)
+      // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point 
+      // that checks it there.  See CheckTargets(..)
       *pTargetTo = static_cast<StorageDataType>(data);
       ++pTargetTo;
       ++pTargetFrom;
@@ -128,13 +133,19 @@ struct InputDataPointerAndCountBins {
    size_t m_cBins;
 };
 
-EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom) {
+EBM_INLINE static const StorageDataType * const * ConstructInputData(
+   const size_t cFeatureCombinations, 
+   const FeatureCombination * const * const apFeatureCombination, 
+   const size_t cInstances, 
+   const IntEbmType * const aInputDataFrom
+) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureCombinations);
    EBM_ASSERT(nullptr != apFeatureCombination);
    EBM_ASSERT(0 < cInstances);
-   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cInstances IF the featureCombinations are all empty, which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
+   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cInstances IF the featureCombinations are all empty, 
+   // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
    if(IsMultiplyError(sizeof(void *), cFeatureCombinations)) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(void *), cFeatureCombinations)");
@@ -158,9 +169,11 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_
          *paInputDataTo = nullptr; // free will skip over these later
       } else {
          const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
-         EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>()); // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
+         // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
+         EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
-         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>()); // if we have 1 item, it can't be larger than the number of bits of storage
+         // if we have 1 item, it can't be larger than the number of bits of storage
+         EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
          EBM_ASSERT(0 < cInstances);
          const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
@@ -178,7 +191,8 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_
          *paInputDataTo = pInputDataTo;
 
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
-         const StorageDataType * const pInputDataToLast = reinterpret_cast<const StorageDataType *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
+         const StorageDataType * const pInputDataToLast = 
+            reinterpret_cast<const StorageDataType *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;
          EBM_ASSERT(pInputDataTo <= pInputDataToLast); // we have 1 item or more, and therefore the last one can't be before the first item
 
          EBM_ASSERT(nullptr != aInputDataFrom);
@@ -218,11 +232,14 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_
                   pDimensionInfo->m_pInputData = pInputData + 1;
 
                   EBM_ASSERT(0 <= inputData);
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(inputData))); // data must be lower than inputData and inputData fits into a size_t which we checked earlier
+                  // data must be lower than inputData and inputData fits into a size_t which we checked earlier
+                  EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(inputData)));
                   EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cBins);
-                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins)); // we check for overflows during FeatureCombination construction, but let's check here again
+                  // we check for overflows during FeatureCombination construction, but let's check here again
+                  EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
-                  tensorIndex += tensorMultiple * static_cast<size_t>(inputData); // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                  // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
+                  tensorIndex += tensorMultiple * static_cast<size_t>(inputData);
                   tensorMultiple *= pDimensionInfo->m_cBins;
 
                   ++pDimensionInfo;
@@ -262,10 +279,23 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength)
+DataSetByFeatureCombination::DataSetByFeatureCombination(
+   const bool bAllocateResidualErrors, 
+   const bool bAllocatePredictorScores, 
+   const bool bAllocateTargetData, 
+   const size_t cFeatureCombinations, 
+   const FeatureCombination * const * const apFeatureCombination, 
+   const size_t cInstances, 
+   const IntEbmType * const aInputDataFrom, 
+   const void * const aTargets, 
+   const FloatEbmType * const aPredictorScoresFrom, 
+   const size_t cVectorLength
+)
    : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FloatEbmType *>(nullptr))
-   , m_aPredictorScores(bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FloatEbmType *>(nullptr))
-   , m_aTargetData(bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataType *>(nullptr))
+   , m_aPredictorScores(
+      bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FloatEbmType *>(nullptr))
+   , m_aTargetData(
+      bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataType *>(nullptr))
    , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
    , m_cInstances(cInstances)
    , m_cFeatureCombinations(cFeatureCombinations) 

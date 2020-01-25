@@ -26,14 +26,17 @@ public:
 
 template<bool bClassification>
 class SafeTreeNodeQueue final {
-   bool m_bSuccess; // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
+   // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
+   bool m_bSuccess;
 
 public:
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
-   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
+   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object 
+   // has been initialized
    std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>> m_queue;
 
-   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
+   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of 
+   // handling exception in initialization
    SafeTreeNodeQueue() try
       : m_bSuccess(false)
       , m_queue() {
@@ -108,7 +111,8 @@ public:
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
-         // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory in the old slot or it can be moved
+         // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory 
+         // in the old slot or it can be moved
          void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
          if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
@@ -128,7 +132,8 @@ public:
       m_cThreadByteBufferCapacity2 = cByteBoundaries + (m_cThreadByteBufferCapacity2 << 1);
       LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer2 to %zu", m_cThreadByteBufferCapacity2);
       // TODO : use malloc here.  our tree objects have internal pointers, so we're going to dispose of our work anyways
-      // There is no way to check if the array was re-allocated or not without invoking undefined behavior, so we don't get a benefit if the array can be resized with realloc
+      // There is no way to check if the array was re-allocated or not without invoking undefined behavior, 
+      // so we don't get a benefit if the array can be resized with realloc
       void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer2, m_cThreadByteBufferCapacity2);
       if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
          // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
@@ -148,7 +153,8 @@ public:
    }
 
    EBM_INLINE bool IsError() const {
-      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumResidualErrors2;
+      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || 
+         nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumResidualErrors2;
    }
 };
 
@@ -176,7 +182,8 @@ public:
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
-         // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new memory in the old slot or it can be moved
+         // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new 
+         // memory in the old slot or it can be moved
          void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
          if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.

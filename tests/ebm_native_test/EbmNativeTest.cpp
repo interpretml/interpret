@@ -7,19 +7,26 @@
 // we roll our own test framework here since it's nice having no dependencies, and we just need a few simple tests for the C API.
 // If we ended up needing something more substantial, I'd consider using doctest ( https://github.com/onqtam/doctest ) because:
 //   1) It's a single include file, which is the simplest we could ask for.  Googletest is more heavyweight
-//   2) It's MIT licensed, so we could include the header in our project and still keep our license 100% MIT compatible without having two licenses, unlike Catch, or Catch2
+//   2) It's MIT licensed, so we could include the header in our project and still keep our license 100% MIT compatible without having two licenses, 
+//      unlike Catch, or Catch2
 //   3) It's fast to compile.
-//   4) doctest is very close to having a JUnit output feature.  JUnit isn't really required, our python testing uses JUnit, so it would be nice to have the same format -> https://github.com/onqtam/doctest/blob/master/doc/markdown/roadmap.md   https://github.com/onqtam/doctest/issues/75
+//   4) doctest is very close to having a JUnit output feature.  JUnit isn't really required, our python testing uses JUnit, so it would be nice to have 
+//      the same format -> https://github.com/onqtam/doctest/blob/master/doc/markdown/roadmap.md   https://github.com/onqtam/doctest/issues/75
 //   5) If JUnit is desired in the meantime, there is a converter that will output JUnit -> https://github.com/ujiro99/doctest-junit-report
 //
-// In case we want to use doctest in the future, use the format of the following: TEST_CASE, CHECK & FAIL_CHECK (continues testing) / REQUIRE & FAIL (stops the current test, but we could just terminate), INFO (print to log file)
+// In case we want to use doctest in the future, use the format of the following: TEST_CASE, CHECK & FAIL_CHECK (continues testing) / REQUIRE & FAIL 
+//   (stops the current test, but we could just terminate), INFO (print to log file)
 // Don't implement this since it would be harder to do: SUBCASE
 
-// TODO : add test for the condition where we overflow the small model update to NaN or +-infinity for regression by using exteme regression values and in classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression by using exteme regression values and in classification by using certainty situations with big learning rates
-// TODO : add test for the condition where we overflow the validation regression or classification residuals without overflowing the model update or the model tensors.  We can do this by having two extreme features that will overflow together
+// TODO : add test for the condition where we overflow the small model update to NaN or +-infinity for regression by using exteme regression values and in 
+//   classification by using certainty situations with big learning rates
+// TODO : add test for the condition where we overflow the result of adding the small model update to the existing model NaN or +-infinity for regression 
+//   by using exteme regression values and in classification by using certainty situations with big learning rates
+// TODO : add test for the condition where we overflow the validation regression or classification residuals without overflowing the model update or the 
+//   model tensors.  We can do this by having two extreme features that will overflow together
 
-// TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one feature has duplicates for all 0 and 1 values, then the split if we control it should give us the same gain
+// TODO: write a test to compare gain from single vs multi-dimensional splitting (they use the same underlying function, so if we make a pair where one 
+//    feature has duplicates for all 0 and 1 values, then the split if we control it should give us the same gain
 // TODO: write some NaN and +infinity tests to check propagation at various points
 
 #include <string>
@@ -63,7 +70,8 @@ inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
 #define CONCATENATE_TOKENS(t1, t2) CONCATENATE_STRINGS(t1, t2)
 #define TEST_CASE(description) \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden); \
-   static int CONCATENATE_TOKENS(UNUSED_INTEGER_HIDDEN_, __LINE__) = RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description)); \
+   static int CONCATENATE_TOKENS(UNUSED_INTEGER_HIDDEN_, __LINE__) = \
+      RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description)); \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
 int g_countEqualityFailures = 0;
@@ -120,7 +128,8 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
    return isEqual;
 }
 
-// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK(expression) is called
+// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
+// function where CHECK(expression) is called
 #define CHECK(expression) \
    do { \
       const bool bFailedHidden = !(expression); \
@@ -130,7 +139,8 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
       } \
    } while((void)0, 0)
 
-// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the function where CHECK_APPROX(expression) is called
+// this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
+// function where CHECK_APPROX(expression) is called
 #define CHECK_APPROX(value, expected) \
    do { \
       const double valueHidden = (value); \
@@ -236,7 +246,11 @@ public:
       m_bNullPredictionScores(true) {
    }
 
-   ClassificationInstance(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const std::vector<FloatEbmType> priorPredictorPerClassLogits) :
+   ClassificationInstance(
+      const IntEbmType target, 
+      const std::vector<IntEbmType> binnedDataPerFeatureArray, 
+      const std::vector<FloatEbmType> priorPredictorPerClassLogits) 
+   :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPerClassLogits(priorPredictorPerClassLogits),
@@ -287,7 +301,11 @@ class TestApi {
 
    PEbmInteraction m_pEbmInteraction;
 
-   const FloatEbmType * GetPredictorScores(const size_t iFeatureCombination, const FloatEbmType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) const {
+   const FloatEbmType * GetPredictorScores(
+      const size_t iFeatureCombination, 
+      const FloatEbmType * const pModelFeatureCombination, 
+      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) 
+   const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
@@ -314,7 +332,12 @@ class TestApi {
       return &pModelFeatureCombination[iValue];
    }
 
-   FloatEbmType GetPredictorScore(const size_t iFeatureCombination, const FloatEbmType * const pModelFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+   FloatEbmType GetPredictorScore(
+      const size_t iFeatureCombination, 
+      const FloatEbmType * const pModelFeatureCombination, 
+      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, 
+      const size_t iTargetClassOrZero) 
+   const {
       const FloatEbmType * const aScores = GetPredictorScores(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures);
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          if(0 != iTargetClassOrZero) {
@@ -858,7 +881,16 @@ public:
       }
 
       FloatEbmType validationMetricReturn = FloatEbmType { 0 };
-      const IntEbmType ret = BoostingStep(m_pEbmBoosting, indexFeatureCombination, learningRate, countTreeSplitsMax, countInstancesRequiredForParentSplitMin, 0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 0 == validationWeights.size() ? nullptr : &validationWeights[0], &validationMetricReturn);
+      const IntEbmType ret = BoostingStep(
+         m_pEbmBoosting, 
+         indexFeatureCombination, 
+         learningRate, 
+         countTreeSplitsMax, 
+         countInstancesRequiredForParentSplitMin, 
+         0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 
+         0 == validationWeights.size() ? nullptr : &validationWeights[0], 
+         &validationMetricReturn
+      );
       if(0 != ret) {
          exit(1);
       }
@@ -888,7 +920,11 @@ public:
       return pModel;
    }
 
-   FloatEbmType GetCurrentModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, const size_t iTargetClassOrZero) const {
+   FloatEbmType GetCurrentModelPredictorScore(
+      const size_t iFeatureCombination, 
+      const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, 
+      const size_t iTargetClassOrZero)
+   const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
@@ -896,7 +932,12 @@ public:
          exit(1);
       }
       FloatEbmType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
-      FloatEbmType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures, iTargetClassOrZero);
+      FloatEbmType predictorScore = GetPredictorScore(
+         iFeatureCombination, 
+         pModelFeatureCombination, 
+         perDimensionIndexArrayForBinnedFeatures, 
+         iTargetClassOrZero
+      );
       return predictorScore;
    }
 
@@ -1121,7 +1162,12 @@ public:
       }
 
       FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
-      const IntEbmType ret = GetInteractionScore(m_pEbmInteraction, featuresInCombination.size(), 0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], &interactionScoreReturn);
+      const IntEbmType ret = GetInteractionScore(
+         m_pEbmInteraction, 
+         featuresInCombination.size(), 
+         0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], 
+         &interactionScoreReturn
+      );
       if(0 != ret) {
          exit(1);
       }
@@ -1163,8 +1209,33 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
    EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
+      0, 
+      nullptr, 
+      1, 
+      combinations, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      randomSeed
+   );
+   const IntEbmType ret = BoostingStep(
+      pEbmBoosting, 
+      0, 
+      k_learningRateDefault, 
+      k_countTreeSplitsMaxDefault, 
+      k_countInstancesRequiredForParentSplitMinDefault, 
+      nullptr, 
+      nullptr, 
+      nullptr
+   );
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
@@ -1173,8 +1244,34 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
    EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(2, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+      2, 
+      0, 
+      nullptr, 
+      1, 
+      combinations, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      randomSeed
+   );
+   const IntEbmType ret = BoostingStep(
+      pEbmBoosting, 
+      0, 
+      k_learningRateDefault, 
+      k_countTreeSplitsMaxDefault, 
+      k_countInstancesRequiredForParentSplitMinDefault, 
+      nullptr, 
+      nullptr, 
+      nullptr
+   );
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
@@ -1183,8 +1280,34 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
    EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(3, 0, nullptr, 1, combinations, nullptr, 0, nullptr, nullptr, nullptr, 0, nullptr, nullptr, nullptr, 0, randomSeed);
-   const IntEbmType ret = BoostingStep(pEbmBoosting, 0, k_learningRateDefault, k_countTreeSplitsMaxDefault, k_countInstancesRequiredForParentSplitMinDefault, nullptr, nullptr, nullptr);
+   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+      3, 
+      0, 
+      nullptr, 
+      1, 
+      combinations, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      nullptr, 
+      nullptr, 
+      nullptr, 
+      0, 
+      randomSeed
+   );
+   const IntEbmType ret = BoostingStep(
+      pEbmBoosting, 
+      0, 
+      k_learningRateDefault, 
+      k_countTreeSplitsMaxDefault, 
+      k_countInstancesRequiredForParentSplitMinDefault, 
+      nullptr, 
+      nullptr, 
+      nullptr
+   );
    CHECK(0 == ret);
    FreeBoosting(pEbmBoosting);
 }
@@ -1686,7 +1809,8 @@ TEST_CASE("features with 0 states, boosting") {
    FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
-   // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure calling to get the models doesn't crash
+   // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure 
+   // calling to get the models doesn't crash
    test.GetBestModelFeatureCombinationRaw(0);
    test.GetCurrentModelFeatureCombinationRaw(0);
 }
@@ -2367,7 +2491,8 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 
+         // 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(cBins) });
@@ -2398,7 +2523,8 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(cBins) });
@@ -2433,7 +2559,8 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
@@ -2466,7 +2593,8 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 64 bit machine
+         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // a 64 bit machine
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
@@ -2485,7 +2613,8 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
                CHECK_APPROX(metric, 0);
             } else {
 #ifdef EXPAND_BINARY_LOGITS
-               // TODO : check if it's surprising that our interaction score doubles when we change a binary classification with 1 logit to a binary classification with 2 logits
+               // TODO : check if it's surprising that our interaction score doubles when we change a binary classification with 1 logit to a binary 
+               // classification with 2 logits
                CHECK_APPROX(metric, 0.5 * cInstances);
 #else // EXPAND_BINARY_LOGITS
                CHECK_APPROX(metric, 0.25 * cInstances);

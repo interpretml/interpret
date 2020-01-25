@@ -47,7 +47,13 @@ public:
       LOG_0(TraceLevelInfo, "Exited ~EbmInteractionState");
    }
 
-   EBM_INLINE bool InitializeInteraction(const EbmNativeFeature * const aFeatures, const size_t cInstances, const void * const aTargets, const IntEbmType * const aBinnedData, const FloatEbmType * const aPredictorScores) {
+   EBM_INLINE bool InitializeInteraction(
+      const EbmNativeFeature * const aFeatures, 
+      const size_t cInstances, 
+      const void * const aTargets, 
+      const IntEbmType * const aBinnedData, 
+      const FloatEbmType * const aPredictorScores
+   ) {
       LOG_0(TraceLevelInfo, "Entered InitializeInteraction");
 
       if(0 != m_cFeatures && nullptr == m_aFeatures) {
@@ -63,13 +69,19 @@ public:
          EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
          size_t iFeatureInitialize = 0;
          do {
-            static_assert(FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal");
-            static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal");
+            static_assert(
+               FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal"
+            );
+            static_assert(
+               FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
+            );
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
             FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
             IntEbmType countBins = pFeatureInitialize->countBins;
-            EBM_ASSERT(0 <= countBins); // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+            // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything 
+            // since they always have the same value)
+            EBM_ASSERT(0 <= countBins);
             if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
                LOG_0(TraceLevelWarning, "WARNING InitializeInteraction !IsNumberConvertable<size_t, IntEbmType>(countBins)");
                return true;
@@ -83,7 +95,8 @@ public:
             EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
             bool bMissing = 0 != pFeatureInitialize->hasMissing;
 
-            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the resulting pointer returned
+            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the 
+            // resulting pointer returned
             new (&m_aFeatures[iFeatureInitialize]) Feature(cBins, iFeatureInitialize, featureType, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
@@ -99,7 +112,15 @@ public:
       LOG_0(TraceLevelInfo, "Entered DataSetByFeature");
       EBM_ASSERT(nullptr == m_pDataSet);
       if(0 != cInstances) {
-         m_pDataSet = new (std::nothrow) DataSetByFeature(m_cFeatures, m_aFeatures, cInstances, aBinnedData, aTargets, aPredictorScores, m_runtimeLearningTypeOrCountTargetClasses);
+         m_pDataSet = new (std::nothrow) DataSetByFeature(
+            m_cFeatures, 
+            m_aFeatures, 
+            cInstances, 
+            aBinnedData, 
+            aTargets, 
+            aPredictorScores, 
+            m_runtimeLearningTypeOrCountTargetClasses
+         );
          if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
             LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;

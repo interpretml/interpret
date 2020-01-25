@@ -21,7 +21,14 @@
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiStart, const size_t * const aiLast, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet) {
+void GetTotalsDebugSlow(
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t * const aiStart, 
+   const size_t * const aiLast, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+) {
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
@@ -34,7 +41,8 @@ void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningT
       EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
-      EBM_ASSERT(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize)); // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
+      // aiStart[iDimensionInitialize] is less than cBins, so this should multiply
+      EBM_ASSERT(!IsMultiplyError(aiStart[iDimensionInitialize], valueMultipleInitialize));
       iTensorBin += aiStart[iDimensionInitialize] * valueMultipleInitialize;
       EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleInitialize)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
       valueMultipleInitialize *= cBins;
@@ -43,12 +51,14 @@ void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningT
    } while(iDimensionInitialize < cDimensions);
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we've allocated this, so it should fit
+   // we've allocated this, so it should fit
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength));
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
    pRet->Zero(cVectorLength);
 
    while(true) {
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
+      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iTensorBin);
 
       pRet->Add(*pHistogramBucket, cVectorLength);
 
@@ -56,7 +66,8 @@ void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningT
       size_t valueMultipleLoop = 1;
       while(aiDimensions[iDimension] == aiLast[iDimension]) {
          EBM_ASSERT(aiStart[iDimension] <= aiLast[iDimension]);
-         EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         // we've allocated this memory, so it should be reachable, so these numbers should multiply
+         EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop));
          iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
          const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
@@ -76,7 +87,14 @@ void GetTotalsDebugSlow(const HistogramBucket<IsClassification(compilerLearningT
 
 // TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pComparison) {
+void CompareTotalsDebug(
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t * const aiPoint, 
+   const size_t directionVector, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pComparison
+) {
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -96,10 +114,18 @@ void CompareTotalsDebug(const HistogramBucket<IsClassification(compilerLearningT
       directionVectorDestroy >>= 1;
    }
 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pComparison2 = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pComparison2 = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
-      GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, aiLast, runtimeLearningTypeOrCountTargetClasses, pComparison2);
+      GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+         aHistogramBuckets, 
+         pFeatureCombination, 
+         aiStart, 
+         aiLast, 
+         runtimeLearningTypeOrCountTargetClasses, 
+         pComparison2
+      );
       EBM_ASSERT(pComparison->m_cInstancesInBucket == pComparison2->m_cInstancesInBucket);
       free(pComparison2);
    }
@@ -398,9 +424,14 @@ struct FastTotalState {
    size_t m_cBins;
 };
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombination * const pFeatureCombination, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBucketAuxiliaryBuildZone
+void BuildFastTotals(
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   const FeatureCombination * const pFeatureCombination, 
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pBucketAuxiliaryBuildZone
 #ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
+   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, 
+   const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
@@ -423,31 +454,43 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, aHistogramBucketsEndDebug);
 
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
+         // (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins);
 
          pFastTotalStateInitialize->m_iCur = 0;
          pFastTotalStateInitialize->m_cBins = cBins;
 
          pFastTotalStateInitialize->m_pDimensionalFirst = pBucketAuxiliaryBuildZone;
          pFastTotalStateInitialize->m_pDimensionalCur = pBucketAuxiliaryBuildZone;
-         // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 item past the end of the array
-         pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pBucketAuxiliaryBuildZone, multiply);
+         // when we exit, pBucketAuxiliaryBuildZone should be == to aHistogramBucketsEndDebug, which is legal in C++ since it doesn't extend beyond 1 
+         // item past the end of the array
+         pBucketAuxiliaryBuildZone = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+            cBytesPerHistogramBucket, 
+            pBucketAuxiliaryBuildZone, 
+            multiply
+         );
 
 #ifndef NDEBUG
          if(pFastTotalStateEnd == pFastTotalStateInitialize + 1) {
-            // this is the last iteration, so pBucketAuxiliaryBuildZone should normally point to the memory address one byte past the legal buffer (normally aHistogramBucketsEndDebug), 
-            // BUT in rare cases we allocate more memory for the BucketAuxiliaryBuildZone than we use in this function, so the only thing that we can guarantee is that we're equal or less than aHistogramBucketsEndDebug
+            // this is the last iteration, so pBucketAuxiliaryBuildZone should normally point to the memory address one byte past the legal buffer 
+            // (normally aHistogramBucketsEndDebug), BUT in rare cases we allocate more memory for the BucketAuxiliaryBuildZone than we use in this 
+            // function, so the only thing that we can guarantee is that we're equal or less than aHistogramBucketsEndDebug
             EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) <= aHistogramBucketsEndDebug);
          } else {
             // if this isn't the last iteration, then we'll actually be using this memory, so the entire bucket had better be useable
             EBM_ASSERT(reinterpret_cast<unsigned char *>(pBucketAuxiliaryBuildZone) + cBytesPerHistogramBucket <= aHistogramBucketsEndDebug);
          }
-         for(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur; pBucketAuxiliaryBuildZone != pDimensionalCur; pDimensionalCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pDimensionalCur, 1)) {
+         for(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pDimensionalCur = pFastTotalStateInitialize->m_pDimensionalCur; 
+            pBucketAuxiliaryBuildZone != pDimensionalCur; 
+            pDimensionalCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pDimensionalCur, 1)) 
+         {
             pDimensionalCur->AssertZero(cVectorLength);
          }
 #endif // NDEBUG
 
-         // TODO : we don't need either the first or the wrap values since they are the next ones in the list.. we may need to populate one item past the end and make the list one larger
+         // TODO : we don't need either the first or the wrap values since they are the next ones in the list.. we may need to populate one item past 
+         // the end and make the list one larger
          pFastTotalStateInitialize->m_pDimensionalWrap = pBucketAuxiliaryBuildZone;
 
          multiply *= cBins;
@@ -458,7 +501,8 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
    }
 
 #ifndef NDEBUG
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pDebugBucket = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket));
 #endif //NDEBUG
 
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucket = aHistogramBuckets;
@@ -489,12 +533,20 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
             aiStart[iDebugDimension] = 0;
             aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
          }
-         GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiStart, aiLast, runtimeLearningTypeOrCountTargetClasses, pDebugBucket);
+         GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+            aHistogramBucketsDebugCopy, 
+            pFeatureCombination, 
+            aiStart, 
+            aiLast, 
+            runtimeLearningTypeOrCountTargetClasses, 
+            pDebugBucket
+         );
          EBM_ASSERT(pDebugBucket->m_cInstancesInBucket == pHistogramBucket->m_cInstancesInBucket);
       }
 #endif // NDEBUG
 
-      // we're walking through all buckets, so just move to the next one in the flat array, with the knowledge that we'll figure out it's multi-dimenional index below
+      // we're walking through all buckets, so just move to the next one in the flat array, 
+      // with the knowledge that we'll figure out it's multi-dimenional index below
       pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucket, 1);
 
       FastTotalState<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pFastTotalState = &fastTotalState[0];
@@ -506,7 +558,11 @@ void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          pFastTotalState->m_iCur = 0;
 
          EBM_ASSERT(pFastTotalState->m_pDimensionalFirst == pFastTotalState->m_pDimensionalCur);
-         memset(pFastTotalState->m_pDimensionalFirst, 0, reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap) - reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst));
+         memset(
+            pFastTotalState->m_pDimensionalFirst, 
+            0, 
+            reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap) - reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst)
+         );
 
          ++pFastTotalState;
 
@@ -702,9 +758,16 @@ struct TotalsDimension {
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, const size_t * const aiPoint, const size_t directionVector, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+void GetTotals(
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t * const aiPoint, 
+   const size_t directionVector, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
 #ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
+   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, 
+   const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    // don't LOG this!  It would create way too much chatter!
@@ -729,7 +792,9 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       EBM_ASSERT(1 <= cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
+         // (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins);
          EBM_ASSERT(*piPointInitialize < cBins);
          EBM_ASSERT(!IsMultiplyError(*piPointInitialize, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          size_t addValue = multipleTotalInitialize * (*piPointInitialize);
@@ -740,14 +805,16 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          ++pFeatureCombinationEntry;
          ++piPointInitialize;
       } while(LIKELY(pFeatureCombinationEntryEnd != pFeatureCombinationEntry));
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
+      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
       pRet->Copy(*pHistogramBucket, cVectorLength);
       return;
    }
 
-   //this is a fast way of determining the number of bits (see if the are faster algorithms.. CPU hardware or expoential shifting potentially).  We may use it in the future if we're trying to decide whether to go from (0,0,...,0,0) or (1,1,...,1,1)
+   //this is a fast way of determining the number of bits (see if the are faster algorithms.. CPU hardware or expoential shifting potentially).  
+   // We may use it in the future if we're trying to decide whether to go from (0,0,...,0,0) or (1,1,...,1,1)
    //unsigned int cBits = 0;
    //{
    //   size_t directionVectorDestroy = directionVector;
@@ -764,7 +831,9 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
       EBM_ASSERT(0 < cDimensions);
       do {
          size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
-         EBM_ASSERT(1 <= cBins); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+         // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
+         // (dimensions with 1 bin don't contribute anything since they always have the same value)
+         EBM_ASSERT(1 <= cBins);
          if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
             EBM_ASSERT(!IsMultiplyError(cBins - 1, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
             size_t cLast = multipleTotalInitialize * (cBins - 1);
@@ -801,11 +870,18 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
          offsetPointer += *(UNPREDICTABLE(0 != (1 & permuteVectorDestroy)) ? &pTotalsDimensionLoop->m_cLast : &pTotalsDimensionLoop->m_cIncrement);
          permuteVectorDestroy >>= 1;
          ++pTotalsDimensionLoop;
-         // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  Since the number of iterations will remain constant, we can use templates to move this check out of both loop to the completely non-looped outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
+         // TODO : this (pTotalsDimensionEnd != pTotalsDimensionLoop) condition is somewhat unpredictable since the number of dimensions is small.  
+         // Since the number of iterations will remain constant, we can use templates to move this check out of both loop to the completely non-looped 
+         // outer body and then we eliminate a bunch of unpredictable branches AND a bunch of adds and a lot of other stuff.  If we allow 
+         // ourselves to come at the vector from either size (0,0,...,0,0) or (1,1,...,1,1) then we only need to hardcode 63/2 loops.
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
-      // TODO : eliminate this multiplication of cBytesPerHistogramBucket by offsetPointer by multiplying both the startingOffset and the m_cLast & m_cIncrement values by cBytesPerHistogramBucket.  We can eliminate this multiplication each loop!
-      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, offsetPointer);
-      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pHistogramBucket.  We can pass in a bool that indicates if we should take the negation value or the original at each step (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
+      // TODO : eliminate this multiplication of cBytesPerHistogramBucket by offsetPointer by multiplying both the startingOffset and the 
+      // m_cLast & m_cIncrement values by cBytesPerHistogramBucket.  We can eliminate this multiplication each loop!
+      const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, offsetPointer);
+      // TODO : we can eliminate this really bad unpredictable branch if we use conditional negation on the values in pHistogramBucket.  
+      // We can pass in a bool that indicates if we should take the negation value or the original at each step 
+      // (so we don't need to store it beyond one value either).  We would then have an Add(bool bSubtract, ...) function
       if(UNPREDICTABLE(0 != (1 & evenOdd))) {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
@@ -820,15 +896,32 @@ void GetTotals(const HistogramBucket<IsClassification(compilerLearningTypeOrCoun
 
 #ifndef NDEBUG
    if(nullptr != aHistogramBucketsDebugCopy) {
-      CompareTotalsDebug<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBucketsDebugCopy, pFeatureCombination, aiPoint, directionVector, runtimeLearningTypeOrCountTargetClasses, pRet);
+      CompareTotalsDebug<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+         aHistogramBucketsDebugCopy, 
+         pFeatureCombination, 
+         aiPoint, 
+         directionVector, 
+         runtimeLearningTypeOrCountTargetClasses, 
+         pRet
+      );
    }
 #endif // NDEBUG
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const FeatureCombination * const pFeatureCombination, size_t * const aiPoint, const size_t directionVectorLow, const unsigned int iDimensionSweep, const size_t cInstancesRequiredForChildSplitMin, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, size_t * const piBestCut
+FloatEbmType SweepMultiDiemensional(
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const FeatureCombination * const pFeatureCombination, 
+   size_t * const aiPoint, 
+   const size_t directionVectorLow, 
+   const unsigned int iDimensionSweep, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp, 
+   size_t * const piBestCut
 #ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, const unsigned char * const aHistogramBucketsEndDebug
+   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy, 
+   const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    // don't LOG this!  It would create way too much chatter!
@@ -854,10 +947,12 @@ FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compi
 
    size_t iBestCut = 0;
 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotalsLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 2);
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotalsLow = 
+      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 2);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsLow, aHistogramBucketsEndDebug);
 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotalsHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotalsHigh = 
+      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
 #ifndef LEGACY_COMPATIBILITY
@@ -869,13 +964,25 @@ FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compi
    do {
       *piBin = iBin;
 
-      GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorLow, runtimeLearningTypeOrCountTargetClasses, pTotalsLow
+      GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+         aHistogramBuckets, 
+         pFeatureCombination, 
+         aiPoint, 
+         directionVectorLow, 
+         runtimeLearningTypeOrCountTargetClasses, 
+         pTotalsLow
 #ifndef NDEBUG
          , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
       );
       if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->m_cInstancesInBucket)) {
-         GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiPoint, directionVectorHigh, runtimeLearningTypeOrCountTargetClasses, pTotalsHigh
+         GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+            aHistogramBuckets, 
+            pFeatureCombination, 
+            aiPoint, 
+            directionVectorHigh, 
+            runtimeLearningTypeOrCountTargetClasses, 
+            pTotalsHigh
    #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
    #endif // NDEBUG
@@ -889,26 +996,41 @@ FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compi
             FloatEbmType cLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLow->m_cInstancesInBucket);
             FloatEbmType cHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHigh->m_cInstancesInBucket);
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+               // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
+               // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-               const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
+               const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
+                  ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
-               const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
+               const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
+                  ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
             EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumation of positive numbers should be positive
 
-            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-            // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-            // us soon and shut down boosting.
-            if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplit))) {
+            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
+            // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
+            // no big deal.  NaN values will get us soon and shut down boosting.
+            if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplit))) {
                bestSplit = splittingScore;
                iBestCut = iBin;
 
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 1), aHistogramBucketsEndDebug);
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), aHistogramBucketsEndDebug);
+               ASSERT_BINNED_BUCKET_OK(
+                  cBytesPerHistogramBucket, 
+                  GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+                     cBytesPerHistogramBucket, 
+                     pHistogramBucketBestAndTemp, 
+                     1
+                  ), 
+                  aHistogramBucketsEndDebug
+               );
+               ASSERT_BINNED_BUCKET_OK(
+                  cBytesPerHistogramBucket, 
+                  GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pTotalsLow, 1), 
+                  aHistogramBucketsEndDebug
+               );
                memcpy(pHistogramBucketBestAndTemp, pTotalsLow, cBytesPerTwoHistogramBuckets); // this copies both pTotalsLow and pTotalsHigh
             } else {
                EBM_ASSERT(!std::isnan(splittingScore));
@@ -928,82 +1050,127 @@ FloatEbmType SweepMultiDiemensional(const HistogramBucket<IsClassification(compi
 //   - instead of first calculating the sums at each point for the hyper-dimensional region from the origin to each point, and then later
 //     looking for cuts, we can do both at the same time.  We know the total sums for the entire hyper-dimensional region, and as we're doing our summing
 //     up, we can calcualte the gain at that point.  The catch is that we can only calculate the gain of the split between the hyper-dimensional region from
-//     our current point to the origin, and the rest of the hyper-dimensional area.  We're using boosting though, so as long as we find some cut that makes things
-//     a bit better, we can continue to improve the overall model, subject of course to overfitting.
+//     our current point to the origin, and the rest of the hyper-dimensional area.  We're using boosting though, so as long as we find some cut that makes 
+//     things a bit better, we can continue to improve the overall model, subject of course to overfitting.
 //   - After we find the best single cut from the origin to every point (and we've selected the best one), we can then go backwards from the point inside the
-//     hyper-dimensional volume back towards the origin to select the best interior region vs the entire remaining hyper-dimensional volume.  Potentially we could
-//     at this point then also calculate the sub regions that would be created if we had made planar cuts along both sides of each dimension.  
-//   - Example: if we're cutting a cube, we find the best gain from the (0,0,0) to (5,5,5) gives the highest gain, then we go backwards and find that (5,5,5) -> (1,2,3) gives the best overall cube.
-//     We can then either take the cube as one region and the larger entire volume minus the cube as the other region, or we can separate the entire space into 27 cubes (9 cubes on each plane)
+//     hyper-dimensional volume back towards the origin to select the best interior region vs the entire remaining hyper-dimensional volume.  Potentially we 
+//     could at this point then also calculate the sub regions that would be created if we had made planar cuts along both sides of each dimension.  
+//   - Example: if we're cutting a cube, we find the best gain from the (0,0,0) to (5,5,5) gives the highest gain, then we go backwards and find that 
+//     (5,5,5) -> (1,2,3) gives the best overall cube. We can then either take the cube as one region and the larger entire volume minus the cube as the 
+//     other region, or we can separate the entire space into 27 cubes (9 cubes on each plane)
 //   - We then need to generalize this algorithm because we don't only want cuts from a single origin, we need to start from each origin.
 //   - So, for an N dimensional region, we have 2^N ways to pick which dimensions we traverse in various orders.  So for 3 dimensions, there are 8 corners
-//   - So for a 4 dimensional space, we would need to compute the gains for 2^4 times, and for a 16x16x16x16 volume, we would need to check 1,048,576 cells.  That seems doable for a 1GHz machine.
-//     and if each cell consists of 16 bytes then it would be about 16 MB, which is cache fittable.  Probably anything larger than 4 dimensions would dilute the data too far to make reasonable cuts.  
-//     We can go deeper if some of the features are near binary, but in any case we'll probably always be on the edge of cache sufficiency.  As the # of dimensions the CPU cost goes by by factors of 2, 
+//   - So for a 4 dimensional space, we would need to compute the gains for 2^4 times, and for a 16x16x16x16 volume, we would need to check 1,048,576 cells.
+//     That seems doable for a 1GHz machine and if each cell consists of 16 bytes then it would be about 16 MB, which is cache fittable.  
+//     Probably anything larger than 4 dimensions would dilute the data too far to make reasonable cuts. We can go deeper if some of the features are 
+//     near binary, but in any case we'll probably always be on the edge of cache sufficiency.  As the # of dimensions the CPU cost goes by by factors of 2, 
 //     so we'd tend to be able to process smaller tensors for the same amount of time.
-//   - For each cell, when computing the totals we need to check N memory locations, so for the example above we would need 4 * 1,048,576 = 4,194,304 operations.
-//   - our main issue is that memory won't be layed our very well.  When we traverse from the origin along the default dimensional arragement then our memory accesses will be ordered well, but anything else will be a problem
-//   - transposing doesn't really help since we only visit each node after the transpose once, so why not pay the penalty when computing the totals rather than pay to transpose then process
+//   - For each cell, when computing the totals we need to check N memory locations, so for the example above we would 
+//     need 4 * 1,048,576 = 4,194,304 operations.
+//   - our main issue is that memory won't be layed our very well.  When we traverse from the origin along the default dimensional arragement then our 
+//     memory accesses will be ordered well, but anything else will be a problem
+//   - transposing doesn't really help since we only visit each node after the transpose once, so why not pay the penalty when computing the totals
+//     rather than pay to transpose then process
 //     Our algorithm isn't like matrix multiplication where each cell is used many times.  We just check the cells once.
-//   - I think though that we can still traverse our memory in whatever order we want, subject to the origin that we need to examine.  So, for example, in a 3 dimensional
-//     volume, if we were starting from the (1,1,0) corner, which will be very close to the end of the 1D memory layout, then we'll be starting very close to the end of the 1D
-//     array.  We can move backwards on the first dimension always, then backwards on the second dimension, then forwards on the third dimension.  We then at least get some locality
-//     on our inner loop which always travels in the best memory order, and I think we get the best memory ordering for the first N dimensions that have the same direction
-//     So in this example, we get good memory ordering for the first two dimensions since they are both backwards.  Have a closer look at this property.  I don't think we 
-//     Can travel in any arbitrary order though since we always need to be growing our totals from our starting origin given that we maintain a "tube" computations in N-1 dimensional space
-//   - to check these properties out, we probably want to first make a special version of our existing hyper-dimensional totals functions that can start from any given origin instead of just (0,0,0)
-//   - it might be the case that for pairs, we can get better results by using a traditional tree cutting algorithm (the existing one).  I should implement this algorithm above though regardless as it grows at less complexity than other algorithms,
-//     so it would be useful in any case.  After it's implemented, we can compare the results against the existing pair computation code
-//   - this pair splitting code should be templated for the numbrer of dimensions.  Nobody is really going to use it above 4-5 dimensions, but it's nice to have the option, but we don't want to implement 2,3,4,5 dimensional versions
+//   - I think though that we can still traverse our memory in whatever order we want, subject to the origin that we need to examine. So, for example, 
+//     in a 3 dimensional volume, if we were starting from the (1,1,0) corner, which will be very close to the end of the 1D memory layout, then we'll 
+//     be starting very close to the end of the 1D array.  We can move backwards on the first dimension always, then backwards on the second dimension, 
+//     then forwards on the third dimension.  We then at least get some locality on our inner loop which always travels in the best memory order, 
+//     and I think we get the best memory ordering for the first N dimensions that have the same direction.  So in this example, we get good memory 
+//     ordering for the first two dimensions since they are both backwards.  Have a closer look at this property.  I don't think we can travel in any 
+//     arbitrary order though since we always need to be growing our totals from our starting origin given that we maintain 
+//     a "tube" computations in N-1 dimensional space
+//   - to check these properties out, we probably want to first make a special version of our existing hyper-dimensional totals functions that can start 
+//     from any given origin instead of just (0,0,0)
+//   - it might be the case that for pairs, we can get better results by using a traditional tree cutting algorithm (the existing one).  I should 
+//     implement this algorithm above though regardless as it grows at less complexity than other algorithms, so it would be useful in any case.  
+//     After it's implemented, we can compare the results against the existing pair computation code
+//   - this pair splitting code should be templated for the numbrer of dimensions.  Nobody is really going to use it above 4-5 dimensions, 
+//     but it's nice to have the option, but we don't want to implement 2,3,4,5 dimensional versions
 //   - consider writing a pair specific version of this algorithm, also because pairs have different algorithms that could be the same
-//   - once we have found our initial cut, we should start from the cut point and work backwards to the origin and find if there are any cubic cuts that maximize gain
+//   - once we have found our initial cut, we should start from the cut point and work backwards to the origin and find if there are any cubic cuts 
+//     that maximize gain
 //   - we could in theory try and redo the first cut (lookback) like we'll do in the mains
-//   - each time we re-examine a sub region like this, or use lookback, we essentially need to re-do the algorithm, but we're only increasing the time by a small constant factor
-//   - if we find it's benefitial to make full hyper-plane cuts along all the dimensions that we find eg: if our cut points are (1,2,3) -> (5, 6,7) then we would have 27 smaller cut cubes (9 per 2-D plane)
-//     then we just need to do a single full-ish sweep of the space to calcualte the totals for each of the volumes we have under consideration, but that too isn't too costly
+//   - each time we re-examine a sub region like this, or use lookback, we essentially need to re-do the algorithm, but we're only increasing the time 
+//     by a small constant factor
+//   - if we find it's benefitial to make full hyper-plane cuts along all the dimensions that we find eg: if our cut points are (1,2,3) -> (5, 6,7) then 
+//     we would have 27 smaller cut cubes (9 per 2-D plane) then we just need to do a single full-ish sweep of the space to calcualte the totals for 
+//     each of the volumes we have under consideration, but that too isn't too costly
 // EXISTING ALGORITHM:
-//   - our existing algorithm first determins the totals.  It benefits in that we can do this in a cache efficient way where we process the main tensor in order, although we do use side
+//   - our existing algorithm first determins the totals.  It benefits in that we can do this in a cache efficient way where we process the main tensor 
+//     in order, although we do use side
 //   - total N-1 planes that we also access per cut.  This first step can be ignored since it costs much less than the next part
-//   - after getting the totals, we do some kind of search for places to cut, but we need to calculate the total weights while we do so.  Determining the weights is the most expensive operation
-//   - the cost for determining volume totals is variable, but it's worst at the ends, where it takes 2^N checks per test point (and they are not very cache efficient lookups)
+//   - after getting the totals, we do some kind of search for places to cut, but we need to calculate the total weights while we do so.  
+//     Determining the weights is the most expensive operation
+//   - the cost for determining volume totals is variable, but it's worst at the ends, where it takes 2^N checks per test point 
+//     (and they are not very cache efficient lookups)
 //   - the cost is dominated by the worst case, so we can just assume it's the worst case, reduced by some reasonable factor like 2-ish.
 //   - if we generate a totals tensor and a reverse totals tensor (totals from the point opposite to the origin), then it takes 2^(N/2) at worst
-//   - In the abstract, if we were willing to generate 2^N totals matricies, we could calculate any total from any origin in O(1) time, but it would take 2^N times as much memory!
-//   - Probably the best solution is to just generate 2 sum total matricies one from origin (0,0,..,0,0) and the other at (1,1,..,1,1).  For a 6 dimensional space, that still only requires 8 operations instead of 64.
+//   - In the abstract, if we were willing to generate 2^N totals matricies, we could calculate any total from any origin in O(1) time, 
+//     but it would take 2^N times as much memory!
+//   - Probably the best solution is to just generate 2 sum total matricies one from origin (0,0,..,0,0) and the other at (1,1,..,1,1).  
+//     For a 6 dimensional space, that still only requires 8 operations instead of 64.
 //
-//   - we could in theory re-implement the above more restricted algorithm that looks for volume cuts from each dimension, but we'd then need either 2^N times more memory, or twice the memory and 2^(N/2), 
-//     and during the search we'd be using cache inefficient memory access anyways, so it seems like there would be not benefit to doing a volume from each origin search vs the method above
-//   - the other thing to note is that when training pairs after mains, any main cut in the pair is suposed to have limited gain (and the limited gain is overfitting too), so we really need to look for combinations of cuts for gain
-//     if we use the algorithm of picking a cut in one dimension, then picking a cut in a different dimension, until all the dimension have been fulfilled, that's the simplest possible set of cuts that divides the region in a way that
-//     cuts all dimensions (without which we could reduce the interaction by at least 1 dimension)
+//   - we could in theory re-implement the above more restricted algorithm that looks for volume cuts from each dimension, but we'd then need 
+//     either 2^N times more memory, or twice the memory and 2^(N/2), and during the search we'd be using cache inefficient memory access anyways, 
+//     so it seems like there would be not benefit to doing a volume from each origin search vs the method above
+//   - the other thing to note is that when training pairs after mains, any main cut in the pair is suposed to have limited gain 
+//     (and the limited gain is overfitting too), so we really need to look for combinations of cuts for gain if we use the algorithm of picking a cut 
+//     in one dimension, then picking a cut in a different dimension, until all the dimension have been fulfilled, that's the simplest possible 
+//     set of cuts that divides the region in a way that cuts all dimensions (without which we could reduce the interaction by at least 1 dimension)
 //
 //   - there are really 2 algorithms that I know of that we can do otherwise.  
 //     1) The first one is a simple cross bar, where we choose a cut point inside, then divide the area up into volumes from that point to 
-//     each origin, which is the algorithm that we use for interaction detection.  At each point you need to calculate 2^N volumes, and each one of those takes 2^(N/2) operations
-//   - 2) The algorithm we use for interaction cuts.  We choose one dimension to cut, but we don't calculate gain, we choose the next, ect, and then sweep each dimension.  We get 1 cut along the main dimension,
-//        2 cuts on the second dimension, 4 cuts on the third, etc.  The problem is that to be fair, we probably want to permute the order of our dimension cuts, which means N! sweep variations
-//        Possilby we could randomize the sweep directions and just do 1 each time, but that seems like it would be problematic, or maybe we choose a sweep direction per inner bag, and then we at least get variability
-//        After we know our sweep direction, we need to visit each point.  Since all dimensions are fixed and we just sweep one at a time, we have 2^N sweep tubes, and each step requires computing at least one side, so we pay 2^(N/2) operations
+//        each origin, which is the algorithm that we use for interaction detection.  At each point you need to calculate 2^N volumes, and each one of 
+//        those takes 2^(N/2) operations
+//   - 2) The algorithm we use for interaction cuts.  We choose one dimension to cut, but we don't calculate gain, we choose the next, ect, and then 
+//        sweep each dimension.  We get 1 cut along the main dimension, 2 cuts on the second dimension, 4 cuts on the third, etc.  The problem is 
+//        that to be fair, we probably want to permute the order of our dimension cuts, which means N! sweep variations
+//        Possilby we could randomize the sweep directions and just do 1 each time, but that seems like it would be problematic, or maybe we 
+//        choose a sweep direction per inner bag, and then we at least get variability. After we know our sweep direction, we need to visit each point.  
+//        Since all dimensions are fixed and we just sweep one at a time, we have 2^N sweep tubes, and each step requires computing at least one side, 
+//        so we pay 2^(N/2) operations
 //    
-//   - the cross bar sweep seems a little too close to our regional cut while building appraoch, and it takes more work.  The 2^N operations and # of cells are common between that one and the add while sweep version, but the cross bar has an additional 2^(N/2) term vs N for the sum while working.  Sum while working would be much better for large numbers of dimensions
-//   - the permuted solution has the same number of points to examine as the cross bar, and it has 2^N tubes to sweep vs 2^N volumes on each side of the cross bar to examine, and calculating each costs region costs 2^(N/2), so the permuted solutoin takes N! times more time than the cross bar solution
-//   - so the sweep while gain calculation takes less time to examine cuts from each corner than the cross bar, all solutions have bad pipeline prediction fetch caracteristics and cache characteristics.
-//   - the gain calculate while add has the benefit in that it requires no more memory other than the side planes that are needed for addition calculation anyways, so it's more memory efficient than either of the other two algorithms
+//   - the cross bar sweep seems a little too close to our regional cut while building appraoch, and it takes more work.  The 2^N operations 
+//     and # of cells are common between that one and the add while sweep version, but the cross bar has an additional 2^(N/2) term vs N for 
+//     the sum while working.  Sum while working would be much better for large numbers of dimensions
+//   - the permuted solution has the same number of points to examine as the cross bar, and it has 2^N tubes to sweep vs 2^N volumes on each
+//     side of the cross bar to examine, and calculating each costs region costs 2^(N/2), so the permuted solutoin takes N! times 
+//     more time than the cross bar solution
+//   - so the sweep while gain calculation takes less time to examine cuts from each corner than the cross bar, all solutions have bad pipeline 
+//     prediction fetch caracteristics and cache characteristics.
+//   - the gain calculate while add has the benefit in that it requires no more memory other than the side planes that are needed for addition 
+//     calculation anyways, so it's more memory efficient than either of the other two algorithms
 //   
-//   - SO, regardless as to whether the other algorithms are better, we'll probably want some form of the corner volume while adding to explore higher dimensional spaces.  We can also give options for sweep cuts for lower dimensions. 2-3 dimensional regions seem reasonable.  Beyond that I'd say just do volume addition cuts
-//   - we should examine changing the interaction detection code to use our corner cut solution since we exectute that algorithm on a lot of potential pairs/interactions
+//   - SO, regardless as to whether the other algorithms are better, we'll probably want some form of the corner volume while adding to explore
+//     higher dimensional spaces.  We can also give options for sweep cuts for lower dimensions. 2-3 dimensional regions seem reasonable.  
+//     Beyond that I'd say just do volume addition cuts
+//   - we should examine changing the interaction detection code to use our corner cut solution since we exectute that algorithm 
+//     on a lot of potential pairs/interactions
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
 // TODO: consider adding controls to disallow cuts that would leave too few cases in a region (use the same minimum number of cases paraemter as the mains)
-// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then go back to our original tensor after splits to determine the denominator
-// TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the distinction down into a sub-function
+// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about
+//   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then 
+//    go back to our original tensor after splits to determine the denominator
+// TODO: do we really require countCompilerDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the 
+//    distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const SamplingMethod * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pTotalGain, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+bool BoostMultiDimensional(
+   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   const SamplingMethod * const pTrainingSet, 
+   const FeatureCombination * const pFeatureCombination, 
+   SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   FloatEbmType * const pTotalGain, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
+   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other 
+   // places like for SegmentedRegion and other critical places
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(2 <= cDimensions);
 
@@ -1011,16 +1178,24 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
       const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
-      EBM_ASSERT(2 <= cBins); // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
+      // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
+      EBM_ASSERT(2 <= cBins);
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at 
+      // allocation that cTotalBucketsMainSpace would not overflow
+      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins)); // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes
+      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes
+      EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
       cTotalBucketsMainSpace *= cBins;
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
-   const size_t cAuxillaryBucketsForSplitting = 24; // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
-   const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
+   // we need to reserve 4 PAST the pointer we pass into SweepMultiDiemensional!!!!.  We pass in index 20 at max, so we need 24
+   const size_t cAuxillaryBucketsForSplitting = 24;
+   const size_t cAuxillaryBuckets = 
+      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
@@ -1029,7 +1204,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(
+         TraceLevelWarning, 
+         "WARNING BoostMultiDimensional GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)"
+      );
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -1040,19 +1218,30 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
    }
    memset(aHistogramBuckets, 0, cBytesBuffer);
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = 
+      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+         cBytesPerHistogramBucket, 
+         aHistogramBuckets, 
+         cTotalBucketsMainSpace
+      );
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 2>::Recursive(cDimensions, aHistogramBuckets, pFeatureCombination, pTrainingSet, runtimeLearningTypeOrCountTargetClasses
+   RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 2>::Recursive(
+      cDimensions, 
+      aHistogramBuckets, 
+      pFeatureCombination, 
+      pTrainingSet, 
+      runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1066,16 +1255,22 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
-   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
    const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug));
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
 
-   BuildFastTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, pAuxiliaryBucketZone
+   BuildFastTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+      aHistogramBuckets, 
+      runtimeLearningTypeOrCountTargetClasses, 
+      pFeatureCombination, 
+      pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -1165,7 +1360,8 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
    //      EBM_ASSERT(0 == iDimension);
    //      while(true) {
    //         ++aiDimension[iDimension];
-   //         if(aiDimension[iDimension] != ARRAY_TO_POINTER(pFeatureCombinations->m_FeatureCombinationEntry)[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //         if(aiDimension[iDimension] != 
+   //               ARRAY_TO_POINTER(pFeatureCombinations->m_FeatureCombinationEntry)[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -1199,12 +1395,21 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       size_t cutFirst1LowBest;
       size_t cutFirst1HighBest;
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotal = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace - 1);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTotal = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+            cBytesPerHistogramBucket, 
+            aHistogramBuckets, 
+            cTotalBucketsMainSpace - 1
+         );
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, aHistogramBucketsEndDebug);
 
 #ifndef LEGACY_COMPATIBILITY
@@ -1217,9 +1422,13 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
 #endif // LEGACY_COMPATIBILITY
       FloatEbmType cInstancesInParentBucket = static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         // TODO : we can make this faster by doing the division in ComputeNodeSplittingScoreParent after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+         // TODO : we can make this faster by doing the division in ComputeNodeSplittingScoreParent after we add all the numerators 
+         // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-         const FloatEbmType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER_CONST(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cInstancesInParentBucket);
+         const FloatEbmType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(
+            ARRAY_TO_POINTER_CONST(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+            cInstancesInParentBucket
+         );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
          splittingScoreParent += splittingScoreParentUpdate;
       }
@@ -1233,40 +1442,71 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          splittingScore = FloatEbmType { 0 };
 
          size_t cutSecond1LowBest;
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2LowLowBest, &cutSecond1LowBest
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = 
+            GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 4);
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = 
+            GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
+         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+            aHistogramBuckets, 
+            pFeatureCombination, 
+            aiStart, 
+            0x0, 
+            1, 
+            cInstancesRequiredForChildSplitMin, 
+            runtimeLearningTypeOrCountTargetClasses, 
+            pTotals2LowLowBest, 
+            &cutSecond1LowBest
 #ifndef NDEBUG
             , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
 
-         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-         // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-         // us soon and shut down boosting.
-         if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
+         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all
+         // false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  
+         // NaN values will get us soon and shut down boosting.
+         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
             EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond1HighBest;
-            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 8);
-            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x1, 1, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals2HighLowBest, &cutSecond1HighBest
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = 
+               GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+                  cBytesPerHistogramBucket, 
+                  pAuxiliaryBucketZone, 
+                  8
+               );
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = 
+               GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
+            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+               aHistogramBuckets, 
+               pFeatureCombination, 
+               aiStart, 
+               0x1, 
+               1, 
+               cInstancesRequiredForChildSplitMin, 
+               runtimeLearningTypeOrCountTargetClasses, 
+               pTotals2HighLowBest, 
+               &cutSecond1HighBest
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+               , aHistogramBucketsDebugCopy, 
+               aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-            // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-            // us soon and shut down boosting.
-            if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew2))) {
+            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
+            // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
+            // no big deal.  NaN values will get us soon and shut down boosting.
+            if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ 
+               !(k_illegalGain == splittingScoreNew2))) 
+            {
                EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
                splittingScore += splittingScoreNew2;
 
-               // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-               // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-               // us soon and shut down boosting.
-               if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplittingScore))) {
+               // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons 
+               // are all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
+               // no big deal.  NaN values will get us soon and shut down boosting.
+               if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ 
+                  !(splittingScore <= bestSplittingScore))) 
+               {
                   bestSplittingScore = splittingScore;
                   cutFirst1Best = iBin1;
                   cutFirst1LowBest = cutSecond1LowBest;
@@ -1296,10 +1536,14 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       size_t cutFirst2LowBest;
       size_t cutFirst2HighBest;
 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 12);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 13);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowLowBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 12);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2LowHighBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 13);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighLowBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 14);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals2HighHighBest = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 15);
 
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
@@ -1309,39 +1553,67 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
          splittingScore = FloatEbmType { 0 };
 
          size_t cutSecond2LowBest;
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
-         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x0, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1LowLowBestInner, &cutSecond2LowBest
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowLowBestInner = 
+            GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 16);
+         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1LowHighBestInner = 
+            GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
+         const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+            aHistogramBuckets, 
+            pFeatureCombination, 
+            aiStart, 
+            0x0, 
+            0, 
+            cInstancesRequiredForChildSplitMin, 
+            runtimeLearningTypeOrCountTargetClasses, 
+            pTotals1LowLowBestInner, 
+            &cutSecond2LowBest
 #ifndef NDEBUG
-            , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+            , aHistogramBucketsDebugCopy, 
+            aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
 
-         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-         // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-         // us soon and shut down boosting.
-         if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
+         // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
+         // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.
+         // NaN values will get us soon and shut down boosting.
+         if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew1))) {
             EBM_ASSERT(std::isnan(splittingScoreNew1) || FloatEbmType { 0 } <= splittingScoreNew1);
             splittingScore += splittingScoreNew1;
 
             size_t cutSecond2HighBest;
-            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
-            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBestInner = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
-            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x2, 0, cInstancesRequiredForChildSplitMin, runtimeLearningTypeOrCountTargetClasses, pTotals1HighLowBestInner, &cutSecond2HighBest
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighLowBestInner = 
+               GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 20);
+            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotals1HighHighBestInner = 
+               GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
+            const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+               aHistogramBuckets, 
+               pFeatureCombination, 
+               aiStart, 
+               0x2, 
+               0, 
+               cInstancesRequiredForChildSplitMin, 
+               runtimeLearningTypeOrCountTargetClasses, 
+               pTotals1HighLowBestInner, 
+               &cutSecond2HighBest
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+               , aHistogramBucketsDebugCopy, 
+               aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-            // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-            // us soon and shut down boosting.
-            if(LIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain == splittingScoreNew2))) {
+            // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
+            // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
+            // no big deal.  NaN values will get us soon and shut down boosting.
+            if(LIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ 
+               !(k_illegalGain == splittingScoreNew2))) 
+            {
                EBM_ASSERT(std::isnan(splittingScoreNew2) || FloatEbmType { 0 } <= splittingScoreNew2);
                splittingScore += splittingScoreNew2;
-               // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-               // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-               // us soon and shut down boosting.
-               if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplittingScore))) {
+               // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons 
+               // are all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
+               // no big deal.  NaN values will get us soon and shut down boosting.
+               if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ 
+                  !(splittingScore <= bestSplittingScore))) 
+               {
                   bestSplittingScore = splittingScore;
                   cutFirst2Best = iBin2;
                   cutFirst2LowBest = cutSecond2LowBest;
@@ -1369,33 +1641,42 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
       LOG_0(TraceLevelVerbose, "BoostMultiDimensional Done sweep loops");
 
       FloatEbmType gain;
-      // if we get a NaN result for bestSplittingScore, we might as well do less work and just create a zero split update right now.  The rules for NaN values say that non equality comparisons are all false
-      // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-      // us soon and shut down boosting.
-      if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestSplittingScore))) {
+      // if we get a NaN result for bestSplittingScore, we might as well do less work and just create a zero split update right now.  The rules 
+      // for NaN values say that non equality comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  
+      // If the compiler violates NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
+      if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(k_illegalGain != bestSplittingScore))) {
          // there were no good cuts found, or we hit a NaN value
 #ifndef NDEBUG
          const bool bSetCountDivisions0 =
 #endif // NDEBUG
             pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0);
-         EBM_ASSERT(!bSetCountDivisions0); // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         EBM_ASSERT(!bSetCountDivisions0);
 
 #ifndef NDEBUG
          const bool bSetCountDivisions1 =
 #endif // NDEBUG
             pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 0);
-         EBM_ASSERT(!bSetCountDivisions1); // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the division array at all
+         EBM_ASSERT(!bSetCountDivisions1);
 
-         // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, since our value capacity would be 1, which is pre-allocated
+         // we don't need to call pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity, 
+         // since our value capacity would be 1, which is pre-allocated
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             FloatEbmType prediction;
 
             if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+               );
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket));
+               prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                  static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket)
+               );
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = prediction;
          }
@@ -1416,7 +1697,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
 
             if(cutFirst2LowBest < cutFirst2HighBest) {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                  );
    #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
    #endif // NDEBUG
@@ -1433,7 +1717,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[1] = cutFirst2HighBest;
             } else if(cutFirst2HighBest < cutFirst2LowBest) {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                  );
    #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
    #endif // NDEBUG
@@ -1458,7 +1745,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                }
 
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
+                  );
    #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
    #endif // NDEBUG
@@ -1474,16 +1764,40 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                FloatEbmType predictionHighHigh;
 
                if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2LowHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator());
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     pTotals2LowLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                  );
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     pTotals2LowHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                  );
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     pTotals2HighLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                  );
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
+                  );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2LowLowBest->m_cInstancesInBucket));
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2LowHighBest->m_cInstancesInBucket));
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2HighLowBest->m_cInstancesInBucket));
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals2HighHighBest->m_cInstancesInBucket));
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals2LowLowBest->m_cInstancesInBucket)
+                  );
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals2LowHighBest->m_cInstancesInBucket)
+                  );
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals2HighLowBest->m_cInstancesInBucket)
+                  );
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals2HighHighBest->m_cInstancesInBucket)
+                  );
                }
 
                if(cutFirst2LowBest < cutFirst2HighBest) {
@@ -1519,7 +1833,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
 
             if(cutFirst1LowBest < cutFirst1HighBest) {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                  );
 #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1537,7 +1854,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[1] = cutFirst1HighBest;
             } else if(cutFirst1HighBest < cutFirst1LowBest) {
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 6)"
+                  );
 #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1562,7 +1882,10 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                   return true;
                }
                if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
-                  LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)");
+                  LOG_0(
+                     TraceLevelWarning, 
+                     "WARNING BoostMultiDimensional pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)"
+                  );
 #ifndef NDEBUG
                   free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
@@ -1578,16 +1901,40 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                FloatEbmType predictionHighHigh;
 
                if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  );
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  );
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  );
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1LowLowBest->m_cInstancesInBucket));
-                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1LowHighBest->m_cInstancesInBucket));
-                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1HighLowBest->m_cInstancesInBucket));
-                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, static_cast<FloatEbmType>(pTotals1HighHighBest->m_cInstancesInBucket));
+                  predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals1LowLowBest->m_cInstancesInBucket)
+                  );
+                  predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals1LowHighBest->m_cInstancesInBucket)
+                  );
+                  predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals1HighLowBest->m_cInstancesInBucket)
+                  );
+                  predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     static_cast<FloatEbmType>(pTotals1HighHighBest->m_cInstancesInBucket)
+                  );
                }
                if(cutFirst1LowBest < cutFirst1HighBest) {
                   pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionLowLow;
@@ -1611,15 +1958,19 @@ bool BoostMultiDimensional(CachedBoostingThreadResources<IsClassification(compil
                }
             }
          }
-         // for regression, bestSplittingScore and splittingScoreParent can be infinity.  There is a super-super-super-rare case where we can have splittingScoreParent overflow to
-         // +infinity due to numeric issues, but not bestSplittingScore, and then the subtration causes the result to be -infinity.
-         // The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could trigger it, 
-         // and we don't want someone giving us data to use a vulnerability in our system, so check for it!
+         // for regression, bestSplittingScore and splittingScoreParent can be infinity.  There is a super-super-super-rare case where we can have 
+         // splittingScoreParent overflow to +infinity due to numeric issues, but not bestSplittingScore, and then the subtration causes the result 
+         // to be -infinity.  The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset could 
+         // trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
          gain = bestSplittingScore - splittingScoreParent;
       }
 
-      // gain can be -infinity for regression in a super-super-super-rare condition.  See notes above regarding "gain = bestSplittingScore - splittingScoreParent"
-      EBM_ASSERT(std::isnan(gain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(gain) || k_epsilonNegativeGainAllowed <= gain); // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
+      // gain can be -infinity for regression in a super-super-super-rare condition.  
+      // See notes above regarding "gain = bestSplittingScore - splittingScoreParent"
+
+      // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
+      EBM_ASSERT(std::isnan(gain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(gain) ||
+         k_epsilonNegativeGainAllowed <= gain); 
 
       // TODO: this gain value is untested.  We should build a new test that compares the single feature gains to the multi-dimensional gains by
       // making a pair where one of the dimensions duplicates values in the 0 and 1 bin.  Then the gain should be identical, if there is only 1 split allowed
@@ -1922,12 +2273,22 @@ WARNING_POP
 
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
-bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, CachedInteractionThreadResources * const pCachedThreadResources, const DataSetByFeature * const pDataSet, const FeatureCombination * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
-   // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can use the denominator as part of the gain function!!!
+bool CalculateInteractionScore(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   CachedInteractionThreadResources * const pCachedThreadResources, 
+   const DataSetByFeature * const pDataSet, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   FloatEbmType * const pInteractionScoreReturn
+) {
+   // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating 
+   // it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can 
+   // use the denominator as part of the gain function!!!
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
 
-   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like for SegmentedRegion and other critical places
+   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like 
+   // for SegmentedRegion and other critical places
    const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
    EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
 
@@ -1937,9 +2298,13 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
       EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace)); // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation that cTotalBucketsMainSpace would not overflow
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace; // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
+      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation 
+      // that cTotalBucketsMainSpace would not overflow
+      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
+      // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
+      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
       if(IsMultiplyError(cTotalBucketsMainSpace, cBins)) {
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what combination of features our caller will give us for calculating the interaction scores,
@@ -1948,11 +2313,13 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
          return true;
       }
       cTotalBucketsMainSpace *= cBins;
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace); // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
+      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
    }
 
    const size_t cAuxillaryBucketsForSplitting = 4;
-   const size_t cAuxillaryBuckets = cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
+   const size_t cAuxillaryBuckets = 
+      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
@@ -1961,7 +2328,10 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(
+         TraceLevelWarning, 
+         "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)"
+      );
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -1972,14 +2342,16 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aHistogramBuckets");
       return true;
    }
    memset(aHistogramBuckets, 0, cBytesBuffer);
 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pAuxiliaryBucketZone = 
+      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
@@ -2001,16 +2373,22 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
-   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket)); // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   // we wouldn't have been able to allocate our main buffer above if this wasn't ok
+   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
    const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug));
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy = 
+      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesBufferDebug));
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
 
-   BuildFastTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, pAuxiliaryBucketZone
+   BuildFastTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+      aHistogramBuckets, 
+      runtimeLearningTypeOrCountTargetClasses, 
+      pFeatureCombination, 
+      pAuxiliaryBucketZone
 #ifndef NDEBUG
       , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -2019,21 +2397,30 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
    size_t aiStart[k_cDimensionsMax];
 
    if(2 == cDimensions) {
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 0);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 1);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 2);
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = 
+         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
       const size_t cBinsDimension1 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
       const size_t cBinsDimension2 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
-      EBM_ASSERT(1 <= cBinsDimension1); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
-      EBM_ASSERT(1 <= cBinsDimension2); // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything since they always have the same value)
+      // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
+      // (dimensions with 1 bin don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension1);
+      // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
+      // (dimensions with 1 bin don't contribute anything since they always have the same value)
+      EBM_ASSERT(1 <= cBinsDimension2);
 
 #ifndef LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
 #endif // LEGACY_COMPATIBILITY
 
-      FloatEbmType bestSplittingScore = FloatEbmType { 0 }; // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
+      // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
+      FloatEbmType bestSplittingScore = FloatEbmType { 0 };
 
       LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
       EBM_ASSERT(1 < cBinsDimension1);
@@ -2045,27 +2432,54 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
          do {
             aiStart[1] = iBin2;
 
-            GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x00, runtimeLearningTypeOrCountTargetClasses, pTotalsLowLow
+            GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+               aHistogramBuckets, 
+               pFeatureCombination, 
+               aiStart, 
+               0x00, 
+               runtimeLearningTypeOrCountTargetClasses, 
+               pTotalsLowLow
 #ifndef NDEBUG
-               , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+               , aHistogramBucketsDebugCopy, 
+               aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
             if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket)) {
-               GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x02, runtimeLearningTypeOrCountTargetClasses, pTotalsLowHigh
+               GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+                  aHistogramBuckets, 
+                  pFeatureCombination, 
+                  aiStart, 
+                  0x02, 
+                  runtimeLearningTypeOrCountTargetClasses, 
+                  pTotalsLowHigh
 #ifndef NDEBUG
-                  , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+                  , aHistogramBucketsDebugCopy, 
+                  aHistogramBucketsEndDebug
 #endif // NDEBUG
                   );
                if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket)) {
-                  GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x01, runtimeLearningTypeOrCountTargetClasses, pTotalsHighLow
+                  GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+                     aHistogramBuckets, 
+                     pFeatureCombination, 
+                     aiStart, 
+                     0x01, 
+                     runtimeLearningTypeOrCountTargetClasses, 
+                     pTotalsHighLow
 #ifndef NDEBUG
                      , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
 #endif // NDEBUG
                      );
                   if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket)) {
-                     GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(aHistogramBuckets, pFeatureCombination, aiStart, 0x03, runtimeLearningTypeOrCountTargetClasses, pTotalsHighHigh
+                     GetTotals<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+                        aHistogramBuckets, 
+                        pFeatureCombination, 
+                        aiStart, 
+                        0x03, 
+                        runtimeLearningTypeOrCountTargetClasses, 
+                        pTotalsHighHigh
 #ifndef NDEBUG
-                        , aHistogramBucketsDebugCopy, aHistogramBucketsEndDebug
+                        , aHistogramBucketsDebugCopy, 
+                        aHistogramBucketsEndDebug
 #endif // NDEBUG
                         );
                      if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket)) {
@@ -2077,27 +2491,36 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
                         FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->m_cInstancesInBucket);
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                           // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
+                           // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
+                           // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
-                           const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowLowInstancesInBucket);
+                           const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
+                              ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                              cLowLowInstancesInBucket
+                           );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
-                           const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                           const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
+                              ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
-                           const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                           const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(
+                              ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
-                           const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                           const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(
+                              ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
                         EBM_ASSERT(std::isnan(splittingScore) || FloatEbmType { 0 } <= splittingScore); // sumations of positive numbers should be positive
 
-                        // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are all false
-                        // so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, no big deal.  NaN values will get
-                        // us soon and shut down boosting.
-                        if(UNLIKELY(/* DO NOT CHANGE THIS IF CHECK WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ !(splittingScore <= bestSplittingScore))) {
+                        // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality
+                        // comparisons are all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates 
+                        // NaN comparions rules, no big deal.  NaN values will get us soon and shut down boosting.
+                        if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/ 
+                           !(splittingScore <= bestSplittingScore))) 
+                        {
                            bestSplittingScore = splittingScore;
                         } else {
                            EBM_ASSERT(!std::isnan(splittingScore));
@@ -2132,7 +2555,8 @@ bool CalculateInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetC
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
-         *pInteractionScoreReturn = FloatEbmType { 0 }; // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
+         // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
+         *pInteractionScoreReturn = FloatEbmType { 0 };
       }
    }
 

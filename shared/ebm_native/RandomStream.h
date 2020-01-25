@@ -16,14 +16,16 @@ class RandomStream final {
    static constexpr uint_fast64_t k_max = std::mt19937_64::max();
    static constexpr uint_fast64_t k_min = std::mt19937_64::min();
 
-   bool m_bSuccess; // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
+   // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
+   bool m_bSuccess;
 
    // uniform_int_distribution isn't guaranteed to be cross platform compatible, in fact it isn't between Windows/Mac/Linux
    uint_fast64_t randomRemainingMax;
    uint_fast64_t randomRemaining;
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
-   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object has been initialized
+   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object 
+   // has been initialized
 #ifdef LEGACY_COMPATIBILITY
    std::default_random_engine m_randomGenerator;
 #else // LEGACY_COMPATIBILITY
@@ -41,7 +43,8 @@ class RandomStream final {
 #endif // LEGACY_COMPATIBILITY
 
 public:
-   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling exception in initialization
+   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling 
+   // exception in initialization
    RandomStream(const IntEbmType seed) try
       : m_bSuccess(false)
       , randomRemainingMax(0)
@@ -80,14 +83,15 @@ public:
       const uint_fast64_t maxValueExclusiveConverted = static_cast<uint_fast64_t>(maxValueExclusive);
 
       // let's say our user requests a value of 6 exclusive, so we have 6 possible random values (0,1,2,3,4,5)
-      // let's say our randomRemainingMax is 6 or 7.  If randomRemaining is 6 or 7, we don't want to use 6%6 or 7%6 and re-use 0 or 1, since then 0 and 1 are twice as likley as 0-5.
-      // so if randomRemaining is equal to 6 or above, we want to re-generate the random numbers
-      // and odd case arrises if randomRemainingMax == 5, because then there is no illegal value for randomRemaining.  We can optionally regenerate the random number since it's balanced anyways
-      // if randomRemainingMax == 4, then we want to re-generate it since we can't express 5
+      // let's say our randomRemainingMax is 6 or 7.  If randomRemaining is 6 or 7, we don't want to use 6%6 or 7%6 and re-use 0 or 1, since then 0 and 1 
+      // are twice as likley as 0-5.  So if randomRemaining is equal to 6 or above, we want to re-generate the random numbers and odd case arrises if 
+      // randomRemainingMax == 5, because then there is no illegal value for randomRemaining.  We can optionally regenerate the random number since it's 
+      // balanced anyways if randomRemainingMax == 4, then we want to re-generate it since we can't express 5
       //
       // per above, we could instead use randomRemainingMax + 1, but then we'd overflow if randomRemainingMax was std::numeric_limits<uint_fast64_t>::max()
-      // when randomRemainingMax + 1 == maxValueExclusiveConverted,or in fact whenever (randomRemainingMax + 1) % maxValueExclusiveConverted == 0 then we have a special case where no random value is bad
-      // since our random value is perfectly divisible by maxValueExclusiveConverted.  We can re-generate it though, and that's the easiest thing to do in that case, so avoid an additional check by regenerating
+      // when randomRemainingMax + 1 == maxValueExclusiveConverted,or in fact whenever (randomRemainingMax + 1) % maxValueExclusiveConverted == 0 then we 
+      // have a special case where no random value is bad since our random value is perfectly divisible by maxValueExclusiveConverted.  We can re-generate 
+      // it though, and that's the easiest thing to do in that case, so avoid an additional check by regenerating
       uint_fast64_t randomRemainingTempMax = randomRemainingMax;
       uint_fast64_t randomRemainingTemp = randomRemaining;
       while(true) {
@@ -96,13 +100,15 @@ public:
          if(randomRemainingTemp < randomRemainingIllegal) {
             break;
          }
-         // TODO : consider changing this to use the AES instruction set, which would ensure compatibility between languages and it would only take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
+         // TODO : consider changing this to use the AES instruction set, which would ensure compatibility between languages and it would only 
+         //   take 2-3 clock cycles (although we'd still probably need to div [can we multiply instead] which is expensive).
          // 
          // this ridiculous round bracket operator overload of m_randomGenerator gets new random bits
          randomRemainingTemp = m_randomGenerator() - k_min;
          randomRemainingTempMax = k_max - k_min;
       }
-      EBM_ASSERT(0 < randomRemainingTempMax); // if 0 == randomRemainingMax then we would have stayed in the loop since randomRemaining could not be less than zero
+      // if 0 == randomRemainingMax then we would have stayed in the loop since randomRemaining could not be less than zero
+      EBM_ASSERT(0 < randomRemainingTempMax);
       randomRemainingMax = randomRemainingTempMax - 1; // the top range can no longer be fairly represented
       const uint_fast64_t ret = randomRemainingTemp % maxValueExclusiveConverted;
       randomRemaining = randomRemainingTemp / maxValueExclusiveConverted;

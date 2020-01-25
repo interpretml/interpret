@@ -20,7 +20,15 @@ class DataSetByFeature final {
 
 public:
 
-   DataSetByFeature(const size_t cFeatures, const Feature * const aFeatures, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses);
+   DataSetByFeature(
+      const size_t cFeatures, 
+      const Feature * const aFeatures, 
+      const size_t cInstances, 
+      const IntEbmType * const aInputDataFrom, 
+      const void * const aTargetData, 
+      const FloatEbmType * const aPredictorScores, 
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   );
    ~DataSetByFeature();
 
    EBM_INLINE bool IsError() const {

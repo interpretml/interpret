@@ -11,48 +11,67 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// TODO: surprisingly, neither ComputeResidualErrorMulticlass, nor ComputeResidualErrorBinaryClassification seems to be able to generate an infinity, even if we had an infinite logit!  Walk through the implications of this!
-// TODO: I've used std::isnan in many asserts.  I should also include std::isinf to document where these can be, and also for correctness where we have maximum values.  Residual errors can overflow, so continue from there looking for infinity values
+// TODO: surprisingly, neither ComputeResidualErrorMulticlass, nor ComputeResidualErrorBinaryClassification seems to be able to generate an infinity, 
+//       even if we had an infinite logit!  Walk through the implications of this!
+// TODO: I've used std::isnan in many asserts.  I should also include std::isinf to document where these can be, and also for correctness where we have 
+//       maximum values.  Residual errors can overflow, so continue from there looking for infinity values
 // TODO: rename FloatEbmType to DecimalDataType (or something else)
-// TODO: enable SSE on x86 Intel to avoid floating point slowdowns, and for almost exact floating point equivalence between machines -> https://stackoverflow.com/questions/7517588/different-floating-point-result-with-optimization-enabled-compiler-bug
-// TODO: before applying a small model update, check to see that the probability implied by the logit exceeds 1/number_of_instances in either the positive or negative direction.
-//       If it does, then modify the update so that the probabily does not exceed a certainty of 1/number_of_instances, since we really can't make statements of probability beyond close to that threshold.
+// TODO: enable SSE on x86 Intel to avoid floating point slowdowns, and for almost exact floating point equivalence between machines -> 
+//       https://stackoverflow.com/questions/7517588/different-floating-point-result-with-optimization-enabled-compiler-bug
+// TODO: before applying a small model update, check to see that the probability implied by the logit exceeds 1/number_of_instances in either the positive 
+//       or negative direction. If it does, then modify the update so that the probabily does not exceed a certainty of 1/number_of_instances, since we 
+//       really can't make statements of probability beyond close to that threshold.
 
-// TODO: we should consider having a min_instances, which will eliminate any class with less than that number of instances, although we'll record the base rate in the model and then we can re-build the tensor with the base rate in any classes that we removed
+// TODO: we should consider having a min_instances, which will eliminate any class with less than that number of instances, although we'll record the base 
+//       rate in the model and then we can re-build the tensor with the base rate in any classes that we removed
 // TODO: we can also add new classes at prediction time.. they just get 1/n_instances/num_new_classes
 
 
 
-static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way.  We can't even guarantee that infinity exists as a concept.");
+static_assert(
+   std::numeric_limits<FloatEbmType>::is_iec559, 
+   "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way. "
+   "We can't even guarantee that infinity exists as a concept."
+);
 // HANDLING SPECIAL FLOATING POINT VALUES (NaN/infinities/denormals/-0):
-// - it should be virtually impossible to get NaN values anywhere in this code without being given an adversarial dataset or adversarial input parameters [see notes below]
+// - it should be virtually impossible to get NaN values anywhere in this code without being given an adversarial dataset or adversarial input parameters 
+//   [see notes below]
 // - it should be virtually impossible to get +-infinity values in classification.  We could get +infinity values if the user gives us regression targets above 
 //   sqrt(std::numeric_limits<FloatEbmType>::max()) [see notes below], but those regression targets are HUGE and the user should just avoid them.  
 //   We can't avoid possibility of the user passing us ridiculously huge regression targets, so HUGE inputs is something that has no good solution anyways.
-// - we don't crash or really cause any problems if denormals are disabled.  We'd prefer denormals to be enabled since we'll get better and more accurate results, 
-//   but we don't rely on them.  We also like getting consisent results between environments, so we'd prefer denormals to exist in all environments.
+// - we don't crash or really cause any problems if denormals are disabled.  We'd prefer denormals to be enabled since we'll get better and more accurate 
+//   results, but we don't rely on them.  We also like getting consisent results between environments, so we'd prefer denormals to exist in all environments.
 // - negative 0 is a no-op for us.  We don't care if -0 becomes +0 in our code
 // - our strategy, for reasons described below, is to allow NaN and +-infinty values to propagate through our computations.
 //   We will have a single check for these almost-illegal values at the end.  We terminate all boosting if we see any NaN or +-infinity values.
 // - we ensure that any NaN or +-infinity values DO NOT CRASH the program, or cause an infinite loop, but beyond that we give no guarantees.  
-//   The caller can see NaN, +-infinity, or simply wrong values if they give us adversarial inputs, since the cost of handling them is too high and not even guaranteed to work.
+//   The caller can see NaN, +-infinity, or simply wrong values if they give us adversarial inputs, since the cost of handling them is too high and not even 
+//   guaranteed to work.
 //
-// - most compilers have flags that give unspecified behavior when either NaN or +-infinity are generated, or propagated, or in conditional statements involving them.  
+// - most compilers have flags that give unspecified behavior when either NaN or +-infinity are generated, or propagated, or in conditional statements 
+//   involving them.  
 // - many compilers seem to virtually require the switches enabling floating point deviations from IEEE 754 in order to enable SIMD, 
 //   since they want to re-order things like addition instructions (reordering additions is non-IEEE 754 compliant)
 // - given that we are very CPU bound, we would REALLY like our code to be as SIMD friendly as possible (possibly about 8x faster for AVX-512)
 // - so, we'd like to enable those compiler flags that cause deviations from IEEE 754, even though they make it harder for us to reason about the program.
-// - Hopefully the compiler won't give us undefined behaviour for special floats under these compiler flags.  Unspecified behavior is much gentler and limits the damage to just the individual floating point values!
-//   I haven't seen any documentation from any compiler declaring which situation applies though (undefined behavior vs unspecified behavior), so we'll have to update this if we find any violations.
-// - g++ makes std::isnan fail to work when the compiler flags indicate no NaN values are present.  We turn that flag off though (-ffast-math -fno-finite-math-only) -> https://stackoverflow.com/questions/570669/checking-if-a-double-or-float-is-nan-in-c
+// - Hopefully the compiler won't give us undefined behaviour for special floats under these compiler flags.  Unspecified behavior is much gentler and limits 
+//   the damage to just the individual floating point values!  I haven't seen any documentation from any compiler declaring which situation applies though 
+//   (undefined behavior vs unspecified behavior), so we'll have to update this if we find any violations.
+// - g++ makes std::isnan fail to work when the compiler flags indicate no NaN values are present.  We turn that flag off though 
+//   (-ffast-math -fno-finite-math-only) -> https://stackoverflow.com/questions/570669/checking-if-a-double-or-float-is-nan-in-c
 // - Generally +-infinity are treated better than NaN under the compiler switches that make floating points less IEEE 754 compliant
-// - any branching instructions inside a loop will destroy the ability to generate SIMD instructions for the loop.  Non-branching conditional statements in SIMD are allowed via bit masks.
-// - since we want SIMD, we need to avoid branching instructions that exit the loop, so if we did want to handle special floating point, we'd need to either signal an error or special
-//   condition inside the loop via a bool, or handling the oddity in the floating point value itself.  One way to handle this is to use NaN or infinity propagation to take the error to the end of the loop
-// - old hardware used to have pentalties of hundreds of CPU cycles for handling: NaN, +-infinity, and denomral values.  This has generally been resolved on newer hardware.
+// - any branching instructions inside a loop will destroy the ability to generate SIMD instructions for the loop.  Non-branching conditional statements in 
+//   SIMD are allowed via bit masks.
+// - since we want SIMD, we need to avoid branching instructions that exit the loop, so if we did want to handle special floating point, we'd need to either 
+//   signal an error or special
+//   condition inside the loop via a bool, or handling the oddity in the floating point value itself.  One way to handle this is to use NaN or infinity 
+//   propagation to take the error to the end of the loop
+// - old hardware used to have pentalties of hundreds of CPU cycles for handling: NaN, +-infinity, and denomral values.  This has generally been resolved
+//   on newer hardware.
 //   https://www.agner.org/optimize/nan_propagation.pdf
 // - even if there are huge penalties for handling special numeric values, we can stop boosting after a single completed round, and a several hundred CPU cycle 
-//   penalty will generally be less than the total time of doing the rest of the training, which is generally at least dozens of features and hundreds of boosting rounds.
+//   penalty will generally be less than the total time of doing the rest of the training, which is generally at least dozens of features and hundreds of 
+//   boosting rounds.
 // - for Intel x86, we should enable SSE for floating point instead of x87, since x87 has performance problems and rounding inconsistencies with other systems
 // - there are C/C++ ways of turning floating point exceptions on or off, but most systems don't do that.  We'll let our caller choose
 //   if those exceptions are enabled, and if so they can at least detect the exceptions.  If we wanted to specify that exceptions would not occur, then
@@ -61,13 +80,15 @@ static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't g
 //   it's false then we could have even more crazy semantics regarding floating point numbers, such as no infinities, etc.
 // - if we have true is_iec559 (IEEE 754) compatibility (checked above), then floating point operations have these properties:
 //   - SEE reference https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
-//   - these operations have exact outcomes, which are guaranteed to be rounded correctly to the last bit: addition, subtraction, multiplication, division and square root, 
-//     although more bits can be present than the exact sizes of the numbers being operated on, like on Intel x87.
+//   - these operations have exact outcomes, which are guaranteed to be rounded correctly to the last bit: addition, subtraction, multiplication, division 
+//     and square root, although more bits can be present than the exact sizes of the numbers being operated on, like on Intel x87.
 //     PER: https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 //   - exp and log do not guarantee exactly identical results between implementations. They can't due to the "Table Maker’s Dilemma".
 //     PER: https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/
-//   - BUT, if we use approximate exp and log functions, we can guarantee identical results, at least in theory if the language was perfectly IEEE 754 compliant without extended length registers
-//   - floating point integers (1.0, 2.0, 3.0, etc) have exact representations up to very large numbers where the jumps between floating point numbers are greater than 1
+//   - BUT, if we use approximate exp and log functions, we can guarantee identical results, at least in theory if the language was perfectly IEEE 754 
+//     compliant without extended length registers
+//   - floating point integers (1.0, 2.0, 3.0, etc) have exact representations up to very large numbers where the jumps between floating point numbers 
+//     are greater than 1
 //   - fractions of a power of 2 (1/2.0, 1/4.0, 1/8.0, etc) have exact representations down to very small numbers
 // IEEE 754 special value operations:
 //   denormal values don't get rounded to zero
@@ -92,20 +113,24 @@ static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't g
 //   +-FINITE / +-infinity = +-0
 //
 // WHY NaN or infinity values can't happen in our code, except it truly exceptional, almost adversarial conditions:
-// - once we get a NaN value in almost ANY computation, even for a single instance's residual value, it'll spread through our system like a wildfire making everyting NaN
-// - once we get an infinity value in almost ANY computation, even for a single instance's residual value, it'll turn into a NaN soon, and then everything will become a NaN
-// - so, to evaluate the possibilty of NaN or infinity values, we need to look everywhere that could generates such values [see table of operations above that can these values]
+// - once we get a NaN value in almost ANY computation, even for a single instance's residual value, it'll spread through our system like a wildfire
+//   making everyting NaN
+// - once we get an infinity value in almost ANY computation, even for a single instance's residual value, it'll turn into a NaN soon, and then everything 
+//   will become a NaN
+// - so, to evaluate the possibilty of NaN or infinity values, we need to look everywhere that could generates such values 
+//   [see table of operations above that can these values]
 // - Generally, the reason why in practice we never see NaN or infinity values is that the boosting algorithm tends to push errors towards zero, and in the
-//   places where it's pushing towards inifity, like for logits, it does so slowly enough that we shouldn't reach infinity in any even semi-reasonable numbers of boosting rounds.
-//   We can also further diswade this from occuring, and in fact for probabalistic reasons, we want to push back against extremely high or low probabilities, 
-//   so we want to handle the cases were we might be heading there in an unreasonably long number of boosting rounds.
+//   places where it's pushing towards inifity, like for logits, it does so slowly enough that we shouldn't reach infinity in any even semi-reasonable 
+//   numbers of boosting rounds. We can also further diswade this from occuring, and in fact for probabalistic reasons, we want to push back against 
+//   extremely high or low probabilities, so we want to handle the cases were we might be heading there in an unreasonably long number of boosting rounds.
 // - looking purely at operators, NaN or infinity values in our code could be introduced in these places:
-//   - In regression, if the user passes us NaN or +-infinity as one of the regression targets.  This is almost the only legitimate way to reach +-infinity or NaN
-//     If this occurs, we'll get a mean squared error of +infinity on our FIRST attempt at boosting.  We can detect the overflow of +infinity in our caller and 
-//     alert the user to the overflow.  This will also cover the case where mean squared error overflows more gradually during the training.
+//   - In regression, if the user passes us NaN or +-infinity as one of the regression targets.  This is almost the only legitimate way to reach +-infinity 
+//     or NaN If this occurs, we'll get a mean squared error of +infinity on our FIRST attempt at boosting.  We can detect the overflow of +infinity in our 
+//     caller and alert the user to the overflow.  This will also cover the case where mean squared error overflows more gradually during the training.
 //     Even though this is a legitimate overflow, the user really needs to do something to handle the condition since there isn't really
 //     much that we can do with such large numbers, so pushing the error back to them is the best solution anyways.
-//     If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value (of 7.2e+134)
+//     If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
+//     (of 7.2e+134)
 //   - In regression, if the user gives us regression targets (either positive or negative) with absolute values greater than 
 //     sqrt(std::numeric_limits<FloatEbmType>::max()), or if several rounds of boosting lead to large square errors, 
 //     then we'll overflow to +infinity in ComputeSingleInstanceSquaredErrorRegression. This won't infect any of our exisisting 
@@ -124,49 +149,54 @@ static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't g
 //     inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
 //     Then, when we go to calculate our new instance residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
 //     which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
-//     If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value (of 7.2e+134)
+//     If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value
+//     (of 7.2e+134)
 //
 //   - In multiclass, in ComputeResidualErrorMulticlass, we could get either NaN or +infinity if sumExp was 0 in the division "ourExp / sumExp", 
 //     (NaN occurs if ourExp was also zero). This could in theory only occur in multiclass if all the logits were very very negative.  
 //     e^(very_big_negative_logit) = 0.  This is VERY VERY unlikely in any normal dataset because all the logits would need to be very very negative. 
 //     Logits in multiclass move in opposite directions while training, so having all logits very negative shouldn't occur, 
 //     except possibly in exceptionally contrived situations with extreme logits at initialization.  Our higher level caller though should 
-//     be getting the initialization logits from previous boosting using this code, so this shouldn't happen if this code doesn't return such values [which is true]
-//   - In multiclass, In ComputeResidualErrorMulticlass NaN can come from infinity/infinity, which can happen if any of the e^logits terms reach close to infinity.
-//     Doubles have a max value arround 1.8e308, and ln(1.8e308) = approx +709.79, so if any logit reaches above 709 we could have a problem.
+//     be getting the initialization logits from previous boosting using this code, so this shouldn't happen if this code doesn't return such values 
+//     [which is true]
+//   - In multiclass, In ComputeResidualErrorMulticlass NaN can come from infinity/infinity, which can happen if any of the e^logits terms reach close to 
+//     infinity. Doubles have a max value arround 1.8e308, and ln(1.8e308) = approx +709.79, so if any logit reaches above 709 we could have a problem.
 //     If ANY logit in any class reaches this high, we should get such a result.  We should also get this result if the sum of a couple very big logits
 //     overflows, but the sum would require the terms to be in the same neighbourhood of logits with values arround 709, like two with 708, etc.
 //     BUT, reaching logits in the range of 709 is almost impossible without adversarial inputs (read on)..
 //     MORE INFO on why logits of 709 are virtually impossible:
 //     For computing the model update, when residualError is close to zero, at the limit the sums used in the 
 //     model update of numerator/denominator are mathematically at worst +-1 (before applying the learningRate):
-//     Segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => residualError / [residualError * (1)] => 1
+//     Segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => 
+//     residualError / [residualError * (1)] => 1
 //     When our predictor is very certain, but wrong, we get residual errors like -1, and 1.  In those cases we have a big numerator (relatively)
 //     and a small denominator, so those cases are weighted extra heavily, and are weighted much higher than +-1
 //     the overall effect, is that we train more on the errors, but in these cases the movement is opposite to the existing value, 
 //     so high positive numbers become more negative, and vise versa, so they act in a restorative way and don't contribute to runnaway logits.
 //     for wrong predictions: Update = sumResidualError / sumDenominator => +-1 / [1 * (1 - 1)] => +-1 / 0 => +-infinity
-//     but the algorithm will fight against +-infinity since it won't let the residualError values get too large before it agressively corrects them back in the direction of zero
-//     If the logits are traveling in the right direction, then the logit updates will go down to +-1.  Then, we apply the learningRate,
-//     which is by default 0.01.  If those values hold, then the post-learningRate update is a maximum of +-0.01, and 
+//     but the algorithm will fight against +-infinity since it won't let the residualError values get too large before it agressively corrects them back 
+//     in the direction of zero.  If the logits are traveling in the right direction, then the logit updates will go down to +-1.  Then, we apply the 
+//     learningRate, which is by default 0.01.  If those values hold, then the post-learningRate update is a maximum of +-0.01, and 
 //     it will take arround 70,900 rounds of boosting for the logit to reach the 709 neighbourhood.
 //     Our default number of rounds is 2000, so we won't get close under normal parameters.
 //   - For multiclass, in theory, if we got a big number of +-infinity as a logit update, we could overflow a section of the graph. We'll hit overflows inside
 //     ComputeResidualErrorMulticlass though first when the logits get to 709-ish numbers, so it isn't really possible for the logits themselves
 //     to overflow first to +-infinity in the graphs for multiclass
 
-//   - For binary and multiclass classification, log loss can reach infinty if we are very cetain of one or more predictions which are incorrectly predicted in the validation set
-//     This is almost impossible to occur in real datasets, since log loss will be going up before we reach infinity, so 
+//   - For binary and multiclass classification, log loss can reach infinty if we are very cetain of one or more predictions which are incorrectly 
+//     predicted in the validation set.  This is almost impossible to occur in real datasets, since log loss will be going up before we reach infinity, so 
 //     if our caller is using early stopping, they'll terminate the learning.
 //     It could happen though if the caller doesn't have early stopping, or specifies an exact number of boosting rounds
-//     In any case, we might want to limit probabilities to within 1/number_of_instances since we want to avoid scenarios that completely blow up and exit early
+//     In any case, we might want to limit probabilities to within 1/number_of_instances since we want to avoid scenarios that completely blow up 
+//     and exit early
 
 //   - For binary and multiclass classification, ComputeSmallChangeForOneSegmentClassificationLogOdds has a division that can overflow to 
 //     infinity or NaN values making the logits in our graph infinity or NaN.
 //   - for any learning, adversarial inputs like ridiculously huge learningRate parameters or NaN values could cause these conditions
 
-//   - In ComputeResidualErrorBinaryClassification, the exp term could get to zero or +infinity, but division by infinity leads to zero, so this shouldn't propagate
-//     the infinity term, or create new NaN values.  Even if our logits reached +-infinity ComputeResidualErrorBinaryClassifications should return valid numbers
+//   - In ComputeResidualErrorBinaryClassification, the exp term could get to zero or +infinity, but division by infinity leads to zero, so this shouldn't 
+//     propagate the infinity term, or create new NaN values.  Even if our logits reached +-infinity ComputeResidualErrorBinaryClassifications should 
+//     return valid numbers
 
 //   - if our boosting code gets passed NaN or +-infinity values as predictor scores (regression predictions or logits)
 //     Normally, our higher level library (python, R, etc..) calculates the predictor scores based on prior boosting rounds from 
@@ -178,15 +208,16 @@ static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't g
 //   multiclass denominator term, we're already in a bad situation.  There is a solution where we could subtract a constant from all the multiclass logits,
 //   which is mathematical no-op, but... why??
 // - ComputeSmallChangeForOneSegmentClassificationLogOdds will end with a divide by zero if the denominator is zero.  The denominator will be zero
-//   if the residual error is 1.  For binary classification, if 1 + ? = 1, due to numeracy issues, then the denominator term in ComputeResidualErrorBinaryClassification
-//   will be one, leading to numeracy issues later on due to the 1.  Epsilon is the smallest number that you can add to 1 and get a non-1.
-//   For doubles epsilon is 2.2204460492503131e-016.  e^-36.043 and with an update rate of 0.01, that means arround 3604 rounds of boosting
-//   We're still good given that our default is a max of 2000 boosting rounds.
+//   if the residual error is 1.  For binary classification, if 1 + ? = 1, due to numeracy issues, then the denominator term in 
+//   ComputeResidualErrorBinaryClassification will be one, leading to numeracy issues later on due to the 1.  Epsilon is the smallest number that you can 
+//   add to 1 and get a non-1. For doubles epsilon is 2.2204460492503131e-016.  e^-36.043 and with an update rate of 0.01, that means arround 3604 rounds 
+//   of boosting.  We're still good given that our default is a max of 2000 boosting rounds.
 //   Multiclass has the same issues in summing the e^logit values.
 // - there is an asymetry in that small logits and large ones.  Only small ones lead to a problem because for 1 + ?, the ? needs to be small so that 
 //   the result is 1.  With big values we get a 1/big_value, which is ok since there is more resolution for floating points arround zero
 //   for binary classification we can flip the sign of the logits and make large ones small and small ones large somehow since they are the reciprical
-// - after we've decided on a model update, we can check to see what the probability predicted would be with just this 1 feature (we'd need to know the intercept)
+// - after we've decided on a model update, we can check to see what the probability predicted would be with just this 1 feature 
+//   (we'd need to know the intercept)
 //   and if that probability was beyond the 1/number_of_instances or (number_of_instances-1)/number_of_instances probability range, then we can 
 //   be pretty confident that the algorithm is being wildly optimistic, since we have insufficient data to determine a probability that extreme
 //   So, we can look at the existing feature logits, and calculate if any individual bin logits plus the logit update exceeds that probability, 
@@ -196,25 +227,26 @@ static_assert(std::numeric_limits<FloatEbmType>::is_iec559, "If IEEE 754 isn't g
 //   we won't get completely wild in predicting instances in the validation set.
 // - for binary classification, we can just check that the absolute value of the logit doesn't exceed either +-std::log(1/cInstances), and if it does we can
 //   just reduce it to that value.
-// - for multiclass, the correct is a bit harder.  We'd prefer not needing to calculate the true probabily of each class, but we can do an approximate job in logit space
-//   First off, there can only be one class with a big probability at a time, so we first need to find out if any item exceeds (cInstances - 1) / cInstances probability
-//   For the biggest probability, the only two values that matter are the biggest and second biggest logits.  Reduce the biggest probability so that it doesn't exceed
-//   the second biggest probability by std:log(1/cInstances).
-//   There can be unlimited items with probabilities that are too low.  After fixing the biggest probability, we need to check to see if any of these are too low
-//   If any are lower than std:log(1/cInstances) from the max logit, the raise them to that level
+// - for multiclass, the correct is a bit harder.  We'd prefer not needing to calculate the true probabily of each class, but we can do an approximate job in 
+//   logit space.  First off, there can only be one class with a big probability at a time, so we first need to find out if any item exceeds 
+//   (cInstances - 1) / cInstances probability.  For the biggest probability, the only two values that matter are the biggest and second biggest logits.  
+//   Reduce the biggest probability so that it doesn't exceed the second biggest probability by std:log(1/cInstances).
+//   There can be unlimited items with probabilities that are too low.  After fixing the biggest probability, we need to check to see if any of these are too
+//   low.  If any are lower than std:log(1/cInstances) from the max logit, the raise them to that level
 // - even though multiclass logits won't average to zero, we can be sure that none of them will chnage by more than learingRate logits per boosting round, so 
 //   they can't diverge to more than 709 logits difference for at least 70,900/2=35,400 rounds.  That's still acceptable 
-// - probably the first place we'll get an issue is for multiclass, where we might get one logit that causes e^logit to be large enough that adding all the other e^logit values
-//   doesn't add anything to the higher e^logit value.  Once that happens, then we'll get e^logit/e^logit = 1, then our 
-// - from conversation with Rich, we don't really know how to do Laplacian smoothing on boosted decision trees, and it's done post process anyways, so wouldn't help
-//   during tree building.  It would apply a skew to the updates if used during training.
+// - probably the first place we'll get an issue is for multiclass, where we might get one logit that causes e^logit to be large enough that adding all the 
+//   other e^logit values doesn't add anything to the higher e^logit value.  Once that happens, then we'll get e^logit/e^logit = 1, then our 
+// - from conversation with Rich, we don't really know how to do Laplacian smoothing on boosted decision trees, and it's done post process anyways, 
+//   so wouldn't help during tree building.  It would apply a skew to the updates if used during training.
 // - EVEN with these precautions though, a malicious user could create a training set such that many individual features could have high logits, 
 //   and then they could create an exceptional validation instance that was the opposite of what's in the training data
 //   for every such feature.  As we add the logits together we could then reach a number greater than 709, and overflow double at e^709.
 // - to guard against adversarial datasets like this, we can just accept that we might get +-infinity and then NaN, and just report
 //   those extreme results back to the user, or we could put in a per-instance logit maximum.  Checking for these
 //   extreme logits per instance seems unreasonable given that it's hard to imagine this happening on a real dataset, so 
-//   for now we'll just accept that we might hit +-infinity, or NaN and then report odd results.  Also, getting to this point would require 70,900 rounds of boosting!
+//   for now we'll just accept that we might hit +-infinity, or NaN and then report odd results.  Also, getting to this point would require 
+//   70,900 rounds of boosting!
 // - when we have a bin with zero instances of a particular class, the gain function might update the logits a few times towards
 //   either a positive or negative logit, BUT after a few updates the gain will tend towards zero since it so well predicts these
 //   homogenious bins.  It won't focus on such bins and will then swtich to better cut points, unless it's a binary feature or similar where it's
@@ -257,7 +289,10 @@ public:
 
       // propagate NaN or deliver weird results if NaNs aren't properly propaged.  This is acceptable considering how hard you have to 
       // work to generate such an illegal value, and given that we won't crash
-      EBM_ASSERT(std::isnan(residualError) || !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 });
+      EBM_ASSERT(
+         std::isnan(residualError) || 
+         !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
+      );
 
       // this function pre-computes a portion of an equation that we'll use later.  We're computing it now since we can share
       // the work of computing it between inner bags.  It's not possible to reason about this function in isolation though.
@@ -276,14 +311,15 @@ public:
       // when we use this denominator term retuned inside ComputeSmallChangeForOneSegmentClassificationLogOdds, if there was only
       //   a single denominator term, or multiple similar ones, at the limit we'd get the following for the following inputs:
       //   boosting is working propertly and we're close to zero error:
-      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => residualError / [residualError * (1)] => +-1
-      //       but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
+      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => 
+      //       residualError / [residualError * (1)] => +-1  but we multiply this by the learningRate of 0.01 (default), to get +-0.01               
       //   when boosting is making a mistake, but is certain about it's prediction:
-      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => +-1 / [1 * (0)] => +-infinity
+      //     - segment_model_update = sumResidualError / sumDenominator => residualError / [residualError * (1 - residualError)] => +-1 / [1 * (0)] => 
+      //       +-infinity
       //       but this shouldn't really happen inside the training set, because as the error gets bigger our boosting algorithm will correct corse by
-      //       updating in the opposite direction.  Divergence to infinity is a possibility in the validation set, but the training set pushes it's error to zero
-      //       It may be possible to construct an adversarial dataset with negatively correlated features that cause a bouncing arround that leads to divergence,
-      //       but that seems unlikely in a normal dataset
+      //       updating in the opposite direction.  Divergence to infinity is a possibility in the validation set, but the training set pushes it's error to 
+      //       zero.  It may be possible to construct an adversarial dataset with negatively correlated features that cause a bouncing arround that leads to 
+      //       divergence, but that seems unlikely in a normal dataset
       //   our resulting function looks like this:
       // 
       //  small_model_update
@@ -307,7 +343,8 @@ public:
       //   We have a discontinuity at 0, where we flip from positive to negative
       //   the overall effect is that we train more on errors (error is +-1), and less on things with close to zero residuals
 
-      // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that they are using t * (2 - t) since they have a 2 in their objective
+      // !!! IMPORTANT: Newton-Raphson step, as illustrated in Friedman's original paper (https://statweb.stanford.edu/~jhf/ftp/trebst.pdf, page 9). Note that
+      //   they are using t * (2 - t) since they have a 2 in their objective
       const FloatEbmType absResidualError = std::abs(residualError); // abs will return the same type that it is given, either float or double
       const FloatEbmType ret = absResidualError * (FloatEbmType { 1 } - absResidualError);
 
@@ -327,7 +364,8 @@ public:
       // our input allows values slightly larger than 1, after subtracting 1 from 1 + some_small_value, we can get a slight negative value
       // when we get to this point, we're already in a position where we'll get a NaN or infinity or something else that will stop boosting
 
-      // with our abs inputs confined to the range of -k_epsilonResidualError -> 1, we can't get a new NaN value here, so only check against propaged NaN values from residualError
+      // with our abs inputs confined to the range of -k_epsilonResidualError -> 1, we can't get a new NaN value here, so only check against propaged NaN 
+      // values from residualError
       EBM_ASSERT(std::isnan(residualError) || !std::isinf(ret) && -k_epsilonResidualError <= ret && ret <= FloatEbmType { 0.25 });
 
       return ret;
@@ -335,7 +373,8 @@ public:
 
    EBM_INLINE static FloatEbmType ComputeNodeSplittingScore(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this function can SOMETIMES be performance critical as it's called on every histogram bin
-      // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality creates many bins
+      // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality
+      // creates many bins
 
       // for classification, sumResidualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
       //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some instance will have a NaN
@@ -357,18 +396,22 @@ public:
       //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
       //   Then, when we go to calculate our new instance residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
       //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
-      //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value (of 7.2e+134)
+      //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
+      //   (of 7.2e+134)
 
-      // for classification, sumResidualError CANNOT be +-infinity-> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and ComputeResidualErrorMulticlass
-      //   also, since -cInstances <= sumResidualError && sumResidualError <= cInstances, and since cInstances must be 64 bits or lower, we cann't overflow to infinity when taking the sum
+      // for classification, sumResidualError CANNOT be +-infinity-> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and 
+      //   ComputeResidualErrorMulticlass also, since -cInstances <= sumResidualError && sumResidualError <= cInstances, and since cInstances must be 64 bits 
+      //   or lower, we cann't overflow to infinity when taking the sum
 
       // for classification -cInstances <= sumResidualError && sumResidualError <= cInstances
       
       // for regression sumResidualError can be any legal value, including +infinity or -infinity
 
-      // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
+      // !!! IMPORTANT: This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which can be seen following the 
+      //   derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
-      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use it for classification?  What about the possibility of using Newton-Raphson step in the gain?
+      // TODO: we're using this node splitting score for both classification and regression.  It is designed to minimize MSE, so should we also then use 
+      //    it for classification?  What about the possibility of using Newton-Raphson step in the gain?
       // TODO: we should also add an option to optimize for mean absolute error
 
       EBM_ASSERT(!std::isnan(cInstances)); // this starts as an integer
@@ -381,7 +424,8 @@ public:
       const FloatEbmType ret = sumResidualError / cInstances * sumResidualError;
 #endif // LEGACY_COMPATIBILITY
 
-      // for both classification and regression, we're squaring sumResidualError, and cInstances is positive.  No reasonable floating point implementation should turn this negative
+      // for both classification and regression, we're squaring sumResidualError, and cInstances is positive.  No reasonable floating point implementation 
+      // should turn this negative
 
       // for both classification and regression, we shouldn't generate a new NaN value from our calculation since cInstances can't be zero or inifinity, 
       //   but we might need to propagage a NaN sumResidualError value
@@ -394,7 +438,10 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(const FloatEbmType sumResidualError, const FloatEbmType sumDenominator) {
+   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(
+      const FloatEbmType sumResidualError, 
+      const FloatEbmType sumDenominator
+   ) {
       // this is NOT a performance critical function.  It only gets called AFTER we've decided where to split, so only a few times per Boosting step
 
       // sumResidualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -410,17 +457,20 @@ public:
       //   0.01 [see notes at top of EbmStatistics.h].  It might happen for a single instance even faster if multiple variables boost the logit
       //   upwards.  We just terminate boosting after that many rounds if this occurs.
 
-      // sumDenominator can be NaN -> sumDenominator is calculated from residualError.  Since residualError can be NaN (as described above), then sumDenominator can be NaN
+      // sumDenominator can be NaN -> sumDenominator is calculated from residualError.  Since residualError can be NaN (as described above), then 
+      //   sumDenominator can be NaN
 
       // sumResidualError CANNOT be +-infinity-> even with an +-infinity logit, see ComputeResidualErrorBinaryClassification and ComputeResidualErrorMulticlass
-      //   also, since -cInstances <= sumResidualError && sumResidualError <= cInstances, and since cInstances must be 64 bits or lower, we cann't overflow to infinity when taking the sum
+      //   also, since -cInstances <= sumResidualError && sumResidualError <= cInstances, and since cInstances must be 64 bits or lower, we cann't overflow 
+      //   to infinity when taking the sum
 
       // sumDenominator cannot be infinity -> per the notes in ComputeNewtonRaphsonStep
 
       // since this is classification, -cInstances <= sumResidualError && sumResidualError <= cInstances
       EBM_ASSERT(!std::isinf(sumResidualError)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
-      // since this is classification, 0 <= sumDenominator && sumDenominator <= 0.25 * cInstances (see notes in ComputeNewtonRaphsonStep), so sumDenominator can't be infinity
+      // since this is classification, 0 <= sumDenominator && sumDenominator <= 0.25 * cInstances (see notes in ComputeNewtonRaphsonStep), 
+      // so sumDenominator can't be infinity
       EBM_ASSERT(!std::isinf(sumDenominator)); // a 64-bit number can't get a value larger than a double to overflow to infinity
 
       // sumDenominator can be very slightly negative, for floating point numeracy reasons.  On the face, this is bad because it flips the direction
@@ -430,12 +480,13 @@ public:
       //   the cost of the comparison to check for the error condition
       EBM_ASSERT(std::isnan(sumDenominator) || -k_epsilonResidualError <= sumDenominator);
 
-      // sumResidualError can always be much smaller than sumDenominator, since it's a sum, so it can add positive and negative numbers such that it reaches almost zero
-      // whlie sumDenominator is always positive
+      // sumResidualError can always be much smaller than sumDenominator, since it's a sum, so it can add positive and negative numbers such that it reaches 
+      // almost zero whlie sumDenominator is always positive
 
       // sumDenominator can always be much smaller than sumResidualError.  Example: 0.999 -> the sumDenominator will be 0.000999 (see ComputeNewtonRaphsonStep)
 
-      // since the denominator term always goes up as we add new numbers (it's always positive), we can only have a zero in that term if ALL instances have low denominators
+      // since the denominator term always goes up as we add new numbers (it's always positive), we can only have a zero in that term if ALL instances have 
+      // low denominators
       // the denominator can be close to zero only when residualError is -1, 0, or 1 for all cases, although they can be mixed up between these values.
       // Given that our algorithm tries to drive residual error to zero and it will drive it increasingly strongly the farther it gets from zero, 
       // it seems really unlikley that we'll get a zero numerator by having a series of
@@ -443,12 +494,15 @@ public:
       // If the denominator is zero, then it's a strong indication that all the residuals are close to zero.
       // if all the residuals are close to zero, then the numerator is also going to be close to zero
       // So, if the denominator is close to zero, we can assume the numerator will be too.  At this point with all the residual errors very close to zero
-      // we might as well stop learning on these instances and set the update to zero for this section anyways, but we don't want branches here, so we'll just leave it
+      // we might as well stop learning on these instances and set the update to zero for this section anyways, but we don't want branches here, 
+      // so we'll just leave it
 
       return sumResidualError / sumDenominator;
 
-      // return can be NaN if both sumResidualError and sumDenominator are zero, or if we're propagating a NaN value.  Neither sumResidualError nor sumDenominator can be infinity, so that's not a source of NaN
-      // return can be infinity if sumDenominator is extremely close to zero, while sumResidualError is non-zero (very hard).  This could happen if the residualError was near +-1
+      // return can be NaN if both sumResidualError and sumDenominator are zero, or if we're propagating a NaN value.  Neither sumResidualError nor 
+      //   sumDenominator can be infinity, so that's not a source of NaN
+      // return can be infinity if sumDenominator is extremely close to zero, while sumResidualError is non-zero (very hard).  This could happen if 
+      //   the residualError was near +-1
       // return can be any other positive or negative number
    }
 
@@ -462,7 +516,8 @@ public:
       //   inside ComputeSmallChangeForOneSegmentRegression as +-infinity/cInstances, which will be +-infinity (of the same sign). 
       //   Then, when we go to calculate our new instance residuals, we'll subtract +infinity-(+infinity) or -infinity-(-infinity), 
       //   which will result in NaN.  After that, everything melts down to NaN.  The user just needs to not give us such high regression targets.
-      //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value (of 7.2e+134)
+      //   If we really wanted to, we could eliminate all errors from large regression targets by limiting the user to a maximum regression target value 
+      //   (of 7.2e+134)
 
       // sumResidualError can be any legal value, including +infinity or -infinity
 
@@ -508,11 +563,15 @@ public:
 
       // value can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression
 
-      // this function is here to document where we're calculating regression, like ComputeResidualErrorBinaryClassification below.  It doesn't do anything, but it serves as an indication that the calculation would be placed here if we changed it in the future
+      // this function is here to document where we're calculating regression, like ComputeResidualErrorBinaryClassification below.  It doesn't do anything, 
+      //   but it serves as an indication that the calculation would be placed here if we changed it in the future
       return value;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(const FloatEbmType trainingLogOddsPrediction, const StorageDataType binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(
+      const FloatEbmType trainingLogOddsPrediction, 
+      const StorageDataType binnedActualValue
+   ) {
       // this IS a performance critical function.  It gets called per instance!
 
       // trainingLogOddsPrediction can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -523,23 +582,30 @@ public:
 
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
-      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, trainingLogOddsPrediction would need to be either infinity or -infinity
-      // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having trainingLogOddsPrediction be -infinity
-      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having trainingLogOddsPrediction be infinity
+      // this function outputs 0 if we perfectly predict the target with 100% certainty.  To do so, trainingLogOddsPrediction would need to be either 
+      //   infinity or -infinity
+      // this function outputs 1 if actual value was 1 but we incorrectly predicted with 100% certainty that it was 0 by having 
+      //   trainingLogOddsPrediction be -infinity
+      // this function outputs -1 if actual value was 0 but we incorrectly predicted with 100% certainty that it was 1 by having trainingLogOddsPrediction 
+      //   be infinity
       //
       // this function outputs 0.5 if actual value was 1 but we were 50%/50% by having trainingLogOddsPrediction be 0
       // this function outputs -0.5 if actual value was 0 but we were 50%/50% by having trainingLogOddsPrediction be 0
 
-      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
-      const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } + EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); // exp will return the same type that it is given, either float or double
+      // TODO : In the future we'll sort our data by the target value, so we'll know ahead of time if 0 == binnedActualValue.  We expect 0 to be the 
+      //   default target, so we should flip the value of trainingLogOddsPrediction so that we don't need to negate it for the default 0 case
+      // exp will return the same type that it is given, either float or double
+      const FloatEbmType ret = (UNPREDICTABLE(0 == binnedActualValue) ? FloatEbmType { -1 } : FloatEbmType { 1 }) / (FloatEbmType { 1 } +
+         EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? -trainingLogOddsPrediction : trainingLogOddsPrediction)); 
 
       // exp always yields a positive number or zero, and I can't imagine any reasonable implementation that would violate this by returning a negative number
       // given that 1.0 is an exactly representable number in IEEE 754, I can't see 1 + exp(anything) ever being less than 1, even with floating point jitter
-      // again, given that the numerator 1.0 is an exactly representable number, I can't see (+-1.0 / something_1_or_greater) ever having an absolute value above 1.0
-      // especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
+      // again, given that the numerator 1.0 is an exactly representable number, I can't see (+-1.0 / something_1_or_greater) ever having an absolute value
+      // above 1.0 especially, since IEEE 754 guarnatees that addition and division yield numbers rounded correctly to the last binary decimal place
       // IEEE 754, which we check for at compile time, specifies that +-1/infinity = 0
 
-      // ret cannot be +-infinity -> even if trainingLogOddsPrediction is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 or 0 respectively
+      // ret cannot be +-infinity -> even if trainingLogOddsPrediction is +-infinity we then get +-1 division by 1, or division by +infinity, which are +-1 
+      //   or 0 respectively
 
       // ret can only be NaN if our inputs are NaN
 
@@ -549,7 +615,8 @@ public:
       // ret can't be +-infinity, since an infinity in the denominator would just lead us to zero for the ret value!
 
 #ifndef NDEBUG
-      const FloatEbmType retDebug = ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
+      const FloatEbmType retDebug = 
+         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
       // the ComputeResidualErrorMulticlass can't be +-infinity per notes in ComputeResidualErrorMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -558,7 +625,12 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(const FloatEbmType sumExp, const FloatEbmType trainingLogWeight, const StorageDataType binnedActualValue, const StorageDataType iVector) {
+   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(
+      const FloatEbmType sumExp, 
+      const FloatEbmType trainingLogWeight, 
+      const StorageDataType binnedActualValue, 
+      const StorageDataType iVector
+   ) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
       // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -579,11 +651,11 @@ public:
 
       // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
-      //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise mathematically expect
-      //   For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor preserves extra bits between computations
-      //   AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently added to numbers below the threshold of epsilon at the value
-      //   of EbmExp(trainingLogWeight), then by the time we get to the division of EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, 
-      //   and result in a value slightly greater than 1!
+      //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise 
+      //   mathematically expect.  For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor 
+      //   preserves extra bits between computations AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently 
+      //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
+      //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
       EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
 
@@ -618,7 +690,8 @@ public:
       // expFraction can't be infinity -> even if ourExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
       //   we can't really get an infinity in ourExp without also getting an infinity in sumExp, so expFraction can't be infinity without getting a NaN
 
-      EBM_ASSERT(std::isnan(expFraction) || !std::isinf(expFraction) && FloatEbmType { 0 } <= expFraction && expFraction <= FloatEbmType { 1 } + k_epsilonResidualError);
+      EBM_ASSERT(std::isnan(expFraction) || 
+         !std::isinf(expFraction) && FloatEbmType { 0 } <= expFraction && expFraction <= FloatEbmType { 1 } + k_epsilonResidualError);
 
 
       const FloatEbmType yi = UNPREDICTABLE(iVector == binnedActualValue) ? FloatEbmType { 1 } : FloatEbmType { 0 };
@@ -636,7 +709,10 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(const FloatEbmType validationLogOddsPrediction, const StorageDataType binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(
+      const FloatEbmType validationLogOddsPrediction, 
+      const StorageDataType binnedActualValue
+   ) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
@@ -650,25 +726,29 @@ public:
       EBM_ASSERT(0 == binnedActualValue || 1 == binnedActualValue);
 
       const FloatEbmType ourExp = EbmExp(UNPREDICTABLE(0 == binnedActualValue) ? validationLogOddsPrediction : -validationLogOddsPrediction);
-      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
+      // no reasonable implementation of exp should lead to a negative value
+      EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ourExp);
 
-      // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative numbers
-      // the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits one way to a very very certain outcome (essentially 100%)
-      // and the validation set has the opposite, but in that case our ultimate convergence is infinity anyways, and we'll be generaly driving up the log loss, so we legitimately
-      // want our loop to terminate training since we're getting a worse and worse model, so going to infinity isn't bad in that case
+      // exp will always be positive, and when we add 1, we'll always be guaranteed to have a positive number, so log shouldn't ever fail due to negative 
+      // numbers the exp term could overlfow to infinity, but that should only happen in pathalogical scenarios where our train set is driving the logits 
+      // one way to a very very certain outcome (essentially 100%) and the validation set has the opposite, but in that case our ultimate convergence is 
+      // infinity anyways, and we'll be generaly driving up the log loss, so we legitimately want our loop to terminate training since we're getting a 
+      // worse and worse model, so going to infinity isn't bad in that case
       const FloatEbmType ret = EbmLog(FloatEbmType { 1 } + ourExp); // log & exp will return the same type that it is given, either float or double
 
-      // ret can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, so we should only get propagation NaN values
+      // ret can be NaN, but only though propagation -> we're never taking the log of any number close to a negative, 
+      // so we should only get propagation NaN values
 
       // ret can be +infinity -> can happen when the logit is greater than 709, which can happen after about 70,900 boosting rounds
 
-      // ret always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should make adding
-      // a positive number to 1 a number less than 1.  It's hard to see how any reasonable log implementatation that would give a negative exp given a 1, since 
-      // 1 has an exact floating point number representation, and it computes to another exact floating point number, and who would seriously make a log function that
-      // take 1 and returns a negative.
+      // ret always positive -> the 1 term inside the log has an exact floating point representation, so no reasonable floating point framework should 
+      // make adding a positive number to 1 a number less than 1.  It's hard to see how any reasonable log implementatation that would give a negative 
+      // exp given a 1, since 1 has an exact floating point number representation, and it computes to another exact floating point number, and who 
+      // would seriously make a log function that take 1 and returns a negative.
       // So, 
       EBM_ASSERT(std::isnan(validationLogOddsPrediction) || FloatEbmType { 0 } <= ret); // log(1) == 0
-      // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
+      // TODO : check our approxmiate log above for handling of 1 exactly.  We might need to change the above assert to allow a small negative value
+      //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
       FloatEbmType scores[2];
@@ -681,7 +761,11 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(const FloatEbmType sumExp, const FloatEbmType * const aValidationLogWeight, const StorageDataType binnedActualValue) {
+   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(
+      const FloatEbmType sumExp, 
+      const FloatEbmType * const aValidationLogWeight, 
+      const StorageDataType binnedActualValue
+   ) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
@@ -709,11 +793,11 @@ public:
 
       // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
       //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
-      //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise mathematically expect
-      //   For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor preserves extra bits between computations
-      //   AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently added to numbers below the threshold of epsilon at the value
-      //   of EbmExp(trainingLogWeight), then by the time we get to the division of EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, 
-      //   and result in a value slightly greater than 1!
+      //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise 
+      //   mathematically expect.  For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor 
+      //   preserves extra bits between computations AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently 
+      //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
+      //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
       EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
 
@@ -733,8 +817,8 @@ public:
 
       // expFraction can be SLIGHTLY smaller than 1 due to numeric issues -> this should only happen if sumExp == ourExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
-      // - if expFraction was slightly smaller than 1, we shouldn't expect a crash.  We'll get a slighly negative log, which would otherwise be impossible.  We check
-      //   this before returning the log loss to our caller, since they do not expect negative log losses.
+      // - if expFraction was slightly smaller than 1, we shouldn't expect a crash.  We'll get a slighly negative log, which would otherwise be impossible.
+      //   We check this before returning the log loss to our caller, since they do not expect negative log losses.
       
       // expFraction must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
 
@@ -748,7 +832,8 @@ public:
 
       const FloatEbmType ret = EbmLog(expFraction);
 
-      // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS expFraction was already NaN and we're NaN propegating
+      // we're never taking the log of any number close to a negative, so we won't get a NaN result here UNLESS expFraction was already NaN and we're NaN 
+      // propegating
 
       // we're using two numbers that probably can't be represented by exact representations
       // so, the fraction might be a tiny bit smaller than one, in which case the output would be a tiny

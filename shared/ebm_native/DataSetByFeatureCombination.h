@@ -13,7 +13,8 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCombination.h"
 
-// TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) and apply it to as many other classes as we can
+// TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) 
+// and apply it to as many other classes as we can
 class DataSetByFeatureCombination final {
    FloatEbmType * const m_aResidualErrors;
    FloatEbmType * const m_aPredictorScores;
@@ -28,11 +29,23 @@ class DataSetByFeatureCombination final {
 
 public:
 
-   DataSetByFeatureCombination(const bool bAllocateResidualErrors, const bool bAllocatePredictorScores, const bool bAllocateTargetData, const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombination, const size_t cInstances, const IntEbmType * const aInputDataFrom, const void * const aTargets, const FloatEbmType * const aPredictorScoresFrom, const size_t cVectorLength);
+   DataSetByFeatureCombination(
+      const bool bAllocateResidualErrors, 
+      const bool bAllocatePredictorScores, 
+      const bool bAllocateTargetData, 
+      const size_t cFeatureCombinations, 
+      const FeatureCombination * const * const apFeatureCombination, 
+      const size_t cInstances, 
+      const IntEbmType * const aInputDataFrom, 
+      const void * const aTargets, 
+      const FloatEbmType * const aPredictorScoresFrom, 
+      const size_t cVectorLength
+   );
    ~DataSetByFeatureCombination();
 
    EBM_INLINE bool IsError() const {
-      return (m_bAllocateResidualErrors && nullptr == m_aResidualErrors) || (m_bAllocatePredictorScores && nullptr == m_aPredictorScores) || (m_bAllocateTargetData && nullptr == m_aTargetData) || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
+      return (m_bAllocateResidualErrors && nullptr == m_aResidualErrors) || (m_bAllocatePredictorScores && nullptr == m_aPredictorScores) || 
+         (m_bAllocateTargetData && nullptr == m_aTargetData) || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
    }
 
    EBM_INLINE FloatEbmType * GetResidualPointer() {

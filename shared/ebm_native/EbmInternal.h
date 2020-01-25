@@ -15,7 +15,8 @@
 
 #define UNUSED(x) (void)(x)
 // UBSAN really doesn't like it when we access data past the end of a class eg( p->m_a[2], when m_a is declared as an array of 1)
-// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we also statically check that our classes are standard layout structures (even if declared as classes), so accessing that memory is legal.
+// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate sufficient memory for doing this, and we 
+// also statically check that our classes are standard layout structures (even if declared as classes), so accessing that memory is legal.
 // this MACRO turns an array reference into a pointer to the same type of object, which resolves any UBSAN warnings
 
 // TODO : the const and non-const macros can probably be unified
@@ -45,7 +46,8 @@
 
 #elif defined(__SUNPRO_CC) // compiler type (Oracle Developer Studio)
 
-// The Oracle Developer Studio compiler doesn't seem to have a way to push/pop warning/error messages, but they do have the concept of the "default" which acts as a pop for the specific warning that we turn on/off
+// The Oracle Developer Studio compiler doesn't seem to have a way to push/pop warning/error messages, but they do have the concept of the "default" which 
+// acts as a pop for the specific warning that we turn on/off
 // Since we can only default on previously changed warnings, we need to have matching warnings off/default sets, so use WARNING_DEFAULT_* 
 // example: WARNING_DISABLE_SOMETHING   _Pragma("error_messages(off,something1,something2)")
 // example: WARNING_DEFAULT_SOMETHING   _Pragma("error_messages(default,something1,something2)")
@@ -87,12 +89,15 @@
 
 #define EBM_INLINE inline __attribute__((always_inline))
 
-// TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are not aliased
-// EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program (the memory wasn't reached previously)
+// TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are 
+//   not aliased
+// EBM_RESTRICT_FUNCTION_RETURN tells the compiler that a pointer returned from a function in not aliased in any other part of the program 
+// (the memory wasn't reached previously)
 #define EBM_RESTRICT_FUNCTION_RETURN __declspec(restrict)
 // EBM_RESTRICT_PARAM_VARIABLE tells the compiler that a pointer passed into a function doesn't refer to memory passed in via annohter pointer
 #define EBM_RESTRICT_PARAM_VARIABLE __restrict
-// EBM_NOALIAS tells the compiler that a function does not modify global state and only modified data DIRECTLY pointed to via it's parameters (first level indirection)
+// EBM_NOALIAS tells the compiler that a function does not modify global state and only modified data DIRECTLY pointed to via it's parameters 
+// (first level indirection)
 #define EBM_NOALIAS __declspec(noalias)
 
 #elif defined(_MSC_VER) // compiler type
@@ -107,7 +112,9 @@
 #error compiler not recognized
 #endif // compiler type
 
-// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  Perhaps take the sqrt of the minimal change from 1?
+// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
+//   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
+//   Perhaps take the sqrt of the minimal change from 1?
 // when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
 
@@ -115,7 +122,9 @@
 // TODO: starting from the input functions, follow all places that we use/create floating point numbers and look for overflow possibilities
 // TODO: search on all my epsilon values and see if they are being used consistently
 
-constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest(); // gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small negative values close to zero that might occur due to numeric instability
+// gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
+// negative values close to zero that might occur due to numeric instability
+constexpr FloatEbmType k_illegalGain = std::numeric_limits<FloatEbmType>::lowest();
 constexpr FloatEbmType k_epsilonNegativeGainAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonResidualError = 1e-7;
@@ -127,9 +136,12 @@ template<typename TTo, typename TFrom>
 constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    // the general rules of conversion are as follows:
    // calling std::numeric_limits<?>::max() returns an item of that type
-   // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.  Undefined behavior results from overflowing negative integers, but we don't add or subtract.
-   // C/C++ uses value preserving instead of sign preserving.  Generally, if you have two integer numbers that you're comparing then if one type can be converted into the other with no loss in range then that the smaller range integer is converted into the bigger range integer
-   // if one type can't cover the entire range of the other, then items are converted to UNSIGNED values.  This is probably the most dangerous thing for us to deal with
+   // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.
+   // Undefined behavior results from overflowing negative integers, but we don't add or subtract.
+   // C/C++ uses value preserving instead of sign preserving.  Generally, if you have two integer numbers that you're comparing then if one type can be 
+   // converted into the other with no loss in range then that the smaller range integer is converted into the bigger range integer
+   // if one type can't cover the entire range of the other, then items are converted to UNSIGNED values.  This is probably the most dangerous 
+   // thing for us to deal with
 
    static_assert(std::is_integral<TTo>::value, "TTo must be integral");
    static_assert(std::is_integral<TFrom>::value, "TFrom must be integral");
@@ -141,11 +153,19 @@ constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    static_assert(std::numeric_limits<TFrom>::is_signed || 0 == std::numeric_limits<TFrom>::lowest(), "min of an unsigned TFrom value must be zero");
    static_assert(0 <= std::numeric_limits<TTo>::max(), "TTo max must be positive");
    static_assert(0 <= std::numeric_limits<TFrom>::max(), "TFrom max must be positive");
-   static_assert(std::numeric_limits<TTo>::is_signed != std::numeric_limits<TFrom>::is_signed || ((std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() && std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()) || (std::numeric_limits<TFrom>::lowest() <= std::numeric_limits<TTo>::lowest() && std::numeric_limits<TTo>::max() <= std::numeric_limits<TFrom>::max())), "types should entirely wrap their smaller types or be the same size");
+   static_assert(std::numeric_limits<TTo>::is_signed != std::numeric_limits<TFrom>::is_signed || 
+      ((std::numeric_limits<TTo>::lowest() <= std::numeric_limits<TFrom>::lowest() && std::numeric_limits<TFrom>::max() <= std::numeric_limits<TTo>::max()) || 
+      (std::numeric_limits<TFrom>::lowest() <= std::numeric_limits<TTo>::lowest() && std::numeric_limits<TTo>::max() <= std::numeric_limits<TFrom>::max())), 
+      "types should entirely wrap their smaller types or be the same size"
+   );
 
-   return std::numeric_limits<TTo>::is_signed ? (std::numeric_limits<TFrom>::is_signed ? (std::numeric_limits<TTo>::lowest() <= number && number <= std::numeric_limits<TTo>::max()) : (number <= std::numeric_limits<TTo>::max())) : (std::numeric_limits<TFrom>::is_signed ? (0 <= number && number <= std::numeric_limits<TTo>::max()) : (number <= std::numeric_limits<TTo>::max()));
+   return std::numeric_limits<TTo>::is_signed ? 
+      (std::numeric_limits<TFrom>::is_signed ? (std::numeric_limits<TTo>::lowest() <= number && number <= std::numeric_limits<TTo>::max()) 
+         : (number <= std::numeric_limits<TTo>::max())) : (std::numeric_limits<TFrom>::is_signed ? (0 <= number && number <= std::numeric_limits<TTo>::max()) :
+         (number <= std::numeric_limits<TTo>::max()));
 
-   // C++11 is pretty limited for constexpr functions and requires everything to be in 1 line (above).  In C++14 though the below more readable code should be used.
+   // C++11 is pretty limited for constexpr functions and requires everything to be in 1 line (above).  In C++14 though the below more readable code should
+   // be used.
    //if(std::numeric_limits<TTo>::is_signed) {
    //   if(std::numeric_limits<TFrom>::is_signed) {
    //      // To signed from signed
@@ -161,9 +181,12 @@ constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
    //} else {
    //   if(std::numeric_limits<TFrom>::is_signed) {
    //      // To unsigned from signed
-   //      // the zero comparison is done signed.  If number is negative, then the results of the max comparison are unspecified, but we don't care because it's not undefined and any value true or false will lead to the same answer since the zero comparison was false.
-   //      // For the max comparison, if both operands are the same size, then number will be converted to the unsigned type, which will be fine since we already checked that it wasn't zero
-   //      // For the max comparison, if one operand is bigger, then both operands will be converted to that type and the result will not have unspecified behavior
+   //      // the zero comparison is done signed.  If number is negative, then the results of the max comparison are unspecified, but we don't care because 
+   //         it's not undefined and any value true or false will lead to the same answer since the zero comparison was false.
+   //      // For the max comparison, if both operands are the same size, then number will be converted to the unsigned type, which will be fine since we 
+   //         already checked that it wasn't zero
+   //      // For the max comparison, if one operand is bigger, then both operands will be converted to that type and the result will not have 
+   //         unspecified behavior
    //      return 0 <= number && number <= std::numeric_limits<TTo>::max();
    //   } else {
    //      // To unsigned from unsigned
@@ -176,14 +199,16 @@ WARNING_POP
 
 enum class FeatureType { Ordinal = 0, Nominal = 1};
 
-// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be that setting it too high increases compile time and module size
+// there doesn't seem to be a reasonable upper bound for how high you can set the k_cCompilerOptimizedTargetClassesMax value.  The bottleneck seems to be 
+// that setting it too high increases compile time and module size
 // this is how much the runtime speeds up if you compile it with hard coded vector sizes
 // 200 => 2.65%
 // 32  => 3.28%
 // 16  => 5.12%
 // 8   => 5.34%
 // 4   => 8.31%
-// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the runtime looped version of our code
+// TODO: increase this up to something like 16.  I have decreased it to 8 in order to make compiling more efficient, and so that I regularily test the 
+//   runtime looped version of our code
 
 #ifdef EBM_NATIVE_R
 // we get size NOTES if we compile with too many multiclass optimizations in CRAN, so reduce them to the bare minimum
@@ -192,7 +217,10 @@ constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 2;
 constexpr ptrdiff_t k_cCompilerOptimizedTargetClassesMax = 8;
 #endif // EBM_NATIVE_R
 
-static_assert(2 <= k_cCompilerOptimizedTargetClassesMax, "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would output model files with two values instead of our special case 1");
+static_assert(
+   2 <= k_cCompilerOptimizedTargetClassesMax, 
+   "we special case binary classification to have only 1 output.  If we remove the compile time optimization for the binary class situation then we would "
+   "output model files with two values instead of our special case 1");
 
 typedef size_t StorageDataType;
 typedef size_t ActiveDataType;
@@ -217,7 +245,8 @@ constexpr EBM_INLINE bool IsMulticlass(const ptrdiff_t learningTypeOrCountTarget
 }
 
 constexpr EBM_INLINE size_t GetVectorLengthFlat(const ptrdiff_t learningTypeOrCountTargetClasses) {
-   // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
+   // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
+   // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
    return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
 #else // EXPAND_BINARY_LOGITS
@@ -229,15 +258,20 @@ constexpr EBM_INLINE size_t GetVectorLengthFlat(const ptrdiff_t learningTypeOrCo
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
 // The caller can put pTargetFeature->m_cBins inside the macro call and it will be optimize away if it isn't necessary
-// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
-#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) (GetVectorLengthFlat(k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : (MACRO_compilerLearningTypeOrCountTargetClasses)))
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in
+// places where you couldn't do so with variable loop iterations
+#define GET_VECTOR_LENGTH(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) \
+   (GetVectorLengthFlat(k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : \
+   (MACRO_compilerLearningTypeOrCountTargetClasses)))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
 // This will effectively turn the variable into a compile time constant if it can be resolved at compile time
-// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with variable loop iterations
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
+// places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
-#define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
+#define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) \
+   ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
 
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) {
@@ -250,8 +284,13 @@ constexpr size_t CountBitsRequiredPositiveMax() {
 }
 
 constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
-// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
-// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
+// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 
+// 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 
+// 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying 
+// the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and 
+// other places
+// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  
+//   This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 
@@ -360,7 +399,8 @@ EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
    // the log loss is calculated for the validation set and then returned as a single number to the caller
    // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
 
-   // TODO : this only handles numbers x > 1.  I think I don't need results for less than x < 1 though, so check into that.   If we do have numbers below 1, we should do 1/x and figure out how much to multiply below
+   // TODO : this only handles numbers x > 1.  I think I don't need results for less than x < 1 though, so check into that.   If we do have numbers below 1, 
+   //   we should do 1/x and figure out how much to multiply below
 
    // for various algorithms, see https://stackoverflow.com/questions/9799041/efficient-implementation-of-natural-logarithm-ln-and-exponentiation
  
@@ -371,7 +411,8 @@ EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
 
    // this works sorta kinda well for numbers between 1 to 2 (we shifted our number to be within this range)
    // TODO : increase precision of these magic numbers
-   val = FloatEbmType { -1.7417939 } + (FloatEbmType { 2.8212026 } + (FloatEbmType { -1.4699568 } + (FloatEbmType { 0.44717955 } + FloatEbmType { -0.056570851 } * val) * val) * val) * val;
+   val = FloatEbmType { -1.7417939 } + (FloatEbmType { 2.8212026 } + (FloatEbmType { -1.4699568 } + (FloatEbmType { 0.44717955 } + 
+      FloatEbmType { -0.056570851 } * val) * val) * val) * val;
    val += static_cast<FloatEbmType>(shifts) * FloatEbmType { 0.69314718 };
 
    return val;
@@ -379,7 +420,8 @@ EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
 #else // FAST_LOG
 EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
    return std::log(val);
-   // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy in the low
+   // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy 
+   //   in the low
    // digits since we take the average, and the log loss will therefore be dominated by a few items that we predict strongly won't happen, but do happen.  
 }
 #endif // FAST_LOG

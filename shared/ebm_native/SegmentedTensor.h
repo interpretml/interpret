@@ -19,7 +19,8 @@
 //     offset_to_start_of_real_data (which is the offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format)
 //     size_of_real_data (from offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format to the last valid value)
 //   EMPTY_SPACE_FOR_DIMENSIONS_TO_GROW_INTO
-//   offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format -> our external caller can reduce our memory size to this point optinally to pass between memory boundaries
+//   offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format -> our external caller can reduce our memory size to this point optinally to pass between memory
+//     boundaries
 //   DIMENSION_0_COUNT (this is the current # of cuts, not the maximum, which we store elsewhere and pass into our class for processing)
 //   DIMENSION_0_CUT_POINTS
 //   DIMENSION_1_COUNT (this is the current # of cuts, not the maximum, which we store elsewhere and pass into our class for processing)
@@ -34,20 +35,22 @@
 //   EMPTY_SPACE_FOR_VALUES_TO_GROW_INTO
 // Reasons:
 //   - our super-parallel algrithm needs to split up the data and have separate processing cores process their data
-//     their outputs will be partial histograms.  After a single cores does the tree buiding, that core will need to push the model updates to all the children nodes
+//     their outputs will be partial histograms.  After a single cores does the tree buiding, that core will need to push the model updates to all the
+//     children nodes
 //   - in an MPI environment, or a Spark cluster, or in a GPU, we'll need to pass this data structure between nodes, so it will need to be memcopy-able,
 //     which means no pointers (use 64-bit offsets), and it means that the data needs to be in a single contiguous byte array
-//   - we might want our external caller to allocate this memory, because perhaps we might want the MPI communication layer or other network protocol to sit outside of C++,
+//   - we might want our external caller to allocate this memory, because perhaps we might want the MPI communication layer or other network protocol to sit 
+//     outside of C++,
 //     so we want to allocate the memory just once and we need to be able to determine the memory size before allocating it.
 //     we know ahead of time how many dimensions AND the maximum split points in all dimensions, so it's possible to pre-determine this
-//   - we use an easy/compatible external structure at the top that our caller can read without knowing our deep internals, but it provides enough information for
-//     our external caller to identify the core inner data that they can memcopy to annother memory address space
-//   - so, our external caller has a non-changing memory location that indicates the internal offset where they can start copying data from and a number of bytes
-//     to copy when they want to pass this memory to annother memory boundary.  This essentially strips the useless non-used space away for compression
+//   - we use an easy/compatible external structure at the top that our caller can read without knowing our deep internals, but it provides enough 
+//     information for our external caller to identify the core inner data that they can memcopy to annother memory address space
+//   - so, our external caller has a non-changing memory location that indicates the internal offset where they can start copying data from and a number of 
+//     bytes to copy when they want to pass this memory to annother memory boundary.  This essentially strips the useless non-used space away for compression
 //   - if the caller needs to be allocated on some kind of top boundary, they can optionally start from the top and just add the 
 //     offset_to_start_of_real_data and size_of_real_data together to get the size they need to copy from the top.  This will include a little
-//     empty data at the top, but the empty dimension data is usually much less than the value data for interaction models, and the dimension data should almost
-//     always be pretty small, so this isn't a problem.
+//     empty data at the top, but the empty dimension data is usually much less than the value data for interaction models, and the dimension data should 
+//     almost always be pretty small, so this isn't a problem.
 //   - once we recieve the interor data structure we can read offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format, which will be in a machine
 //     independent endian format (big endian), and we can then find our MAIN_DATA_STRUCTURE from there, and from MAIN_DATA_STRUCTURE we can reconstruct
 //     our original memory size with empty space if we want, optionally
@@ -56,21 +59,28 @@
 //   - when we expand our tensor, we need to keep the dimension data constant and then we expand the values efficiently 
 //     (starting by moving the last value to where it's eventually going to go).  After we've expanded the values, we can expand the dimensions upwards
 //     by first moving the 0th dimension where it will ultimately end up, then processing each dimension in order
-//   - if we have dimension 0 at the top, and cut points heading downwards, we'll be reading the data forwards as we process it, which efficiently loads it into the cache
-//   - we don't need to update offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format or the values in the EXTERIOR_STRUCTURE until we return from C++, so let it get out of date while we process things internally
-//   - if the tensor is purely for internal consumption, we don't even need to allocate the EXTERIOR_STRUCTURE and offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format, 
+//   - if we have dimension 0 at the top, and cut points heading downwards, we'll be reading the data forwards as we process it, which efficiently 
+//     loads it into the cache
+//   - we don't need to update offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format or the values in the EXTERIOR_STRUCTURE until we return from C++, 
+//     so let it get out of date while we process things internally
+//   - if the tensor is purely for internal consumption, we don't even need to allocate the EXTERIOR_STRUCTURE and 
+//     offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format, 
 //     so our allocator should have a flag to indicate if these are required or not
 //   - the maximum number of cuts is part of the feature_combination definition, so we don't need to store that and pass that reduntant information arround
-//     We do store the current number of cuts because that changes.  This data structure should therefore have a dependency on the feature_combination definition
-//     since we'll need to read the maximum number of cuts.  The pointer to the feature_combination class can be passed in via the stack to any function that needs that information
-//   - use 64 bit values for all offsets, since nobody will ever need more than 64 bits (you need a non-trivial amount of mass even if you store one bit per atom) and
+//     We do store the current number of cuts because that changes.  This data structure should therefore have a dependency on the 
+//     feature_combination definition since we'll need to read the maximum number of cuts.  The pointer to the feature_combination class can be passed 
+//     in via the stack to any function that needs that information
+//   - use 64 bit values for all offsets, since nobody will ever need more than 64 bits 
+//     (you need a non-trivial amount of mass even if you store one bit per atom) and
 //     we might pass these between 64 and 32 bit processes, but a few 64 bit offsets won't be a problem even for a 32-bit process.
 //   - EXPANDING:
-//     - eventually all our tensors will be expanded when doing the model update, because we want to use array lookups instead of binary search when applying the model 
-//       (array lookup is a huge speed boost over binary search)
-//     - our current and best models start out expanded since we want an easy way to communicate with our caller, and we eventualy expect almost all the cuts to be used anyways
+//     - eventually all our tensors will be expanded when doing the model update, because we want to use array lookups instead of binary search when
+//       applying the model (array lookup is a huge speed boost over binary search)
+//     - our current and best models start out expanded since we want an easy way to communicate with our caller, and we eventualy expect almost all the 
+//       cuts to be used anyways
 //     - we might as well also flip to epanded mode whenever all dimensions are fully expanded, even when we think we have a compressed model.  
-//       For things like bools or low numbers of cuts this could be frequent, and the non-compressed model is actually smaller when all dimensions have been expanded
+//       For things like bools or low numbers of cuts this could be frequent, and the non-compressed model is actually smaller when all dimensions have 
+//       been expanded
 //     - once we've been expanded, we no longer need the cut points since the cut points are just incrementing integers.  
 //       The maximum number of cuts is stored outside of the data structure already because that's common between all machines/GPUs,
 //       so we don't need to pass that redundant information arround, so offset_to_start_of_real_data can point directly to
@@ -80,11 +90,14 @@
 //       offset_to_DIMENSION_0_COUNT_or_zero_if_value_array_expanded_and_zero_offset_to_MAIN_DATA_STRUCTURE to indicate expansion with a zero value then
 //       we can also use it for the tripple use as the offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format value.  Our caller will
 //       see a zero in what it expects is the offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format, and then it can find MAIN_DATA_STRUCTURE the same
-//       way it would normally by adding the zero to the address it has.  The nice thing is that zero is both big_endian and also little_endian, so it works for both.
+//       way it would normally by adding the zero to the address it has.  The nice thing is that zero is both big_endian and also little_endian, so it 
+//       works for both.
 //     - the top item in our MAIN_DATA_STRUCTURE MUST be offset_to_DIMENSION_0_COUNT_or_zero_if_value_array_expanded_and_zero_offset_to_MAIN_DATA_STRUCTURE for
 //       our efficient tripple use above!
 
-// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FloatEbmType, so we don't need something generic which just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have to be C compatible
+// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FloatEbmType, so we don't need something generic which 
+//   just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have 
+//   to be C compatible
 template<typename TDivisions, typename TValues>
 struct SegmentedTensor final {
 private:
@@ -160,7 +173,9 @@ public:
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
       }
-      memset(pSegmentedRegion, 0, cBytesSegmentedRegion); // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to only free pointers that had non-initialized garbage inside of them
+      // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to 
+      // only free pointers that had non-initialized garbage inside of them
+      memset(pSegmentedRegion, 0, cBytesSegmentedRegion);
 
       pSegmentedRegion->m_cVectorLength = cVectorLength;
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
@@ -175,7 +190,9 @@ public:
       }
       pSegmentedRegion->m_aValues = aValues;
       // we only need to set the base case to zero, not our entire initial allocation
-      memset(aValues, 0, sizeof(TValues) * cVectorLength); // we checked for cVectorLength * k_initialValueCapacity * sizeof(TValues), and 1 <= k_initialValueCapacity, so sizeof(TValues) * cVectorLength can't overflow
+      // we checked for cVectorLength * k_initialValueCapacity * sizeof(TValues), and 1 <= k_initialValueCapacity, 
+      // so sizeof(TValues) * cVectorLength can't overflow
+      memset(aValues, 0, sizeof(TValues) * cVectorLength);
 
       if(0 != cDimensionsMax) {
          DimensionInfo * pDimension = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
@@ -239,7 +256,8 @@ public:
    EBM_INLINE bool SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
       EBM_ASSERT(iDimension < m_cDimensions);
       DimensionInfo * const pDimension = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
-      EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->m_cDivisions); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+      // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
+      EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->m_cDivisions);
       if(UNLIKELY(pDimension->m_cDivisionCapacity < cDivisions)) {
          EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
 
@@ -247,7 +265,9 @@ public:
             LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsAddError(cDivisions, cDivisions >> 1)");
             return true;
          }
-         size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1); // just increase it by 50% since we don't expect to grow our divisions often after an initial period, and realloc takes some of the cost of growing away
+         // just increase it by 50% since we don't expect to grow our divisions often after an initial period, 
+         // and realloc takes some of the cost of growing away
+         size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1);
          LOG_N(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
 
          if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
@@ -277,7 +297,8 @@ public:
             LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsAddError(cValues, cValues >> 1)");
             return true;
          }
-         size_t cNewValueCapacity = cValues + (cValues >> 1); // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
+         // just increase it by 50% since we don't expect to grow our values often after an initial period, and realloc takes some of the cost of growing away
+         size_t cNewValueCapacity = cValues + (cValues >> 1);
          LOG_N(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
 
          if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
@@ -393,7 +414,8 @@ public:
    EBM_INLINE bool MultiplyAndCheckForIssues(const TValues v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1)); // we're accessing existing memory, so it can't overflow
+         // we're accessing existing memory, so it can't overflow
+         EBM_ASSERT(!IsMultiplyError(cValues, ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1));
          cValues *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1;
       }
 
@@ -404,7 +426,8 @@ public:
       do {
          const TValues val = *pCur * v;
          // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
-         // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential bits for FF and then OR a 1 if the test is true and 0 if the test is false
+         // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
+         // bits for FF and then OR a 1 if the test is true and 0 if the test is false
          bBad |= std::isnan(val) || std::isinf(val);
          *pCur = val;
          ++pCur;
@@ -419,7 +442,8 @@ public:
       EBM_ASSERT(nullptr != acValuesPerDimension);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
-      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<TDivisions>::max() && std::numeric_limits<size_t>::min() == std::numeric_limits<TDivisions>::min());
+      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<TDivisions>::max() && 
+         std::numeric_limits<size_t>::min() == std::numeric_limits<TDivisions>::min());
       if(m_bExpanded) {
          // we're already expanded
          LOG_0(TraceLevelVerbose, "Exited Expand");
@@ -448,7 +472,9 @@ public:
 
          pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
          const size_t cValuesPerDimension = *pcValuesPerDimension;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));  // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
+         // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes 
+         // and in GetInteractionScore for interactions
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));
          cNewValues *= cValuesPerDimension;
          const size_t cNewDivisions = cValuesPerDimension - 1;
 
@@ -479,8 +505,9 @@ public:
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1];
       TValues * pValueTop = &aValues[cVectoredNewValues];
 
-      // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
-      // first do the values because we need to refer to the old divisions when making decisions about where to move next
+      // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
+      // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about 
+      // where to move next
       while(true) {
          const TValues * pValue1Move = pValue1;
          const TValues * const pValueTopEnd = pValueTop - m_cVectorLength;
@@ -491,9 +518,10 @@ public:
          } while(pValueTopEnd != pValueTop);
 
          // For a single dimensional SegmentedRegion checking here is best.  
-         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
-         // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
+         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus 
+         // eliminating the check on most loops. We'll spend most of our time working on single features though, so we optimize for that case, but 
+         // if we special cased the single dimensional case, then we would want to move this check into the loop below in the case of 
+         // multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValues == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -534,10 +562,12 @@ public:
 
                   const size_t cDivisions1 = pDimensionSecond1->m_cDivisions;
 
-                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1)); // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
+                  // we're already allocated values, so this is accessing what we've already allocated, so it must not overflow
+                  EBM_ASSERT(!IsMultiplyError(multiplication1, 1 + cDivisions1));
                   multiplication1 *= 1 + cDivisions1;
 
-                  pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  pValue1 += multiplication1;
 
                   pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
                   pDimensionInfoStackSecond->m_iDivision2 = pDimensionInfoStackSecond->m_cNewDivisions;
@@ -607,7 +637,8 @@ public:
       } while(pToValueEnd != pToValue);
    }
 
-   // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops without needing to super-optimize it
+   // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
+   //   without needing to super-optimize it
    bool Add(const SegmentedTensor & rhs) {
       DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
@@ -666,7 +697,8 @@ public:
 
          size_t cNewSingleDimensionDivisions = 0;
 
-         // processing forwards here is slightly faster in terms of cache fetch efficiency.  We'll then be guaranteed to have the divisions at least in the cache, which will be benefitial when traversing backwards later below
+         // processing forwards here is slightly faster in terms of cache fetch efficiency.  We'll then be guaranteed to have the divisions at least
+         // in the cache, which will be benefitial when traversing backwards later below
          while(true) {
             if(UNLIKELY(p2End == p2Cur)) {
                // check the other array first.  Most of the time the other array will be shorter since we'll be adding
@@ -688,7 +720,9 @@ public:
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
          }
          pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
-         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1)); // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in GetInteractionScore for interactions
+         // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in 
+         // GetInteractionScore for interactions
+         EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1));
          cNewValues *= cNewSingleDimensionDivisions + 1;
 
          ++pDimensionFirst1;
@@ -716,8 +750,9 @@ public:
       const TValues * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
       TValues * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
 
-      // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
-      // first do the values because we need to refer to the old divisions when making decisions about where to move next
+      // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
+      // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about where 
+      // to move next
       while(true) {
          const TValues * pValue1Move = pValue1;
          const TValues * pValue2Move = pValue2;
@@ -730,9 +765,10 @@ public:
          } while(pValueTopEnd != pValueTop);
 
          // For a single dimensional SegmentedRegion checking here is best.  
-         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack, thus eliminating the check on most loops.  
-         // we'll spend most of our time working on single features though, so we optimize for that case, but if we special cased the single dimensional case, then we would want 
-         // to move this check into the loop below in the case of multi-dimensioncal SegmentedTensors
+         // For two or higher dimensions, we could instead check inside our loop below for when we reach the end of the pDimensionInfoStack,
+         // thus eliminating the check on most loops.  We'll spend most of our time working on single features though, so we optimize for that case, 
+         // but if we special cased the single dimensional case, then we would want to move this check into the loop below in the case 
+         // of multi-dimensioncal SegmentedTensors
          if(UNLIKELY(aValues == pValueTop)) {
             // we've written our final tensor cell, so we're done
             break;
@@ -790,8 +826,10 @@ public:
                   EBM_ASSERT(!IsMultiplyError(multiplication2, 1 + cDivisions2)); // we're accessing allocated memory, so it can't overflow
                   multiplication2 *= 1 + cDivisions2;
 
-                  pValue1 += multiplication1; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
-                  pValue2 += multiplication2; // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  pValue1 += multiplication1;
+                  // go to the last valid entry back to where we started.  If we don't move down a set, then we re-do this set of numbers
+                  pValue2 += multiplication2;
 
                   pDimensionInfoStackSecond->m_pDivision1 = &aDivisions1[cDivisions1];
                   pDimensionInfoStackSecond->m_pDivision2 = &aDivisions2[cDivisions2];
@@ -818,7 +856,9 @@ public:
          const size_t cNewDivisions = pDimensionInfoStackCur->m_cNewDivisions;
          const size_t cOriginalDivisionsBeforeSetting = pDimension1Cur->m_cDivisions;
          
-         // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but before set set all our pointers
+         // this will increase our capacity, if required.  It will also change m_cDivisions, so we get that before calling it.  
+         // SetCountDivisions might change m_aValuesAndDivisions, so we need to actually keep it here after getting m_cDivisions but 
+         // before set set all our pointers
          if(UNLIKELY(SetCountDivisions(iDimension, cNewDivisions))) {
             LOG_0(TraceLevelWarning, "WARNING Add SetCountDivisions(iDimension, cNewDivisions)");
             return true;
@@ -828,7 +868,8 @@ public:
          const TDivisions * p2Cur = &pDimension2Cur->m_aDivisions[pDimension2Cur->m_cDivisions];
          TDivisions * pTopCur = &pDimension1Cur->m_aDivisions[cNewDivisions];
 
-         // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values which we still need to copy
+         // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values
+         // which we still need to copy
          while(true) {
             EBM_ASSERT(pDimension1Cur->m_aDivisions <= pTopCur);
             EBM_ASSERT(pDimension1Cur->m_aDivisions <= p1Cur);
@@ -837,14 +878,20 @@ public:
             EBM_ASSERT(static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions) <= static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions));
 
             if(UNLIKELY(pTopCur == p1Cur)) {
-               // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value of the last region in rhs to our remaining values
+               // since we've finished the rhs divisions, our SegmentedRegion already has the right divisions in place, so all we need is to add the value
+               // of the last region in rhs to our remaining values
                break;
             }
-            // pTopCur is an index above pDimension1Cur->m_aDivisions.  p2Cur is an index above pDimension2Cur->m_aDivisions.  We want to decide if they are at the same index above their respective arrays
+            // pTopCur is an index above pDimension1Cur->m_aDivisions.  p2Cur is an index above pDimension2Cur->m_aDivisions.  We want to decide if they
+            // are at the same index above their respective arrays
             if(UNLIKELY(static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) == static_cast<size_t>(p2Cur - pDimension2Cur->m_aDivisions))) {
                EBM_ASSERT(pDimension1Cur->m_aDivisions < pTopCur);
                // direct copy the remaining divisions.  There should be at least one
-               memcpy(pDimension1Cur->m_aDivisions, pDimension2Cur->m_aDivisions, static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(TDivisions));
+               memcpy(
+                  pDimension1Cur->m_aDivisions, 
+                  pDimension2Cur->m_aDivisions, 
+                  static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(TDivisions)
+               );
                break;
             }
 
@@ -918,9 +965,18 @@ public:
    }
 #endif // NDEBUG
 
-   static_assert(std::is_standard_layout<TDivisions>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
-   static_assert(std::is_standard_layout<TValues>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
+   static_assert(
+      std::is_standard_layout<TDivisions>::value, 
+      "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+      "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
+   static_assert(
+      std::is_standard_layout<TValues>::value, 
+      "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+      "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
-static_assert(std::is_standard_layout<SegmentedTensor<ActiveDataType, FloatEbmType>>::value, "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(
+   std::is_standard_layout<SegmentedTensor<ActiveDataType, FloatEbmType>>::value, 
+   "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+   "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_TENSOR_H

@@ -31,7 +31,8 @@ public:
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
    EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
-      return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
+      return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + 
+         sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
    }
 
    EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
@@ -65,7 +66,8 @@ public:
       FeatureCombination ** const apFeatureCombinations = new (std::nothrow) FeatureCombination * [cFeatureCombinations];
       if(LIKELY(nullptr != apFeatureCombinations)) {
          // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
-         EBM_ASSERT(!IsMultiplyError(sizeof(*apFeatureCombinations), cFeatureCombinations)); // if we were able to allocate this, then we should be able to calculate how much memory to zero
+         // if we were able to allocate this, then we should be able to calculate how much memory to zero
+         EBM_ASSERT(!IsMultiplyError(sizeof(*apFeatureCombinations), cFeatureCombinations));
          memset(apFeatureCombinations, 0, sizeof(*apFeatureCombinations) * cFeatureCombinations);
       }
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
@@ -84,9 +86,13 @@ public:
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
    }
 };
-static_assert(std::is_standard_layout<FeatureCombination>::value, "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout data is probably undefined as to what the space after gets filled with");
+static_assert(
+   std::is_standard_layout<FeatureCombination>::value, 
+   "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout "
+   "data is probably undefined as to what the space after gets filled with");
 
-// these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, and constexpr needs the size before constexpr
+// these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, 
+// and constexpr needs the size before constexpr
 constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {
    return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
 }

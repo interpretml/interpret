@@ -31,7 +31,20 @@ convert_feature_combinations_to_c <- function(feature_combinations) {
    return(list(feature_combinations_c = feature_combinations_c, feature_combination_indexes = feature_combination_indexes))
 }
 
-initialize_boosting_classification <- function(n_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, n_inner_bags, random_seed) {
+initialize_boosting_classification <- function(
+   n_classes, 
+   features, 
+   feature_combinations, 
+   feature_combination_indexes, 
+   training_binned_data, 
+   training_targets, 
+   training_predictor_scores, 
+   validation_binned_data, 
+   validation_targets, 
+   validation_predictor_scores, 
+   n_inner_bags, 
+   random_seed
+) {
    n_classes <- as.double(n_classes)
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
@@ -49,14 +62,40 @@ initialize_boosting_classification <- function(n_classes, features, feature_comb
    n_inner_bags <- as.integer(n_inner_bags)
    random_seed <- as.integer(random_seed)
 
-   ebm_boosting <- .Call(InitializeBoostingClassification_R, n_classes, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, n_inner_bags, random_seed)
+   ebm_boosting <- .Call(
+      InitializeBoostingClassification_R, 
+      n_classes, 
+      features, 
+      feature_combinations, 
+      feature_combination_indexes, 
+      training_binned_data, 
+      training_targets, 
+      training_predictor_scores, 
+      validation_binned_data, 
+      validation_targets, 
+      validation_predictor_scores, 
+      n_inner_bags, 
+      random_seed
+   )
    if(is.null(ebm_boosting)) {
       stop("Out of memory in InitializeBoostingClassification")
    }
    return(ebm_boosting)
 }
 
-initialize_boosting_regression <- function(features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, n_inner_bags, random_seed) {
+initialize_boosting_regression <- function(
+   features, 
+   feature_combinations, 
+   feature_combination_indexes, 
+   training_binned_data, 
+   training_targets, 
+   training_predictor_scores, 
+   validation_binned_data, 
+   validation_targets, 
+   validation_predictor_scores, 
+   n_inner_bags, 
+   random_seed
+) {
    features <- as.list(features)
    feature_combinations <- as.list(feature_combinations)
    feature_combination_indexes <- as.double(feature_combination_indexes)
@@ -73,7 +112,20 @@ initialize_boosting_regression <- function(features, feature_combinations, featu
    n_inner_bags <- as.integer(n_inner_bags)
    random_seed <- as.integer(random_seed)
 
-   ebm_boosting <- .Call(InitializeBoostingRegression_R, features, feature_combinations, feature_combination_indexes, training_binned_data, training_targets, training_predictor_scores, validation_binned_data, validation_targets, validation_predictor_scores, n_inner_bags, random_seed)
+   ebm_boosting <- .Call(
+      InitializeBoostingRegression_R, 
+      features, 
+      feature_combinations, 
+      feature_combination_indexes, 
+      training_binned_data, 
+      training_targets, 
+      training_predictor_scores, 
+      validation_binned_data, 
+      validation_targets, 
+      validation_predictor_scores, 
+      n_inner_bags, 
+      random_seed
+   )
    if(is.null(ebm_boosting)) {
       stop("Out of memory in InitializeBoostingRegression")
    }
@@ -85,7 +137,15 @@ native_ebm_boosting_free <- function(native_ebm_boosting) {
    return(NULL)
 }
 
-boosting_step <- function(ebm_boosting, index_feature_combination, learning_rate, n_tree_splits_max, n_instances_required_for_parent_split_min, training_weights, validation_weights) {
+boosting_step <- function(
+   ebm_boosting, 
+   index_feature_combination, 
+   learning_rate, 
+   n_tree_splits_max, 
+   n_instances_required_for_parent_split_min, 
+   training_weights, 
+   validation_weights
+) {
    stopifnot(class(ebm_boosting) == "externalptr")
    index_feature_combination <- as.double(index_feature_combination)
    learning_rate <- as.double(learning_rate)
@@ -98,7 +158,16 @@ boosting_step <- function(ebm_boosting, index_feature_combination, learning_rate
       validation_weights <- as.double(validation_weights)
    }
 
-   validation_metric <- .Call(BoostingStep_R, ebm_boosting, index_feature_combination, learning_rate, n_tree_splits_max, n_instances_required_for_parent_split_min, training_weights, validation_weights)
+   validation_metric <- .Call(
+      BoostingStep_R, 
+      ebm_boosting, 
+      index_feature_combination, 
+      learning_rate, 
+      n_tree_splits_max, 
+      n_instances_required_for_parent_split_min, 
+      training_weights, 
+      validation_weights
+   )
    if(is.null(validation_metric)) {
       stop("error in BoostingStep_R")
    }
@@ -128,12 +197,18 @@ get_current_model_feature_combination <- function(ebm_boosting, index_feature_co
 }
 
 get_best_model <- function(native_ebm_boosting) {
-   model <- lapply(seq_along(native_ebm_boosting$feature_combinations), function(i) { get_best_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) })
+   model <- lapply(
+      seq_along(native_ebm_boosting$feature_combinations), 
+      function(i) { get_best_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) }
+   )
    return(model)
 }
 
 get_current_model <- function(native_ebm_boosting) {
-   model <- lapply(seq_along(native_ebm_boosting$feature_combinations), function(i) { get_current_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) })
+   model <- lapply(
+      seq_along(native_ebm_boosting$feature_combinations), 
+      function(i) { get_current_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) }
+   )
    return(model)
 }
 
@@ -186,7 +261,12 @@ native_ebm_boosting <- function(
       stop("Unrecognized model_type")
    }
 
-   self <- structure(list(model_type = model_type, n_classes = n_classes, feature_combinations = feature_combinations, booster_pointer = booster_pointer), class = "native_ebm_boosting")
+   self <- structure(list(
+      model_type = model_type, 
+      n_classes = n_classes, 
+      feature_combinations = feature_combinations, 
+      booster_pointer = booster_pointer
+      ), class = "native_ebm_boosting")
    return(self)
 }
 

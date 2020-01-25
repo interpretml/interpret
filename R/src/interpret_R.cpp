@@ -11,7 +11,9 @@
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
-// TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate before calling the R error or warning functions
+// TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which 
+//   bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate 
+//   before calling the R error or warning functions
 
 EBM_INLINE bool IsSingleDoubleVector(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {
@@ -41,7 +43,10 @@ EBM_INLINE bool IsDoubleToIntEbmTypeIndexValid(const double val) {
    if(val < double { 0 }) {
       return false;
    }
-   if(std::min(static_cast<double>(std::numeric_limits<size_t>::max()), std::min(double { R_XLEN_T_MAX }, static_cast<double>(std::numeric_limits<IntEbmType>::max()))) < val) {
+   if(std::min(
+      static_cast<double>(std::numeric_limits<size_t>::max()), 
+      std::min(double { R_XLEN_T_MAX }, static_cast<double>(std::numeric_limits<IntEbmType>::max()))) < val
+   ) {
       return false;
    }
    return true;
@@ -237,7 +242,8 @@ EbmNativeFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombi
    }
    *pcFeatureCombinations = cFeatureCombinations;
 
-   EbmNativeFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmNativeFeatureCombination *>(R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmNativeFeatureCombination))));
+   EbmNativeFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmNativeFeatureCombination *>(
+      R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmNativeFeatureCombination))));
    // R_alloc doesn't return nullptr, so we don't need to check aFeatureCombinations
    EbmNativeFeatureCombination * pFeatureCombination = aFeatureCombinations;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
@@ -455,7 +461,8 @@ SEXP InitializeBoostingClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations);
 
    const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
    if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
@@ -567,10 +574,28 @@ SEXP InitializeBoostingClassification_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
+   // we don't care if the seed is clipped or doesn't fit, or whatever.  
+   // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
    const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(static_cast<IntEbmType>(cTargetClasses), countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
+   PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
+      static_cast<IntEbmType>(cTargetClasses), 
+      countFeatures, 
+      aFeatures, 
+      countFeatureCombinations, 
+      aFeatureCombinations, 
+      aFeatureCombinationIndexes, 
+      countTrainingInstances, 
+      aTrainingBinnedData, 
+      aTrainingTargets, 
+      aTrainingPredictorScores, 
+      countValidationInstances, 
+      aValidationBinnedData, 
+      aValidationTargets, 
+      aValidationPredictorScores, 
+      countInnerBagsLocal, 
+      randomSeedLocal
+   );
 
    if(nullptr == pEbmBoosting) {
       return R_NilValue;
@@ -624,7 +649,8 @@ SEXP InitializeBoostingRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations); // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   // the validity of this conversion was checked in ConvertFeatureCombinations(...)
+   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations);
 
    const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
    if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
@@ -728,10 +754,27 @@ SEXP InitializeBoostingRegression_R(
       LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R !IsSingleIntVector(randomSeed)");
       return R_NilValue;
    }
-   // we don't care if the seed is clipped or doesn't fit, or whatever.  Casting to unsigned avoids undefined behavior issues with casting between signed values.  
+   // we don't care if the seed is clipped or doesn't fit, or whatever.  
+   // Casting to unsigned avoids undefined behavior issues with casting between signed values.  
    const IntEbmType randomSeedLocal = static_cast<IntEbmType>(static_cast<unsigned int>(INTEGER(randomSeed)[0]));
 
-   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(countFeatures, aFeatures, countFeatureCombinations, aFeatureCombinations, aFeatureCombinationIndexes, countTrainingInstances, aTrainingBinnedData, aTrainingTargets, aTrainingPredictorScores, countValidationInstances, aValidationBinnedData, aValidationTargets, aValidationPredictorScores, countInnerBagsLocal, randomSeedLocal);
+   PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
+      countFeatures, 
+      aFeatures, 
+      countFeatureCombinations, 
+      aFeatureCombinations, 
+      aFeatureCombinationIndexes, 
+      countTrainingInstances, 
+      aTrainingBinnedData, 
+      aTrainingTargets, 
+      aTrainingPredictorScores, 
+      countValidationInstances, 
+      aValidationBinnedData, 
+      aValidationTargets, 
+      aValidationPredictorScores, 
+      countInnerBagsLocal, 
+      randomSeedLocal
+   );
 
    if(nullptr == pEbmBoosting) {
       return R_NilValue;
@@ -814,7 +857,9 @@ SEXP BoostingStep_R(
    double doubleCountInstancesRequiredForParentSplitMin = REAL(countInstancesRequiredForParentSplitMin)[0];
    IntEbmType cInstancesRequiredForParentSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForParentSplitMin) || static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForParentSplitMin) {
+   if(std::isnan(doubleCountInstancesRequiredForParentSplitMin) || 
+      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForParentSplitMin
+   ) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForParentSplitMin overflow");
       cInstancesRequiredForParentSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountInstancesRequiredForParentSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
@@ -861,7 +906,16 @@ SEXP BoostingStep_R(
    }
 
    FloatEbmType validationMetricReturn;
-   if(0 != BoostingStep(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination, learningRateLocal, cTreeSplitsMax, cInstancesRequiredForParentSplitMin, pTrainingWeights, pValidationWeights, &validationMetricReturn)) {
+   if(0 != BoostingStep(
+      reinterpret_cast<PEbmBoosting>(pEbmBoosting), 
+      iFeatureCombination, 
+      learningRateLocal, 
+      cTreeSplitsMax, 
+      cInstancesRequiredForParentSplitMin, 
+      pTrainingWeights, 
+      pValidationWeights, 
+      &validationMetricReturn
+   )) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R BoostingStep returned error code");
       return R_NilValue;
    }
@@ -908,8 +962,10 @@ SEXP GetBestModelFeatureCombination_R(
    FloatEbmType * pModelFeatureCombinationTensor = GetBestModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
    if(nullptr == pModelFeatureCombinationTensor) {
       // if nullptr == pModelFeatureCombinationTensor then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
+      //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), 
+      //       which is legal, which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
       LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
       return ret;
@@ -973,8 +1029,10 @@ SEXP GetCurrentModelFeatureCombination_R(
    FloatEbmType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
    if(nullptr == pModelFeatureCombinationTensor) {
       // if nullptr == pModelFeatureCombinationTensor then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
-      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, which we need to handle here
+      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
+      //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+      //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, 
+      //       which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
       LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
       return ret;
@@ -1086,7 +1144,15 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(static_cast<IntEbmType>(cTargetClasses), countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(
+      static_cast<IntEbmType>(cTargetClasses), 
+      countFeatures, 
+      aFeatures, 
+      countInstances, 
+      aBinnedData, 
+      aTargets, 
+      aPredictorScores
+   );
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;

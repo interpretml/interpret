@@ -14,7 +14,10 @@
 #include "DataSetByFeature.h"
 #include "InitializeResiduals.h"
 
-EBM_INLINE static const FloatEbmType * ConstructResidualErrors(const size_t cInstances, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
+   const size_t cInstances, 
+   const void * const aTargetData, 
+   const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -54,7 +57,13 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(const size_t cIns
    return aResidualErrors;
 }
 
-EBM_INLINE static const StorageDataType * const * ConstructInputData(const size_t cFeatures, const Feature * const aFeatures, const size_t cInstances, const IntEbmType * const aBinnedData) {
+EBM_INLINE static const StorageDataType * const * ConstructInputData(
+   const size_t cFeatures, 
+   const Feature * const aFeatures, 
+   const size_t cInstances, 
+   const IntEbmType * 
+   const aBinnedData
+) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
@@ -120,7 +129,15 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::DataSetByFeature(const size_t cFeatures, const Feature * const aFeatures, const size_t cInstances, const IntEbmType * const aBinnedData, const void * const aTargetData, const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
+DataSetByFeature::DataSetByFeature(
+   const size_t cFeatures, 
+   const Feature * const aFeatures, 
+   const size_t cInstances, 
+   const IntEbmType * const aBinnedData, 
+   const void * const aTargetData, 
+   const FloatEbmType * const aPredictorScores, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+)
    : m_aResidualErrors(ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)

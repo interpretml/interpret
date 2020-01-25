@@ -87,11 +87,17 @@ public:
    // TODO CachedThreadResourcesUnion has a lot of things that aren't per thread.  Right now it's functioning as a place to put mostly things
    // that are different between regression and classification.  In the future we'll want something like it for breaking the work into workable chunks
    // so I'm leaving it here for now.  
-   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into the per-chunk class
-   // and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
+   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
+   // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
    CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
 
-   EBM_INLINE EbmBoostingState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures, const size_t cFeatureCombinations, const size_t cSamplingSets, const IntEbmType randomSeed)
+   EBM_INLINE EbmBoostingState(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+      const size_t cFeatures, 
+      const size_t cFeatureCombinations, 
+      const size_t cSamplingSets, 
+      const IntEbmType randomSeed
+   )
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatureCombinations(cFeatureCombinations)
       , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombination::AllocateFeatureCombinations(cFeatureCombinations))
@@ -102,8 +108,10 @@ public:
       , m_apCurrentModel(nullptr)
       , m_apBestModel(nullptr)
       , m_bestModelMetric(FloatEbmType { std::numeric_limits<FloatEbmType>::max() })
-      , m_pSmallChangeToModelOverwriteSingleSamplingSet(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
-      , m_pSmallChangeToModelAccumulatedFromSamplingSets(SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
+      , m_pSmallChangeToModelOverwriteSingleSamplingSet(
+         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
+      , m_pSmallChangeToModelAccumulatedFromSamplingSets(
+         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)
@@ -143,8 +151,24 @@ public:
    }
 
    static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors);
-   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(const size_t cFeatureCombinations, const FeatureCombination * const * const apFeatureCombinations, const size_t cVectorLength);
-   bool Initialize(const EbmNativeFeature * const aFeatures, const EbmNativeFeatureCombination * const aFeatureCombinations, const IntEbmType * featureCombinationIndexes, const size_t cTrainingInstances, const void * const aTrainingTargets, const IntEbmType * const aTrainingBinnedData, const FloatEbmType * const aTrainingPredictorScores, const size_t cValidationInstances, const void * const aValidationTargets, const IntEbmType * const aValidationBinnedData, const FloatEbmType * const aValidationPredictorScores);
+   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(
+      const size_t cFeatureCombinations, 
+      const FeatureCombination * const * const apFeatureCombinations, 
+      const size_t cVectorLength
+   );
+   bool Initialize(
+      const EbmNativeFeature * const aFeatures, 
+      const EbmNativeFeatureCombination * const aFeatureCombinations, 
+      const IntEbmType * featureCombinationIndexes, 
+      const size_t cTrainingInstances, 
+      const void * const aTrainingTargets, 
+      const IntEbmType * const aTrainingBinnedData, 
+      const FloatEbmType * const aTrainingPredictorScores, 
+      const size_t cValidationInstances, 
+      const void * const aValidationTargets, 
+      const IntEbmType * const aValidationBinnedData, 
+      const FloatEbmType * const aValidationPredictorScores
+   );
 };
 
 #endif // EBM_BOOSTING_STATE_H

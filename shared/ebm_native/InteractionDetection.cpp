@@ -24,7 +24,15 @@
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmInteractionState * AllocateInteraction(IntEbmType countFeatures, const EbmNativeFeature * features, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, IntEbmType countInstances, const void * targets, const IntEbmType * binnedData, const FloatEbmType * predictorScores) {
+EbmInteractionState * AllocateInteraction(
+   IntEbmType countFeatures, 
+   const EbmNativeFeature * features, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   IntEbmType countInstances, 
+   const void * targets, 
+   const IntEbmType * binnedData, 
+   const FloatEbmType * predictorScores
+) {
    // TODO : give AllocateInteraction the same calling parameter order as InitializeInteractionClassification
 
    EBM_ASSERT(0 <= countFeatures);
@@ -71,7 +79,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    const IntEbmType * targets,
    const FloatEbmType * predictorScores
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countTargetClasses, countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
+   LOG_N(
+      TraceLevelInfo, 
+      "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
+      ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", 
+      countTargetClasses, 
+      countFeatures, 
+      static_cast<const void *>(features), 
+      countInstances, 
+      static_cast<const void *>(binnedData), 
+      static_cast<const void *>(targets), 
+      static_cast<const void *>(predictorScores)
+   );
    if(countTargetClasses < 0) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be negative");
       return nullptr;
@@ -85,7 +104,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(countFeatures, features, runtimeLearningTypeOrCountTargetClasses, countInstances, targets, binnedData, predictorScores));
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
+      countFeatures, 
+      features, 
+      runtimeLearningTypeOrCountTargetClasses, 
+      countInstances, 
+      targets, 
+      binnedData, 
+      predictorScores
+   ));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
@@ -98,21 +125,49 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    const FloatEbmType * targets,
    const FloatEbmType * predictorScores
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", countFeatures, static_cast<const void *>(features), countInstances, static_cast<const void *>(binnedData), static_cast<const void *>(targets), static_cast<const void *>(predictorScores));
-   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(countFeatures, features, k_Regression, countInstances, targets, binnedData, predictorScores));
+   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf 
+      ", binnedData=%p, targets=%p, predictorScores=%p", 
+      countFeatures, 
+      static_cast<const void *>(features), 
+      countInstances, 
+      static_cast<const void *>(binnedData), 
+      static_cast<const void *>(targets), 
+      static_cast<const void *>(predictorScores)
+   );
+   PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
+      countFeatures, 
+      features, 
+      k_Regression, 
+      countInstances, 
+      targets, 
+      binnedData, 
+      predictorScores
+   ));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static IntEbmType GetInteractionScorePerTargetClasses(EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
+static IntEbmType GetInteractionScorePerTargetClasses(
+   EbmInteractionState * const pEbmInteractionState, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   FloatEbmType * const pInteractionScoreReturn
+) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
    if(nullptr == pCachedThreadResources) {
       return 1;
    }
 
-   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pCachedThreadResources, pEbmInteractionState->m_pDataSet, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn)) {
+   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(
+      pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
+      pCachedThreadResources, 
+      pEbmInteractionState->m_pDataSet, 
+      pFeatureCombination, 
+      cInstancesRequiredForChildSplitMin, 
+      pInteractionScoreReturn
+   )) {
       delete pCachedThreadResources;
       return 1;
    }
@@ -121,29 +176,60 @@ static IntEbmType GetInteractionScorePerTargetClasses(EbmInteractionState * cons
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
-   static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
+EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   EbmInteractionState * const pEbmInteractionState, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   FloatEbmType * const pInteractionScoreReturn
+) {
+   static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), 
+      "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    if(runtimeLearningTypeOrCountTargetClasses == possibleCompilerLearningTypeOrCountTargetClasses) {
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return GetInteractionScorePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
+      return GetInteractionScorePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(
+         pEbmInteractionState, 
+         pFeatureCombination, 
+         cInstancesRequiredForChildSplitMin, 
+         pInteractionScoreReturn
+      );
    } else {
-      return CompilerRecursiveGetInteractionScore<possibleCompilerLearningTypeOrCountTargetClasses + 1>(runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
+      return CompilerRecursiveGetInteractionScore<possibleCompilerLearningTypeOrCountTargetClasses + 1>(
+         runtimeLearningTypeOrCountTargetClasses, 
+         pEbmInteractionState, 
+         pFeatureCombination, 
+         cInstancesRequiredForChildSplitMin, 
+         pInteractionScoreReturn
+      );
    }
 }
 
 template<>
-EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, EbmInteractionState * const pEbmInteractionState, const FeatureCombination * const pFeatureCombination, const size_t cInstancesRequiredForChildSplitMin, FloatEbmType * const pInteractionScoreReturn) {
+EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   EbmInteractionState * const pEbmInteractionState, 
+   const FeatureCombination * const pFeatureCombination, 
+   const size_t cInstancesRequiredForChildSplitMin, 
+   FloatEbmType * const pInteractionScoreReturn
+) {
    UNUSED(runtimeLearningTypeOrCountTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle those unlikley and uninteresting cases
+   // it is logically possible, but uninteresting to have a classification with 1 target class, 
+   // so let our runtime system handle those unlikley and uninteresting cases
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(pEbmInteractionState, pFeatureCombination, cInstancesRequiredForChildSplitMin, pInteractionScoreReturn);
+   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(
+      pEbmInteractionState, 
+      pFeatureCombination, 
+      cInstancesRequiredForChildSplitMin, 
+      pInteractionScoreReturn
+   );
 }
 
-// we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting the count.  By making this global we can send a log message incase a bad EbmInteractionState object is sent into us
-// we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
+// we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting 
+// the count.  By making this global we can send a log message incase a bad EbmInteractionState object is sent into us we only decrease the count if the 
+// count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
 static unsigned int g_cLogGetInteractionScoreParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
@@ -152,7 +238,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    const IntEbmType * featureIndexes,
    FloatEbmType * interactionScoreReturn
 ) {
-   LOG_COUNTED_N(&g_cLogGetInteractionScoreParametersMessages, TraceLevelInfo, TraceLevelVerbose, "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntEbmTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", static_cast<void *>(ebmInteraction), countFeaturesInCombination, static_cast<const void *>(featureIndexes), static_cast<void *>(interactionScoreReturn));
+   LOG_COUNTED_N(
+      &g_cLogGetInteractionScoreParametersMessages, 
+      TraceLevelInfo, 
+      TraceLevelVerbose, 
+      "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntEbmTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", 
+      static_cast<void *>(ebmInteraction), 
+      countFeaturesInCombination, 
+      static_cast<const void *>(featureIndexes), 
+      static_cast<void *>(interactionScoreReturn)
+   );
 
    EBM_ASSERT(nullptr != ebmInteraction);
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
@@ -171,16 +266,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    if(0 == cFeaturesInCombination) {
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore empty feature combination");
       if(nullptr != interactionScoreReturn) {
-         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+         // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
+         // caler be smarter about this condition
+         *interactionScoreReturn = 0;
       }
       return 0;
    }
 
    if(nullptr == pEbmInteractionState->m_pDataSet) {
-      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero instances.  If there are zero data cases, there isn't much basis to say whether there are interactions, so just return zero
+      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero instances.  If there are zero data cases, there isn't much basis to
+      // say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero instances");
       if(nullptr != interactionScoreReturn) {
-         *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+         // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
+         // caler be smarter about this condition
+         *interactionScoreReturn = 0;
       }
       return 0;
    }
@@ -202,7 +302,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       if(pFeature->m_cBins <= 1) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
-            *interactionScoreReturn = 0; // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our caler be smarter about this condition
+            // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
+            // our caler be smarter about this condition
+            *interactionScoreReturn = 0;
          }
          return 0;
       }
@@ -215,7 +317,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       return 1;
    }
 
-   // put the pFeatureCombination object on the stack. We want to put it into a FeatureCombination object since we want to share code with boosting, which calls things like building the tensor totals (which is templated to be compiled many times)
+   // put the pFeatureCombination object on the stack. We want to put it into a FeatureCombination object since we want to share code with boosting, 
+   // which calls things like building the tensor totals (which is templated to be compiled many times)
    char FeatureCombinationBuffer[k_cBytesFeatureCombinationMax];
    FeatureCombination * const pFeatureCombination = reinterpret_cast<FeatureCombination *>(&FeatureCombinationBuffer);
    pFeatureCombination->Initialize(cFeaturesInCombination, 0);
@@ -241,21 +344,40 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       if(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
-            *interactionScoreReturn = FloatEbmType { 0 }; // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or interactions or anything else.  We return 0 since interactions have no benefit
+            // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
+            // interactions or anything else.  We return 0 since interactions have no benefit
+            *interactionScoreReturn = FloatEbmType { 0 };
          }
          return 0;
       }
-      ret = CompilerRecursiveGetInteractionScore<2>(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, pEbmInteractionState, pFeatureCombination, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, interactionScoreReturn);
+      ret = CompilerRecursiveGetInteractionScore<2>(
+         pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
+         pEbmInteractionState, 
+         pFeatureCombination, 
+         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         interactionScoreReturn
+      );
    } else {
       EBM_ASSERT(IsRegression(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses));
-      ret = GetInteractionScorePerTargetClasses<k_Regression>(pEbmInteractionState, pFeatureCombination, TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, interactionScoreReturn);
+      ret = GetInteractionScorePerTargetClasses<k_Regression>(
+         pEbmInteractionState, 
+         pFeatureCombination, 
+         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         interactionScoreReturn
+      );
    }
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntEbmTypePrintf, ret);
    }
    if(nullptr != interactionScoreReturn) {
-      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn); // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
-      LOG_COUNTED_N(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore %" FloatEbmTypePrintf, *interactionScoreReturn);
+      // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
+      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn);
+      LOG_COUNTED_N(
+         &pEbmInteractionState->m_cLogExitMessages, 
+         TraceLevelInfo, 
+         TraceLevelVerbose, 
+         "Exited GetInteractionScore %" FloatEbmTypePrintf, *interactionScoreReturn
+      );
    } else {
       LOG_COUNTED_0(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");
    }

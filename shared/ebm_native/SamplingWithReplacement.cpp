@@ -33,7 +33,10 @@ size_t SamplingWithReplacement::GetTotalCountInstanceOccurrences() const {
    return cTotalCountInstanceOccurrences;
 }
 
-SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet) {
+SamplingWithReplacement * SamplingWithReplacement::GenerateSingleSamplingSet(
+   RandomStream * const pRandomStream, 
+   const DataSetByFeatureCombination * const pOriginDataSet
+) {
    LOG_0(TraceLevelVerbose, "Entered SamplingWithReplacement::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
@@ -118,7 +121,11 @@ void SamplingWithReplacement::FreeSamplingSets(const size_t cSamplingSets, Sampl
    LOG_0(TraceLevelInfo, "Exited SamplingWithReplacement::FreeSamplingSets");
 }
 
-SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(RandomStream * const pRandomStream, const DataSetByFeatureCombination * const pOriginDataSet, const size_t cSamplingSets) {
+SamplingMethod ** SamplingWithReplacement::GenerateSamplingSets(
+   RandomStream * const pRandomStream, 
+   const DataSetByFeatureCombination * const pOriginDataSet, 
+   const size_t cSamplingSets
+) {
    LOG_0(TraceLevelInfo, "Entered SamplingWithReplacement::GenerateSamplingSets");
 
    EBM_ASSERT(nullptr != pRandomStream);
