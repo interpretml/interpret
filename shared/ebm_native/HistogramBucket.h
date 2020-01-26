@@ -137,10 +137,12 @@ void BinDataSetTrainingZeroDimensions(
    const SamplingMethod * const pTrainingSet, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
@@ -151,7 +153,7 @@ void BinDataSetTrainingZeroDimensions(
    // this shouldn't overflow since we're accessing existing memory
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketVectorEntry = 
+   HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
       ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -182,14 +184,14 @@ void BinDataSetTrainingZeroDimensions(
       size_t iVector = 0;
       do {
          const FloatEbmType residualError = *pResidualError;
-         EBM_ASSERT(!IsClassification(compilerLearningTypeOrCountTargetClasses) || 
+         EBM_ASSERT(!bClassification ||
             ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 
             static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 0 == residualError);
 #ifndef NDEBUG
          residualTotalDebug += residualError;
 #endif // NDEBUG
          pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
-         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+         if(bClassification) {
             // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the 
             //   SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make 
             //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
@@ -206,7 +208,7 @@ void BinDataSetTrainingZeroDimensions(
       } while(iVector < cVectorLength);
 
       EBM_ASSERT(
-         !IsClassification(compilerLearningTypeOrCountTargetClasses) || 
+         !bClassification ||
          ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 
          0 <= k_iZeroResidual || 
          std::isnan(residualTotalDebug) || 
@@ -227,6 +229,8 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered BinDataSetTraining");
 
    EBM_ASSERT(cCompilerDimensions == pFeatureCombination->m_cFeatures);
@@ -240,8 +244,8 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
@@ -284,7 +288,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       do {
          const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry = GetHistogramBucketByIndex(
+         HistogramBucket<bClassification> * const pHistogramBucketEntry = GetHistogramBucketByIndex(
             cBytesPerHistogramBucket, 
             aHistogramBuckets, 
             iTensorBin
@@ -295,7 +299,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
          ++pCountOccurrences;
          pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
          const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
-         HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER(
+         HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER(
             pHistogramBucketEntry->m_aHistogramBucketVectorEntry
          );
          size_t iVector = 0;
@@ -311,7 +315,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
          do {
             const FloatEbmType residualError = *pResidualError;
             EBM_ASSERT(
-               !IsClassification(compilerLearningTypeOrCountTargetClasses) || 
+               !bClassification ||
                ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 
                static_cast<ptrdiff_t>(iVector) != k_iZeroResidual || 
                0 == residualError
@@ -320,7 +324,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
             residualTotalDebug += residualError;
 #endif // NDEBUG
             pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
-            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+            if(bClassification) {
                // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the
                //   SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might 
                //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
@@ -339,7 +343,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
          } while(iVector < cVectorLength);
 
          EBM_ASSERT(
-            !IsClassification(compilerLearningTypeOrCountTargetClasses) || 
+            !bClassification ||
             ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses && !bExpandBinaryLogits || 
             0 <= k_iZeroResidual || 
             -k_epsilonResidualError < residualTotalDebug && residualTotalDebug < k_epsilonResidualError
@@ -455,11 +459,13 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered BinDataSetInteraction");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
    const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
@@ -498,8 +504,8 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
          ++iDimension;
       } while(iDimension < cFeatures);
  
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntry = 
-         GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
+      HistogramBucket<bClassification> * pHistogramBucketEntry =
+         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
       pHistogramBucketEntry->m_cInstancesInBucket += 1;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -509,7 +515,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
          // for regression, residualError can be anything from +infinity or -infinity
          ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError += residualError;
          // m_sumResidualError could be NaN, or anything from +infinity or -infinity in the case of regression
-         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+         if(bClassification) {
             EBM_ASSERT(
                std::isnan(residualError) || 
                !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
@@ -553,6 +559,8 @@ size_t CompressHistogramBuckets(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered CompressHistogramBuckets");
 
    EBM_ASSERT(1 <= cHistogramBuckets);
@@ -562,12 +570,12 @@ size_t CompressHistogramBuckets(
 #endif // NDEBUG
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyFrom = aHistogramBuckets;
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyFromEnd = 
-      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
+   HistogramBucket<bClassification> * pCopyFrom = aHistogramBuckets;
+   HistogramBucket<bClassification> * pCopyFromEnd =
+      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
 
    // we do a lot more work in the GrowDecisionTree function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
    // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long 
@@ -580,7 +588,7 @@ size_t CompressHistogramBuckets(
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
 #ifdef LEGACY_COMPATIBILITY
       if(UNLIKELY(0 == pCopyFrom->m_cInstancesInBucket)) {
-         HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pCopyTo = pCopyFrom;
+         HistogramBucket<bClassification> * pCopyTo = pCopyFrom;
          goto skip_first_check;
          do {
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
@@ -596,11 +604,11 @@ size_t CompressHistogramBuckets(
                }
 
                pCopyTo->m_bucketValue = static_cast<ActiveDataType>(iBucket);
-               pCopyTo = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyTo, 1);
+               pCopyTo = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyTo, 1);
             }
             skip_first_check:
             ++iBucket;
-            pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
+            pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
          } while(pCopyFromEnd != pCopyFrom);
          // TODO: eliminate this extra variable copy by making our outer loop use pCopyTo which is equal to pCopyFrom in the outer loop
          pCopyFrom = pCopyTo;
@@ -629,7 +637,7 @@ size_t CompressHistogramBuckets(
       ++iBucket;
 #endif // LEGACY_COMPATIBILITY
 
-      pCopyFrom = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pCopyFrom, 1);
+      pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
    EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 

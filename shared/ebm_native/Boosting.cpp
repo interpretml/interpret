@@ -476,6 +476,8 @@ static void TrainingSetTargetFeatureLoop(
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) 
 {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -485,7 +487,7 @@ static void TrainingSetTargetFeatureLoop(
    if(0 == pFeatureCombination->m_cFeatures) {
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
          const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
          if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
@@ -576,7 +578,7 @@ static void TrainingSetTargetFeatureLoop(
    const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
    FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
 
-   if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+   if(bClassification) {
       FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
 
@@ -809,6 +811,8 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -817,7 +821,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
 
    FloatEbmType ret;
    if(0 == pFeatureCombination->m_cFeatures) {
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
          const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
 
@@ -900,7 +904,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
 
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          FloatEbmType sumLogLoss = 0;
 
          const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
@@ -1052,20 +1056,24 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
       // set the metric so high that this round of boosting will be rejected.  The worst metric is std::numeric_limits<FloatEbmType>::max(),
       // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
       ret = std::numeric_limits<FloatEbmType>::max();
-   } else if(IsClassification(compilerLearningTypeOrCountTargetClasses) && UNLIKELY(ret < FloatEbmType { 0 })) {
-      // regression can't be negative since squares are pretty well insulated from ever doing that
+   } else {
+      if(bClassification) {
+         if(UNLIKELY(ret < FloatEbmType { 0 })) {
+            // regression can't be negative since squares are pretty well insulated from ever doing that
 
-      // Multiclass can return small negative numbers, so we need to clean up the value retunred so that it isn't negative
+            // Multiclass can return small negative numbers, so we need to clean up the value retunred so that it isn't negative
 
-      // binary classification can't return a negative number provided the log function
-      // doesn't ever return a negative number for numbers exactly equal to 1 or higher
-      // BUT we're going to be using or trying approximate log functions, and those might not
-      // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
-      EBM_ASSERT(IsMulticlass(compilerLearningTypeOrCountTargetClasses));
+            // binary classification can't return a negative number provided the log function
+            // doesn't ever return a negative number for numbers exactly equal to 1 or higher
+            // BUT we're going to be using or trying approximate log functions, and those might not
+            // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
+            EBM_ASSERT(IsMulticlass(compilerLearningTypeOrCountTargetClasses));
 
-      // because of floating point inexact reasons, ComputeSingleInstanceLogLossMulticlass can return a negative number
-      // so correct this before we return.  Any negative numbers were really meant to be zero
-      ret = FloatEbmType { 0 };
+            // because of floating point inexact reasons, ComputeSingleInstanceLogLossMulticlass can return a negative number
+            // so correct this before we return.  Any negative numbers were really meant to be zero
+            ret = FloatEbmType { 0 };
+         }
+      }
    }
 
    EBM_ASSERT(!std::isnan(ret));
@@ -1540,7 +1548,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
       // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we multiply by a user defined learning rate
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
 #ifdef EXPAND_BINARY_LOGITS
          constexpr bool bExpandBinaryLogits = true;
 #else // EXPAND_BINARY_LOGITS

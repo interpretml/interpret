@@ -75,6 +75,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_N(
       TraceLevelVerbose, 
       "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pRandomStream=%p, aHistogramBucket=%p, pTreeNode=%p, "
@@ -89,7 +91,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
 
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntryLeft = 
+   HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
    memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
@@ -98,29 +100,29 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
    }
 
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pHistogramBucketEntryCur = 
+   const HistogramBucket<bClassification> * pHistogramBucketEntryCur =
       pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntryLast = 
+   const HistogramBucket<bClassification> * const pHistogramBucketEntryLast =
       pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
 
-   EBM_ASSERT(!GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerTreeNode = GetTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
 
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChildInit = 
-      GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pLeftChildInit =
+      GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
    pLeftChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryCur;
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChildInit = 
-      GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pRightChildInit =
+      GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
    pRightChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
 
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
-   EBM_ASSERT(!GetSweepTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetSweepTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize<bClassification>(cVectorLength);
 
-   SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeStart = 
-      static_cast<SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->m_aEquivalentSplits);
-   SweepTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pSweepTreeNodeCur = pSweepTreeNodeStart;
+   SweepTreeNode<bClassification> * pSweepTreeNodeStart =
+      static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->m_aEquivalentSplits);
+   SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
    size_t cInstancesRight = pTreeNode->GetInstances();
    size_t cInstancesLeft = 0;
@@ -169,7 +171,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FloatEbmType { 0 } <= nodeSplittingScoreLeft);
             nodeSplittingScore += nodeSplittingScoreLeft;
 
-            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+            if(bClassification) {
                aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(
                   aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + 
                   ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
@@ -226,7 +228,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             aSumResidualErrorsRight[iVector] -= CHANGE_sumResidualError;
             aSumHistogramBucketVectorEntryLeft[iVector].m_sumResidualError += CHANGE_sumResidualError;
-            if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+            if(bClassification) {
                aSumHistogramBucketVectorEntryLeft[iVector].SetSumDenominator(
                   aSumHistogramBucketVectorEntryLeft[iVector].GetSumDenominator() + 
                   ARRAY_TO_POINTER_CONST(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
@@ -234,13 +236,13 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             }
          }
       }
-      pHistogramBucketEntryCur = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
+      pHistogramBucketEntryCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
    if(UNLIKELY(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) || 
       UNLIKELY(std::isinf(BEST_nodeSplittingScore)))) 
    {
-      EBM_ASSERT((!IsClassification(compilerLearningTypeOrCountTargetClasses)) || !std::isinf(BEST_nodeSplittingScore));
+      EBM_ASSERT((!bClassification) || !std::isinf(BEST_nodeSplittingScore));
 
       // we didn't find any valid splits, or we hit an overflow
       EBM_ASSERT(std::isnan(BEST_nodeSplittingScore) || std::isinf(BEST_nodeSplittingScore) || k_illegalGain == BEST_nodeSplittingScore);
@@ -259,20 +261,19 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
 #endif // LEGACY_COMPATIBILITY
 
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild = 
-      GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pLeftChild =
+      GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->m_pBestHistogramBucketEntry;
+   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->m_pBestHistogramBucketEntry;
    pLeftChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = BEST_pHistogramBucketEntry;
    const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->m_cBestInstancesLeft;
    pLeftChild->SetInstances(BEST_cInstancesLeft);
 
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const BEST_pHistogramBucketEntryNext = 
-      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
+   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
+      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, BEST_pHistogramBucketEntryNext, aHistogramBucketsEndDebug);
 
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = 
-      GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
+   TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    pRightChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = BEST_pHistogramBucketEntryNext;
    const size_t cInstancesParent = pTreeNode->GetInstances();
@@ -299,7 +300,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
       originalParentScore += originalParentScoreUpdate;
 
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          const FloatEbmType BEST_sumDenominatorLeft = pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry[iVector].GetSumDenominator();
          ARRAY_TO_POINTER(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(BEST_sumDenominatorLeft);
          ARRAY_TO_POINTER(pRightChild->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(
@@ -327,7 +328,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // result to be -infinity. The universe will probably die of heat death before we get a -infinity value, but perhaps an adversarial dataset 
    // could trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
    // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
-   EBM_ASSERT(std::isnan(splitGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
+   EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
 #ifdef LEGACY_COMPATIBILITY
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = 
@@ -368,6 +369,8 @@ bool GrowDecisionTree(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -393,7 +396,7 @@ bool GrowDecisionTree(
 
       // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(bClassification) {
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
@@ -417,13 +420,13 @@ bool GrowDecisionTree(
 
    // there will be at least one split
 
-   if(GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+   if(GetTreeNodeSizeOverflow<bClassification>(cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
       return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
    }
-   const size_t cBytesPerTreeNode = GetTreeNodeSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
 retry_with_bigger_tree_node_children_array:
    size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
@@ -440,12 +443,12 @@ retry_with_bigger_tree_node_children_array:
       cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
       EBM_ASSERT(cBytesInitialNeededAllocation <= cBytesBuffer2);
    }
-   TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pRootTreeNode = 
-      static_cast<TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer2());
+   TreeNode<bClassification> * pRootTreeNode =
+      static_cast<TreeNode<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer2());
 
    pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = aHistogramBucket;
    pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = 
-      GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1);
+      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1);
    ASSERT_BINNED_BUCKET_OK(
       cBytesPerHistogramBucket, 
       pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast, 
@@ -468,7 +471,7 @@ retry_with_bigger_tree_node_children_array:
          aHistogramBucket, 
          pRootTreeNode, 
          pCachedThreadResources, 
-         AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesPerTreeNode), 
+         AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
          cInstancesRequiredForChildSplitMin, 
          runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
@@ -481,9 +484,9 @@ retry_with_bigger_tree_node_children_array:
       if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
-         EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+         EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
             pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cInstancesRequiredForParentSplitMin) && 
-            !GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+            !GetRightTreeNodeChild<bClassification>(
                pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
                cBytesPerTreeNode
                )->IsSplittable(cInstancesRequiredForParentSplitMin
@@ -501,17 +504,17 @@ retry_with_bigger_tree_node_children_array:
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
          // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
-         const TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild = GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
             pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
             cBytesPerTreeNode
          );
-         const TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = GetRightTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
             pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
             cBytesPerTreeNode
          );
 
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+         if(bClassification) {
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
                   ARRAY_TO_POINTER_CONST(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
@@ -536,7 +539,7 @@ retry_with_bigger_tree_node_children_array:
 
          LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
          const FloatEbmType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
-         EBM_ASSERT(std::isnan(totalGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
+         EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
          // don't normalize totalGain here, because we normalize the average outside of this function!
          *pTotalGain = totalGain;
          return false;
@@ -552,9 +555,9 @@ retry_with_bigger_tree_node_children_array:
       // if they do.  So, let's keep the priority queue, and only the priority queue since it handles all scenarios without any real cost and is simpler
       // than implementing an optional array scan PLUS a priority queue for deep trees.
       std::priority_queue<
-         TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *, 
-         std::vector<TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>, 
-         CompareTreeNodeSplittingGain<IsClassification(compilerLearningTypeOrCountTargetClasses)>
+         TreeNode<bClassification> *,
+         std::vector<TreeNode<bClassification> *>,
+         CompareTreeNodeSplittingGain<bClassification>
       > * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit.m_queue;
 
       // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, 
@@ -564,11 +567,11 @@ retry_with_bigger_tree_node_children_array:
       }
 
       cSplits = 0;
-      TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pParentTreeNode = pRootTreeNode;
+      TreeNode<bClassification> * pParentTreeNode = pRootTreeNode;
 
       // we skip 3 tree nodes.  The root, the left child of the root, and the right child of the root
-      TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceCur = 
-         AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pRootTreeNode, cBytesInitialNeededAllocation);
+      TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceCur =
+         AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesInitialNeededAllocation);
 
       FloatEbmType totalGain = FloatEbmType { 0 };
 
@@ -592,20 +595,20 @@ retry_with_bigger_tree_node_children_array:
 
          // ONLY AFTER WE'VE POPPED pParentTreeNode OFF the priority queue is it considered to have been split.  Calling SPLIT_THIS_NODE makes it formal
          const FloatEbmType totalGainUpdate = pParentTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
-         EBM_ASSERT(std::isnan(totalGainUpdate) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGainUpdate) || 
+         EBM_ASSERT(std::isnan(totalGainUpdate) || (!bClassification) && std::isinf(totalGainUpdate) ||
             k_epsilonNegativeGainAllowed <= totalGainUpdate);
          totalGain += totalGainUpdate;
 
          pParentTreeNode->SPLIT_THIS_NODE();
 
-         TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pLeftChild = 
-            GetLeftTreeNodeChild<IsClassification(compilerLearningTypeOrCountTargetClasses)>(
+         TreeNode<bClassification> * const pLeftChild =
+            GetLeftTreeNodeChild<bClassification>(
                pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
                cBytesPerTreeNode
             );
          if(pLeftChild->IsSplittable(cInstancesRequiredForParentSplitMin)) {
-            TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceNext = 
-               AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
+            TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
+               AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < 
                static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) 
             {
@@ -645,13 +648,13 @@ retry_with_bigger_tree_node_children_array:
             pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
 
-         TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRightChild = GetRightTreeNodeChild<IsClassification(
+         TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<IsClassification(
             compilerLearningTypeOrCountTargetClasses)>(pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
             cBytesPerTreeNode
          );
          if(pRightChild->IsSplittable(cInstancesRequiredForParentSplitMin)) {
-            TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNodeChildrenAvailableStorageSpaceNext = 
-               AddBytesTreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
+            TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
+               AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < 
                static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceNext) - reinterpret_cast<char *>(pRootTreeNode))) 
             {
@@ -697,7 +700,7 @@ retry_with_bigger_tree_node_children_array:
 
       // regression can be -infinity or slightly negative in extremely rare circumstances.
       // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
-      EBM_ASSERT(std::isnan(totalGain) || (!IsClassification(compilerLearningTypeOrCountTargetClasses)) && std::isinf(totalGain) || 
+      EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) ||
          k_epsilonNegativeGainAllowed <= totalGain);
       // we might as well dump this value out to our pointer, even if later fail the function below.  If the function is failed, we make no guarantees 
       // about what we did with the value pointed to at *pTotalGain don't normalize totalGain here, because we normalize the average outside of this function!
@@ -749,17 +752,19 @@ bool BoostZeroDimensional(
    SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
       return true;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucket = 
-      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   HistogramBucket<bClassification> * const pHistogramBucket =
+      static_cast<HistogramBucket<bClassification> *>(
          pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket)
    );
    if(UNLIKELY(nullptr == pHistogramBucket)) {
@@ -770,10 +775,10 @@ bool BoostZeroDimensional(
 
    BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
 
-   const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = 
+   const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
       ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry);
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-   if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+   if(bClassification) {
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
             aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, 
@@ -809,26 +814,28 @@ bool BoostSingleDimensional(
    FloatEbmType * const pTotalGain, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
    size_t cTotalBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
 
    const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
-   if(GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
-      LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
       return true;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = 
-      static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucket<bClassification> * const aHistogramBuckets =
+      static_cast<HistogramBucket<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
       return true;
@@ -850,7 +857,7 @@ bool BoostSingleDimensional(
 #endif // NDEBUG
    );
 
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry = 
+   HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
       pCachedThreadResources->m_aSumHistogramBucketVectorEntry;
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
