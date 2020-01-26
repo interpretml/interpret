@@ -43,28 +43,7 @@ static void InitializeResiduals(
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
    const FloatEbmType * pPredictorScores = aPredictorScores;
-   if(IsRegression(compilerLearningTypeOrCountTargetClasses)) {
-      const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
-      do {
-         // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance 
-         //   from the input data
-
-         // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
-         // There is no need to check it here since we already have graceful detection later for other reasons.
-
-         const FloatEbmType data = *pTargetData;
-         // TODO: NaN target values essentially mean missing, so we should be filtering those instances out, but our caller should do that so 
-         //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
-         const FloatEbmType predictionScore = *pPredictorScores;
-         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
-         *pResidualError = residualError;
-         ++pTargetData;
-         ++pPredictorScores;
-         ++pResidualError;
-      } while(pResidualErrorEnd != pResidualError);
-   } else {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-
+   if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
 
       EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
@@ -122,6 +101,27 @@ static void InitializeResiduals(
             }
          }
          ++pTargetData;
+      } while(pResidualErrorEnd != pResidualError);
+   } else {
+      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+
+      const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
+      do {
+         // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance 
+         //   from the input data
+
+         // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
+         // There is no need to check it here since we already have graceful detection later for other reasons.
+
+         const FloatEbmType data = *pTargetData;
+         // TODO: NaN target values essentially mean missing, so we should be filtering those instances out, but our caller should do that so 
+         //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
+         const FloatEbmType predictionScore = *pPredictorScores;
+         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegressionInit(predictionScore, data);
+         *pResidualError = residualError;
+         ++pTargetData;
+         ++pPredictorScores;
+         ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
    }
    LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
