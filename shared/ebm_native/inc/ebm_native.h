@@ -425,11 +425,19 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 //                  last has 7 items per number.You can't really template this many options.  Even if you had special pair
 //                  interaction detection code, which would have 16 * 16 = 256 possible combinations(15 different packs per 64 bit number PLUS sparse)
 //                  You wouldn't be able to match up the loops since the first feature would require 3 iterations, and the second 7, so you don't
-//                  really get any relief.The only way to partly handle this is to make all features use the same number of bits(choose the worst case packing)
+//                  really get any relief. The only way to partly handle this is to make all features use the same number of bits
+//                  (choose the worst case packing)
 //                  and then template the combination <number_of_dimensions, number_of_bits> which has 16 * 64 possible combinations, most of which are not 
 //                  used. You can get this down to maybe 16 * 4 combinations templated with loops on the others, but then you still can't easily do
 //                  sparse features, so you're stuck with dense features if you go this route.
-//   - OBSERVATION: Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
+//   - OBSERVATION: For templates, always put the more universal template featutres at the end, incase C++ changes such that variadic template/macros
+//                  work for us someday (currently they only allow only just typenames or the same datatypes per parameter pack)
+//   - OBSERVATION: For interaction detection, we'll want our template to be: <cDataItemsPerPack, cDimensions, compilerLearningTypeOrCountTargetClasses>
+//                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
+//                  differently, so they all need to use the same number of bits per pack.
+//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <cDataItemsPerPack, compilerLearningTypeOrCountTargetClasses>
+//   - OBSERVATION: For partitioning, we'll want our template to be: <cDimensions, compilerLearningTypeOrCountTargetClasses>
+//   - OBSERVATION: THIS SECTION IS WRONG -> Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
 //                  since if we didn't then the # of features loop would branch mis-predict per loop, and that's bad
 //                  BUT we can keep the compressed 64 bit number for each feature(which can now be in a regsiter since the # of features is templated)
 //                  and then we shift them down until we're done, and then relaod the next 64-bit number.  This causes a branch mispredict each time
@@ -439,8 +447,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 //                  with a loop fallback for anything up to 64 features).
 //                  A second bonus of this method is that all features can be bit packed for their natural size, which means they stay as compressed
 //                  As the mains.
-//                  Lastly, if we want to allow sparse features we can do this.If we're templating the number of features and the # of features loop
-//                  is unwound by the compiler, then each feature will have it's on code section and the if statement selecting whether a feature is
+//                  Lastly, if we want to allow sparse features we can do this. If we're templating the number of features and the # of features loop
+//                  is unwound by the compiler, then each feature will have it's own code section and the if statement selecting whether a feature is
 //                  sparse or not will be predicatble.If we really really wanted to, we could conceivably 
 //                  template <count_dense_features, count_sparse_features>, which for low numbers of features is tractable
 //   - OBSERVATION: we'll be sorting our target, then secondarily features by some packability metric, 

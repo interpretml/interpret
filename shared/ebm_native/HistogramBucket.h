@@ -77,8 +77,15 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
       reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
+struct HistogramBucketBase {
+   // empty base optimization is REQUIRED by the C++11 standard for StandardLayoutType objects, so this struct will use 0 bytes in our derived class
+   // https://en.cppreference.com/w/cpp/language/ebo
+};
+static_assert(std::is_standard_layout<HistogramBucketBase>::value,
+   "HistogramBucketBase will be more efficient as a standard layout class as we make potentially large arrays of them!");
+
 template<bool bClassification>
-struct HistogramBucket final {
+struct HistogramBucket final : public HistogramBucketBase {
 public:
 
    size_t m_cInstancesInBucket;
@@ -86,7 +93,7 @@ public:
 #ifdef LEGACY_COMPATIBILITY
    ActiveDataType m_bucketValue;
 #endif // LEGACY_COMPATIBILITY
-   
+
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
    HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
@@ -141,7 +148,11 @@ void BinDataSetTrainingZeroDimensions(
 
    LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
@@ -236,7 +247,11 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    EBM_ASSERT(cCompilerDimensions == pFeatureCombination->m_cFeatures);
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
    EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
    EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
@@ -463,7 +478,11 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
 
    LOG_0(TraceLevelVerbose, "Entered BinDataSetInteraction");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -569,7 +588,11 @@ size_t CompressHistogramBuckets(
    size_t cInstancesTotalDebug = 0;
 #endif // NDEBUG
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 

@@ -89,7 +89,11 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       cInstancesRequiredForChildSplitMin
    );
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
@@ -373,7 +377,11 @@ bool GrowDecisionTree(
 
    LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
 
    EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cInstancesTotal); // filter these out at the start where we can handle this case easily
@@ -756,7 +764,11 @@ bool BoostZeroDimensional(
 
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
@@ -821,7 +833,11 @@ bool BoostSingleDimensional(
    EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
    size_t cTotalBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");

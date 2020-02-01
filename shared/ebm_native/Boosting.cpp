@@ -480,7 +480,11 @@ static void TrainingSetTargetFeatureLoop(
 
    LOG_0(TraceLevelVerbose, "Entered TrainingSetTargetFeatureLoop");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    const size_t cInstances = pTrainingSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
@@ -815,7 +819,11 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
 
    LOG_0(TraceLevelVerbose, "Entering ValidationSetTargetFeatureLoop");
 
-   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
    const size_t cInstances = pValidationSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
