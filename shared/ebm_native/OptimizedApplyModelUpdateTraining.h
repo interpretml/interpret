@@ -18,7 +18,7 @@
 #include "DataSetByFeatureCombination.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static void UpdateScoresAndResidualsForTrainingSetZeroFeatures(
+static void OptimizedApplyModelUpdateTrainingZeroFeatures(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    DataSetByFeatureCombination * const pTrainingSet,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -112,11 +112,9 @@ static void UpdateScoresAndResidualsForTrainingSetZeroFeatures(
       } while(pResidualErrorEnd != pResidualError);
    }
 }
-// a*PredictorScores = logOdds for binary classification
-// a*PredictorScores = logWeights for multiclass classification
-// a*PredictorScores = predictedValue for regression
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-static void UpdateScoresAndResidualsForTrainingSetInternal(
+static void OptimizedApplyModelUpdateTrainingInternal(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t runtimeCountItemsPerBitPackedDataUnit,
    const FeatureCombination * const pFeatureCombination,
@@ -296,9 +294,10 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
       }
    }
 }
+
 // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class UpdateScoresAndResidualsForTrainingSetCompiler {
+class OptimizedApplyModelUpdateTrainingCompiler {
 public:
    EBM_INLINE static void MagicCompilerLoopFunction(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -311,7 +310,7 @@ public:
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         UpdateScoresAndResidualsForTrainingSetInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>(
+         OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>(
             runtimeLearningTypeOrCountTargetClasses,
             runtimeCountItemsPerBitPackedDataUnit,
             pFeatureCombination,
@@ -319,7 +318,7 @@ public:
             aModelFeatureCombinationUpdateTensor
             );
       } else {
-         UpdateScoresAndResidualsForTrainingSetCompiler<
+         OptimizedApplyModelUpdateTrainingCompiler<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::MagicCompilerLoopFunction(
@@ -332,8 +331,9 @@ public:
       }
    }
 };
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class UpdateScoresAndResidualsForTrainingSetCompiler<compilerLearningTypeOrCountTargetClasses, 1> {
+class OptimizedApplyModelUpdateTrainingCompiler<compilerLearningTypeOrCountTargetClasses, 1> {
 public:
    EBM_INLINE static void MagicCompilerLoopFunction(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -343,7 +343,7 @@ public:
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
       EBM_ASSERT(1 == runtimeCountItemsPerBitPackedDataUnit); // this is only true if we've tried all possible template values
-      UpdateScoresAndResidualsForTrainingSetInternal<compilerLearningTypeOrCountTargetClasses, 1>(
+      OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, 1>(
          runtimeLearningTypeOrCountTargetClasses,
          runtimeCountItemsPerBitPackedDataUnit,
          pFeatureCombination,
@@ -352,24 +352,25 @@ public:
          );
    }
 };
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-EBM_INLINE static void UpdateScoresAndResidualsForTrainingSet(
+EBM_INLINE static void OptimizedApplyModelUpdateTraining(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t runtimeCountItemsPerBitPackedDataUnit,
    const FeatureCombination * const pFeatureCombination,
    DataSetByFeatureCombination * const pTrainingSet,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 ) {
-   LOG_0(TraceLevelVerbose, "Entered UpdateScoresAndResidualsForTrainingSet");
+   LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateTraining");
 
    if(0 == pFeatureCombination->m_cFeatures) {
-      UpdateScoresAndResidualsForTrainingSetZeroFeatures<compilerLearningTypeOrCountTargetClasses>(
+      OptimizedApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClasses>(
          runtimeLearningTypeOrCountTargetClasses,
          pTrainingSet,
          aModelFeatureCombinationUpdateTensor
          );
    } else {
-      UpdateScoresAndResidualsForTrainingSetCompiler<
+      OptimizedApplyModelUpdateTrainingCompiler<
          compilerLearningTypeOrCountTargetClasses,
          k_cBitsForStorageType
       >::MagicCompilerLoopFunction(
@@ -381,7 +382,7 @@ EBM_INLINE static void UpdateScoresAndResidualsForTrainingSet(
       );
    }
 
-   LOG_0(TraceLevelVerbose, "Exited UpdateScoresAndResidualsForTrainingSet");
+   LOG_0(TraceLevelVerbose, "Exited OptimizedApplyModelUpdateTraining");
 }
 
 #endif // OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H

@@ -1574,7 +1574,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // TODO : move the target bits branch inside TrainingSetInputFeatureLoop to here outside instead of the feature combination.  
       // The target # of bits is extremely predictable and so we get to only process one sub branch of code below that.  
       // If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
-      UpdateScoresAndResidualsForTrainingSet<compilerLearningTypeOrCountTargetClasses>(
+      OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
          pFeatureCombination->m_cItemsPerBitPackedDataUnit,
          pFeatureCombination,
