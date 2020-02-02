@@ -340,9 +340,9 @@ bool EbmBoostingState::Initialize(
                cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
             }
 
-            // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackDataUnit
+            // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackedDataUnit
             const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
-            pFeatureCombination->m_cItemsPerBitPackDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
+            pFeatureCombination->m_cItemsPerBitPackedDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
          }
          ++iFeatureCombination;
       } while(iFeatureCombination < m_cFeatureCombinations);
@@ -587,10 +587,10 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
 
-   const size_t cItemsPerBitPackDataUnit = compilerCountItemsPerBitPackedDataUnit;
-   EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
-   EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
-   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   const size_t cItemsPerBitPackedDataUnit = compilerCountItemsPerBitPackedDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
+   EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -606,15 +606,15 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
       size_t cItemsRemaining = cInstances;
-      if(cInstances <= cItemsPerBitPackDataUnit) {
+      if(cInstances <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop_classification;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
       do {
-         cItemsRemaining = cItemsPerBitPackDataUnit;
+         cItemsRemaining = cItemsPerBitPackedDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_classification:;
@@ -692,7 +692,7 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
          EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
          pResidualErrorExit = pResidualErrorTrueEnd;
 
@@ -705,15 +705,15 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
       size_t cItemsRemaining = cInstances;
-      if(cInstances <= cItemsPerBitPackDataUnit) {
+      if(cInstances <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop_regression;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
       do {
-         cItemsRemaining = cItemsPerBitPackDataUnit;
+         cItemsRemaining = cItemsPerBitPackedDataUnit;
          // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
          // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
       one_last_loop_regression:;
@@ -740,7 +740,7 @@ static void UpdateScoresAndResidualsForTrainingSetInternal(
          EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
          cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
          EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
          pResidualErrorExit = pResidualErrorTrueEnd;
 
@@ -940,10 +940,10 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
          ret = sumSquareError / cInstances;
       }
    } else {
-      const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
-      EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
-      EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
-      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+      const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->m_cItemsPerBitPackedDataUnit;
+      EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
+      EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+      const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
       EBM_ASSERT(1 <= cBitsPerItemMax);
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -959,15 +959,15 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
          const FloatEbmType * const pValidationPredictorScoresTrueEnd = pValidationPredictorScores + cVectorLength * cInstances;
          const FloatEbmType * pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
          size_t cItemsRemaining = cInstances;
-         if(cInstances <= cItemsPerBitPackDataUnit) {
+         if(cInstances <= cItemsPerBitPackedDataUnit) {
             goto one_last_loop_classification;
          }
-         pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+         pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
          EBM_ASSERT(pValidationPredictorScores < pValidationPredictorScoresExit);
          EBM_ASSERT(pValidationPredictorScoresExit < pValidationPredictorScoresTrueEnd);
 
          do {
-            cItemsRemaining = cItemsPerBitPackDataUnit;
+            cItemsRemaining = cItemsPerBitPackedDataUnit;
             // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
             // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
          one_last_loop_classification:;
@@ -1028,7 +1028,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
             EBM_ASSERT(0 == (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) % cVectorLength);
             cItemsRemaining = (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) / cVectorLength;
             EBM_ASSERT(0 < cItemsRemaining);
-            EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+            EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
             pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
 
@@ -1047,15 +1047,15 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
          const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
          const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
          size_t cItemsRemaining = cInstances;
-         if(cInstances <= cItemsPerBitPackDataUnit) {
+         if(cInstances <= cItemsPerBitPackedDataUnit) {
             goto one_last_loop_regression;
          }
-         pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+         pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
          EBM_ASSERT(pResidualError < pResidualErrorExit);
          EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
          do {
-            cItemsRemaining = cItemsPerBitPackDataUnit;
+            cItemsRemaining = cItemsPerBitPackedDataUnit;
             // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
             // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
          one_last_loop_regression:;
@@ -1085,7 +1085,7 @@ static FloatEbmType ValidationSetTargetFeatureLoop(
             EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
             cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
             EBM_ASSERT(0 < cItemsRemaining);
-            EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+            EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
             pResidualErrorExit = pResidualErrorTrueEnd;
 
@@ -1944,7 +1944,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
       UpdateScoresAndResidualsForTrainingSet<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
-         pFeatureCombination->m_cItemsPerBitPackDataUnit,
+         pFeatureCombination->m_cItemsPerBitPackedDataUnit,
          pFeatureCombination,
          pEbmBoostingState->m_pTrainingSet,
          aModelFeatureCombinationUpdateTensor

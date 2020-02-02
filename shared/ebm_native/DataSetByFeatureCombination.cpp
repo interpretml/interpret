@@ -168,15 +168,15 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(
       if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
       } else {
-         const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
+         const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->m_cItemsPerBitPackedDataUnit;
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
-         EBM_ASSERT(cItemsPerBitPackDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
-         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+         EBM_ASSERT(cItemsPerBitPackedDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
+         const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
          // if we have 1 item, it can't be larger than the number of bits of storage
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
          EBM_ASSERT(0 < cInstances);
-         const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackDataUnit + 1; // this can't overflow or underflow
+         const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
 
          if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
@@ -211,11 +211,11 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(
          } while(pDimensionInfoEnd != pDimensionInfo);
 
          // THIS IS NOT A CONSTANT FOR A REASON.. WE CHANGE IT ON OUR LAST ITERATION
-         // if we ever template this function on cItemsPerBitPackDataUnit, then we'd want
+         // if we ever template this function on cItemsPerBitPackedDataUnit, then we'd want
          // to make this a constant so that the compiler could reason about it an eliminate loops
          // as it is, it isn't a constant, so the compiler would not be able to figure out that most
          // of the time it is a constant
-         size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPackDataUnit;
+         size_t shiftEnd = cBitsPerItemMax * cItemsPerBitPackedDataUnit;
          while(pInputDataTo < pInputDataToLast) /* do the last iteration AFTER we re-enter this loop through the goto label! */ {
          one_last_loop:;
             EBM_ASSERT(shiftEnd <= CountBitsRequiredPositiveMax<StorageDataType>());
@@ -259,7 +259,7 @@ EBM_INLINE static const StorageDataType * const * ConstructInputData(
 
          if(pInputDataTo == pInputDataToLast) {
             // if this is the first time we've exited the loop, then re-enter it to do our last loop, but reduce the number of times we do the inner loop
-            shiftEnd = cBitsPerItemMax * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+            shiftEnd = cBitsPerItemMax * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
             goto one_last_loop;
          }
       }

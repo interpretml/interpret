@@ -229,7 +229,7 @@ void BinDataSetTrainingZeroDimensions(
    LOG_0(TraceLevelVerbose, "Exited BinDataSetTrainingZeroDimensions");
 }
 
-// TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackDataUnit
+// TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackedDataUnit
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
 void BinDataSetTraining(HistogramBucket<IsClassification(
    compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
@@ -252,10 +252,10 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
-   EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
-   EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
-   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackDataUnit);
+   const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->m_cItemsPerBitPackedDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
+   EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
    EBM_ASSERT(1 <= cBitsPerItemMax);
    EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
    const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
@@ -274,10 +274,10 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
    const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
    size_t cItemsRemaining = cInstances;
-   if(cInstances <= cItemsPerBitPackDataUnit) {
+   if(cInstances <= cItemsPerBitPackedDataUnit) {
       goto one_last_loop;
    }
-   pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackDataUnit + 1);
+   pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
    EBM_ASSERT(pResidualError < pResidualErrorExit);
    EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
@@ -293,7 +293,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level 
       //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
-      cItemsRemaining = cItemsPerBitPackDataUnit;
+      cItemsRemaining = cItemsPerBitPackedDataUnit;
       // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
       // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
    one_last_loop:;
@@ -378,7 +378,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
       cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
       EBM_ASSERT(0 < cItemsRemaining);
-      EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackDataUnit);
+      EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
 
       pResidualErrorExit = pResidualErrorTrueEnd;
 
