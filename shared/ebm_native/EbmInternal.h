@@ -270,8 +270,18 @@ constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountT
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
 // places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
+// TODO: do we really need the static_cast to size_t here?
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) \
    ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
+
+// THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
+// We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
+// This will effectively turn the variable into a compile time constant if it can be resolved at compile time
+// having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in 
+// places where you couldn't do so with variable loop iterations
+#define GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(MACRO_compilerCountItemsPerBitPackedDataUnit, MACRO_runtimeCountItemsPerBitPackedDataUnit) \
+   (k_cItemsPerBitPackedDataUnitDynamic == (MACRO_compilerCountItemsPerBitPackedDataUnit) ? \
+      (MACRO_runtimeCountItemsPerBitPackedDataUnit) : (MACRO_compilerCountItemsPerBitPackedDataUnit))
 
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) {
@@ -302,10 +312,14 @@ constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
 constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
+constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
+constexpr size_t k_cItemsPerBitPackedDataUnitMax = 16; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
+constexpr size_t k_cItemsPerBitPackedDataUnitMin = 8; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
 constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
-   return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
+   return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ? 
+      k_cItemsPerBitPackedDataUnitDynamic : k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }
 
 WARNING_PUSH

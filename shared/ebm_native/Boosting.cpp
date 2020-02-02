@@ -1576,7 +1576,6 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // If we do feature combinations here then we have to keep in instruction cache a whole bunch of options
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
-         pFeatureCombination->m_cItemsPerBitPackedDataUnit,
          pFeatureCombination,
          pEbmBoostingState->m_pTrainingSet,
          aModelFeatureCombinationUpdateTensor

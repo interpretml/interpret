@@ -121,7 +121,6 @@ static void OptimizedApplyModelUpdateTrainingInternal(
    DataSetByFeatureCombination * const pTrainingSet,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 ) {
-   UNUSED(runtimeCountItemsPerBitPackedDataUnit); // TODO make it so that we can pass 0 to compilerCountItemsPerBitPackedDataUnit for using the runtime version
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -133,7 +132,10 @@ static void OptimizedApplyModelUpdateTrainingInternal(
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
 
-   const size_t cItemsPerBitPackedDataUnit = compilerCountItemsPerBitPackedDataUnit;
+   const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
+      compilerCountItemsPerBitPackedDataUnit, 
+      runtimeCountItemsPerBitPackedDataUnit
+   );
    EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
    EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
@@ -333,7 +335,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class OptimizedApplyModelUpdateTrainingCompiler<compilerLearningTypeOrCountTargetClasses, 1> {
+class OptimizedApplyModelUpdateTrainingCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static void MagicCompilerLoopFunction(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -342,21 +344,21 @@ public:
       DataSetByFeatureCombination * const pTrainingSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(1 == runtimeCountItemsPerBitPackedDataUnit); // this is only true if we've tried all possible template values
-      OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, 1>(
+      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
+      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+      OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>(
          runtimeLearningTypeOrCountTargetClasses,
          runtimeCountItemsPerBitPackedDataUnit,
          pFeatureCombination,
          pTrainingSet,
          aModelFeatureCombinationUpdateTensor
-         );
+      );
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 EBM_INLINE static void OptimizedApplyModelUpdateTraining(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t runtimeCountItemsPerBitPackedDataUnit,
    const FeatureCombination * const pFeatureCombination,
    DataSetByFeatureCombination * const pTrainingSet,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -372,10 +374,10 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
    } else {
       OptimizedApplyModelUpdateTrainingCompiler<
          compilerLearningTypeOrCountTargetClasses,
-         k_cBitsForStorageType
+         k_cItemsPerBitPackedDataUnitMax
       >::MagicCompilerLoopFunction(
          runtimeLearningTypeOrCountTargetClasses,
-         runtimeCountItemsPerBitPackedDataUnit,
+         pFeatureCombination->m_cItemsPerBitPackedDataUnit,
          pFeatureCombination,
          pTrainingSet,
          aModelFeatureCombinationUpdateTensor
