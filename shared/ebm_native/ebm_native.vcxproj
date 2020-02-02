@@ -300,6 +300,7 @@ EXIT /B 0
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="DimensionMultiple.h" />
+    <ClInclude Include="OptimizedApplyModelUpdateTraining.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramBucketVectorEntry.h" />
     <ClInclude Include="RandomStream.h" />

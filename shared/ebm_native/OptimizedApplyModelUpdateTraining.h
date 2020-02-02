@@ -1,0 +1,387 @@
+// Copyright (c) 2018 Microsoft Corporation
+// Licensed under the MIT license.
+// Author: Paul Koch <ebm@koch.ninja>
+
+#ifndef OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
+#define OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
+
+#include <stddef.h> // size_t, ptrdiff_t
+
+#include "ebm_native.h"
+#include "EbmInternal.h"
+// very independent includes
+#include "Logging.h" // EBM_ASSERT & LOG
+#include "EbmStatistics.h"
+// FeatureCombination.h depends on FeatureInternal.h
+#include "FeatureCombination.h"
+// dataset depends on features
+#include "DataSetByFeatureCombination.h"
+
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+static void UpdateScoresAndResidualsForTrainingSetZeroFeatures(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   DataSetByFeatureCombination * const pTrainingSet,
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+) {
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cInstances = pTrainingSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
+
+   FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+   const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
+   if(bClassification) {
+      FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
+      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
+      if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
+         const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
+         do {
+            StorageDataType targetData = *pTargetData;
+            // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+            const FloatEbmType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
+            *pTrainingPredictorScores = trainingPredictorScore;
+            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(trainingPredictorScore, targetData);
+            *pResidualError = residualError;
+            ++pResidualError;
+            ++pTrainingPredictorScores;
+            ++pTargetData;
+         } while(pResidualErrorEnd != pResidualError);
+      } else {
+         const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
+         do {
+            StorageDataType targetData = *pTargetData;
+            FloatEbmType sumExp = 0;
+            size_t iVector1 = 0;
+            do {
+               // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the
+               // compiler could reason about their visibility and optimize small arrays into registers
+               const FloatEbmType smallChangeToPredictorScores = pValues[iVector1];
+               // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+               const FloatEbmType trainingPredictorScores = pTrainingPredictorScores[iVector1] + smallChangeToPredictorScores;
+               pTrainingPredictorScores[iVector1] = trainingPredictorScores;
+               sumExp += EbmExp(trainingPredictorScores);
+               ++iVector1;
+            } while(iVector1 < cVectorLength);
+
+            EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+            const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
+            StorageDataType iVector2 = 0;
+            do {
+               // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we 
+               // should just do it once instead and store the result in a small memory array here
+               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
+                  sumExp,
+                  pTrainingPredictorScores[iVector2],
+                  targetData,
+                  iVector2
+               );
+               *pResidualError = residualError;
+               ++pResidualError;
+               ++iVector2;
+            } while(iVector2 < cVectorLengthStorage);
+            // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
+            // 
+            // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
+            // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
+            // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of 
+            // values insted of allowing them to be scaled.  
+            // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
+            // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels 
+            // eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
+            constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+            if(bZeroingResiduals) {
+               *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
+            }
+            pTrainingPredictorScores += cVectorLength;
+            ++pTargetData;
+         } while(pResidualErrorEnd != pResidualError);
+      }
+   } else {
+      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+      const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
+      do {
+         // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+         *pResidualError = residualError;
+         ++pResidualError;
+      } while(pResidualErrorEnd != pResidualError);
+   }
+}
+// a*PredictorScores = logOdds for binary classification
+// a*PredictorScores = logWeights for multiclass classification
+// a*PredictorScores = predictedValue for regression
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
+static void UpdateScoresAndResidualsForTrainingSetInternal(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t runtimeCountItemsPerBitPackedDataUnit,
+   const FeatureCombination * const pFeatureCombination,
+   DataSetByFeatureCombination * const pTrainingSet,
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+) {
+   UNUSED(runtimeCountItemsPerBitPackedDataUnit); // TODO make it so that we can pass 0 to compilerCountItemsPerBitPackedDataUnit for using the runtime version
+   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+
+   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+      compilerLearningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses
+   );
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cInstances = pTrainingSet->GetCountInstances();
+   EBM_ASSERT(0 < cInstances);
+   EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+
+   const size_t cItemsPerBitPackedDataUnit = compilerCountItemsPerBitPackedDataUnit;
+   EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
+   EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+   const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
+   const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
+
+   const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
+   FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
+
+   if(bClassification) {
+      FloatEbmType * pTrainingPredictorScores = pTrainingSet->GetPredictorScores();
+      const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
+
+      // this shouldn't overflow since we're accessing existing memory
+      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackedDataUnit) {
+         goto one_last_loop_classification;
+      }
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pResidualError < pResidualErrorExit);
+      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+
+      do {
+         cItemsRemaining = cItemsPerBitPackedDataUnit;
+         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
+         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
+      one_last_loop_classification:;
+         // we store the already multiplied dimensional value in *pInputData
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         ++pInputData;
+         do {
+            StorageDataType targetData = *pTargetData;
+
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
+
+            if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
+               const FloatEbmType smallChangeToPredictorScores = pValues[0];
+               // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+               const FloatEbmType trainingPredictorScore = *pTrainingPredictorScores + smallChangeToPredictorScores;
+               *pTrainingPredictorScores = trainingPredictorScore;
+               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(trainingPredictorScore, targetData);
+               *pResidualError = residualError;
+               ++pResidualError;
+            } else {
+               FloatEbmType sumExp = 0;
+               size_t iVector1 = 0;
+               do {
+                  const FloatEbmType smallChangeToPredictorScores = pValues[iVector1];
+                  // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+                  const FloatEbmType trainingPredictorScores = pTrainingPredictorScores[iVector1] + smallChangeToPredictorScores;
+                  pTrainingPredictorScores[iVector1] = trainingPredictorScores;
+                  sumExp += EbmExp(trainingPredictorScores);
+                  ++iVector1;
+               } while(iVector1 < cVectorLength);
+
+               EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
+               const StorageDataType cVectorLengthStorage = static_cast<StorageDataType>(cVectorLength);
+               StorageDataType iVector2 = 0;
+               do {
+                  // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we 
+                  // should just do it once instead and store the result in a small memory array here
+                  const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
+                     sumExp,
+                     pTrainingPredictorScores[iVector2],
+                     targetData,
+                     iVector2
+                  );
+                  *pResidualError = residualError;
+                  ++pResidualError;
+                  ++iVector2;
+               } while(iVector2 < cVectorLengthStorage);
+               // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
+               // 
+               // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
+               // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the 
+               // first one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid 
+               // set of values insted of allowing them to be scaled.  
+               // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which 
+               // will be multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which 
+               // cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
+               constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+               if(bZeroingResiduals) {
+                  *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
+               }
+            }
+            pTrainingPredictorScores += cVectorLength;
+            ++pTargetData;
+
+            iTensorBinCombined >>= cBitsPerItemMax;
+            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder 
+            // for the compiler to optimize the loop away
+            --cItemsRemaining;
+         } while(0 != cItemsRemaining);
+      } while(pResidualErrorExit != pResidualError);
+
+      // first time through?
+      if(pResidualErrorTrueEnd != pResidualError) {
+         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
+
+         pResidualErrorExit = pResidualErrorTrueEnd;
+
+         goto one_last_loop_classification;
+      }
+   } else {
+      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+
+      // this shouldn't overflow since we're accessing existing memory
+      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
+      size_t cItemsRemaining = cInstances;
+      if(cInstances <= cItemsPerBitPackedDataUnit) {
+         goto one_last_loop_regression;
+      }
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pResidualError < pResidualErrorExit);
+      EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
+
+      do {
+         cItemsRemaining = cItemsPerBitPackedDataUnit;
+         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
+         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
+      one_last_loop_regression:;
+         // we store the already multiplied dimensional value in *pInputData
+         size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
+         ++pInputData;
+         do {
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+            const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
+            // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
+            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
+            *pResidualError = residualError;
+            ++pResidualError;
+
+            iTensorBinCombined >>= cBitsPerItemMax;
+            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it 
+            // harder for the compiler to optimize the loop away
+            --cItemsRemaining;
+         } while(0 != cItemsRemaining);
+      } while(pResidualErrorExit != pResidualError);
+
+      // first time through?
+      if(pResidualErrorTrueEnd != pResidualError) {
+         EBM_ASSERT(0 == (pResidualErrorTrueEnd - pResidualError) % cVectorLength);
+         cItemsRemaining = (pResidualErrorTrueEnd - pResidualError) / cVectorLength;
+         EBM_ASSERT(0 < cItemsRemaining);
+         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
+
+         pResidualErrorExit = pResidualErrorTrueEnd;
+
+         goto one_last_loop_regression;
+      }
+   }
+}
+// C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
+class UpdateScoresAndResidualsForTrainingSetCompiler {
+public:
+   EBM_INLINE static void MagicCompilerLoopFunction(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      const FeatureCombination * const pFeatureCombination,
+      DataSetByFeatureCombination * const pTrainingSet,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
+      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
+      static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
+      if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
+         UpdateScoresAndResidualsForTrainingSetInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>(
+            runtimeLearningTypeOrCountTargetClasses,
+            runtimeCountItemsPerBitPackedDataUnit,
+            pFeatureCombination,
+            pTrainingSet,
+            aModelFeatureCombinationUpdateTensor
+            );
+      } else {
+         UpdateScoresAndResidualsForTrainingSetCompiler<
+            compilerLearningTypeOrCountTargetClasses,
+            GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
+         >::MagicCompilerLoopFunction(
+            runtimeLearningTypeOrCountTargetClasses,
+            runtimeCountItemsPerBitPackedDataUnit,
+            pFeatureCombination,
+            pTrainingSet,
+            aModelFeatureCombinationUpdateTensor
+         );
+      }
+   }
+};
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+class UpdateScoresAndResidualsForTrainingSetCompiler<compilerLearningTypeOrCountTargetClasses, 1> {
+public:
+   EBM_INLINE static void MagicCompilerLoopFunction(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      const FeatureCombination * const pFeatureCombination,
+      DataSetByFeatureCombination * const pTrainingSet,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      EBM_ASSERT(1 == runtimeCountItemsPerBitPackedDataUnit); // this is only true if we've tried all possible template values
+      UpdateScoresAndResidualsForTrainingSetInternal<compilerLearningTypeOrCountTargetClasses, 1>(
+         runtimeLearningTypeOrCountTargetClasses,
+         runtimeCountItemsPerBitPackedDataUnit,
+         pFeatureCombination,
+         pTrainingSet,
+         aModelFeatureCombinationUpdateTensor
+         );
+   }
+};
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
+EBM_INLINE static void UpdateScoresAndResidualsForTrainingSet(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t runtimeCountItemsPerBitPackedDataUnit,
+   const FeatureCombination * const pFeatureCombination,
+   DataSetByFeatureCombination * const pTrainingSet,
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+) {
+   LOG_0(TraceLevelVerbose, "Entered UpdateScoresAndResidualsForTrainingSet");
+
+   if(0 == pFeatureCombination->m_cFeatures) {
+      UpdateScoresAndResidualsForTrainingSetZeroFeatures<compilerLearningTypeOrCountTargetClasses>(
+         runtimeLearningTypeOrCountTargetClasses,
+         pTrainingSet,
+         aModelFeatureCombinationUpdateTensor
+         );
+   } else {
+      UpdateScoresAndResidualsForTrainingSetCompiler<
+         compilerLearningTypeOrCountTargetClasses,
+         k_cBitsForStorageType
+      >::MagicCompilerLoopFunction(
+         runtimeLearningTypeOrCountTargetClasses,
+         runtimeCountItemsPerBitPackedDataUnit,
+         pFeatureCombination,
+         pTrainingSet,
+         aModelFeatureCombinationUpdateTensor
+      );
+   }
+
+   LOG_0(TraceLevelVerbose, "Exited UpdateScoresAndResidualsForTrainingSet");
+}
+
+#endif // OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
