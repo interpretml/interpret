@@ -852,6 +852,7 @@ public:
       }
 
       if(nullptr == m_pEbmBoosting) {
+         printf("\nClean exit with nullptr from InitializeBoosting*.\n");
          exit(1);
       }
       m_stage = Stage::InitializedBoosting;

@@ -11,6 +11,10 @@
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
+// when R compiles this library, on some systems it can generate a "NOTE installed size is.." meaning the C++ compiled into a library produces too big a
+// library.  We would want to disable the -g flag (with -g0), but according to this, it's not possible currently:
+// https://stat.ethz.ch/pipermail/r-devel/2016-October/073273.html
+
 // TODO: switch logging to use the R logging infrastructure when invoked from R, BUT calling error or warning will generate longjumps, which 
 //   bypass the regular return mechanisms.  We need to use R_tryCatch (which is older than R_UnwindProtect) to not leak memory that we allocate 
 //   before calling the R error or warning functions

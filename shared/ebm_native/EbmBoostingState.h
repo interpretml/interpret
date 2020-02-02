@@ -32,7 +32,7 @@ union CachedThreadResourcesUnion {
 
    EBM_INLINE CachedThreadResourcesUnion(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
       LOG_N(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
-      const size_t cVectorLength = GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses);
+      const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          // member classes inside a union requre explicit call to constructor
          new(&classification) CachedBoostingThreadResources<true>(cVectorLength);
@@ -109,9 +109,9 @@ public:
       , m_apBestModel(nullptr)
       , m_bestModelMetric(FloatEbmType { std::numeric_limits<FloatEbmType>::max() })
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
+         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLengthFlat(runtimeLearningTypeOrCountTargetClasses)))
+         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)

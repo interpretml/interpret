@@ -152,7 +152,7 @@ void BinDataSetTrainingZeroDimensions(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
 
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
@@ -251,7 +251,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    const size_t cItemsPerBitPackDataUnit = pFeatureCombination->m_cItemsPerBitPackDataUnit;
    EBM_ASSERT(1 <= cItemsPerBitPackDataUnit);
    EBM_ASSERT(cItemsPerBitPackDataUnit <= k_cBitsForStorageType);
@@ -482,7 +482,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -592,7 +592,7 @@ size_t CompressHistogramBuckets(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 

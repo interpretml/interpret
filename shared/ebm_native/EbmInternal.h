@@ -244,7 +244,7 @@ constexpr EBM_INLINE bool IsMulticlass(const ptrdiff_t learningTypeOrCountTarget
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-constexpr EBM_INLINE size_t GetVectorLengthFlat(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
@@ -279,7 +279,7 @@ constexpr size_t CountBitsRequired(const T maxValue) {
    return 0 == maxValue ? 0 : 1 + CountBitsRequired<T>(maxValue / 2);
 }
 template<typename T>
-constexpr size_t CountBitsRequiredPositiveMax() {
+constexpr EBM_INLINE size_t CountBitsRequiredPositiveMax() {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
 
@@ -303,7 +303,7 @@ constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
-   // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1
+   // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cBitsForStorageType / ((k_cBitsForStorageType / cItemsBitPackedPrev) + 1);
 }

@@ -93,7 +93,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
@@ -381,7 +381,7 @@ bool GrowDecisionTree(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
    EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cInstancesTotal); // filter these out at the start where we can handle this case easily
@@ -768,7 +768,7 @@ bool BoostZeroDimensional(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
@@ -837,7 +837,7 @@ bool BoostSingleDimensional(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");

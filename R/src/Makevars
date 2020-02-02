@@ -6,6 +6,8 @@ NATIVEDIR=../../shared/ebm_native
 
 CXX_STD = CXX11
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -DEBM_NATIVE_R
-PKG_CXXFLAGS=$(CXX_VISIBILITY)
+# TODO test adding the following flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
+# -fvisibility-inlines-hidden -g0 -O3 -ffast-math -fno-finite-math-only
+PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
 OBJECTS = interpret_R.o $(NATIVEDIR)/DataSetByFeature.o $(NATIVEDIR)/DataSetByFeatureCombination.o $(NATIVEDIR)/InteractionDetection.o $(NATIVEDIR)/Logging.o $(NATIVEDIR)/SamplingWithReplacement.o $(NATIVEDIR)/Boosting.o

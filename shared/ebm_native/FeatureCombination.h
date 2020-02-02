@@ -19,6 +19,7 @@ public:
       const Feature * m_pFeature;
    };
 
+   // TODO: rename this to m_cItemsPerBitPackedDataUnit
    size_t m_cItemsPerBitPackDataUnit;
    size_t m_cFeatures;
    size_t m_iInputData;

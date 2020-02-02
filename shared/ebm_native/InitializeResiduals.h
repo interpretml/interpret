@@ -37,7 +37,7 @@ static void InitializeResiduals(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(0 < cVectorLength);
    // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
    EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances));

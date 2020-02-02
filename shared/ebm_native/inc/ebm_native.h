@@ -432,11 +432,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 //                  sparse features, so you're stuck with dense features if you go this route.
 //   - OBSERVATION: For templates, always put the more universal template featutres at the end, incase C++ changes such that variadic template/macros
 //                  work for us someday (currently they only allow only just typenames or the same datatypes per parameter pack)
-//   - OBSERVATION: For interaction detection, we'll want our template to be: <cDataItemsPerPack, cDimensions, compilerLearningTypeOrCountTargetClasses>
+//   - OBSERVATION: For interaction detection, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions, cDataItemsPerPack>
 //                  The main reason is that we want to load data via SIMD, and we can't have branches in order to do that, so we can't bitpack each feature
 //                  differently, so they all need to use the same number of bits per pack.
-//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <cDataItemsPerPack, compilerLearningTypeOrCountTargetClasses>
-//   - OBSERVATION: For partitioning, we'll want our template to be: <cDimensions, compilerLearningTypeOrCountTargetClasses>
+//   - OBSERVATION: For histogram creation and updating, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDataItemsPerPack>
+//   - OBSERVATION: For partitioning, we'll want our template to be: <compilerLearningTypeOrCountTargetClasses, cDimensions>
 //   - OBSERVATION: THIS SECTION IS WRONG -> Branch misprediction is on the order of 12-20 cycles.  When doing interactions, we can template JUST the # of features
 //                  since if we didn't then the # of features loop would branch mis-predict per loop, and that's bad
 //                  BUT we can keep the compressed 64 bit number for each feature(which can now be in a regsiter since the # of features is templated)

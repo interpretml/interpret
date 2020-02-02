@@ -56,7 +56,7 @@ void GetTotalsDebugSlow(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength));
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
@@ -107,7 +107,7 @@ void CompareTotalsDebug(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -456,7 +456,7 @@ void BuildFastTotals(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -800,7 +800,7 @@ void GetTotals(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -961,7 +961,7 @@ FloatEbmType SweepMultiDiemensional(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
    EBM_ASSERT(!IsMultiplyError(2, cBytesPerHistogramBucket)); // we're accessing allocated memory
@@ -1237,7 +1237,7 @@ bool BoostMultiDimensional(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       LOG_0(
          TraceLevelWarning, 
@@ -2366,7 +2366,7 @@ bool CalculateInteractionScore(
       compilerLearningTypeOrCountTargetClasses, 
       runtimeLearningTypeOrCountTargetClasses
    );
-   const size_t cVectorLength = GetVectorLengthFlat(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
    if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
       LOG_0(
