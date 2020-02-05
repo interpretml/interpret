@@ -313,8 +313,8 @@ constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
-constexpr size_t k_cItemsPerBitPackedDataUnitMax = 16; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
-constexpr size_t k_cItemsPerBitPackedDataUnitMin = 8; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
+constexpr size_t k_cItemsPerBitPackedDataUnitMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
+constexpr size_t k_cItemsPerBitPackedDataUnitMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
 constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
