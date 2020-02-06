@@ -365,6 +365,9 @@ EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
 
    // for algorithm, see https://codingforspeed.com/using-faster-exponential-approximation/
    // TODO make the number of multiplications below a copmile time constant so we can try different values (9 in the code below)
+
+   // here's annohter implementation in AVX-512 (with a table)-> http://www.ecs.umass.edu/arith-2018/pdf/arith25_18.pdf
+
    val = FloatEbmType { 1 } + val / FloatEbmType { 512 };
    val *= val;
    val *= val;

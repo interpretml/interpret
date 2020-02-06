@@ -570,7 +570,7 @@ public:
 
    EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(
       const FloatEbmType trainingLogOddsPrediction, 
-      const StorageDataType binnedActualValue
+      const size_t binnedActualValue
    ) {
       // this IS a performance critical function.  It gets called per instance!
 
@@ -628,8 +628,8 @@ public:
    EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType trainingLogWeight, 
-      const StorageDataType binnedActualValue, 
-      const StorageDataType iVector
+      const size_t binnedActualValue, 
+      const size_t iVector
    ) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
@@ -711,7 +711,7 @@ public:
 
    EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(
       const FloatEbmType validationLogOddsPrediction, 
-      const StorageDataType binnedActualValue
+      const size_t binnedActualValue
    ) {
       // this IS a performance critical function.  It gets called per validation instance!
 
@@ -764,7 +764,7 @@ public:
    EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType * const aValidationLogWeight, 
-      const StorageDataType binnedActualValue
+      const size_t binnedActualValue
    ) {
       // this IS a performance critical function.  It gets called per validation instance!
 

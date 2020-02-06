@@ -38,40 +38,38 @@ public:
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
-      FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      const FloatEbmType * const pValidationPredictionEnd = pValidationPredictorScores + cVectorLength * cInstances;
       FloatEbmType sumLogLoss = FloatEbmType { 0 };
-      const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
+      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
+      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances * cVectorLength;
       do {
-         StorageDataType targetData = *pTargetData;
+         size_t targetData = static_cast<size_t>(*pTargetData);
+         ++pTargetData;
+         const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
          FloatEbmType sumExp = FloatEbmType { 0 };
-         size_t iVector1 = 0;
+         size_t iVector = 0;
          do {
             // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
-            const FloatEbmType smallChangeToPredictorScores = pValues[iVector1];
+            const FloatEbmType smallChangeToPredictorScores = *pValues;
+            ++pValues;
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-
-            const FloatEbmType validationPredictorScore = *pValidationPredictorScores + smallChangeToPredictorScores;
-            *pValidationPredictorScores = validationPredictorScore;
-            sumExp += EbmExp(validationPredictorScore);
-            ++pValidationPredictorScores;
-
-            // TODO : consider replacing iVector with pValidationPredictorScoresInnerEnd
-            ++iVector1;
-         } while(iVector1 < cVectorLength);
+            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            *pPredictorScores = predictorScore;
+            ++pPredictorScores;
+            sumExp += EbmExp(predictorScore);
+            ++iVector;
+         } while(iVector < cVectorLength);
          // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably 
          // even more expensive than an unconditional branch
          const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
             sumExp,
-            pValidationPredictorScores - cVectorLength,
+            pPredictorScores - cVectorLength,
             targetData
          );
          EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
          sumLogLoss += instanceLogLoss;
-         ++pTargetData;
-      } while(pValidationPredictionEnd != pValidationPredictorScores);
+      } while(pPredictorScoresEnd != pPredictorScores);
       return sumLogLoss / cInstances;
    }
 };
@@ -89,22 +87,22 @@ public:
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
-      FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
-      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
-      const FloatEbmType * const pValidationPredictionEnd = pValidationPredictorScores + cInstances;
       FloatEbmType sumLogLoss = 0;
+      const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
+      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances;
       const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
       do {
-         StorageDataType targetData = *pTargetData;
+         size_t targetData = static_cast<size_t>(*pTargetData);
+         ++pTargetData;
          // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-         const FloatEbmType validationPredictorScore = *pValidationPredictorScores + smallChangeToPredictorScores;
-         *pValidationPredictorScores = validationPredictorScore;
-         const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(validationPredictorScore, targetData);
+         const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+         *pPredictorScores = predictorScore;
+         ++pPredictorScores;
+         const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(predictorScore, targetData);
          EBM_ASSERT(std::isnan(instanceLogLoss) || FloatEbmType { 0 } <= instanceLogLoss);
          sumLogLoss += instanceLogLoss;
-         ++pValidationPredictorScores;
-         ++pTargetData;
-      } while(pValidationPredictionEnd != pValidationPredictorScores);
+      } while(pPredictorScoresEnd != pPredictorScores);
       return sumLogLoss / cInstances;
    }
 };
@@ -122,10 +120,10 @@ public:
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
+      FloatEbmType sumSquareError = FloatEbmType { 0 };
       FloatEbmType * pResidualError = pValidationSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
       const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
-      FloatEbmType sumSquareError = FloatEbmType { 0 };
       do {
          // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
          const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
@@ -172,79 +170,70 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
+      FloatEbmType sumLogLoss = FloatEbmType { 0 };
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
-
-      FloatEbmType sumLogLoss = 0;
-      FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
+      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pValidationPredictorScoresTrueEnd = pValidationPredictorScores + cVectorLength * cInstances;
-      const FloatEbmType * pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
-      size_t cItemsRemaining = cInstances;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances * cVectorLength;
+      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
+      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
       if(cInstances <= cItemsPerBitPackedDataUnit) {
-         goto one_last_loop_classification;
+         goto one_last_loop;
       }
-      pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
-      EBM_ASSERT(pValidationPredictorScores < pValidationPredictorScoresExit);
-      EBM_ASSERT(pValidationPredictorScoresExit < pValidationPredictorScoresTrueEnd);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
+      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
+      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         cItemsRemaining = cItemsPerBitPackedDataUnit;
-         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
-         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
-      one_last_loop_classification:;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit * cVectorLength;
+         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+      one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            StorageDataType targetData = *pTargetData;
+            size_t targetData = static_cast<size_t>(*pTargetData);
+            ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
             FloatEbmType sumExp = 0;
-            size_t iVector1 = 0;
+            size_t iVector = 0;
             do {
-               const FloatEbmType smallChangeToPredictorScores = pValues[iVector1];
+               const FloatEbmType smallChangeToPredictorScores = *pValues;
+               ++pValues;
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
 
-               const FloatEbmType validationPredictorScore = *pValidationPredictorScores + smallChangeToPredictorScores;
-               *pValidationPredictorScores = validationPredictorScore;
-               sumExp += EbmExp(validationPredictorScore);
-               ++pValidationPredictorScores;
-
-               // TODO : consider replacing iVector with pValidationPredictorScoresInnerEnd
-               ++iVector1;
-            } while(iVector1 < cVectorLength);
+               const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+               *pPredictorScores = predictorScore;
+               ++pPredictorScores;
+               sumExp += EbmExp(predictorScore);
+               ++iVector;
+            } while(iVector < cVectorLength);
             // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and 
             // probably even more expensive than an unconditional branch
             const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
                sumExp,
-               pValidationPredictorScores - cVectorLength,
+               pPredictorScores - cVectorLength,
                targetData
             );
+
             EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
             sumLogLoss += instanceLogLoss;
-            ++pTargetData;
 
             iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder 
-            // for the compiler to optimize the loop away
-            --cItemsRemaining;
-         } while(0 != cItemsRemaining);
-      } while(pValidationPredictorScoresExit != pValidationPredictorScores);
+         } while(pPredictorScoresInnerEnd != pPredictorScores);
+      } while(pPredictorScoresExit != pPredictorScores);
 
       // first time through?
-      if(pValidationPredictorScoresTrueEnd != pValidationPredictorScores) {
-         EBM_ASSERT(0 == (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) % cVectorLength);
-         cItemsRemaining = (pValidationPredictorScoresTrueEnd - pValidationPredictorScores) / cVectorLength;
-         EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
-
-         pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
-
-         goto one_last_loop_classification;
+      if(pPredictorScoresTrueEnd != pPredictorScores) {
+         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+         pPredictorScoresExit = pPredictorScoresTrueEnd;
+         goto one_last_loop;
       }
       return sumLogLoss / cInstances;
    }
@@ -277,65 +266,56 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
+      FloatEbmType sumLogLoss = FloatEbmType { 0 };
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
-      FloatEbmType sumLogLoss = 0;
-
-      FloatEbmType * pValidationPredictorScores = pValidationSet->GetPredictorScores();
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
+      FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pValidationPredictorScoresTrueEnd = pValidationPredictorScores + cInstances;
-      const FloatEbmType * pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
-      size_t cItemsRemaining = cInstances;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances;
+      const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
+      const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
       if(cInstances <= cItemsPerBitPackedDataUnit) {
-         goto one_last_loop_classification;
+         goto one_last_loop;
       }
-      pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
-      EBM_ASSERT(pValidationPredictorScores < pValidationPredictorScoresExit);
-      EBM_ASSERT(pValidationPredictorScoresExit < pValidationPredictorScoresTrueEnd);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
+      EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
       do {
-         cItemsRemaining = cItemsPerBitPackedDataUnit;
-         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
-         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
-      one_last_loop_classification:;
+         pPredictorScoresInnerEnd = pPredictorScores + cItemsPerBitPackedDataUnit;
+         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+      one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
          do {
-            StorageDataType targetData = *pTargetData;
-
-            const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin];
-
-            const FloatEbmType smallChangeToPredictorScores = pValues[0];
-            // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-            const FloatEbmType validationPredictorScore = *pValidationPredictorScores + smallChangeToPredictorScores;
-            *pValidationPredictorScores = validationPredictorScore;
-            const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(validationPredictorScore, targetData);
-            EBM_ASSERT(std::isnan(instanceLogLoss) || FloatEbmType { 0 } <= instanceLogLoss);
-            sumLogLoss += instanceLogLoss;
-            ++pValidationPredictorScores;
+            size_t targetData = static_cast<size_t>(*pTargetData);
             ++pTargetData;
 
+            const size_t iTensorBin = maskBits & iTensorBinCombined;
+
+            const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[iTensorBin];
+            // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
+            const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
+            *pPredictorScores = predictorScore;
+            ++pPredictorScores;
+            const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(predictorScore, targetData);
+
+            EBM_ASSERT(std::isnan(instanceLogLoss) || FloatEbmType { 0 } <= instanceLogLoss);
+            sumLogLoss += instanceLogLoss;
+
             iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it harder 
-            // for the compiler to optimize the loop away
-            --cItemsRemaining;
-         } while(0 != cItemsRemaining);
-      } while(pValidationPredictorScoresExit != pValidationPredictorScores);
+         } while(pPredictorScoresInnerEnd != pPredictorScores);
+      } while(pPredictorScoresExit != pPredictorScores);
 
       // first time through?
-      if(pValidationPredictorScoresTrueEnd != pValidationPredictorScores) {
-         cItemsRemaining = pValidationPredictorScoresTrueEnd - pValidationPredictorScores;
-         EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
-
-         pValidationPredictorScoresExit = pValidationPredictorScoresTrueEnd;
-
-         goto one_last_loop_classification;
+      if(pPredictorScoresTrueEnd != pPredictorScores) {
+         pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
+         pPredictorScoresExit = pPredictorScoresTrueEnd;
+         goto one_last_loop;
       }
-
       return sumLogLoss / cInstances;
    }
 };
@@ -375,19 +355,19 @@ public:
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cInstances;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
-      size_t cItemsRemaining = cInstances;
+      const FloatEbmType * pResidualErrorInnerEnd = pResidualErrorTrueEnd;
       if(cInstances <= cItemsPerBitPackedDataUnit) {
-         goto one_last_loop_regression;
+         goto one_last_loop;
       }
       pResidualErrorExit = pResidualErrorTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
       do {
-         cItemsRemaining = cItemsPerBitPackedDataUnit;
-         // TODO : jumping back into this loop and changing cItemsRemaining to a dynamic value that isn't compile time determinable
-         // causes this function to NOT be optimized as much as it could if we had two separate loops.  We're just trying this out for now though
-      one_last_loop_regression:;
+         pResidualErrorInnerEnd = pResidualError + cItemsPerBitPackedDataUnit;
+         // jumping back into this loop and changing pPredictorScoresInnerEnd to a dynamic value that isn't compile time determinable causes this 
+         // function to NOT be optimized for templated cItemsPerBitPackedDataUnit, but that's ok since avoiding one unpredictable branch here is negligible
+      one_last_loop:;
          // we store the already multiplied dimensional value in *pInputData
          size_t iTensorBinCombined = static_cast<size_t>(*pInputData);
          ++pInputData;
@@ -403,21 +383,14 @@ public:
             ++pResidualError;
 
             iTensorBinCombined >>= cBitsPerItemMax;
-            // TODO : try replacing cItemsRemaining with a pResidualErrorInnerLoopEnd which eliminates one subtact operation, but might make it 
-            // harder for the compiler to optimize the loop away
-            --cItemsRemaining;
-         } while(0 != cItemsRemaining);
+         } while(pResidualErrorInnerEnd != pResidualError);
       } while(pResidualErrorExit != pResidualError);
 
       // first time through?
       if(pResidualErrorTrueEnd != pResidualError) {
-         cItemsRemaining = pResidualErrorTrueEnd - pResidualError;
-         EBM_ASSERT(0 < cItemsRemaining);
-         EBM_ASSERT(cItemsRemaining <= cItemsPerBitPackedDataUnit);
-
+         pResidualErrorInnerEnd = pResidualErrorTrueEnd;
          pResidualErrorExit = pResidualErrorTrueEnd;
-
-         goto one_last_loop_regression;
+         goto one_last_loop;
       }
       return sumSquareError / cInstances;
    }
