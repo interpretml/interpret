@@ -45,7 +45,10 @@ public:
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
+
+
          const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
+         
          FloatEbmType sumExp = FloatEbmType { 0 };
          size_t iVector = 0;
          do {
@@ -201,13 +204,12 @@ public:
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
-            FloatEbmType sumExp = 0;
+            FloatEbmType sumExp = FloatEbmType { 0 };
             size_t iVector = 0;
             do {
                const FloatEbmType smallChangeToPredictorScores = *pValues;
                ++pValues;
                // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
-
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
@@ -347,9 +349,9 @@ public:
       EBM_ASSERT(cBitsPerItemMax <= k_cBitsForStorageType);
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
-      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
       FloatEbmType sumSquareError = FloatEbmType { 0 };
       FloatEbmType * pResidualError = pValidationSet->GetResidualPointer();
+      const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
 
 
       // this shouldn't overflow since we're accessing existing memory
@@ -373,6 +375,7 @@ public:
          ++pInputData;
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
+
             const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
