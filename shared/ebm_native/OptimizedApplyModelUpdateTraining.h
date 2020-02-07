@@ -25,10 +25,16 @@ public:
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+
+      FloatEbmType aLocalExpVector[
+         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+      ];
+      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -49,6 +55,8 @@ public:
 
          const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
 
+         FloatEbmType * pExpVector = aExpVector;
+
          FloatEbmType sumExp = FloatEbmType { 0 };
          size_t iVector = 0;
          do {
@@ -60,25 +68,26 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            sumExp += EbmExp(predictorScore);
+            const FloatEbmType oneExp = EbmExp(predictorScore);
+            *pExpVector = oneExp;
+            ++pExpVector;
+            sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
          // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably 
          // even more expensive than an unconditional branch
-         pPredictorScores -= cVectorLength;
+         pExpVector -= cVectorLength;
          iVector = 0;
          do {
-            // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we 
-            // should just do it once instead and store the result in a small memory array here
             const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
                sumExp,
-               *pPredictorScores,
+               *pExpVector,
                targetData,
                iVector
             );
+            ++pExpVector;
             *pResidualError = residualError;
             ++pResidualError;
-            ++pPredictorScores;
             ++iVector;
          } while(iVector < cVectorLength);
          // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -105,9 +114,11 @@ public:
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -137,9 +148,11 @@ public:
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -167,10 +180,16 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit,
       const FeatureCombination * const pFeatureCombination,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+
+      FloatEbmType aLocalExpVector[
+         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+      ];
+      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -223,6 +242,8 @@ public:
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
 
+            FloatEbmType * pExpVector = aExpVector;
+
             FloatEbmType sumExp = FloatEbmType { 0 };
             size_t iVector = 0;
             do {
@@ -232,25 +253,26 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               sumExp += EbmExp(predictorScore);
+               const FloatEbmType oneExp = EbmExp(predictorScore);
+               *pExpVector = oneExp;
+               ++pExpVector;
+               sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
             // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and 
             // probably even more expensive than an unconditional branch
-            pPredictorScores -= cVectorLength;
+            pExpVector -= cVectorLength;
             iVector = 0;
             do {
-               // TODO : we're calculating exp(predictionScore) above, and then again in ComputeResidualErrorMulticlass.  exp(..) is expensive so we 
-               // should just do it once instead and store the result in a small memory array here
                const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(
                   sumExp,
-                  *pPredictorScores,
+                  *pExpVector,
                   targetData,
                   iVector
                );
+               ++pExpVector;
                *pResidualError = residualError;
                ++pResidualError;
-               ++pPredictorScores;
                ++iVector;
             } while(iVector < cVectorLength);
             // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
@@ -289,9 +311,11 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit,
       const FeatureCombination * const pFeatureCombination,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
@@ -369,9 +393,11 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit,
       const FeatureCombination * const pFeatureCombination,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
@@ -444,7 +470,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit,
       const FeatureCombination * const pFeatureCombination,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -455,8 +482,9 @@ public:
             runtimeCountItemsPerBitPackedDataUnit,
             pFeatureCombination,
             pTrainingSet,
-            aModelFeatureCombinationUpdateTensor
-            );
+            aModelFeatureCombinationUpdateTensor,
+            aTempFloatVector
+         );
       } else {
          OptimizedApplyModelUpdateTrainingCompiler<
             compilerLearningTypeOrCountTargetClasses,
@@ -466,7 +494,8 @@ public:
             runtimeCountItemsPerBitPackedDataUnit,
             pFeatureCombination,
             pTrainingSet,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureCombinationUpdateTensor,
+            aTempFloatVector
          );
       }
    }
@@ -480,7 +509,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit,
       const FeatureCombination * const pFeatureCombination,
       DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+      FloatEbmType * const aTempFloatVector
    ) {
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -489,7 +519,8 @@ public:
          runtimeCountItemsPerBitPackedDataUnit,
          pFeatureCombination,
          pTrainingSet,
-         aModelFeatureCombinationUpdateTensor
+         aModelFeatureCombinationUpdateTensor,
+         aTempFloatVector
       );
    }
 };
@@ -500,7 +531,8 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
    const bool bUseSIMD,
    const FeatureCombination * const pFeatureCombination,
    DataSetByFeatureCombination * const pTrainingSet,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+   FloatEbmType * const aTempFloatVector
 ) {
    LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateTraining");
 
@@ -508,7 +540,8 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
       OptimizedApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          pTrainingSet,
-         aModelFeatureCombinationUpdateTensor
+         aModelFeatureCombinationUpdateTensor,
+         aTempFloatVector
       );
    } else {
       if(bUseSIMD) {
@@ -532,7 +565,8 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
             pFeatureCombination->m_cItemsPerBitPackedDataUnit,
             pFeatureCombination,
             pTrainingSet,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureCombinationUpdateTensor,
+            aTempFloatVector
          );
       } else {
          // there isn't much benefit in eliminating the loop that unpacks a data unit unless we're also unpacking that to SIMD code
@@ -545,7 +579,8 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
             pFeatureCombination->m_cItemsPerBitPackedDataUnit,
             pFeatureCombination,
             pTrainingSet,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureCombinationUpdateTensor,
+            aTempFloatVector
          );
       }
    }

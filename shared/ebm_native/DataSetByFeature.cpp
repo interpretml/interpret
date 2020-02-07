@@ -17,7 +17,10 @@
 EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
    const size_t cInstances, 
    const void * const aTargetData, 
-   const FloatEbmType * const aPredictorScores, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
+   const FloatEbmType * const aPredictorScores, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   FloatEbmType * const aTempFloatVector
+) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -44,13 +47,20 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
-         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 });
+         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 }, aTempFloatVector);
       } else {
-         InitializeResiduals<k_DynamicClassification>(cInstances, aTargetData, aPredictorScores, aResidualErrors, runtimeLearningTypeOrCountTargetClasses);
+         InitializeResiduals<k_DynamicClassification>(
+            cInstances, 
+            aTargetData, 
+            aPredictorScores, 
+            aResidualErrors, 
+            runtimeLearningTypeOrCountTargetClasses, 
+            aTempFloatVector
+         );
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression);
+      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression, aTempFloatVector);
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
@@ -136,9 +146,10 @@ DataSetByFeature::DataSetByFeature(
    const IntEbmType * const aBinnedData, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   FloatEbmType * const aTempFloatVector
 )
-   : m_aResidualErrors(ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses))
+   : m_aResidualErrors(ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses, aTempFloatVector))
    , m_aaInputData(0 == cFeatures ? nullptr : ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData))
    , m_cInstances(cInstances)
    , m_cFeatures(cFeatures) {

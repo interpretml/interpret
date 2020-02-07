@@ -48,30 +48,31 @@ public:
 
 
          const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
-         
+         FloatEbmType itemExp = FloatEbmType { 0 };
          FloatEbmType sumExp = FloatEbmType { 0 };
          size_t iVector = 0;
          do {
-            // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the
-            // compiler could reason about their visibility and optimize small arrays into registers
             const FloatEbmType smallChangeToPredictorScores = *pValues;
             ++pValues;
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            sumExp += EbmExp(predictorScore);
+            const FloatEbmType oneExp = EbmExp(predictorScore);
+            itemExp = iVector == targetData ? oneExp : itemExp;
+            sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
          // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably 
          // even more expensive than an unconditional branch
          const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
             sumExp,
-            pPredictorScores - cVectorLength,
-            targetData
+            itemExp
          );
+
          EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
          sumLogLoss += instanceLogLoss;
+
       } while(pPredictorScoresEnd != pPredictorScores);
       return sumLogLoss / cInstances;
    }
@@ -203,7 +204,7 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
             const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
-
+            FloatEbmType itemExp = FloatEbmType { 0 };
             FloatEbmType sumExp = FloatEbmType { 0 };
             size_t iVector = 0;
             do {
@@ -213,20 +214,20 @@ public:
                const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
                *pPredictorScores = predictorScore;
                ++pPredictorScores;
-               sumExp += EbmExp(predictorScore);
+               const FloatEbmType oneExp = EbmExp(predictorScore);
+               itemExp = iVector == targetData ? oneExp : itemExp;
+               sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
             // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and 
             // probably even more expensive than an unconditional branch
             const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
                sumExp,
-               pPredictorScores - cVectorLength,
-               targetData
+               itemExp
             );
 
             EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
             sumLogLoss += instanceLogLoss;
-
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
       } while(pPredictorScoresExit != pPredictorScores);

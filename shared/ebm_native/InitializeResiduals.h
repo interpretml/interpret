@@ -20,7 +20,8 @@ static void InitializeResiduals(
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
    FloatEbmType * pResidualError, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   FloatEbmType * const aTempFloatVector
 ) {
    LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
@@ -32,6 +33,11 @@ static void InitializeResiduals(
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != aPredictorScores);
    EBM_ASSERT(nullptr != pResidualError);
+
+   FloatEbmType aLocalExpVector[
+      k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+   ];
+   FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -68,26 +74,30 @@ static void InitializeResiduals(
             ++pPredictorScores;
             ++pResidualError;
          } else {
-            FloatEbmType sumExp = 0;
+            FloatEbmType * pExpVector = aExpVector;
+
+            FloatEbmType sumExp = FloatEbmType { 0 };
             // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
             const FloatEbmType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
 
             for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-               const FloatEbmType predictionScore = *pPredictorScores - subtract;
-               sumExp += EbmExp(predictionScore);
+               const FloatEbmType predictorScore = *pPredictorScores - subtract;
+               const FloatEbmType oneExp = EbmExp(predictorScore);
+               *pExpVector = oneExp;
+               ++pExpVector;
+               sumExp += oneExp;
                ++pPredictorScores;
             }
 
             // go back to the start so that we can iterate again
-            pPredictorScores -= cVectorLengthStorage;
+            pExpVector -= cVectorLength;
 
             for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-               const FloatEbmType predictionScore = *pPredictorScores - subtract;
                // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is 
                //   expensive so we should just do it once instead and store the result in a small memory array here
-               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, predictionScore, target, iVector);
+               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
                *pResidualError = residualError;
-               ++pPredictorScores;
+               ++pExpVector;
                ++pResidualError;
             }
             // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter

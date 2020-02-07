@@ -428,9 +428,17 @@ bool EbmBoostingState::Initialize(
    }
 
    if(bClassification) {
+      FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.classification.m_aTempFloatVector;
       if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<2>(cTrainingInstances, aTrainingTargets, aTrainingPredictorScores, m_pTrainingSet->GetResidualPointer(), ptrdiff_t { 2 });
+            InitializeResiduals<2>(
+               cTrainingInstances, 
+               aTrainingTargets, 
+               aTrainingPredictorScores, 
+               m_pTrainingSet->GetResidualPointer(), 
+               ptrdiff_t { 2 }, 
+               aTempFloatVector
+            );
          }
       } else {
          if(0 != cTrainingInstances) {
@@ -439,19 +447,22 @@ bool EbmBoostingState::Initialize(
                aTrainingTargets, 
                aTrainingPredictorScores, 
                m_pTrainingSet->GetResidualPointer(), 
-               m_runtimeLearningTypeOrCountTargetClasses
+               m_runtimeLearningTypeOrCountTargetClasses,
+               aTempFloatVector
             );
          }
       }
    } else {
       EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
+      FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.regression.m_aTempFloatVector;
       if(0 != cTrainingInstances) {
          InitializeResiduals<k_Regression>(
             cTrainingInstances, 
             aTrainingTargets, 
             aTrainingPredictorScores, 
             m_pTrainingSet->GetResidualPointer(), 
-            k_Regression
+            k_Regression,
+            aTempFloatVector
          );
       }
       if(0 != cValidationInstances) {
@@ -460,7 +471,8 @@ bool EbmBoostingState::Initialize(
             aValidationTargets, 
             aValidationPredictorScores, 
             m_pValidationSet->GetResidualPointer(), 
-            k_Regression
+            k_Regression,
+            aTempFloatVector
          );
       }
    }
@@ -1210,12 +1222,17 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
 
    // if the count of training instances is zero, then pEbmBoostingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmBoostingState->m_pTrainingSet) {
+      FloatEbmType * const aTempFloatVector = IsClassification(compilerLearningTypeOrCountTargetClasses) ?
+         pEbmBoostingState->m_cachedThreadResourcesUnion.classification.m_aTempFloatVector :
+         pEbmBoostingState->m_cachedThreadResourcesUnion.regression.m_aTempFloatVector;
+
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
          false,
          pFeatureCombination,
          pEbmBoostingState->m_pTrainingSet,
-         aModelFeatureCombinationUpdateTensor
+         aModelFeatureCombinationUpdateTensor,
+         aTempFloatVector
       );
    }
 

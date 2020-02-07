@@ -75,7 +75,7 @@ public:
 
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry;
    HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry1;
-   FloatEbmType * const m_aSumResidualErrors2;
+   FloatEbmType * const m_aTempFloatVector;
 
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
@@ -88,7 +88,7 @@ public:
       , m_cThreadByteBufferCapacity2(0)
       , m_aSumHistogramBucketVectorEntry(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
       , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
-      , m_aSumResidualErrors2(new (std::nothrow) FloatEbmType[cVectorLength])
+      , m_aTempFloatVector(new (std::nothrow) FloatEbmType[cVectorLength])
       , m_aEquivalentSplits(nullptr)
       , m_bestTreeNodeToSplit() {
       EBM_ASSERT(0 < cVectorLength);
@@ -101,7 +101,7 @@ public:
       free(m_aThreadByteBuffer2);
       delete[] m_aSumHistogramBucketVectorEntry;
       delete[] m_aSumHistogramBucketVectorEntry1;
-      delete[] m_aSumResidualErrors2;
+      delete[] m_aTempFloatVector;
       free(m_aEquivalentSplits);
 
       LOG_0(TraceLevelInfo, "Exited ~CachedBoostingThreadResources");
@@ -154,7 +154,7 @@ public:
 
    EBM_INLINE bool IsError() const {
       return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || 
-         nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aSumResidualErrors2;
+         nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aTempFloatVector;
    }
 };
 

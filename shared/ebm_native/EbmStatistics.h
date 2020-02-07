@@ -616,7 +616,7 @@ public:
 
 #ifndef NDEBUG
       const FloatEbmType retDebug = 
-         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), trainingLogOddsPrediction, binnedActualValue, 1);
+         ComputeResidualErrorMulticlass(FloatEbmType { 1 } + EbmExp(trainingLogOddsPrediction), EbmExp(trainingLogOddsPrediction), binnedActualValue, 1);
       // the ComputeResidualErrorMulticlass can't be +-infinity per notes in ComputeResidualErrorMulticlass, 
       // but it can generate a new NaN value that we wouldn't get in the binary case due to numeric instability issues with having multiple logits
       // if either is a NaN value, then don't compare since we aren't sure that we're exactly equal in those cases because of numeric instability reasons
@@ -627,17 +627,17 @@ public:
 
    EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(
       const FloatEbmType sumExp, 
-      const FloatEbmType trainingLogWeight, 
+      const FloatEbmType itemExp, 
       const size_t binnedActualValue, 
       const size_t iVector
    ) {
       // this IS a performance critical function.  It gets called per instance AND per-class!
 
-      // trainingLogWeight can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
+      // trainingLogWeight (which calculates itemExp) can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
       //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some instance will have a NaN
       //   logit
       
-      // trainingLogWeight can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
+      // trainingLogWeight (which calculates itemExp) can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
       // sumExp can be NaN -> trainingLogOddsPrediction is used when calculating sumExp, so if trainingLogOddsPrediction can be NaN, then sumExp can be NaN
 
@@ -645,35 +645,34 @@ public:
       //   that would result in a negative exp result from adding a series of positive values.
       EBM_ASSERT(std::isnan(sumExp) || FloatEbmType { 0 } <= sumExp);
 
-      const FloatEbmType ourExp = EbmExp(trainingLogWeight);
-      // ourExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(trainingLogWeight) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation should lead to a negative exp value
+      // itemExp can be anything from 0 to +infinity, or NaN (through propagation)
+      EBM_ASSERT(std::isnan(itemExp) || FloatEbmType { 0 } <= itemExp); // no reasonable implementation should lead to a negative exp value
 
-      // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
-      //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
+      // mathematically sumExp must be larger than itemExp BUT in practice itemExp might be SLIGHTLY larger due to numerical issues -> 
+      //   since sumExp is a sum of positive terms that includes itemExp, it cannot be lower mathematically.
       //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise 
       //   mathematically expect.  For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor 
       //   preserves extra bits between computations AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently 
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonResidualError <= sumExp);
 
-      const FloatEbmType expFraction = ourExp / sumExp;
+      const FloatEbmType expFraction = itemExp / sumExp;
 
       // expFraction can be NaN -> 
-      // - If ourExp AND sumExp are exactly zero or exactly infinity then ourExp / sumExp will lead to NaN
-      // - If sumExp is zero, then ourExp pretty much needs to be zero, since if any of the terms in the sumation are
+      // - If itemExp AND sumExp are exactly zero or exactly infinity then itemExp / sumExp will lead to NaN
+      // - If sumExp is zero, then itemExp pretty much needs to be zero, since if any of the terms in the sumation are
       //   larger than a fraction.  It is very difficult to see how sumExp could be 0 because it would require that we have 3 or more logits that have 
       //   all either been driven very close to zero, but our algorithm drives multiclass logits appart from eachother, so some should be positive, and
       //   therefor the exp of those numbers non-zero
-      // - it is possible, but difficult to see how both ourExp AND sumExp could be infinity because all we need is for ourExp to be greater than
-      //   about 709.79.  If one ourExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
+      // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
+      //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
       //   (0.01 learningRate * 1 from ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 
-      // expFraction can be SLIGHTLY larger than 1 due to numeric issues -> this should only happen if sumExp == ourExp approximately, so there can be no 
+      // expFraction can be SLIGHTLY larger than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
       // - if expFraction was slightly larger than 1, we shouldn't expect a crash.  What would happen is that in our next call to ComputeNewtonRaphsonStep, we
       //   would find our denomiator term as a negative number (normally it MUST be positive).  If that happens, then later when we go to compute the
@@ -685,10 +684,10 @@ public:
 
       // expFraction must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
 
-      // expFraction can be zero -> sumExp can be infinity when ourExp is non-infinity.  This occurs when only one of the terms has overflowed to +infinity
+      // expFraction can be zero -> sumExp can be infinity when itemExp is non-infinity.  This occurs when only one of the terms has overflowed to +infinity
 
-      // expFraction can't be infinity -> even if ourExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
-      //   we can't really get an infinity in ourExp without also getting an infinity in sumExp, so expFraction can't be infinity without getting a NaN
+      // expFraction can't be infinity -> even if itemExp is slightly bigger than sumExp due to numeric reasons, the division is going to be close to 1
+      //   we can't really get an infinity in itemExp without also getting an infinity in sumExp, so expFraction can't be infinity without getting a NaN
 
       EBM_ASSERT(std::isnan(expFraction) || 
          !std::isinf(expFraction) && FloatEbmType { 0 } <= expFraction && expFraction <= FloatEbmType { 1 } + k_epsilonResidualError);
@@ -751,10 +750,9 @@ public:
       //   if our approxmiate log doesn't guarantee non-negative results AND numbers slightly larger than 1
 
 #ifndef NDEBUG
-      FloatEbmType scores[2];
-      scores[0] = 0;
-      scores[1] = validationLogOddsPrediction;
-      const FloatEbmType retDebug = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(1 + EbmExp(validationLogOddsPrediction), scores, binnedActualValue);
+      const FloatEbmType retDebug = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
+         FloatEbmType { 1 } + EbmExp(validationLogOddsPrediction), 0 == binnedActualValue ? FloatEbmType { 1 } : EbmExp(validationLogOddsPrediction)
+      );
       EBM_ASSERT(std::isnan(ret) || std::isinf(ret) || std::isnan(retDebug) || std::isinf(retDebug) || std::abs(retDebug - ret) < k_epsilonResidualError);
 #endif // NDEBUG
 
@@ -763,18 +761,17 @@ public:
 
    EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(
       const FloatEbmType sumExp, 
-      const FloatEbmType * const aValidationLogWeight, 
-      const size_t binnedActualValue
+      const FloatEbmType itemExp
    ) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // we are confirmed to get the same log loss value as scikit-learn for binary and multiclass classification
 
-      // aValidationLogWeight numbers can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
+      // aValidationLogWeight (calculates itemExp) numbers can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
       //   for sumResidualError / sumDenominator if both are zero.  Once one segment of one graph has a NaN logit, then some instance will have a NaN
       //   logit
 
-      // aValidationLogWeight numbers can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
+      // aValidationLogWeight (calculates itemExp) numbers can be any number from -infinity to +infinity -> through addition, it can overflow to +-infinity
 
       // sumExp can be NaN -> trainingLogOddsPrediction is used when calculating sumExp, so if trainingLogOddsPrediction can be NaN, then sumExp can be NaN
 
@@ -783,46 +780,43 @@ public:
 
       EBM_ASSERT(std::isnan(sumExp) || FloatEbmType { 0 } <= sumExp);
 
-      const FloatEbmType validationLogWeight = aValidationLogWeight[binnedActualValue];
+      // validationLogWeight (calculates itemExp) can be any number between -infinity to +infinity, or NaN
 
-      // validationLogWeight can be any number between -infinity to +infinity, or NaN
+      // itemExp can be anything from 0 to +infinity, or NaN (through propagation)
+      EBM_ASSERT(std::isnan(itemExp) || FloatEbmType { 0 } <= itemExp); // no reasonable implementation of exp should lead to a negative value
 
-      const FloatEbmType ourExp = EbmExp(validationLogWeight);
-      // ourExp can be anything from 0 to +infinity, or NaN (through propagation)
-      EBM_ASSERT(std::isnan(validationLogWeight) || FloatEbmType { 0 } <= ourExp); // no reasonable implementation of exp should lead to a negative value
-
-      // mathematically sumExp must be larger than ourExp BUT in practice ourExp might be SLIGHTLY larger due to numerical issues -> 
-      //   since sumExp is a sum of positive terms that includes ourExp, it cannot be lower mathematically.
+      // mathematically sumExp must be larger than itemExp BUT in practice itemExp might be SLIGHTLY larger due to numerical issues -> 
+      //   since sumExp is a sum of positive terms that includes itemExp, it cannot be lower mathematically.
       //   sumExp, having been computed from non-exact floating points, could be numerically slightly outside of the range that we would otherwise 
       //   mathematically expect.  For instance, if EbmExp(trainingLogWeight) resulted in a number that rounds down, but the floating point processor 
       //   preserves extra bits between computations AND if sumExp, which includes the term EbmExp(trainingLogWeight) was rounded down and then subsequently 
       //   added to numbers below the threshold of epsilon at the value of EbmExp(trainingLogWeight), then by the time we get to the division of 
       //   EbmExp(trainingLogWeight) / sumExp could see the numerator as higher, and result in a value slightly greater than 1!
 
-      EBM_ASSERT(std::isnan(sumExp) || ourExp - k_epsilonResidualError <= sumExp);
+      EBM_ASSERT(std::isnan(sumExp) || itemExp - k_epsilonResidualError <= sumExp);
 
-      const FloatEbmType expFraction = sumExp / ourExp;
+      const FloatEbmType expFraction = sumExp / itemExp;
 
       // expFraction can be NaN -> 
-      // - If ourExp AND sumExp are exactly zero or exactly infinity then sumExp / ourExp will lead to NaN
-      // - If sumExp is zero, then ourExp pretty much needs to be zero, since if any of the terms in the sumation are
+      // - If itemExp AND sumExp are exactly zero or exactly infinity then sumExp / itemExp will lead to NaN
+      // - If sumExp is zero, then itemExp pretty much needs to be zero, since if any of the terms in the sumation are
       //   larger than a fraction.  It is very difficult to see how sumExp could be 0 because it would require that we have 3 or more logits that have 
       //   all either been driven very close to zero, but our algorithm drives multiclass logits appart from eachother, so some should be positive, and
       //   therefore the exp of those numbers non-zero
-      // - it is possible, but difficult to see how both ourExp AND sumExp could be infinity because all we need is for ourExp to be greater than
-      //   about 709.79.  If one ourExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
+      // - it is possible, but difficult to see how both itemExp AND sumExp could be infinity because all we need is for itemExp to be greater than
+      //   about 709.79.  If one itemExp is +infinity then so is sumExp.  Each update is mostly limited to units of 0.01 logits 
       //   (0.01 learningRate * 1 from ComputeResidualErrorBinaryClassification or ComputeResidualErrorMulticlass), so if we've done more than 70,900 boosting 
       //   rounds we can get infinities or NaN values.  This isn't very likekly by itself given that our default is a max of 2000 rounds, but it is possible
       //   if someone is tweaking the parameters way past their natural values
 
-      // expFraction can be SLIGHTLY smaller than 1 due to numeric issues -> this should only happen if sumExp == ourExp approximately, so there can be no 
+      // expFraction can be SLIGHTLY smaller than 1 due to numeric issues -> this should only happen if sumExp == itemExp approximately, so there can be no 
       //   other logit terms in sumExp, and this would only happen after many many rounds of boosting (see above about 70,900 rounds of boosting).
       // - if expFraction was slightly smaller than 1, we shouldn't expect a crash.  We'll get a slighly negative log, which would otherwise be impossible.
       //   We check this before returning the log loss to our caller, since they do not expect negative log losses.
       
       // expFraction must be positive -> both the numerator and denominator are positive, so no reasonable implementation should lead to a negative number
 
-      // expFraction can be +infinity -> sumExp can be infinity when ourExp is non-infinity, or ourExp can be sufficiently small to cause a divide by zero.  
+      // expFraction can be +infinity -> sumExp can be infinity when itemExp is non-infinity, or itemExp can be sufficiently small to cause a divide by zero.  
       // This occurs when only one of the terms has overflowed to +infinity
 
       // we can tollerate numbers very very slightly less than 1.  These make the log loss go down slightly as they lead to negative log

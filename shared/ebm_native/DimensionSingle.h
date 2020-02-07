@@ -99,7 +99,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
    memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
-   FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->m_aSumResidualErrors2;
+   FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->m_aTempFloatVector;
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       aSumResidualErrorsRight[iVector] = ARRAY_TO_POINTER_CONST(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
    }

@@ -27,7 +27,8 @@ public:
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargetData, 
       const FloatEbmType * const aPredictorScores, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      FloatEbmType * const aTempFloatVector
    );
    ~DataSetByFeature();
 
