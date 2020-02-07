@@ -19,19 +19,16 @@
 
 #ifndef NDEBUG
 
-// TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
+template<bool bClassification>
 void GetTotalsDebugSlow(
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const HistogramBucket<bClassification> * const aHistogramBuckets,
    const FeatureCombination * const pFeatureCombination, 
    const size_t * const aiStart, 
    const size_t * const aiLast, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
+   HistogramBucket<bClassification> * const pRet
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
-
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+   const size_t cDimensions = pFeatureCombination->m_cFeatures;
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
@@ -52,11 +49,7 @@ void GetTotalsDebugSlow(
       ++iDimensionInitialize;
    } while(iDimensionInitialize < cDimensions);
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength));
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
@@ -91,23 +84,16 @@ void GetTotalsDebugSlow(
    }
 }
 
-// TODO: remove the templating on these debug functions.  We don't need to replicate this function 63 times!!
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
+template<bool bClassification>
 void CompareTotalsDebug(
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   const HistogramBucket<bClassification> * const aHistogramBuckets,
    const FeatureCombination * const pFeatureCombination, 
    const size_t * const aiPoint, 
    const size_t directionVector, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pComparison
+   const HistogramBucket<bClassification> * const pComparison
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
-
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
@@ -129,7 +115,7 @@ void CompareTotalsDebug(
    HistogramBucket<bClassification> * const pComparison2 = static_cast<HistogramBucket<bClassification> *>(malloc(cBytesPerHistogramBucket));
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
-      GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+      GetTotalsDebugSlow<bClassification>(
          aHistogramBuckets, 
          pFeatureCombination, 
          aiStart, 
@@ -550,7 +536,7 @@ void BuildFastTotals(
             aiStart[iDebugDimension] = 0;
             aiLast[iDebugDimension] = fastTotalState[iDebugDimension].m_iCur;
          }
-         GetTotalsDebugSlow<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+         GetTotalsDebugSlow<bClassification>(
             aHistogramBucketsDebugCopy, 
             pFeatureCombination, 
             aiStart, 
@@ -919,7 +905,7 @@ void GetTotals(
 
 #ifndef NDEBUG
    if(nullptr != aHistogramBucketsDebugCopy) {
-      CompareTotalsDebug<compilerLearningTypeOrCountTargetClasses, countCompilerDimensions>(
+      CompareTotalsDebug<bClassification>(
          aHistogramBucketsDebugCopy, 
          pFeatureCombination, 
          aiPoint, 
