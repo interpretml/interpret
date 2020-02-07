@@ -78,11 +78,14 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
       reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
 struct HistogramBucketBase {
+   // TODO: is HistogramBucketBase used?  I created it meaning for us to have a common point in classes where bClassification 
+   //       wasn't needed but we needed pointers to these
+
    // empty base optimization is REQUIRED by the C++11 standard for StandardLayoutType objects, so this struct will use 0 bytes in our derived class
    // https://en.cppreference.com/w/cpp/language/ebo
 };
 static_assert(std::is_standard_layout<HistogramBucketBase>::value,
-   "HistogramBucketBase will be more efficient as a standard layout class as we make potentially large arrays of them!");
+   "HistogramBucket uses the struct hack, so it needs to be standard layout class otherwise we can't depend on the layout!");
 
 template<bool bClassification>
 struct HistogramBucket final : public HistogramBucketBase {
@@ -96,6 +99,9 @@ public:
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
@@ -134,9 +140,8 @@ public:
 #endif // NDEBUG
    }
 };
-
 static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_standard_layout<HistogramBucket<true>>::value, 
-   "HistogramBucket will be more efficient as a standard layout class as we make potentially large arrays of them!");
+   "HistogramBucket uses the struct hack, so it needs to be standard layout class otherwise we can't depend on the layout!");
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void BinDataSetTrainingZeroDimensions(

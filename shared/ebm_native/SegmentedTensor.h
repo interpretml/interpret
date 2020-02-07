@@ -136,6 +136,9 @@ public:
    bool m_bExpanded;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aDimensions must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
    DimensionInfo m_aDimensions[1];
 
    // TODO: In the future we'll be splitting our work into small sets of residuals and logits owned by
@@ -967,16 +970,16 @@ public:
 
    static_assert(
       std::is_standard_layout<TDivisions>::value, 
-      "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+      "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
       "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
    static_assert(
       std::is_standard_layout<TValues>::value, 
-      "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+      "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
       "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
 static_assert(
    std::is_standard_layout<SegmentedTensor<ActiveDataType, FloatEbmType>>::value, 
-   "SegmentedRegion must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+   "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
    "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_TENSOR_H

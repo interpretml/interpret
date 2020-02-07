@@ -28,6 +28,9 @@ public:
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureCombinationEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
    EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {

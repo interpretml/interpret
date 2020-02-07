@@ -79,6 +79,6 @@ struct HistogramBucketVectorEntry<false> final {
 };
 static_assert(
    std::is_standard_layout<HistogramBucketVectorEntry<false>>::value && std::is_standard_layout<HistogramBucketVectorEntry<true>>::value, 
-   "HistogramBucketVectorEntry will be more efficient as a standard layout class as we make potentially large arrays of them!");
+   "HistogramBucketVectorEntry is used to constuct HistogramBucket, which uses the struct hack, so this class needs to be standard layout!");
 
 #endif // HISTOGRAM_BUCKET_VECTOR_ENTRY_H

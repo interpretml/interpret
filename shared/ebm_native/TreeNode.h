@@ -79,6 +79,9 @@ public:
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aHistogramBucketVectorEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<true> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -88,6 +91,8 @@ public:
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances = cInstances;
    }
 };
+static_assert(std::is_standard_layout<TreeNodeData<true>>::value,
+   "TreeNodeData uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
 
 template<>
 struct TreeNodeData<false> {
@@ -127,6 +132,9 @@ public:
    size_t m_cInstances;
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<false> m_aHistogramBucketVectorEntry[1];
 
    EBM_INLINE size_t GetInstances() const {
@@ -136,6 +144,8 @@ public:
       m_cInstances = cInstances;
    }
 };
+static_assert(std::is_standard_layout<TreeNodeData<false>>::value,
+   "TreeNodeData uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
 
 template<bool bClassification>
 struct TreeNode final : public TreeNodeData<bClassification> {
@@ -177,7 +187,6 @@ public:
 
    // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
    //   recursive function to handle that
-   // TODO: specialize this function for cases where we have hard coded vector lengths so that we don't have to pass in the cVectorLength parameter
    void Flatten(ActiveDataType ** const ppDivisions, FloatEbmType ** const ppValues, const size_t cVectorLength) const {
       // don't log this since we call it recursively.  Log where the root is called
       if(UNPREDICTABLE(WAS_THIS_NODE_SPLIT())) {
@@ -214,6 +223,7 @@ public:
       }
    }
 };
-static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, "We want to keep our TreeNode compact and without a virtual pointer table for fitting in L1 cache as much as possible");
+static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, 
+   "TreeNode uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
 
 #endif // TREE_NODE_H
