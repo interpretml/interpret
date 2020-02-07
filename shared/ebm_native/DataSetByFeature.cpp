@@ -47,9 +47,9 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
-         InitializeResiduals<2>(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 }, aTempFloatVector);
+         InitializeResiduals<2>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 }, aTempFloatVector);
       } else {
-         InitializeResiduals<k_DynamicClassification>(
+         InitializeResiduals<k_DynamicClassification>::Func(
             cInstances, 
             aTargetData, 
             aPredictorScores, 
@@ -60,7 +60,7 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResiduals<k_Regression>(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression, aTempFloatVector);
+      InitializeResiduals<k_Regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression, aTempFloatVector);
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");

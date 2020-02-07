@@ -431,7 +431,7 @@ bool EbmBoostingState::Initialize(
       FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.classification.m_aTempFloatVector;
       if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<2>(
+            InitializeResiduals<2>::Func(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
@@ -442,7 +442,7 @@ bool EbmBoostingState::Initialize(
          }
       } else {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<k_DynamicClassification>(
+            InitializeResiduals<k_DynamicClassification>::Func(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
@@ -456,7 +456,7 @@ bool EbmBoostingState::Initialize(
       EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
       FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.regression.m_aTempFloatVector;
       if(0 != cTrainingInstances) {
-         InitializeResiduals<k_Regression>(
+         InitializeResiduals<k_Regression>::Func(
             cTrainingInstances, 
             aTrainingTargets, 
             aTrainingPredictorScores, 
@@ -466,7 +466,7 @@ bool EbmBoostingState::Initialize(
          );
       }
       if(0 != cValidationInstances) {
-         InitializeResiduals<k_Regression>(
+         InitializeResiduals<k_Regression>::Func(
             cValidationInstances, 
             aValidationTargets, 
             aValidationPredictorScores, 

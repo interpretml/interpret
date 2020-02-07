@@ -15,45 +15,46 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static void InitializeResiduals(
-   const size_t cInstances, 
-   const void * const aTargetData, 
-   const FloatEbmType * const aPredictorScores, 
-   FloatEbmType * pResidualError, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   FloatEbmType * const aTempFloatVector
-) {
-   LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+class InitializeResiduals {
+public:
+   static void Func(
+      const size_t cInstances,
+      const void * const aTargetData,
+      const FloatEbmType * const aPredictorScores,
+      FloatEbmType * pResidualError,
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      FloatEbmType * const aTempFloatVector
+   ) {
+      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
-   // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
-   //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
-   //   runtimeLearningTypeOrCountTargetClasses for some of the addition
-   // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
-   EBM_ASSERT(0 < cInstances);
-   EBM_ASSERT(nullptr != aTargetData);
-   EBM_ASSERT(nullptr != aPredictorScores);
-   EBM_ASSERT(nullptr != pResidualError);
+      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
+      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
+      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(nullptr != aTargetData);
+      EBM_ASSERT(nullptr != aPredictorScores);
+      EBM_ASSERT(nullptr != pResidualError);
 
-   FloatEbmType aLocalExpVector[
-      k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
-   ];
-   FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatEbmType aLocalExpVector[
+         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+      ];
+      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(0 < cVectorLength);
-   // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
-   EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances));
-   const size_t cVectoredItems = cVectorLength * cInstances;
-   // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
-   EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0])));
-   const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectoredItems;
+      const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
+         compilerLearningTypeOrCountTargetClasses,
+         runtimeLearningTypeOrCountTargetClasses
+      );
+      const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+      EBM_ASSERT(0 < cVectorLength);
+      // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
+      EBM_ASSERT(!IsMultiplyError(cVectorLength, cInstances));
+      const size_t cVectoredItems = cVectorLength * cInstances;
+      // if we couldn't multiply these then we should not have been able to allocate pResidualError before calling this function
+      EBM_ASSERT(!IsMultiplyError(cVectoredItems, sizeof(pResidualError[0])));
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectoredItems;
 
-   const FloatEbmType * pPredictorScores = aPredictorScores;
-   if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      const FloatEbmType * pPredictorScores = aPredictorScores;
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
 
       EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(cVectorLength)));
@@ -67,58 +68,126 @@ static void InitializeResiduals(
          const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
          EBM_ASSERT((IsNumberConvertable<StorageDataType, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
          EBM_ASSERT(target < static_cast<StorageDataType>(runtimeLearningTypeOrCountTargetClasses));
-         if(IsBinaryClassification(compilerLearningTypeOrCountTargetClasses)) {
-            const FloatEbmType predictionScore = *pPredictorScores;
-            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
-            *pResidualError = residualError;
+         FloatEbmType * pExpVector = aExpVector;
+
+         FloatEbmType sumExp = FloatEbmType { 0 };
+         // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
+         const FloatEbmType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
+
+         for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
+            const FloatEbmType predictorScore = *pPredictorScores - subtract;
+            const FloatEbmType oneExp = EbmExp(predictorScore);
+            *pExpVector = oneExp;
+            ++pExpVector;
+            sumExp += oneExp;
             ++pPredictorScores;
+         }
+
+         // go back to the start so that we can iterate again
+         pExpVector -= cVectorLength;
+
+         for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
+            // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is 
+            //   expensive so we should just do it once instead and store the result in a small memory array here
+            const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
+            *pResidualError = residualError;
+            ++pExpVector;
             ++pResidualError;
-         } else {
-            FloatEbmType * pExpVector = aExpVector;
-
-            FloatEbmType sumExp = FloatEbmType { 0 };
-            // TODO : eventually eliminate this subtract variable once we've decided how to handle removing one logit
-            const FloatEbmType subtract = 0 <= k_iZeroClassificationLogitAtInitialize ? pPredictorScores[k_iZeroClassificationLogitAtInitialize] : 0;
-
-            for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-               const FloatEbmType predictorScore = *pPredictorScores - subtract;
-               const FloatEbmType oneExp = EbmExp(predictorScore);
-               *pExpVector = oneExp;
-               ++pExpVector;
-               sumExp += oneExp;
-               ++pPredictorScores;
-            }
-
-            // go back to the start so that we can iterate again
-            pExpVector -= cVectorLength;
-
-            for(StorageDataType iVector = 0; iVector < cVectorLengthStorage; ++iVector) {
-               // TODO : we're calculating exp(predictionScore) above, and then again in ComputeClassificationResidualErrorMulticlass.  exp(..) is 
-               //   expensive so we should just do it once instead and store the result in a small memory array here
-               const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorMulticlass(sumExp, *pExpVector, target, iVector);
-               *pResidualError = residualError;
-               ++pExpVector;
-               ++pResidualError;
-            }
-            // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
-            // 
-            // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
-            // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
-            // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
-            // insted of allowing them to be scaled.  
-            // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be 
-            // multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels eachother out.
-            // We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
-            constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
-            if(bZeroingResiduals) {
-               pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
-            }
+         }
+         // TODO: this works as a way to remove one parameter, but it obviously insn't as efficient as omitting the parameter
+         // 
+         // this works out in the math as making the first model vector parameter equal to zero, which in turn removes one degree of freedom
+         // from the model vector parameters.  Since the model vector weights need to be normalized to sum to a probabilty of 100%, we can set the first
+         // one to the constant 1 (0 in log space) and force the other parameters to adjust to that scale which fixes them to a single valid set of values
+         // insted of allowing them to be scaled.  
+         // Probability = exp(T1 + I1) / [exp(T1 + I1) + exp(T2 + I2) + exp(T3 + I3)] => we can add a constant inside each exp(..) term, which will be 
+         // multiplication outside the exp(..), which means the numerator and denominator are multiplied by the same constant, which cancels eachother out.
+         // We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
+         constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
+         if(bZeroingResiduals) {
+            pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLengthStorage)] = 0;
          }
          ++pTargetData;
       } while(pResidualErrorEnd != pResidualError);
-   } else {
-      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+   }
+};
 
+template<>
+class InitializeResiduals<2> {
+public:
+   static void Func(
+      const size_t cInstances,
+      const void * const aTargetData,
+      const FloatEbmType * const aPredictorScores,
+      FloatEbmType * pResidualError,
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      FloatEbmType * const aTempFloatVector
+   ) {
+      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
+      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+
+      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
+      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
+      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(nullptr != aTargetData);
+      EBM_ASSERT(nullptr != aPredictorScores);
+      EBM_ASSERT(nullptr != pResidualError);
+
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+
+      const FloatEbmType * pPredictorScores = aPredictorScores;
+      const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
+
+      do {
+         const IntEbmType targetOriginal = *pTargetData;
+         EBM_ASSERT(0 <= targetOriginal);
+         // if we can't fit it, then we should increase our StorageDataType size!
+         EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(targetOriginal)));
+         const StorageDataType target = static_cast<StorageDataType>(targetOriginal);
+         EBM_ASSERT((IsNumberConvertable<StorageDataType, ptrdiff_t>(runtimeLearningTypeOrCountTargetClasses)));
+         EBM_ASSERT(target < static_cast<StorageDataType>(runtimeLearningTypeOrCountTargetClasses));
+         const FloatEbmType predictionScore = *pPredictorScores;
+         const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorBinaryClassification(predictionScore, target);
+         *pResidualError = residualError;
+         ++pPredictorScores;
+         ++pResidualError;
+         ++pTargetData;
+      } while(pResidualErrorEnd != pResidualError);
+      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+   }
+};
+
+template<>
+class InitializeResiduals<k_Regression> {
+public:
+   static void Func(
+      const size_t cInstances,
+      const void * const aTargetData,
+      const FloatEbmType * const aPredictorScores,
+      FloatEbmType * pResidualError,
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      FloatEbmType * const aTempFloatVector
+   ) {
+      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      UNUSED(aTempFloatVector);
+      LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
+
+      // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
+      //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
+      //   runtimeLearningTypeOrCountTargetClasses for some of the addition
+      // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
+      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(nullptr != aTargetData);
+      EBM_ASSERT(nullptr != aPredictorScores);
+      EBM_ASSERT(nullptr != pResidualError);
+
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+
+      const FloatEbmType * pPredictorScores = aPredictorScores;
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
       do {
          // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance 
@@ -137,8 +206,8 @@ static void InitializeResiduals(
          ++pPredictorScores;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
+      LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
    }
-   LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
-}
+};
 
 #endif // INITIALIZE_RESIDUALS_H
