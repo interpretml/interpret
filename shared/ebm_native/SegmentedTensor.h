@@ -95,21 +95,18 @@
 //     - the top item in our MAIN_DATA_STRUCTURE MUST be offset_to_DIMENSION_0_COUNT_or_zero_if_value_array_expanded_and_zero_offset_to_MAIN_DATA_STRUCTURE for
 //       our efficient tripple use above!
 
-// TODO : simplify this in our code by removing the templating.  We always use ActiveDataType and FloatEbmType, so we don't need something generic which 
-//   just complicates reading the code later for no benefit to this project, and we want to make this class passable by copy, which means it'll have 
-//   to be C compatible
-template<typename TDivisions, typename TValues>
+// TODO : put some of this file into .cpp since some of the functions are repeated and they don't need to all be inline!
 struct SegmentedTensor final {
 private:
 
    struct DimensionInfoStack {
-      const TDivisions * m_pDivision1;
-      const TDivisions * m_pDivision2;
+      const ActiveDataType * m_pDivision1;
+      const ActiveDataType * m_pDivision2;
       size_t m_cNewDivisions;
    };
 
    struct DimensionInfoStackExpand {
-      const TDivisions * m_pDivision1;
+      const ActiveDataType * m_pDivision1;
       size_t m_iDivision2;
       size_t m_cNewDivisions;
    };
@@ -124,7 +121,7 @@ public:
 
    struct DimensionInfo {
       size_t m_cDivisions;
-      TDivisions * m_aDivisions;
+      ActiveDataType * m_aDivisions;
       size_t m_cDivisionCapacity;
    };
 
@@ -132,7 +129,7 @@ public:
    size_t m_cVectorLength;
    size_t m_cDimensionsMax;
    size_t m_cDimensions;
-   TValues * m_aValues;
+   FloatEbmType * m_aValues;
    bool m_bExpanded;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aDimensions must be the last item in this struct
@@ -163,11 +160,11 @@ public:
          return nullptr;
       }
       const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
-      if(IsMultiplyError(sizeof(TValues), cValueCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(TValues), cValueCapacity)");
+      if(IsMultiplyError(sizeof(FloatEbmType), cValueCapacity)) {
+         LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(FloatEbmType), cValueCapacity)");
          return nullptr;
       }
-      const size_t cBytesValues = sizeof(TValues) * cValueCapacity;
+      const size_t cBytesValues = sizeof(FloatEbmType) * cValueCapacity;
 
       // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
       const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
@@ -185,7 +182,7 @@ public:
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
 
-      TValues * const aValues = static_cast<TValues *>(malloc(cBytesValues));
+      FloatEbmType * const aValues = static_cast<FloatEbmType *>(malloc(cBytesValues));
       if(UNLIKELY(nullptr == aValues)) {
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
@@ -193,9 +190,9 @@ public:
       }
       pSegmentedRegion->m_aValues = aValues;
       // we only need to set the base case to zero, not our entire initial allocation
-      // we checked for cVectorLength * k_initialValueCapacity * sizeof(TValues), and 1 <= k_initialValueCapacity, 
-      // so sizeof(TValues) * cVectorLength can't overflow
-      memset(aValues, 0, sizeof(TValues) * cVectorLength);
+      // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
+      // so sizeof(FloatEbmType) * cVectorLength can't overflow
+      memset(aValues, 0, sizeof(FloatEbmType) * cVectorLength);
 
       if(0 != cDimensionsMax) {
          DimensionInfo * pDimension = ARRAY_TO_POINTER(pSegmentedRegion->m_aDimensions);
@@ -203,7 +200,7 @@ public:
          do {
             EBM_ASSERT(0 == pDimension->m_cDivisions);
             pDimension->m_cDivisionCapacity = k_initialDivisionCapacity;
-            TDivisions * const aDivisions = static_cast<TDivisions *>(malloc(sizeof(TDivisions) * k_initialDivisionCapacity)); // this multiply can't overflow
+            ActiveDataType * const aDivisions = static_cast<ActiveDataType *>(malloc(sizeof(ActiveDataType) * k_initialDivisionCapacity)); // this multiply can't overflow
             if(UNLIKELY(nullptr == aDivisions)) {
                LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
                Free(pSegmentedRegion); // free everything!
@@ -237,12 +234,12 @@ public:
       m_cDimensions = cDimensions;
    }
 
-   EBM_INLINE TDivisions * GetDivisionPointer(const size_t iDimension) {
+   EBM_INLINE ActiveDataType * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return &ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions[0];
    }
 
-   EBM_INLINE TValues * GetValuePointer() {
+   EBM_INLINE FloatEbmType * GetValuePointer() {
       return &m_aValues[0];
    }
 
@@ -252,7 +249,7 @@ public:
       }
       // we only need to set the base case to zero
       // this can't overflow since we previously allocated this memory
-      memset(m_aValues, 0, sizeof(TValues) * m_cVectorLength);
+      memset(m_aValues, 0, sizeof(FloatEbmType) * m_cVectorLength);
       m_bExpanded = false;
    }
 
@@ -273,12 +270,12 @@ public:
          size_t cNewDivisionCapacity = cDivisions + (cDivisions >> 1);
          LOG_N(TraceLevelInfo, "SetCountDivisions Growing to size %zu", cNewDivisionCapacity);
 
-         if(IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)) {
-            LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(TDivisions), cNewDivisionCapacity)");
+         if(IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)) {
+            LOG_0(TraceLevelWarning, "WARNING SetCountDivisions IsMultiplyError(sizeof(ActiveDataType), cNewDivisionCapacity)");
             return true;
          }
-         size_t cBytes = sizeof(TDivisions) * cNewDivisionCapacity;
-         TDivisions * const aNewDivisions = static_cast<TDivisions *>(realloc(pDimension->m_aDivisions, cBytes));
+         size_t cBytes = sizeof(ActiveDataType) * cNewDivisionCapacity;
+         ActiveDataType * const aNewDivisions = static_cast<ActiveDataType *>(realloc(pDimension->m_aDivisions, cBytes));
          if(UNLIKELY(nullptr == aNewDivisions)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
@@ -304,12 +301,12 @@ public:
          size_t cNewValueCapacity = cValues + (cValues >> 1);
          LOG_N(TraceLevelInfo, "EnsureValueCapacity Growing to size %zu", cNewValueCapacity);
 
-         if(IsMultiplyError(sizeof(TValues), cNewValueCapacity)) {
-            LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(TValues), cNewValueCapacity)");
+         if(IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)) {
+            LOG_0(TraceLevelWarning, "WARNING EnsureValueCapacity IsMultiplyError(sizeof(FloatEbmType), cNewValueCapacity)");
             return true;
          }
-         size_t cBytes = sizeof(TValues) * cNewValueCapacity;
-         TValues * const aNewValues = static_cast<TValues *>(realloc(m_aValues, cBytes));
+         size_t cBytes = sizeof(FloatEbmType) * cNewValueCapacity;
+         FloatEbmType * const aNewValues = static_cast<FloatEbmType *>(realloc(m_aValues, cBytes));
          if(UNLIKELY(nullptr == aNewValues)) {
             // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
             // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
@@ -335,33 +332,33 @@ public:
             LOG_0(TraceLevelWarning, "WARNING Copy SetCountDivisions(iDimension, cDivisions)");
             return true;
          }
-         EBM_ASSERT(!IsMultiplyError(sizeof(TDivisions), cDivisions)); // we're copying this memory, so multiplication can't overflow
-         memcpy(ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions, pDimension->m_aDivisions, sizeof(TDivisions) * cDivisions);
+         EBM_ASSERT(!IsMultiplyError(sizeof(ActiveDataType), cDivisions)); // we're copying this memory, so multiplication can't overflow
+         memcpy(ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_aDivisions, pDimension->m_aDivisions, sizeof(ActiveDataType) * cDivisions);
       }
       if(UNLIKELY(EnsureValueCapacity(cValues))) {
          LOG_0(TraceLevelWarning, "WARNING Copy EnsureValueCapacity(cValues)");
          return true;
       }
-      EBM_ASSERT(!IsMultiplyError(sizeof(TValues), cValues)); // we're copying this memory, so multiplication can't overflow
-      memcpy(m_aValues, rhs.m_aValues, sizeof(TValues) * cValues);
+      EBM_ASSERT(!IsMultiplyError(sizeof(FloatEbmType), cValues)); // we're copying this memory, so multiplication can't overflow
+      memcpy(m_aValues, rhs.m_aValues, sizeof(FloatEbmType) * cValues);
       m_bExpanded = rhs.m_bExpanded;
       return false;
    }
 
 //#ifndef NDEBUG
-//   EBM_INLINE TValues * GetValue(const TDivisions * const aDivisionValue) const {
+//   EBM_INLINE FloatEbmType * GetValue(const ActiveDataType * const aDivisionValue) const {
 //      if(0 == m_cDimensions) {
 //         return &m_aValues[0]; // there are no dimensions, and only 1 value
 //      }
 //      const DimensionInfo * pDimension = ARRAY_TO_POINTER(m_aDimensions);
-//      const TDivisions * pDivisionValue = aDivisionValue;
-//      const TDivisions * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
+//      const ActiveDataType * pDivisionValue = aDivisionValue;
+//      const ActiveDataType * const pDivisionValueEnd = &aDivisionValue[m_cDimensions];
 //      size_t iValue = 0;
 //      size_t valueMultiple = m_cVectorLength;
 //
 //      if(m_bExpanded) {
 //         while(true) {
-//            const TDivisions d = *pDivisionValue;
+//            const ActiveDataType d = *pDivisionValue;
 //            EBM_ASSERT(!IsMultiplyError(d, valueMultiple)); // we're accessing existing memory, so it can't overflow
 //            size_t addValue = d * valueMultiple;
 //            EBM_ASSERT(!IsAddError(addValue, iValue)); // we're accessing existing memory, so it can't overflow
@@ -381,12 +378,12 @@ public:
 //         do {
 //            const size_t cDivisions = pDimension->m_cDivisions;
 //            if(LIKELY(0 != cDivisions)) {
-//               const TDivisions * const aDivisions = pDimension->m_aDivisions;
-//               const TDivisions d = *pDivisionValue;
+//               const ActiveDataType * const aDivisions = pDimension->m_aDivisions;
+//               const ActiveDataType d = *pDivisionValue;
 //               ptrdiff_t high = cDivisions - 1;
 //               ptrdiff_t middle;
 //               ptrdiff_t low = 0;
-//               TDivisions midVal;
+//               ActiveDataType midVal;
 //               do {
 //                  middle = (low + high) >> 1;
 //                  midVal = aDivisions[middle];
@@ -414,7 +411,7 @@ public:
 //   }
 //#endif // NDEBUG
 
-   EBM_INLINE bool MultiplyAndCheckForIssues(const TValues v) {
+   EBM_INLINE bool MultiplyAndCheckForIssues(const FloatEbmType v) {
       size_t cValues = 1;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
          // we're accessing existing memory, so it can't overflow
@@ -422,12 +419,12 @@ public:
          cValues *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1;
       }
 
-      TValues * pCur = &m_aValues[0];
-      TValues * pEnd = &m_aValues[cValues * m_cVectorLength];
+      FloatEbmType * pCur = &m_aValues[0];
+      FloatEbmType * pEnd = &m_aValues[cValues * m_cVectorLength];
       int bBad = 0;
       // we always have 1 value, even if we have zero divisions
       do {
-         const TValues val = *pCur * v;
+         const FloatEbmType val = *pCur * v;
          // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
          // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
          // bits for FF and then OR a 1 if the test is true and 0 if the test is false
@@ -438,15 +435,15 @@ public:
       return !!bBad;
    }
 
-   bool Expand(const size_t * const acValuesPerDimension) {
+   EBM_INLINE bool Expand(const size_t * const acValuesPerDimension) {
       LOG_0(TraceLevelVerbose, "Entered Expand");
 
       EBM_ASSERT(1 <= m_cDimensions); // you can't really expand something with zero dimensions
       EBM_ASSERT(nullptr != acValuesPerDimension);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
-      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<TDivisions>::max() && 
-         std::numeric_limits<size_t>::min() == std::numeric_limits<TDivisions>::min());
+      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<ActiveDataType>::max() && 
+         std::numeric_limits<size_t>::min() == std::numeric_limits<ActiveDataType>::min());
       if(m_bExpanded) {
          // we're already expanded
          LOG_0(TraceLevelVerbose, "Exited Expand");
@@ -500,20 +497,20 @@ public:
          return true;
       }
 
-      TValues * const aValues = m_aValues;
+      FloatEbmType * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = ARRAY_TO_POINTER(m_aDimensions);
 
       EBM_ASSERT(cValues1 <= cNewValues);
       EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1];
-      TValues * pValueTop = &aValues[cVectoredNewValues];
+      const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1];
+      FloatEbmType * pValueTop = &aValues[cVectoredNewValues];
 
       // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our 
       // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about 
       // where to move next
       while(true) {
-         const TValues * pValue1Move = pValue1;
-         const TValues * const pValueTopEnd = pValueTop - m_cVectorLength;
+         const FloatEbmType * pValue1Move = pValue1;
+         const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
          do {
             --pValue1Move;
             --pValueTop;
@@ -536,15 +533,15 @@ public:
          size_t multiplication1 = m_cVectorLength;
 
          while(true) {
-            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
+            const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
             size_t iDivision2 = pDimensionInfoStackSecond->m_iDivision2;
 
-            TDivisions * const aDivisions1 = pDimensionSecond1->m_aDivisions;
+            ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
                EBM_ASSERT(0 < iDivision2);
 
-               const TDivisions * const pDivision1MinusOne = pDivision1 - 1;
+               const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
 
                const size_t d1 = static_cast<size_t>(*pDivision1MinusOne);
 
@@ -608,7 +605,7 @@ public:
       return false;
    }
 
-   EBM_INLINE void AddExpandedWithBadValueProtection(const TValues * const aFromValues) {
+   EBM_INLINE void AddExpandedWithBadValueProtection(const FloatEbmType * const aFromValues) {
       EBM_ASSERT(m_bExpanded);
       size_t cItems = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -616,9 +613,9 @@ public:
          cItems *= ARRAY_TO_POINTER(m_aDimensions)[iDimension].m_cDivisions + 1;
       }
 
-      const TValues * pFromValue = aFromValues;
-      TValues * pToValue = m_aValues;
-      const TValues * const pToValueEnd = m_aValues + cItems;
+      const FloatEbmType * pFromValue = aFromValues;
+      FloatEbmType * pToValue = m_aValues;
+      const FloatEbmType * const pToValueEnd = m_aValues + cItems;
       do {
          // if we get a NaN value, then just consider it a no-op zero
          // if we get a +infinity, then just make our value the maximum
@@ -627,7 +624,7 @@ public:
          // so, not much real loss there.  Also, if we have NaN, or +-infinity in an update, we'll be stopping boosting soon
          // but we want to preserve the best model that we had
 
-         TValues val = *pFromValue;
+         FloatEbmType val = *pFromValue;
          val = std::isnan(val) ? FloatEbmType { 0 } : val;
          val = *pToValue + val;
          // this is a check for -infinity, without the -infinity value since some compilers make that illegal
@@ -642,7 +639,7 @@ public:
 
    // TODO : consider adding templated cVectorLength and cDimensions to this function.  At worst someone can pass in 0 and use the loops 
    //   without needing to super-optimize it
-   bool Add(const SegmentedTensor & rhs) {
+   EBM_INLINE bool Add(const SegmentedTensor & rhs) {
       DimensionInfoStack dimensionStack[k_cDimensionsMax];
 
       EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
@@ -651,9 +648,9 @@ public:
          EBM_ASSERT(1 <= m_cValueCapacity);
          EBM_ASSERT(nullptr != m_aValues);
 
-         TValues * pTo = &m_aValues[0];
-         const TValues * pFrom = &rhs.m_aValues[0];
-         const TValues * const pToEnd = &pTo[m_cVectorLength];
+         FloatEbmType * pTo = &m_aValues[0];
+         const FloatEbmType * pFrom = &rhs.m_aValues[0];
+         const FloatEbmType * const pToEnd = &pTo[m_cVectorLength];
          do {
             *pTo += *pFrom;
             ++pTo;
@@ -685,15 +682,15 @@ public:
       // first, get basic counts of how many divisions and values we'll have in our final result
       do {
          const size_t cDivisions1 = pDimensionFirst1->m_cDivisions;
-         TDivisions * p1Cur = pDimensionFirst1->m_aDivisions;
+         ActiveDataType * p1Cur = pDimensionFirst1->m_aDivisions;
          const size_t cDivisions2 = pDimensionFirst2->m_cDivisions;
-         TDivisions * p2Cur = pDimensionFirst2->m_aDivisions;
+         ActiveDataType * p2Cur = pDimensionFirst2->m_aDivisions;
 
          cValues1 *= cDivisions1 + 1; // this can't overflow since we're counting existing allocated memory
          cValues2 *= cDivisions2 + 1; // this can't overflow since we're counting existing allocated memory
 
-         TDivisions * const p1End = &p1Cur[cDivisions1];
-         TDivisions * const p2End = &p2Cur[cDivisions2];
+         ActiveDataType * const p1End = &p1Cur[cDivisions1];
+         ActiveDataType * const p2End = &p2Cur[cDivisions2];
 
          pDimensionInfoStackFirst->m_pDivision1 = p1End;
          pDimensionInfoStackFirst->m_pDivision2 = p2End;
@@ -716,8 +713,8 @@ public:
             }
             ++cNewSingleDimensionDivisions; // if we move one or both pointers, we just added annother unique one
 
-            const TDivisions d1 = *p1Cur;
-            const TDivisions d2 = *p2Cur;
+            const ActiveDataType d1 = *p1Cur;
+            const ActiveDataType d2 = *p2Cur;
 
             p1Cur = UNPREDICTABLE(d1 <= d2) ? p1Cur + 1 : p1Cur;
             p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
@@ -744,22 +741,22 @@ public:
          return true;
       }
 
-      const TValues * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
+      const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
       const DimensionInfo * const aDimension2 = ARRAY_TO_POINTER_CONST(rhs.m_aDimensions);
 
-      TValues * const aValues = m_aValues;
+      FloatEbmType * const aValues = m_aValues;
       const DimensionInfo * const aDimension1 = ARRAY_TO_POINTER(m_aDimensions);
 
-      const TValues * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
-      TValues * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
+      const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
+      FloatEbmType * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
 
       // traverse the values in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our
       // existing values which we still need to copy first do the values because we need to refer to the old divisions when making decisions about where 
       // to move next
       while(true) {
-         const TValues * pValue1Move = pValue1;
-         const TValues * pValue2Move = pValue2;
-         const TValues * const pValueTopEnd = pValueTop - m_cVectorLength;
+         const FloatEbmType * pValue1Move = pValue1;
+         const FloatEbmType * pValue2Move = pValue2;
+         const FloatEbmType * const pValueTopEnd = pValueTop - m_cVectorLength;
          do {
             --pValue1Move;
             --pValue2Move;
@@ -785,19 +782,19 @@ public:
          size_t multiplication2 = m_cVectorLength;
 
          while(true) {
-            const TDivisions * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
-            const TDivisions * const pDivision2 = pDimensionInfoStackSecond->m_pDivision2;
+            const ActiveDataType * const pDivision1 = pDimensionInfoStackSecond->m_pDivision1;
+            const ActiveDataType * const pDivision2 = pDimensionInfoStackSecond->m_pDivision2;
 
-            TDivisions * const aDivisions1 = pDimensionSecond1->m_aDivisions;
-            TDivisions * const aDivisions2 = pDimensionSecond2->m_aDivisions;
+            ActiveDataType * const aDivisions1 = pDimensionSecond1->m_aDivisions;
+            ActiveDataType * const aDivisions2 = pDimensionSecond2->m_aDivisions;
 
             if(UNPREDICTABLE(aDivisions1 < pDivision1)) {
                if(UNPREDICTABLE(aDivisions2 < pDivision2)) {
-                  const TDivisions * const pDivision1MinusOne = pDivision1 - 1;
-                  const TDivisions * const pDivision2MinusOne = pDivision2 - 1;
+                  const ActiveDataType * const pDivision1MinusOne = pDivision1 - 1;
+                  const ActiveDataType * const pDivision2MinusOne = pDivision2 - 1;
 
-                  const TDivisions d1 = *pDivision1MinusOne;
-                  const TDivisions d2 = *pDivision2MinusOne;
+                  const ActiveDataType d1 = *pDivision1MinusOne;
+                  const ActiveDataType d2 = *pDivision2MinusOne;
 
                   const bool bMove1 = UNPREDICTABLE(d2 <= d1);
                   pDimensionInfoStackSecond->m_pDivision1 = bMove1 ? pDivision1MinusOne : pDivision1;
@@ -867,9 +864,9 @@ public:
             return true;
          }
          
-         const TDivisions * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];
-         const TDivisions * p2Cur = &pDimension2Cur->m_aDivisions[pDimension2Cur->m_cDivisions];
-         TDivisions * pTopCur = &pDimension1Cur->m_aDivisions[cNewDivisions];
+         const ActiveDataType * p1Cur = &pDimension1Cur->m_aDivisions[cOriginalDivisionsBeforeSetting];
+         const ActiveDataType * p2Cur = &pDimension2Cur->m_aDivisions[pDimension2Cur->m_cDivisions];
+         ActiveDataType * pTopCur = &pDimension1Cur->m_aDivisions[cNewDivisions];
 
          // traverse in reverse so that we can put our results at the higher order indexes where we are guaranteed not to overwrite our existing values
          // which we still need to copy
@@ -893,21 +890,21 @@ public:
                memcpy(
                   pDimension1Cur->m_aDivisions, 
                   pDimension2Cur->m_aDivisions, 
-                  static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(TDivisions)
+                  static_cast<size_t>(pTopCur - pDimension1Cur->m_aDivisions) * sizeof(ActiveDataType)
                );
                break;
             }
 
-            const TDivisions * const p1CurMinusOne = p1Cur - 1;
-            const TDivisions * const p2CurMinusOne = p2Cur - 1;
+            const ActiveDataType * const p1CurMinusOne = p1Cur - 1;
+            const ActiveDataType * const p2CurMinusOne = p2Cur - 1;
 
-            const TDivisions d1 = *p1CurMinusOne;
-            const TDivisions d2 = *p2CurMinusOne;
+            const ActiveDataType d1 = *p1CurMinusOne;
+            const ActiveDataType d2 = *p2CurMinusOne;
 
             p1Cur = UNPREDICTABLE(d2 <= d1) ? p1CurMinusOne : p1Cur;
             p2Cur = UNPREDICTABLE(d1 <= d2) ? p2CurMinusOne : p2Cur;
 
-            const TDivisions d = UNPREDICTABLE(d1 <= d2) ? d2 : d1;
+            const ActiveDataType d = UNPREDICTABLE(d1 <= d2) ? d2 : d1;
 
             --pTopCur; // if we move one or both pointers, we just added annother unique one
             *pTopCur = d;
@@ -921,15 +918,15 @@ public:
    }
 
 #ifndef NDEBUG
-   bool IsEqual(const SegmentedTensor & rhs) const {
+   EBM_INLINE bool IsEqual(const SegmentedTensor & rhs) const {
       if(m_cDimensions != rhs.m_cDimensions) {
          return false;
       }
 
       size_t cValues = m_cVectorLength;
       for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
-         const DimensionInfo * const pDimension1 = &ARRAY_TO_POINTER(m_aDimensions)[iDimension];
-         const DimensionInfo * const pDimension2 = &ARRAY_TO_POINTER(rhs.m_aDimensions)[iDimension];
+         const DimensionInfo * const pDimension1 = &ARRAY_TO_POINTER_CONST(m_aDimensions)[iDimension];
+         const DimensionInfo * const pDimension2 = &ARRAY_TO_POINTER_CONST(rhs.m_aDimensions)[iDimension];
 
          size_t cDivisions = pDimension1->m_cDivisions;
          if(cDivisions != pDimension2->m_cDivisions) {
@@ -940,9 +937,9 @@ public:
             EBM_ASSERT(!IsMultiplyError(cValues, cDivisions + 1)); // we're accessing allocated memory, so it can't overflow
             cValues *= cDivisions + 1;
 
-            const TDivisions * pD1Cur = pDimension1->m_aDivisions;
-            const TDivisions * pD2Cur = pDimension2->m_aDivisions;
-            const TDivisions * const pD1End = pD1Cur + cDivisions;
+            const ActiveDataType * pD1Cur = pDimension1->m_aDivisions;
+            const ActiveDataType * pD2Cur = pDimension2->m_aDivisions;
+            const ActiveDataType * const pD1End = pD1Cur + cDivisions;
             do {
                if(UNLIKELY(*pD1Cur != *pD2Cur)) {
                   return false;
@@ -953,9 +950,9 @@ public:
          }
       }
 
-      const TValues * pV1Cur = &m_aValues[0];
-      const TValues * pV2Cur = &rhs.m_aValues[0];
-      const TValues * const pV1End = pV1Cur + cValues;
+      const FloatEbmType * pV1Cur = &m_aValues[0];
+      const FloatEbmType * pV2Cur = &rhs.m_aValues[0];
+      const FloatEbmType * const pV1End = pV1Cur + cValues;
       do {
          if(UNLIKELY(*pV1Cur != *pV2Cur)) {
             return false;
@@ -967,18 +964,9 @@ public:
       return true;
    }
 #endif // NDEBUG
-
-   static_assert(
-      std::is_standard_layout<TDivisions>::value, 
-      "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
-      "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
-   static_assert(
-      std::is_standard_layout<TValues>::value, 
-      "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
-      "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor would need to be called manually anyways");
 };
 static_assert(
-   std::is_standard_layout<SegmentedTensor<ActiveDataType, FloatEbmType>>::value, 
+   std::is_standard_layout<SegmentedTensor>::value, 
    "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
    "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 

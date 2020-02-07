@@ -223,7 +223,7 @@ static_assert(
    "output model files with two values instead of our special case 1");
 
 typedef size_t StorageDataType;
-typedef size_t ActiveDataType;
+typedef UIntEbmType ActiveDataType;
 
 constexpr ptrdiff_t k_Regression = -1;
 constexpr ptrdiff_t k_DynamicClassification = 0;

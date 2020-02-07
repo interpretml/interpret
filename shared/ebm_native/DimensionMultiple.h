@@ -1177,7 +1177,7 @@ bool BoostMultiDimensional(
    CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
    const SamplingMethod * const pTrainingSet, 
    const FeatureCombination * const pFeatureCombination, 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    const size_t cInstancesRequiredForChildSplitMin, 
    FloatEbmType * const pTotalGain, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses

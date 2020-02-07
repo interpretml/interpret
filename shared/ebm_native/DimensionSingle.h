@@ -374,7 +374,7 @@ bool GrowDecisionTree(
    const size_t cTreeSplitsMax, 
    const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
@@ -764,7 +764,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostZeroDimensional(
    CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
    const SamplingMethod * const pTrainingSet, 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -829,7 +829,7 @@ bool BoostSingleDimensional(
    const size_t cTreeSplitsMax, 
    const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet, 
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    FloatEbmType * const pTotalGain, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {

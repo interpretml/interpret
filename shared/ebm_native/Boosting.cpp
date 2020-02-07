@@ -37,15 +37,15 @@
 #include "OptimizedApplyModelUpdateTraining.h"
 #include "OptimizedApplyModelUpdateValidation.h"
 
-void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors) {
+void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");
 
    if(UNLIKELY(nullptr != apSegmentedTensors)) {
       EBM_ASSERT(0 < cFeatureCombinations);
-      SegmentedTensor<ActiveDataType, FloatEbmType> ** ppSegmentedTensors = apSegmentedTensors;
-      const SegmentedTensor<ActiveDataType, FloatEbmType> * const * const ppSegmentedTensorsEnd = &apSegmentedTensors[cFeatureCombinations];
+      SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
+      const SegmentedTensor * const * const ppSegmentedTensorsEnd = &apSegmentedTensors[cFeatureCombinations];
       do {
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Free(*ppSegmentedTensors);
+         SegmentedTensor::Free(*ppSegmentedTensors);
          ++ppSegmentedTensors;
       } while(ppSegmentedTensorsEnd != ppSegmentedTensors);
       delete[] apSegmentedTensors;
@@ -53,7 +53,7 @@ void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations,
    LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
 
-SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSegmentedTensors(
+SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    const size_t cFeatureCombinations, 
    const FeatureCombination * const * const apFeatureCombinations, 
    const size_t cVectorLength) 
@@ -64,8 +64,8 @@ SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSeg
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors = 
-      new (std::nothrow) SegmentedTensor<ActiveDataType, FloatEbmType> *[cFeatureCombinations];
+   SegmentedTensor ** const apSegmentedTensors = 
+      new (std::nothrow) SegmentedTensor *[cFeatureCombinations];
    if(UNLIKELY(nullptr == apSegmentedTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
       return nullptr;
@@ -73,11 +73,11 @@ SegmentedTensor<ActiveDataType, FloatEbmType> ** EbmBoostingState::InitializeSeg
    // this needs to be done immediately after allocation otherwise we might attempt to free random garbage on an error
    memset(apSegmentedTensors, 0, sizeof(*apSegmentedTensors) * cFeatureCombinations);
 
-   SegmentedTensor<ActiveDataType, FloatEbmType> ** ppSegmentedTensors = apSegmentedTensors;
+   SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
       const FeatureCombination * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
-      SegmentedTensor<ActiveDataType, FloatEbmType> * const pSegmentedTensors = 
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
+      SegmentedTensor * const pSegmentedTensors = 
+         SegmentedTensor::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
          DeleteSegmentedTensors(cFeatureCombinations, apSegmentedTensors);
@@ -1542,7 +1542,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
       return nullptr;
    }
 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * pBestModel = pEbmBoostingState->m_apBestModel[iFeatureCombination];
+   SegmentedTensor * pBestModel = pEbmBoostingState->m_apBestModel[iFeatureCombination];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
    FloatEbmType * pRet = pBestModel->GetValuePointer();
@@ -1587,7 +1587,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
       return nullptr;
    }
 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * pCurrentModel = pEbmBoostingState->m_apCurrentModel[iFeatureCombination];
+   SegmentedTensor * pCurrentModel = pEbmBoostingState->m_apCurrentModel[iFeatureCombination];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
    FloatEbmType * pRet = pCurrentModel->GetValuePointer();

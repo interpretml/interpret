@@ -70,13 +70,13 @@ public:
    const size_t m_cSamplingSets;
 
    SamplingMethod ** m_apSamplingSets;
-   SegmentedTensor<ActiveDataType, FloatEbmType> ** m_apCurrentModel;
-   SegmentedTensor<ActiveDataType, FloatEbmType> ** m_apBestModel;
+   SegmentedTensor ** m_apCurrentModel;
+   SegmentedTensor ** m_apBestModel;
 
    FloatEbmType m_bestModelMetric;
 
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
-   SegmentedTensor<ActiveDataType, FloatEbmType> * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   SegmentedTensor * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   SegmentedTensor * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
@@ -109,9 +109,9 @@ public:
       , m_apBestModel(nullptr)
       , m_bestModelMetric(FloatEbmType { std::numeric_limits<FloatEbmType>::max() })
       , m_pSmallChangeToModelOverwriteSingleSamplingSet(
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
+         SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(
-         SegmentedTensor<ActiveDataType, FloatEbmType>::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
+         SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)
@@ -144,14 +144,14 @@ public:
 
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apCurrentModel);
       DeleteSegmentedTensors(m_cFeatureCombinations, m_apBestModel);
-      SegmentedTensor<ActiveDataType, FloatEbmType>::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
-      SegmentedTensor<ActiveDataType, FloatEbmType>::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
+      SegmentedTensor::Free(m_pSmallChangeToModelOverwriteSingleSamplingSet);
+      SegmentedTensor::Free(m_pSmallChangeToModelAccumulatedFromSamplingSets);
 
       LOG_0(TraceLevelInfo, "Exited ~EbmBoostingState");
    }
 
-   static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor<ActiveDataType, FloatEbmType> ** const apSegmentedTensors);
-   static SegmentedTensor<ActiveDataType, FloatEbmType> ** InitializeSegmentedTensors(
+   static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors);
+   static SegmentedTensor ** InitializeSegmentedTensors(
       const size_t cFeatureCombinations, 
       const FeatureCombination * const * const apFeatureCombinations, 
       const size_t cVectorLength
