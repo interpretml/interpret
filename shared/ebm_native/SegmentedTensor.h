@@ -442,8 +442,8 @@ public:
       EBM_ASSERT(nullptr != acValuesPerDimension);
       // ok, checking the max isn't really the best here, but doing this right seems pretty complicated, and this should detect any real problems.
       // don't make this a static assert.  The rest of our class is fine as long as Expand is never called
-      EBM_ASSERT(std::numeric_limits<size_t>::max() == std::numeric_limits<ActiveDataType>::max() && 
-         std::numeric_limits<size_t>::min() == std::numeric_limits<ActiveDataType>::min());
+      EBM_ASSERT(std::numeric_limits<size_t>::max() <= std::numeric_limits<ActiveDataType>::max() &&
+         0 == std::numeric_limits<ActiveDataType>::min());
       if(m_bExpanded) {
          // we're already expanded
          LOG_0(TraceLevelVerbose, "Exited Expand");
