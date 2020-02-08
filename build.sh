@@ -13,7 +13,8 @@ for arg in "$@"; do
 done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
-compile_all=             "\"$root_path/shared/ebm_native/DataSetByFeature.cpp\""
+compile_all=""
+compile_all="$compile_all \"$root_path/shared/ebm_native/DataSetByFeature.cpp\""
 compile_all="$compile_all \"$root_path/shared/ebm_native/DataSetByFeatureCombination.cpp\""
 compile_all="$compile_all \"$root_path/shared/ebm_native/InteractionDetection.cpp\""
 compile_all="$compile_all \"$root_path/shared/ebm_native/Logging.cpp\""
