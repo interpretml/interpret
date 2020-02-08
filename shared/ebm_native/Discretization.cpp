@@ -33,8 +33,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
       static_cast<void *>(isMissing)
    );
    IntEbmType ret = 0;
+   try {
 
 
+   } catch(...) {
+      ret = 1;
+   }
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints returned %" IntEbmTypePrintf, ret);
    } else {

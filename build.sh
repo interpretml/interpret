@@ -171,7 +171,7 @@ elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$$ebm_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now -Wl,--wrap=memcpy \"$ebm_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$ebm_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now -Wl,--wrap=memcpy \"$ebm_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
