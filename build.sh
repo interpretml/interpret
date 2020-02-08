@@ -13,18 +13,17 @@ for arg in "$@"; do
 done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
-compile_all= "\
-   \"$root_path/shared/ebm_native/DataSetByFeature.cpp\" \
-   \"$root_path/shared/ebm_native/DataSetByFeatureCombination.cpp\" \
-   \"$root_path/shared/ebm_native/InteractionDetection.cpp\" \
-   \"$root_path/shared/ebm_native/Logging.cpp\" \
-   \"$root_path/shared/ebm_native/SamplingWithReplacement.cpp\" \
-   \"$root_path/shared/ebm_native/Boosting.cpp\" \
-   \"$root_path/shared/ebm_native/Discretization.cpp\" \
-   -I\"$root_path/shared/ebm_native\" \
-   -I\"$root_path/shared/ebm_native/inc\" \
-   -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11 \
-   -fvisibility=hidden -fvisibility-inlines-hidden -O3 -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
+compile_all=             "\"$root_path/shared/ebm_native/DataSetByFeature.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/DataSetByFeatureCombination.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/InteractionDetection.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/Logging.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/SamplingWithReplacement.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/Boosting.cpp\""
+compile_all="$compile_all \"$root_path/shared/ebm_native/Discretization.cpp\""
+compile_all="$compile_all -I\"$root_path/shared/ebm_native\""
+compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
+compile_all="$compile_all -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11"
+compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -O3 -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
