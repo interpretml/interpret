@@ -11,7 +11,8 @@
       FreeBoosting;
       InitializeInteractionClassification;
       InitializeInteractionRegression;
-      GetInteractionScore;FreeInteraction;
+      GetInteractionScore;
+      FreeInteraction;
       GenerateDiscretizationCutPoints;
       Discretize;
    local: *;

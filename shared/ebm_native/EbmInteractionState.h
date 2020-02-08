@@ -128,7 +128,7 @@ public:
             m_runtimeLearningTypeOrCountTargetClasses,
             aTempFloatVector
          );
-         delete aTempFloatVector;
+         delete[] aTempFloatVector;
          if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
             LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;
