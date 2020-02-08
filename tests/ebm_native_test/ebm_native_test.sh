@@ -5,6 +5,7 @@ g_pp_bin=g++
 os_type=`uname`
 script_path=`dirname "$0"`
 root_path="$script_path/../.."
+bin_file="ebm_native_test"
 
 build_ebm_native=1
 for arg in "$@"; do
@@ -32,19 +33,21 @@ if [ "$os_type" = "Darwin" ]; then
 
    compile_mac="$compile_all -L\"$root_path/staging\" -Wl,-rpath,@loader_path"
 
-   echo "Compiling ebm_native_test with $clang_pp_bin for macOS release|x64"
+   echo "Compiling $bin_file with $clang_pp_bin for macOS release|x64"
    intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test"
+   bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test"
+   lib_file_body="_ebm_native_mac_x64"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -l_ebm_native_mac_x64 -o \"$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -52,30 +55,32 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_mac_x64.dylib" "$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.dylib" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/release/mac/x64/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $clang_pp_bin for macOS debug|x64"
+   echo "Compiling $bin_file with $clang_pp_bin for macOS debug|x64"
    intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test"
+   bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test"
+   lib_file_body="_ebm_native_mac_x64_debug"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m64 -l_ebm_native_mac_x64_debug -o \"$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -83,30 +88,32 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_mac_x64_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.dylib" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/debug/mac/x64/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $clang_pp_bin for macOS release|x86"
+   echo "Compiling $bin_file with $clang_pp_bin for macOS release|x86"
    intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test"
+   bin_path="$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test"
+   lib_file_body="_ebm_native_mac_x86"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -l_ebm_native_mac_x86 -o \"$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -114,30 +121,32 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_mac_x86.dylib" "$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.dylib" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $clang_pp_bin for macOS debug|x86"
+   echo "Compiling $bin_file with $clang_pp_bin for macOS debug|x86"
    intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test"
+   bin_path="$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test"
+   lib_file_body="_ebm_native_mac_x86_debug"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m32 -l_ebm_native_mac_x86_debug -o \"$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -145,12 +154,12 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_mac_x86_debug.dylib" "$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.dylib" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -163,19 +172,21 @@ elif [ "$os_type" = "Linux" ]; then
 
    compile_linux="$compile_all -L\"$root_path/staging\" -Wl,-rpath-link,\"$root_path/staging\" -Wl,-rpath,'\$ORIGIN/'"
 
-   echo "Compiling ebm_native_test with $g_pp_bin for Linux release|x64"
+   echo "Compiling $bin_file with $g_pp_bin for Linux release|x64"
    intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test"
+   bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test"
+   lib_file_body="_ebm_native_linux_x64"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -l_ebm_native_linux_x64 -o \"$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -183,30 +194,32 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_linux_x64.so" "$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.so" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/gcc/bin/release/linux/x64/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $g_pp_bin for Linux debug|x64"
+   echo "Compiling $bin_file with $g_pp_bin for Linux debug|x64"
    intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test"
+   bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test"
+   lib_file_body="_ebm_native_linux_x64_debug"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m64 -l_ebm_native_linux_x64_debug -o \"$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -214,30 +227,32 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_linux_x64_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.so" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $g_pp_bin for Linux release|x86"
+   echo "Compiling $bin_file with $g_pp_bin for Linux release|x86"
    intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test"
+   bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test"
+   lib_file_body="_ebm_native_linux_x86"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -l_ebm_native_linux_x86 -o \"$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -245,30 +260,32 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_linux_x86.so" "$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.so" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/gcc/bin/release/linux/x86/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
 
-   echo "Compiling ebm_native_test with $g_pp_bin for Linux debug|x86"
+   echo "Compiling $bin_file with $g_pp_bin for Linux debug|x86"
    intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
+   bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
+   lib_file_body="_ebm_native_linux_x86_debug"
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   [ -d "$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test"
+   [ -d "$bin_path" ] || mkdir -p "$bin_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m32 -l_ebm_native_linux_x86_debug -o \"$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test/ebm_native_test\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
@@ -276,12 +293,12 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$root_path/staging/lib_ebm_native_linux_x86_debug.so" "$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test/"
+   cp "$root_path/staging/lib$lib_file_body.so" "$bin_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native_test/ebm_native_test"
+   "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
