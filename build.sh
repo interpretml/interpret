@@ -4,6 +4,7 @@ clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
 root_path=`dirname "$0"`
+ebm_path="$root_path/shared/ebm_native"
 
 build_32_bit=0
 for arg in "$@"; do
@@ -14,15 +15,15 @@ done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 compile_all=""
-compile_all="$compile_all \"$root_path/shared/ebm_native/DataSetByFeature.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/DataSetByFeatureCombination.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/InteractionDetection.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/Logging.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/SamplingWithReplacement.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/Boosting.cpp\""
-compile_all="$compile_all \"$root_path/shared/ebm_native/Discretization.cpp\""
-compile_all="$compile_all -I\"$root_path/shared/ebm_native\""
-compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
+compile_all="$compile_all \"$ebm_path/DataSetByFeature.cpp\""
+compile_all="$compile_all \"$ebm_path/DataSetByFeatureCombination.cpp\""
+compile_all="$compile_all \"$ebm_path/InteractionDetection.cpp\""
+compile_all="$compile_all \"$ebm_path/Logging.cpp\""
+compile_all="$compile_all \"$ebm_path/SamplingWithReplacement.cpp\""
+compile_all="$compile_all \"$ebm_path/Boosting.cpp\""
+compile_all="$compile_all \"$ebm_path/Discretization.cpp\""
+compile_all="$compile_all -I\"$ebm_path\""
+compile_all="$compile_all -I\"$ebm_path/inc\""
 compile_all="$compile_all -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11"
 compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -O3 -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
 
@@ -170,7 +171,7 @@ elif [ "$os_type" = "Linux" ]; then
    # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
-   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$root_path/shared/ebm_native/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now -Wl,--wrap=memcpy \"$root_path/shared/ebm_native/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_all -Wlogical-op -Wl,--version-script=\"$$ebm_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now -Wl,--wrap=memcpy \"$ebm_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
    [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
