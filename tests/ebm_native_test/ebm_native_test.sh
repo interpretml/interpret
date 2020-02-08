@@ -20,7 +20,11 @@ else
    echo "ebm_native library NOT being built"
 fi
 
-compile_all="\"$root_path/tests/ebm_native_test/EbmNativeTest.cpp\" -I\"$root_path/tests/ebm_native_test\" -I\"$root_path/shared/ebm_native/inc\" -std=c++11 -fpermissive -O3 -march=core2"
+compile_all=""
+compile_all="$compile_all \"$root_path/tests/ebm_native_test/EbmNativeTest.cpp\""
+compile_all="$compile_all -I\"$root_path/tests/ebm_native_test\""
+compile_all="$compile_all -I\"$root_path/shared/ebm_native/inc\""
+compile_all="$compile_all -std=c++11 -fpermissive -O3 -march=core2"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -29,7 +33,8 @@ if [ "$os_type" = "Darwin" ]; then
    compile_mac="$compile_all -L\"$root_path/staging\" -Wl,-rpath,@loader_path"
 
    echo "Compiling ebm_native_test with $clang_pp_bin for macOS release|x64"
-   [ -d "$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test"
+   intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -43,7 +48,7 @@ if [ "$os_type" = "Darwin" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native_test/ebm_native_test_release_mac_x64_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_release_mac_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -59,7 +64,8 @@ if [ "$os_type" = "Darwin" ]; then
    fi
 
    echo "Compiling ebm_native_test with $clang_pp_bin for macOS debug|x64"
-   [ -d "$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test"
+   intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -73,7 +79,7 @@ if [ "$os_type" = "Darwin" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native_test/ebm_native_test_debug_mac_x64_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_debug_mac_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -89,7 +95,8 @@ if [ "$os_type" = "Darwin" ]; then
    fi
 
    echo "Compiling ebm_native_test with $clang_pp_bin for macOS release|x86"
-   [ -d "$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test"
+   intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -103,7 +110,7 @@ if [ "$os_type" = "Darwin" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test/ebm_native_test_release_mac_x86_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_release_mac_x86_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -119,7 +126,8 @@ if [ "$os_type" = "Darwin" ]; then
    fi
 
    echo "Compiling ebm_native_test with $clang_pp_bin for macOS debug|x86"
-   [ -d "$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test"
+   intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -133,7 +141,7 @@ if [ "$os_type" = "Darwin" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test/ebm_native_test_debug_mac_x86_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_debug_mac_x86_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -156,7 +164,8 @@ elif [ "$os_type" = "Linux" ]; then
    compile_linux="$compile_all -L\"$root_path/staging\" -Wl,-rpath-link,\"$root_path/staging\" -Wl,-rpath,'\$ORIGIN/'"
 
    echo "Compiling ebm_native_test with $g_pp_bin for Linux release|x64"
-   [ -d "$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test"
+   intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -170,7 +179,7 @@ elif [ "$os_type" = "Linux" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native_test/ebm_native_test_release_linux_x64_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_release_linux_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -186,7 +195,8 @@ elif [ "$os_type" = "Linux" ]; then
    fi
 
    echo "Compiling ebm_native_test with $g_pp_bin for Linux debug|x64"
-   [ -d "$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test"
+   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -200,7 +210,7 @@ elif [ "$os_type" = "Linux" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native_test/ebm_native_test_debug_linux_x64_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_debug_linux_x64_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -216,7 +226,8 @@ elif [ "$os_type" = "Linux" ]; then
    fi
 
    echo "Compiling ebm_native_test with $g_pp_bin for Linux release|x86"
-   [ -d "$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test"
+   intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -230,7 +241,7 @@ elif [ "$os_type" = "Linux" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native_test/ebm_native_test_release_linux_x86_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_release_linux_x86_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -246,7 +257,8 @@ elif [ "$os_type" = "Linux" ]; then
    fi
 
    echo "Compiling ebm_native_test with $g_pp_bin for Linux debug|x86"
-   [ -d "$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test" ] || mkdir -p "$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
+   intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test"
+   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -260,7 +272,7 @@ elif [ "$os_type" = "Linux" ]; then
    compile_out=`eval $compile_command`
    ret_code=$?
    echo -n "$compile_out"
-   echo -n "$compile_out" > "$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native_test/ebm_native_test_debug_linux_x86_build_log.txt"
+   echo -n "$compile_out" > "$intermediate_path/ebm_native_test_debug_linux_x86_build_log.txt"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -274,7 +286,6 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-
 
    echo Passed All Tests
 else
