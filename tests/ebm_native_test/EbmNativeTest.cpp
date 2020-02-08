@@ -1206,6 +1206,37 @@ TEST_CASE("test random number generator equivalency") {
 }
 #endif // LEGACY_COMPATIBILITY
 
+TEST_CASE("Discretization") {
+   FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
+   IntEbmType singleFeatureDiscretized[sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0])];
+   constexpr IntEbmType countMaximumBins = 2;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+
+   IntEbmType ret = GenerateDiscretizationCutPoints(
+      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing
+   );
+
+   CHECK(0 == ret);
+
+   Discretize(
+      isMissing,
+      countCutPoints,
+      cutPointsLowerBoundInclusive,
+      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+}
+
 TEST_CASE("null validationMetricReturn, boosting, regression") {
    EbmNativeFeatureCombination combinations[1];
    combinations->countFeaturesInCombination = 0;

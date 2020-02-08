@@ -313,6 +313,7 @@ EXIT /B 0
   <ItemGroup>
     <ClCompile Include="DataSetByFeature.cpp" />
     <ClCompile Include="DataSetByFeatureCombination.cpp" />
+    <ClCompile Include="Discretization.cpp" />
     <ClCompile Include="DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetection.cpp" />
     <ClCompile Include="Logging.cpp" />

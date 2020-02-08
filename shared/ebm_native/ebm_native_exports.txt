@@ -12,5 +12,7 @@
       InitializeInteractionClassification;
       InitializeInteractionRegression;
       GetInteractionScore;FreeInteraction;
+      GenerateDiscretizationCutPoints;
+      Discretize;
    local: *;
 };

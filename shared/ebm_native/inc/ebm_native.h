@@ -392,6 +392,25 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
    PEbmInteraction ebmInteraction
 );
 
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDiscretizationCutPoints(
+   IntEbmType countInstances,
+   FloatEbmType * singleFeatureValues,
+   IntEbmType countMaximumBins,
+   IntEbmType countMinimumInstancesPerBin,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType * countCutPoints,
+   IntEbmType * isMissingPresent
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
+   IntEbmType isMissing,
+   IntEbmType countCutPoints,
+   const FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countInstances,
+   const FloatEbmType * singleFeatureValues,
+   IntEbmType * singleFeatureDiscretized
+);
+
+
 // TODO PK Implement the following for memory efficiency and speed of initialization :
 //   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)
 //   - OBSERVATION: passing in data one feature at a time is also nice since some languages (C# for instance) in some configurations don't like arrays 
