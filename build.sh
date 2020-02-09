@@ -4,8 +4,9 @@ clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
 root_path=`dirname "$0"`
-ebm_path="$root_path/shared/ebm_native"
+src_path="$root_path/shared/ebm_native"
 python_lib="$root_path/python/interpret-core/interpret/lib"
+staging_path="$root_path/staging"
 
 build_32_bit=0
 for arg in "$@"; do
@@ -16,15 +17,15 @@ done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 compile_all=""
-compile_all="$compile_all \"$ebm_path/DataSetByFeature.cpp\""
-compile_all="$compile_all \"$ebm_path/DataSetByFeatureCombination.cpp\""
-compile_all="$compile_all \"$ebm_path/InteractionDetection.cpp\""
-compile_all="$compile_all \"$ebm_path/Logging.cpp\""
-compile_all="$compile_all \"$ebm_path/SamplingWithReplacement.cpp\""
-compile_all="$compile_all \"$ebm_path/Boosting.cpp\""
-compile_all="$compile_all \"$ebm_path/Discretization.cpp\""
-compile_all="$compile_all -I\"$ebm_path\""
-compile_all="$compile_all -I\"$ebm_path/inc\""
+compile_all="$compile_all \"$src_path/DataSetByFeature.cpp\""
+compile_all="$compile_all \"$src_path/DataSetByFeatureCombination.cpp\""
+compile_all="$compile_all \"$src_path/InteractionDetection.cpp\""
+compile_all="$compile_all \"$src_path/Logging.cpp\""
+compile_all="$compile_all \"$src_path/SamplingWithReplacement.cpp\""
+compile_all="$compile_all \"$src_path/Boosting.cpp\""
+compile_all="$compile_all \"$src_path/Discretization.cpp\""
+compile_all="$compile_all -I\"$src_path\""
+compile_all="$compile_all -I\"$src_path/inc\""
 compile_all="$compile_all -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11"
 compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -O3 -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
 
@@ -35,7 +36,7 @@ if [ "$os_type" = "Darwin" ]; then
    compile_mac="$compile_all -Wnull-dereference -Wgnu-zero-variadic-macro-arguments -dynamiclib"
 
    printf "%s\n" "Creating initial directories"
-   [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
+   [ -d "$staging_path" ] || mkdir -p "$staging_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -50,6 +51,9 @@ if [ "$os_type" = "Darwin" ]; then
    intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native"
    bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
    bin_file="lib_ebm_native_mac_x64.dylib"
+   log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
+   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+   
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -60,11 +64,10 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
+   printf "%s\n" "$compile_out" > "$log_file"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -73,7 +76,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$bin_path/$bin_file" "$root_path/staging/"
+   cp "$bin_path/$bin_file" "$staging_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -83,6 +86,9 @@ if [ "$os_type" = "Darwin" ]; then
    intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native"
    bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
    bin_file="lib_ebm_native_mac_x64_debug.dylib"
+   log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
+   compile_command="$clang_pp_bin $compile_mac -m64 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+   
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -93,11 +99,10 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$clang_pp_bin $compile_mac -m64 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
+   printf "%s\n" "$compile_out" > "$log_file"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -106,7 +111,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$bin_path/$bin_file" "$root_path/staging/"
+   cp "$bin_path/$bin_file" "$staging_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -117,6 +122,9 @@ if [ "$os_type" = "Darwin" ]; then
       intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native"
       bin_path="$root_path/tmp/clang/bin/release/mac/x86/ebm_native"
       bin_file="lib_ebm_native_mac_x86.dylib"
+      log_file="$intermediate_path/ebm_native_release_mac_x86_build_log.txt"
+      compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -127,11 +135,10 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_release_mac_x86_build_log.txt"
+      printf "%s\n" "$compile_out" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
@@ -140,7 +147,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$bin_path/$bin_file" "$root_path/staging/"
+      cp "$bin_path/$bin_file" "$staging_path/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -150,6 +157,9 @@ if [ "$os_type" = "Darwin" ]; then
       intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native"
       bin_path="$root_path/tmp/clang/bin/debug/mac/x86/ebm_native"
       bin_file="lib_ebm_native_mac_x86_debug.dylib"
+      log_file="$intermediate_path/ebm_native_debug_mac_x86_build_log.txt"
+      compile_command="$clang_pp_bin $compile_mac -m32 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+      
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -160,11 +170,10 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$clang_pp_bin $compile_mac -m32 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_debug_mac_x86_build_log.txt"
+      printf "%s\n" "$compile_out" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
@@ -173,7 +182,7 @@ if [ "$os_type" = "Darwin" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$bin_path/$bin_file" "$root_path/staging/"
+      cp "$bin_path/$bin_file" "$staging_path/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -185,11 +194,11 @@ elif [ "$os_type" = "Linux" ]; then
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
    compile_linux="$compile_all"
-   compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=\"$ebm_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
-   compile_linux="$compile_linux -Wl,--wrap=memcpy \"$ebm_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
+   compile_linux="$compile_linux -Wlogical-op -Wl,--version-script=\"$src_path/ebm_native_exports.txt\" -Wl,--exclude-libs,ALL -Wl,-z,relro,-z,now"
+   compile_linux="$compile_linux -Wl,--wrap=memcpy \"$src_path/wrap_func.cpp\" -static-libgcc -static-libstdc++ -shared"
 
    printf "%s\n" "Creating initial directories"
-   [ -d "$root_path/staging" ] || mkdir -p "$root_path/staging"
+   [ -d "$staging_path" ] || mkdir -p "$staging_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -204,6 +213,9 @@ elif [ "$os_type" = "Linux" ]; then
    intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native"
    bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
    bin_file="lib_ebm_native_linux_x64.so"
+   log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
+   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
+   
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -214,11 +226,10 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
+   printf "%s\n" "$compile_out" > "$log_file"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -227,7 +238,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$bin_path/$bin_file" "$root_path/staging/"
+   cp "$bin_path/$bin_file" "$staging_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -237,6 +248,9 @@ elif [ "$os_type" = "Linux" ]; then
    intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
    bin_file="lib_ebm_native_linux_x64_debug.so"
+   log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
+   compile_command="$g_pp_bin $compile_linux -m64 -o \"$bin_path/$bin_file\" 2>&1"
+   
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
@@ -247,11 +261,10 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   compile_command="$g_pp_bin $compile_linux -m64 -o \"$bin_path/$bin_file\" 2>&1"
    compile_out=`eval $compile_command`
    ret_code=$?
    printf "%s\n" "$compile_out"
-   printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
+   printf "%s\n" "$compile_out" > "$log_file"
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
@@ -260,7 +273,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   cp "$bin_path/$bin_file" "$root_path/staging/"
+   cp "$bin_path/$bin_file" "$staging_path/"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -271,6 +284,9 @@ elif [ "$os_type" = "Linux" ]; then
       intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native"
       bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
+      log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
+      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
+      
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -281,11 +297,10 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
+      printf "%s\n" "$compile_out" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
@@ -294,7 +309,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$bin_path/$bin_file" "$root_path/staging/"
+      cp "$bin_path/$bin_file" "$staging_path/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
@@ -304,6 +319,9 @@ elif [ "$os_type" = "Linux" ]; then
       intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native"
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
+      log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
+      compile_command="$g_pp_bin $compile_linux -m32 -o \"$bin_path/$bin_file\" 2>&1"
+      
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
@@ -314,11 +332,10 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      compile_command="$g_pp_bin $compile_linux -m32 -o \"$bin_path/$bin_file\" 2>&1"
       compile_out=`eval $compile_command`
       ret_code=$?
       printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
+      printf "%s\n" "$compile_out" > "$log_file"
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
@@ -327,7 +344,7 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
-      cp "$bin_path/$bin_file" "$root_path/staging/"
+      cp "$bin_path/$bin_file" "$staging_path/"
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
