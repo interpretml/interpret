@@ -6,6 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
+#include <algorithm> // sort
 #include <cmath> // std::round
 #include <vector>
 
@@ -156,11 +157,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
 
          const size_t cInstances = pEnd - singleFeatureValues;
 
-         FloatEbmType avgLength = static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins);
+         FloatEbmType avgLengthFloatDontUse = static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins);
+         size_t avgLength = static_cast<size_t>(std::round(avgLengthFloatDontUse));
          if(avgLength < cMinimumInstancesPerBin) {
             avgLength = cMinimumInstancesPerBin;
          }
-         size_t avgLengthInt = static_cast<size_t>(std::round(avgLength));
+         EBM_ASSERT(1 <= avgLength);
 
          std::vector<Junction> junctions;
 
@@ -172,7 +174,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
             FloatEbmType val = *pScan;
             if(val != rangeValue) {
                size_t cEqualRangeItems = pScan - pStartEqualRange;
-               if(avgLengthInt <= cEqualRangeItems) {
+               if(avgLength <= cEqualRangeItems) {
                   // we have a long sequence.  Our previous items are a cuttable range
                   Junction junction;
                   // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
@@ -191,7 +193,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
             ++pScan;
          }
          size_t cEqualRangeItemsOuter = pEnd - pStartEqualRange;
-         if(avgLengthInt <= cEqualRangeItemsOuter) {
+         if(avgLength <= cEqualRangeItemsOuter) {
             // we have a long sequence.  Our previous items are a cuttable range
             Junction junction;
             // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
@@ -274,7 +276,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
    );
 
    if(0 < countInstances) {
-      const bool bMissing = EBM_FALSE != isMissing;
+      const ptrdiff_t missingVal = EBM_FALSE != isMissing ? ptrdiff_t { 0 } : ptrdiff_t { -1 };
       const size_t cCutPoints = static_cast<size_t>(countCutPoints);
       const size_t cInstances = static_cast<size_t>(countInstances);
       const FloatEbmType * pValue = singleFeatureValues;
@@ -285,24 +287,30 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          memset(singleFeatureDiscretized, 0, sizeof(singleFeatureDiscretized[0]) * cInstances);
       } else {
          do {
+            ptrdiff_t middle = missingVal;
             FloatEbmType val = *pValue;
-            ptrdiff_t high = cCutPoints - 1;
-            ptrdiff_t middle;
-            ptrdiff_t low = 0;
-            FloatEbmType midVal;
-            do {
-               middle = (low + high) >> 1;
-               midVal = cutPointsLowerBoundInclusive[middle];
-               if(UNLIKELY(midVal == val)) {
-                  // this happens just once during our descent, so it's less likely than continuing searching
-                  goto no_check;
-               }
-               high = UNPREDICTABLE(midVal < val) ? high : middle - 1;
-               low = UNPREDICTABLE(midVal < val) ? middle + 1 : low;
-            } while(LIKELY(low <= high));
-            middle = UNPREDICTABLE(midVal < val) ? middle + 1 : middle;
+            if(!std::isnan(val)) {
+               ptrdiff_t high = cCutPoints - 1;
+               ptrdiff_t low = 0;
+               FloatEbmType midVal;
+               do {
+                  middle = (low + high) >> 1;
+                  midVal = cutPointsLowerBoundInclusive[middle];
+                  if(UNLIKELY(midVal == val)) {
+                     // this happens just once during our descent, so it's less likely than continuing searching
+
+                     // TODO: getting exactly equal should be rare for floating points, especially since our cut points are in between the floats
+                     //       that we do get.  Can we modify the descent algorithm so that it handles this without a special exit jump
+
+                     goto no_check;
+                  }
+                  high = UNPREDICTABLE(midVal < val) ? high : middle - 1;
+                  low = UNPREDICTABLE(midVal < val) ? middle + 1 : low;
+               } while(LIKELY(low <= high));
+               middle = UNPREDICTABLE(midVal < val) ? middle + 1 : middle;
+            }
          no_check:
-            *pDiscretized = middle;
+            *pDiscretized = static_cast<IntEbmType>(middle);
             ++pDiscretized;
             ++pValue;
          } while(pValueEnd != pValue);
