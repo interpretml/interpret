@@ -110,6 +110,9 @@ typedef int64_t IntEbmType;
 typedef uint64_t UIntEbmType;
 #define UIntEbmTypePrintf PRIu64
 
+const IntEbmType EBM_FALSE = 0;
+const IntEbmType EBM_TRUE = 1;
+
 const IntEbmType FeatureTypeOrdinal = 0;
 const IntEbmType FeatureTypeNominal = 1;
 
@@ -393,6 +396,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDiscretizationCutPoints(
+   const IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
    IntEbmType countMaximumBins,

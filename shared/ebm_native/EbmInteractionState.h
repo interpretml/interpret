@@ -92,15 +92,15 @@ public:
                LOG_0(TraceLevelInfo, "INFO InitializeInteraction feature with 0/1 value");
             }
 
-            EBM_ASSERT(0 == pFeatureInitialize->hasMissing || 1 == pFeatureInitialize->hasMissing);
-            bool bMissing = 0 != pFeatureInitialize->hasMissing;
+            EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
+            bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
             // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the 
             // resulting pointer returned
             new (&m_aFeatures[iFeatureInitialize]) Feature(cBins, iFeatureInitialize, featureType, bMissing);
             // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
-            EBM_ASSERT(0 == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
+            EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
 
             ++iFeatureInitialize;
