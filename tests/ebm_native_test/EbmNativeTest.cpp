@@ -1207,87 +1207,149 @@ TEST_CASE("test random number generator equivalency") {
 }
 #endif // LEGACY_COMPATIBILITY
 
-//TEST_CASE("Discretization") {
-//   //constexpr IntEbmType countMaximumBins = 2;
-//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
-//
-//   //constexpr IntEbmType countMaximumBins = 2;
-//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
-//
-//   constexpr IntEbmType countMaximumBins = 2;
-//   constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   FloatEbmType singleFeatureValues[]          { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-//   const FloatEbmType expectedDiscretized[]    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-//   const std::vector<FloatEbmType> expectedCutPoints { };
-//   const IntEbmType bMissing = EBM_FALSE;
-//
-//   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
-//   IntEbmType countCutPoints;
-//   IntEbmType isMissing;
-//
-//   IntEbmType ret = GenerateDiscretizationCutPoints(
-//      randomSeed,
-//      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
-//      singleFeatureValues,
-//      countMaximumBins,
-//      countMinimumInstancesPerBin,
-//      cutPointsLowerBoundInclusive,
-//      &countCutPoints,
-//      &isMissing
-//   );
-//   CHECK(0 == ret);
-//   CHECK(bMissing == isMissing);
-//   CHECK(expectedCutPoints.size() == countCutPoints);
-//   if(expectedCutPoints.size() == countCutPoints) {
-//      for(IntEbmType i = 0; i < countCutPoints; ++i) {
-//         CHECK_APPROX(cutPointsLowerBoundInclusive[i], expectedCutPoints[i]);
-//      }
-//   }
-//   IntEbmType singleFeatureDiscretized[sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0])];
-//   Discretize(
-//      isMissing,
-//      countCutPoints,
-//      cutPointsLowerBoundInclusive,
-//      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
-//      singleFeatureValues,
-//      singleFeatureDiscretized
-//   );
-//   static_assert(sizeof(singleFeatureDiscretized) / sizeof(singleFeatureDiscretized[0]) == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-//      "singleFeatureValues and singleFeatureDigitized must be the same length"
-//   );
-//   for(size_t i = 0; i < sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]); ++i) {
-//      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
-//   }
-//}
+TEST_CASE("Discretize, zero instances") {
+   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
+   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   constexpr IntEbmType  cInstances = 0;
 
-TEST_CASE("Discretize, randomized") {
-   RandomStream random(randomSeed);
-   for(int iteration = 0; iteration < 1000000; ++iteration) {
-      if(!random.IsSuccess()) {
-         exit(1);
-      }
-      constexpr size_t cCutPointsMax = 260; // 0 to 259 (get a coupple past 256)
-      FloatEbmType cutPointsLowerBoundInclusive[cCutPointsMax];
-      size_t cCutPoints = random.Next(cCutPointsMax + 1);
-      for(size_t iRandom = 0; iRandom < cCutPoints; ++iRandom) {
-         cutPointsLowerBoundInclusive[iRandom] = static_cast<FloatEbmType>(random.Next(1000000));
-      }
-      std::sort(cutPointsLowerBoundInclusive, cutPointsLowerBoundInclusive + cCutPoints);
+   Discretize(
+      EBM_FALSE,
+      countCuts,
+      cutPointsLowerBoundInclusive,
+      cInstances,
+      nullptr,
+      nullptr
+   );
 
-      size_t iCopyTo = 1;
-      for(size_t iRandom = 1; iRandom < cCutPoints; ++iRandom) {
-         if(cutPointsLowerBoundInclusive[iRandom - 1] != cutPointsLowerBoundInclusive[iRandom]) {
-            cutPointsLowerBoundInclusive[iCopyTo] = cutPointsLowerBoundInclusive[iRandom];
-            ++iCopyTo;
-         }
-      }
-      cCutPoints = iCopyTo;
+   Discretize(
+      EBM_TRUE,
+      countCuts,
+      cutPointsLowerBoundInclusive,
+      cInstances,
+      nullptr,
+      nullptr
+   );
+}
 
-      FloatEbmType singleFeatureValues[1];
-      IntEbmType singleFeatureDiscretized[1];
+TEST_CASE("Discretize, zero cuts, known missing") {
+   FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
+   const IntEbmType expectedDiscretized[] { 1, 1, 1, 1, 1, 1, 1, 0, 1, 1 };
 
+   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cInstances and expectedDiscretized must be the same length"
+      );
+   constexpr IntEbmType countCuts = 0;
+   IntEbmType singleFeatureDiscretized[cInstances];
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
+
+   Discretize(
+      isMissing,
+      countCuts,
+      nullptr,
+      IntEbmType { cInstances },
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+
+   for(size_t i = 0; i < cInstances; ++i) {
+      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
+   }
+}
+
+TEST_CASE("Discretize, zero cuts, unknown missing") {
+   FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, -1, 0, 0 };
+
+   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cInstances and expectedDiscretized must be the same length"
+      );
+   constexpr IntEbmType countCuts = 0;
+   IntEbmType singleFeatureDiscretized[cInstances];
+   const IntEbmType isMissing = EBM_FALSE;
+
+   Discretize(
+      isMissing,
+      countCuts,
+      nullptr,
+      IntEbmType { cInstances },
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+
+   for(size_t i = 0; i < cInstances; ++i) {
+      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
+   }
+}
+
+TEST_CASE("Discretize, known missing") {
+   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
+   FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
+   const IntEbmType expectedDiscretized[] { 1, 1, 2, 2, 2, 3, 3, 0, 8, 10 };
+
+   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cInstances and expectedDiscretized must be the same length"
+      );
+   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   IntEbmType singleFeatureDiscretized[cInstances];
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
+
+   Discretize(
+      isMissing,
+      countCuts,
+      cutPointsLowerBoundInclusive,
+      IntEbmType { cInstances },
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+
+   for(size_t i = 0; i < cInstances; ++i) {
+      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
+   }
+}
+
+TEST_CASE("Discretize, unknown missing") {
+   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
+   FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, -1, 7, 9 };
+
+   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cInstances and expectedDiscretized must be the same length"
+      );
+   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   IntEbmType singleFeatureDiscretized[cInstances];
+   const IntEbmType isMissing = EBM_FALSE;
+
+   Discretize(
+      isMissing,
+      countCuts,
+      cutPointsLowerBoundInclusive,
+      IntEbmType { cInstances },
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+
+   for(size_t i = 0; i < cInstances; ++i) {
+      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
+   }
+}
+
+TEST_CASE("Discretize, increasing lengths") {
+   FloatEbmType singleFeatureValues[1];
+   IntEbmType singleFeatureDiscretized[1];
+
+   constexpr size_t cCutPointsMax = 1029;
+   FloatEbmType cutPointsLowerBoundInclusive[cCutPointsMax];
+   for(size_t iCutPoint = 0; iCutPoint < cCutPointsMax; ++iCutPoint) {
+      cutPointsLowerBoundInclusive[iCutPoint] = static_cast<FloatEbmType>(iCutPoint);
+   }
+   // this doesn't check 0 cuts, or having missing values
+   for(size_t cCutPoints = 1; cCutPoints <= cCutPointsMax; ++cCutPoints) {
       for(int iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
          // first try it without missing values
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
@@ -1360,40 +1422,49 @@ TEST_CASE("Discretize, randomized") {
    }
 }
 
+//TEST_CASE("GenerateDiscretizationCutPoints") {
+//   //constexpr IntEbmType countMaximumBins = 2;
+//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
+//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
+//
+//   //constexpr IntEbmType countMaximumBins = 2;
+//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
+//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
+//
+//   constexpr IntEbmType countMaximumBins = 2;
+//   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+//   FloatEbmType singleFeatureValues[]          { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+//   const FloatEbmType expectedDiscretized[]    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+//   const std::vector<FloatEbmType> expectedCutPoints { };
+//   const IntEbmType bMissing = EBM_FALSE;
+//
+//   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+//   IntEbmType countCutPoints;
+//   IntEbmType isMissing;
+//
+//   IntEbmType ret = GenerateDiscretizationCutPoints(
+//      randomSeed,
+//      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
+//      singleFeatureValues,
+//      countMaximumBins,
+//      countMinimumInstancesPerBin,
+//      cutPointsLowerBoundInclusive,
+//      &countCutPoints,
+//      &isMissing
+//   );
+//   CHECK(0 == ret);
+//   CHECK(bMissing == isMissing);
+//   CHECK(expectedCutPoints.size() == countCutPoints);
+//   if(expectedCutPoints.size() == countCutPoints) {
+//      for(IntEbmType i = 0; i < countCutPoints; ++i) {
+//         CHECK_APPROX(cutPointsLowerBoundInclusive[i], expectedCutPoints[i]);
+//      }
+//   }
+//}
 
-
-TEST_CASE("Discretize, pure, missing") {
-   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
-   FloatEbmType singleFeatureValues[]     { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 1, 1,   2, 2,   2,   3, 3,   0,                                              8,    10 };
-
-   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
-   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cInstances and expectedDiscretized must be the same length"
-   );
-   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType singleFeatureDiscretized[cInstances];
-   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
-   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
-
-   Discretize(
-      isMissing,
-      countCuts,
-      cutPointsLowerBoundInclusive,
-      IntEbmType { cInstances },
-      singleFeatureValues,
-      singleFeatureDiscretized
-   );
-
-   for(size_t i = 0; i < cInstances; ++i) {
-      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
-   }
-}
-
-TEST_CASE("Discretization 0") {
+TEST_CASE("GenerateDiscretizationCutPoints 0") {
    constexpr IntEbmType countMaximumBins = 1;
    constexpr IntEbmType countMinimumInstancesPerBin = 1;
-   const IntEbmType bMissing = EBM_FALSE;
 
    IntEbmType countCutPoints;
    IntEbmType isMissing;
@@ -1409,16 +1480,8 @@ TEST_CASE("Discretization 0") {
       &isMissing
    );
    CHECK(0 == ret);
-   CHECK(bMissing == isMissing);
+   CHECK(EBM_FALSE == isMissing);
    CHECK(0 == countCutPoints);
-   Discretize(
-      isMissing,
-      countCutPoints,
-      nullptr,
-      0,
-      nullptr,
-      nullptr
-   );
 }
 
 TEST_CASE("null validationMetricReturn, boosting, regression") {
