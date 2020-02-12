@@ -219,6 +219,31 @@ def test_ebm_iris():
     _smoke_test_explanations(global_exp, local_exp, 6001)
 
 
+def test_ebm_sparse():
+    """ Validate running EBM on scipy sparse data
+    """
+    import sklearn.linear_model
+    from sklearn.datasets import make_multilabel_classification
+    from scipy.special import expit
+
+    np.random.seed(0)
+    n_features = 20
+    X, y = make_multilabel_classification(n_samples=100,
+                                          sparse=True,
+                                          n_features=n_features,
+                                          n_classes=1,
+                                          n_labels=2)
+
+    # train linear model
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X, y)
+
+    assert accuracy_score(y, clf.predict(X)) > 0.9
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X, y)
+    _smoke_test_explanations(global_exp, local_exp, 6002)
+
+
 def test_zero_validation():
     data = synthetic_classification()
     X = data["full"]["X"]

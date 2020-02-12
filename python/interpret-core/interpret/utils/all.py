@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover
 
 from pandas.core.generic import NDFrame
 from pandas.core.series import Series
-import numpy as np
+import scipy as sp
 
 import logging
 
@@ -215,6 +215,24 @@ def unify_vector(data):
     return new_data
 
 
+def _get_new_feature_names(data, feature_names):
+    if feature_names is None:
+        return ["feature_" + str(i) for i in range(data.shape[1])]
+    else:
+        return feature_names
+
+def _get_new_feature_types(data, feature_types, new_feature_names):
+    if feature_types is None:
+        unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
+        return [
+            _assign_feature_type(feature_type, unique_counts[index])
+            for index, feature_type in enumerate(
+                [data.dtype] * len(new_feature_names)
+            )
+        ]
+    else:
+        return feature_types
+
 # TODO: Docs for unify_data.
 def unify_data(data, labels=None, feature_names=None, feature_types=None):
     """ Attempts to unify data into a numpy array with feature names and types.
@@ -254,41 +272,21 @@ def unify_data(data, labels=None, feature_names=None, feature_types=None):
     elif isinstance(data, list):
         new_data = np.array(data)
 
-        if feature_names is None:
-            new_feature_names = ["feature_" + str(i) for i in range(new_data.shape[1])]
-        else:
-            new_feature_names = feature_names
-
-        if feature_types is None:
-            unique_counts = np.apply_along_axis(
-                lambda a: len(set(a)), axis=0, arr=new_data
-            )
-            new_feature_types = [
-                _assign_feature_type(feature_type, unique_counts[index])
-                for index, feature_type in enumerate(
-                    [new_data.dtype] * len(new_feature_names)
-                )
-            ]
-        else:
-            new_feature_types = feature_types
+        new_feature_names = _get_new_feature_names(new_data, feature_names)
+        new_feature_types = _get_new_feature_types(new_data, feature_types, new_feature_names)
     elif isinstance(data, np.ndarray):
         new_data = data
 
-        if feature_names is None:
-            new_feature_names = ["feature_" + str(i) for i in range(data.shape[1])]
-        else:
-            new_feature_names = feature_names
+        new_feature_names = _get_new_feature_names(data, feature_names)
+        new_feature_types = _get_new_feature_types(data, feature_types, new_feature_names)
+    elif sp.sparse.issparse(data):
+        # Add warning message for now prior to converting the data to dense format
+        warn_msg = "Sparse data not fully supported, will be densified for now, may cause OOM"
+        warnings.warn(warn_msg, RuntimeWarning)
+        new_data = data.toarray()
 
-        if feature_types is None:
-            unique_counts = np.apply_along_axis(lambda a: len(set(a)), axis=0, arr=data)
-            new_feature_types = [
-                _assign_feature_type(feature_type, unique_counts[index])
-                for index, feature_type in enumerate(
-                    [data.dtype] * len(new_feature_names)
-                )
-            ]
-        else:
-            new_feature_types = feature_types
+        new_feature_names = _get_new_feature_names(new_data, feature_names)
+        new_feature_types = _get_new_feature_types(new_data, feature_types, new_feature_names)
     else:  # pragma: no cover
         msg = "Could not unify data of type: {0}".format(type(data))
         log.error(msg)
