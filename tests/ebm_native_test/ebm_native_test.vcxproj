@@ -241,6 +241,7 @@ EXIT /B 0
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PrecompiledHeaderEbmNativeTest.h" />
+    <ClInclude Include="RandomStream.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_test.bat" />

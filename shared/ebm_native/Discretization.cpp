@@ -265,57 +265,73 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
    EBM_ASSERT(0 == countInstances || nullptr != singleFeatureValues);
    EBM_ASSERT(0 == countInstances || nullptr != singleFeatureDiscretized);
 
-   LOG_N(TraceLevelInfo, "Entered Discretize: isMissing=%" IntEbmTypePrintf ", countCutPoints=%" IntEbmTypePrintf 
-      ", cutPointsLowerBoundInclusive=%p, countInstances=%" IntEbmTypePrintf ", singleFeatureValues=%p, singleFeatureDiscretized=%p",
-      isMissing,
-      countCutPoints,
-      static_cast<const void *>(cutPointsLowerBoundInclusive),
-      countInstances,
-      static_cast<const void *>(singleFeatureValues),
-      static_cast<void *>(singleFeatureDiscretized)
-   );
-
-   if(0 < countInstances) {
-      const ptrdiff_t missingVal = EBM_FALSE != isMissing ? ptrdiff_t { 0 } : ptrdiff_t { -1 };
+   if(IntEbmType { 0 } < countInstances) {
       const size_t cCutPoints = static_cast<size_t>(countCutPoints);
       const size_t cInstances = static_cast<size_t>(countInstances);
       const FloatEbmType * pValue = singleFeatureValues;
-      const FloatEbmType * pValueEnd = singleFeatureValues + countInstances;
+      const FloatEbmType * const pValueEnd = singleFeatureValues + cInstances;
       IntEbmType * pDiscretized = singleFeatureDiscretized;
 
-      if(0 == countCutPoints) {
-         memset(singleFeatureDiscretized, 0, sizeof(singleFeatureDiscretized[0]) * cInstances);
-      } else {
+      if(size_t { 0 } == cCutPoints) {
+         const IntEbmType missingVal = EBM_FALSE != isMissing ? IntEbmType { 0 } : IntEbmType { -1 };
+         const IntEbmType nonMissingVal = EBM_FALSE != isMissing ? IntEbmType { 1 } : IntEbmType { 0 };
          do {
-            ptrdiff_t middle = missingVal;
-            FloatEbmType val = *pValue;
-            if(!std::isnan(val)) {
-               ptrdiff_t high = cCutPoints - 1;
-               ptrdiff_t low = 0;
-               FloatEbmType midVal;
-               do {
-                  middle = (low + high) >> 1;
-                  midVal = cutPointsLowerBoundInclusive[middle];
-                  if(UNLIKELY(midVal == val)) {
-                     // this happens just once during our descent, so it's less likely than continuing searching
-
-                     // TODO: getting exactly equal should be rare for floating points, especially since our cut points are in between the floats
-                     //       that we do get.  Can we modify the descent algorithm so that it handles this without a special exit jump
-
-                     goto no_check;
-                  }
-                  high = UNPREDICTABLE(midVal < val) ? high : middle - 1;
-                  low = UNPREDICTABLE(midVal < val) ? middle + 1 : low;
-               } while(LIKELY(low <= high));
-               middle = UNPREDICTABLE(midVal < val) ? middle + 1 : middle;
-            }
-         no_check:
-            *pDiscretized = static_cast<IntEbmType>(middle);
+            const FloatEbmType val = *pValue;
+            const IntEbmType result = UNPREDICTABLE(std::isnan(val)) ? missingVal : nonMissingVal;
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
-         } while(pValueEnd != pValue);
+         } while(LIKELY(pValueEnd != pValue));
+      } else {
+         const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+         if(EBM_FALSE != isMissing) {
+            // there are missing values.  We need to bump up all indexes by 1 and make missing zero
+            do {
+               ptrdiff_t middle = ptrdiff_t { 0 };
+               const FloatEbmType val = *pValue;
+               if(!std::isnan(val)) {
+                  ptrdiff_t high = highStart;
+                  ptrdiff_t low = 0;
+                  FloatEbmType midVal;
+                  do {
+                     middle = (low + high) >> 1;
+                     EBM_ASSERT(0 <= middle && middle <= highStart);
+                     midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
+                     high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
+                     low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
+                  } while(LIKELY(low <= high));
+                  // we bump up all indexes to allow missing to be 0
+                  middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 2 } : middle + ptrdiff_t { 1 };
+                  EBM_ASSERT(ptrdiff_t { 0 } <= middle - ptrdiff_t { 1 } && middle - ptrdiff_t { 1 } <= static_cast<ptrdiff_t>(cCutPoints));
+               }
+               *pDiscretized = static_cast<IntEbmType>(middle);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+         } else {
+            // there are no missing values, but check anyways. If there are missing anyways, then make them -1
+            do {
+               ptrdiff_t middle = ptrdiff_t { -1 };
+               const FloatEbmType val = *pValue;
+               if(!std::isnan(val)) {
+                  ptrdiff_t high = highStart;
+                  ptrdiff_t low = 0;
+                  FloatEbmType midVal;
+                  do {
+                     middle = (low + high) >> 1;
+                     EBM_ASSERT(0 <= middle && middle <= highStart);
+                     midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
+                     high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
+                     low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
+                  } while(LIKELY(low <= high));
+                  middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : middle;
+                  EBM_ASSERT(ptrdiff_t { 0 } <= middle && middle <= static_cast<ptrdiff_t>(cCutPoints));
+               }
+               *pDiscretized = static_cast<IntEbmType>(middle);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+         }
       }
    }
-
-   LOG_0(TraceLevelInfo, "Exited Discretize");
 }

@@ -40,6 +40,7 @@
 #include <string.h>
 
 #include "ebm_native.h"
+#include "RandomStream.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -1256,10 +1257,138 @@ TEST_CASE("test random number generator equivalency") {
 //   static_assert(sizeof(singleFeatureDiscretized) / sizeof(singleFeatureDiscretized[0]) == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
 //      "singleFeatureValues and singleFeatureDigitized must be the same length"
 //   );
-//   for(IntEbmType i = 0; i < sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]); ++i) {
-//      CHECK_APPROX(singleFeatureDiscretized[i], expectedDiscretized[i]);
+//   for(size_t i = 0; i < sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]); ++i) {
+//      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
 //   }
 //}
+
+TEST_CASE("Discretize, randomized") {
+   RandomStream random(randomSeed);
+   for(int iteration = 0; iteration < 1000000; ++iteration) {
+      if(!random.IsSuccess()) {
+         exit(1);
+      }
+      constexpr size_t cCutPointsMax = 260; // 0 to 259 (get a coupple past 256)
+      FloatEbmType cutPointsLowerBoundInclusive[cCutPointsMax];
+      size_t cCutPoints = random.Next(cCutPointsMax + 1);
+      for(size_t iRandom = 0; iRandom < cCutPoints; ++iRandom) {
+         cutPointsLowerBoundInclusive[iRandom] = static_cast<FloatEbmType>(random.Next(1000000));
+      }
+      std::sort(cutPointsLowerBoundInclusive, cutPointsLowerBoundInclusive + cCutPoints);
+
+      size_t iCopyTo = 1;
+      for(size_t iRandom = 1; iRandom < cCutPoints; ++iRandom) {
+         if(cutPointsLowerBoundInclusive[iRandom - 1] != cutPointsLowerBoundInclusive[iRandom]) {
+            cutPointsLowerBoundInclusive[iCopyTo] = cutPointsLowerBoundInclusive[iRandom];
+            ++iCopyTo;
+         }
+      }
+      cCutPoints = iCopyTo;
+
+      FloatEbmType singleFeatureValues[1];
+      IntEbmType singleFeatureDiscretized[1];
+
+      for(int iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
+         // first try it without missing values
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
+         Discretize(
+            EBM_FALSE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint);
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
+         Discretize(
+            EBM_FALSE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1); // any exact matches are inclusive to the upper bound
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
+         Discretize(
+            EBM_FALSE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1);
+
+         // now try it indicating that there can be missing values, which should take the 0 value position and bump everything else up
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
+         Discretize(
+            EBM_TRUE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1);
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
+         Discretize(
+            EBM_TRUE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint + 2); // any exact matches are inclusive to the upper bound
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
+         Discretize(
+            EBM_TRUE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == iCutPoint + 2);
+      }
+   }
+}
+
+
+
+TEST_CASE("Discretize, pure, missing") {
+   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
+   FloatEbmType singleFeatureValues[]     { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
+   const IntEbmType expectedDiscretized[] { 1, 1,   2, 2,   2,   3, 3,   0,                                              8,    10 };
+
+   constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cInstances and expectedDiscretized must be the same length"
+   );
+   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   IntEbmType singleFeatureDiscretized[cInstances];
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
+
+   Discretize(
+      isMissing,
+      countCuts,
+      cutPointsLowerBoundInclusive,
+      IntEbmType { cInstances },
+      singleFeatureValues,
+      singleFeatureDiscretized
+   );
+
+   for(size_t i = 0; i < cInstances; ++i) {
+      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
+   }
+}
 
 TEST_CASE("Discretization 0") {
    constexpr IntEbmType countMaximumBins = 1;
