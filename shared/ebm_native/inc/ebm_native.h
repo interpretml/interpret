@@ -395,7 +395,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
    PEbmInteraction ebmInteraction
 );
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDiscretizationCutPoints(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    const IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,

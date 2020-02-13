@@ -19,12 +19,15 @@
 
 struct Junction {
    // this records the junction between a range of changing values that are splittable to the left, 
-   // and a long range of identical values on the right that are unsplittable
+   // and a long range of identical values on the right that are unsplittable, or the end of the array
+   // in which case m_cItemsUnsplittableAfter will be zero
    FloatEbmType * m_pJunctionFirstUnsplittable;
    size_t         m_cItemsSplittableBefore; // this can be zero
    size_t         m_cItemsUnsplittableAfter;
 
-   size_t         m_iSingleSplitBetweenLongRanges;
+   // we first pick out ranges that we split with one cut, and then resort the data.  Keeping our single cut here is a performant way to sort the data
+   // while keeping it together
+   size_t         m_iSingleSplitBetweenJunctions;
 };
 
 void SortJunctionsByUnsplittable(RandomStream & randomStream, std::vector<Junction> & junctions) {
@@ -75,7 +78,7 @@ void SortJunctionsByUnsplittable(RandomStream & randomStream, std::vector<Juncti
    }
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateDiscretizationCutPoints(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    const IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
@@ -93,7 +96,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
    EBM_ASSERT(nullptr != countCutPoints);
    EBM_ASSERT(nullptr != isMissing);
 
-   LOG_N(TraceLevelInfo, "Entered GenerateDiscretizationCutPoints: randomSeed=%" IntEbmTypePrintf ", countInstances=%" IntEbmTypePrintf 
+   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: randomSeed=%" IntEbmTypePrintf ", countInstances=%" IntEbmTypePrintf 
       ", singleFeatureValues=%p, countMaximumBins=%" IntEbmTypePrintf ", countMinimumInstancesPerBin=%" IntEbmTypePrintf 
       ", cutPointsLowerBoundInclusive=%p, countCutPoints=%p, isMissingPresent=%p", 
       randomSeed, 
@@ -107,17 +110,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
    );
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
       return 1;
    }
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countMaximumBins)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMaximumBins)");
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMaximumBins)");
       return 1;
    }
 
    if(!IsNumberConvertable<size_t, IntEbmType>(countMinimumInstancesPerBin)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMinimumInstancesPerBin)");
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMinimumInstancesPerBin)");
       return 1;
    }
 
@@ -129,113 +132,135 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
       *countCutPoints = 0;
       *isMissing = EBM_FALSE;
    } else {
-      try {
-         FloatEbmType * pCopyTo = singleFeatureValues;
-         FloatEbmType * pCopyFrom = singleFeatureValues;
-         const FloatEbmType * const pCopyFromEnd = singleFeatureValues + cInstancesIncludingMissingValues;
-         do {
-            FloatEbmType val = *pCopyFrom;
-            if(!std::isnan(val)) {
-               *pCopyTo = val;
-               ++pCopyTo;
-            }
-            ++pCopyFrom;
-         } while(pCopyFromEnd != pCopyFrom);
-         FloatEbmType * const pEnd = pCopyTo; // make it clear that this is our end now
-
-         const bool bMissing = pEnd != pCopyFrom;
-         *isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
-         std::sort(singleFeatureValues, pEnd);
-
-         // if we have 16 max bins requested AND missing values, reduce our bins so that we can use one of the 16 bins for the zero
-         // but if the user has a maximum less than 16 that isn't a power of two, like 15, then we don't need to reduce our bins to zero since we'll bit pack
-         // nicely anyways.
-         // if the user requests something like 8 though, we'll just increase it to 9 if there's a zero bin since we don't want to go below a certain point
-         // as the bins become more important
-         const size_t cMaximumBins = static_cast<size_t>(countMaximumBins) - 
-            (bMissing && IntEbmType { 15 } < countMaximumBins ? size_t { 1 } : size_t { 0 });
-
-         const size_t cInstances = pEnd - singleFeatureValues;
-
-         FloatEbmType avgLengthFloatDontUse = static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins);
-         size_t avgLength = static_cast<size_t>(std::round(avgLengthFloatDontUse));
-         if(avgLength < cMinimumInstancesPerBin) {
-            avgLength = cMinimumInstancesPerBin;
+      FloatEbmType * pCopyTo = singleFeatureValues;
+      FloatEbmType * pCopyFrom = singleFeatureValues;
+      const FloatEbmType * const pCopyFromEnd = singleFeatureValues + cInstancesIncludingMissingValues;
+      do {
+         FloatEbmType val = *pCopyFrom;
+         if(!std::isnan(val)) {
+            *pCopyTo = val;
+            ++pCopyTo;
          }
-         EBM_ASSERT(1 <= avgLength);
+         ++pCopyFrom;
+      } while(pCopyFromEnd != pCopyFrom);
 
-         std::vector<Junction> junctions;
+      FloatEbmType * const pEnd = pCopyTo; // make it clear that this is our end now
+      const size_t cInstances = pEnd - singleFeatureValues;
 
-         FloatEbmType rangeValue = *singleFeatureValues;
-         FloatEbmType * pStartSplittableRange = singleFeatureValues;
-         FloatEbmType * pStartEqualRange = singleFeatureValues;
-         FloatEbmType * pScan = singleFeatureValues + 1;
-         while(pEnd != pScan) {
-            FloatEbmType val = *pScan;
-            if(val != rangeValue) {
-               size_t cEqualRangeItems = pScan - pStartEqualRange;
-               if(avgLength <= cEqualRangeItems) {
-                  // we have a long sequence.  Our previous items are a cuttable range
-                  Junction junction;
-                  // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
-                  // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-                  junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
-                  junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
-                  junction.m_cItemsUnsplittableAfter = cEqualRangeItems;
-                  // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-                  junctions.push_back(junction);
+      const bool bMissing = pEnd != pCopyFrom;
+      *isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
 
-                  pStartSplittableRange = pScan;
+      if(0 == cInstances) {
+         *countCutPoints = 0;
+      } else {
+         try {
+            std::sort(singleFeatureValues, pEnd);
+
+            size_t cMaximumBins = static_cast<size_t>(countMaximumBins);
+            if(bMissing) {
+               // if there is a missing value, then we use 0 for the missing value bin, and bump up all other values by 1.  This creates a semi-problem
+               // if the number of bins was specified as a power of two like 256, because we now have 257 possible values, and instead of consuming 8
+               // bits per value, we're consuming 9.  If we're told to have a maximum of a power of two bins though, in most cases it won't hurt to
+               // have one less bin so that we consume less data.  Our countMaximumBins is just a maximum afterall, so we can choose to have less bins.
+               // BUT, if the user requests 8 bins or less, then don't reduce the number of bins since then we'll be changing the bin size significantly
+
+               size_t cBits = ((~size_t { 0 }) >> 1) + size_t { 1 };
+               do {
+                  // if cMaximumBins is a power of two equal to or greater than 16, then reduce the number of bins (it's a maximum after all) to one less so that
+                  // it's more compressible.  If we have 256 bins, we really want 255 bins and 0 to be the missing value, using 256 values and 1 byte of storage
+                  // some powers of two aren't compressible, like 2^34, which needs to fit into a 64 bit storage, but we don't want to take a dependency
+                  // on the size of the storage system, which is system dependent, so we just exclude all powers of two
+                  if(cBits == cMaximumBins) {
+                     --cMaximumBins;
+                     break;
+                  }
+                  cBits >>= 1;
+                  // don't allow shrinkage below 16 bins (8 is the first power of two below 16).  By the time we reach 8 bins, we don't want to reduce this
+                  // by a complete bin.  We can just use the extra bit for the missing bin
+                  // if we had shrunk down to 7 bits for non-missing, we would have been able to fit in 16 items per data item instead of 21 for 64 bit systems
+               } while(0x8 != cBits);
+            }
+
+            FloatEbmType avgLengthFloatDontUse = static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins);
+            size_t avgLength = static_cast<size_t>(std::round(avgLengthFloatDontUse));
+            if(avgLength < cMinimumInstancesPerBin) {
+               avgLength = cMinimumInstancesPerBin;
+            }
+            EBM_ASSERT(1 <= avgLength);
+
+            std::vector<Junction> junctions;
+
+            FloatEbmType rangeValue = *singleFeatureValues;
+            FloatEbmType * pStartSplittableRange = singleFeatureValues;
+            FloatEbmType * pStartEqualRange = singleFeatureValues;
+            FloatEbmType * pScan = singleFeatureValues + 1;
+            while(pEnd != pScan) {
+               FloatEbmType val = *pScan;
+               if(val != rangeValue) {
+                  size_t cEqualRangeItems = pScan - pStartEqualRange;
+                  if(avgLength <= cEqualRangeItems) {
+                     // we have a long sequence.  Our previous items are a cuttable range
+                     Junction junction;
+                     // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
+                     // and we do that via a zero item range.  Likewise for ranges with small numbers of items
+                     junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
+                     junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
+                     junction.m_cItemsUnsplittableAfter = cEqualRangeItems;
+                     // no need to set junction.m_iSingleSplitBetweenLongRanges yet
+                     junctions.push_back(junction);
+
+                     pStartSplittableRange = pScan;
+                  }
+                  rangeValue = val;
+                  pStartEqualRange = pScan;
                }
-               rangeValue = val;
-               pStartEqualRange = pScan;
+               ++pScan;
             }
-            ++pScan;
+            size_t cEqualRangeItemsOuter = pEnd - pStartEqualRange;
+            if(avgLength <= cEqualRangeItemsOuter) {
+               // we have a long sequence.  Our previous items are a cuttable range
+               Junction junction;
+               // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
+               // and we do that via a zero item range.  Likewise for ranges with small numbers of items
+               junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
+               junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
+               junction.m_cItemsUnsplittableAfter = cEqualRangeItemsOuter;
+               // no need to set junction.m_iSingleSplitBetweenLongRanges yet
+               junctions.push_back(junction);
+            } else {
+               // we have a short sequence.  Our previous items are a cuttable range
+               Junction junction;
+               // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
+               // and we do that via a zero item range.  Likewise for ranges with small numbers of items
+               junction.m_cItemsSplittableBefore = pEnd - pStartSplittableRange;
+               junction.m_pJunctionFirstUnsplittable = pEnd;
+               junction.m_cItemsUnsplittableAfter = 0;
+               // no need to set junction.m_iSingleSplitBetweenLongRanges yet
+               junctions.push_back(junction);
+            }
+
+            RandomStream randomStream(randomSeed);
+            if(!randomStream.IsSuccess()) {
+               goto exit_error;
+            }
+
+            EBM_ASSERT(0 < junctions.size());
+            SortJunctionsByUnsplittable(randomStream, junctions);
+
+            // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
+            // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
+
+
+            *countCutPoints = 0;
+         } catch(...) {
+            ret = 1;
          }
-         size_t cEqualRangeItemsOuter = pEnd - pStartEqualRange;
-         if(avgLength <= cEqualRangeItemsOuter) {
-            // we have a long sequence.  Our previous items are a cuttable range
-            Junction junction;
-            // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
-            // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-            junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
-            junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
-            junction.m_cItemsUnsplittableAfter = cEqualRangeItemsOuter;
-            // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-            junctions.push_back(junction);
-         } else {
-            // we have a short sequence.  Our previous items are a cuttable range
-            Junction junction;
-            // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
-            // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-            junction.m_cItemsSplittableBefore = pEnd - pStartSplittableRange;
-            junction.m_pJunctionFirstUnsplittable = pEnd;
-            junction.m_cItemsUnsplittableAfter = 0;
-            // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-            junctions.push_back(junction);
-         }
-
-         RandomStream randomStream(randomSeed);
-         if(!randomStream.IsSuccess()) {
-            goto exit_error;
-         }
-
-         EBM_ASSERT(0 < junctions.size());
-         SortJunctionsByUnsplittable(randomStream, junctions);
-
-         // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
-         // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
-
-
-
-      } catch(...) {
-         ret = 1;
       }
    }
    if(0 != ret) {
-      LOG_N(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints returned %" IntEbmTypePrintf, ret);
+      LOG_N(TraceLevelWarning, "WARNING GenerateQuantileCutPoints returned %" IntEbmTypePrintf, ret);
    } else {
-      LOG_N(TraceLevelInfo, "Exited GenerateDiscretizationCutPoints countCutPoints=%" IntEbmTypePrintf ", isMissing=%" IntEbmTypePrintf,
+      LOG_N(TraceLevelInfo, "Exited GenerateQuantileCutPoints countCutPoints=%" IntEbmTypePrintf ", isMissing=%" IntEbmTypePrintf,
          *countCutPoints,
          *isMissing
       );
@@ -244,7 +269,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateD
 
 exit_error:;
    ret = 1;
-   LOG_N(TraceLevelWarning, "WARNING GenerateDiscretizationCutPoints returned %" IntEbmTypePrintf, ret);
+   LOG_N(TraceLevelWarning, "WARNING GenerateQuantileCutPoints returned %" IntEbmTypePrintf, ret);
    return ret;
 }
 

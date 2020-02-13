@@ -15,5 +15,5 @@ EXPORTS
   InitializeInteractionRegression
   GetInteractionScore
   FreeInteraction
-  GenerateDiscretizationCutPoints
+  GenerateQuantileCutPoints
   Discretize

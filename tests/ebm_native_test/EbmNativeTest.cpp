@@ -1208,6 +1208,7 @@ TEST_CASE("test random number generator equivalency") {
 #endif // LEGACY_COMPATIBILITY
 
 TEST_CASE("Discretize, zero instances") {
+   UNUSED(testCaseHidden);
    const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
    constexpr IntEbmType  cInstances = 0;
@@ -1350,7 +1351,7 @@ TEST_CASE("Discretize, increasing lengths") {
    }
    // this doesn't check 0 cuts, or having missing values
    for(size_t cCutPoints = 1; cCutPoints <= cCutPointsMax; ++cCutPoints) {
-      for(int iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
+      for(size_t iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
          // first try it without missing values
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
          Discretize(
@@ -1361,7 +1362,7 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint);
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint));
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
          Discretize(
@@ -1372,7 +1373,7 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1); // any exact matches are inclusive to the upper bound
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1); // any exact matches are inclusive to the upper bound
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
          Discretize(
@@ -1383,7 +1384,7 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1);
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1);
 
          // now try it indicating that there can be missing values, which should take the 0 value position and bump everything else up
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
@@ -1395,7 +1396,7 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint + 1);
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1);
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
          Discretize(
@@ -1406,7 +1407,7 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint + 2); // any exact matches are inclusive to the upper bound
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 2); // any exact matches are inclusive to the upper bound
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
          Discretize(
@@ -1417,59 +1418,19 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureValues,
             singleFeatureDiscretized
          );
-         CHECK(singleFeatureDiscretized[0] == iCutPoint + 2);
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 2);
       }
    }
 }
 
-//TEST_CASE("GenerateDiscretizationCutPoints") {
-//   //constexpr IntEbmType countMaximumBins = 2;
-//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
-//
-//   //constexpr IntEbmType countMaximumBins = 2;
-//   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
-//
-//   constexpr IntEbmType countMaximumBins = 2;
-//   constexpr IntEbmType countMinimumInstancesPerBin = 2;
-//   FloatEbmType singleFeatureValues[]          { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-//   const FloatEbmType expectedDiscretized[]    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-//   const std::vector<FloatEbmType> expectedCutPoints { };
-//   const IntEbmType bMissing = EBM_FALSE;
-//
-//   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
-//   IntEbmType countCutPoints;
-//   IntEbmType isMissing;
-//
-//   IntEbmType ret = GenerateDiscretizationCutPoints(
-//      randomSeed,
-//      sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]),
-//      singleFeatureValues,
-//      countMaximumBins,
-//      countMinimumInstancesPerBin,
-//      cutPointsLowerBoundInclusive,
-//      &countCutPoints,
-//      &isMissing
-//   );
-//   CHECK(0 == ret);
-//   CHECK(bMissing == isMissing);
-//   CHECK(expectedCutPoints.size() == countCutPoints);
-//   if(expectedCutPoints.size() == countCutPoints) {
-//      for(IntEbmType i = 0; i < countCutPoints; ++i) {
-//         CHECK_APPROX(cutPointsLowerBoundInclusive[i], expectedCutPoints[i]);
-//      }
-//   }
-//}
-
-TEST_CASE("GenerateDiscretizationCutPoints 0") {
+TEST_CASE("GenerateQuantileCutPoints, 0 instances") {
    constexpr IntEbmType countMaximumBins = 1;
    constexpr IntEbmType countMinimumInstancesPerBin = 1;
 
    IntEbmType countCutPoints;
    IntEbmType isMissing;
 
-   IntEbmType ret = GenerateDiscretizationCutPoints(
+   IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
       0,
       nullptr,
@@ -1482,6 +1443,71 @@ TEST_CASE("GenerateDiscretizationCutPoints 0") {
    CHECK(0 == ret);
    CHECK(EBM_FALSE == isMissing);
    CHECK(0 == countCutPoints);
+}
+
+TEST_CASE("GenerateQuantileCutPoints, only missing") {
+   constexpr IntEbmType countMaximumBins = 1;
+   constexpr IntEbmType countMinimumInstancesPerBin = 1;
+   FloatEbmType singleFeatureValues[] { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      reinterpret_cast<FloatEbmType *>(0x1), // this shouldn't be filled, so it would throw an exception if it did 
+      &countCutPoints,
+      &isMissing
+   );
+   CHECK(0 == ret);
+   CHECK(EBM_TRUE == isMissing);
+   CHECK(0 == countCutPoints);
+}
+
+TEST_CASE("GenerateQuantileCutPoints") {
+   //constexpr IntEbmType countMaximumBins = 2;
+   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
+
+   //constexpr IntEbmType countMaximumBins = 2;
+   //constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   //FloatEbmType singleFeatureValues[] { 1.12, 3.0, 1.12, 4.0, std::numeric_limits<FloatEbmType>::quiet_NaN(), 7 };
+
+   constexpr IntEbmType countMaximumBins = 16;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[]       { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+   const std::vector<FloatEbmType> expectedCutPoints { };
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing
+   );
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(0 == ret);
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
 }
 
 TEST_CASE("null validationMetricReturn, boosting, regression") {
