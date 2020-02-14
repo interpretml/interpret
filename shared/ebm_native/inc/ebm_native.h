@@ -396,7 +396,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   const IntEbmType randomSeed,
+   IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
    IntEbmType countMaximumBins,
@@ -404,6 +404,22 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * countCutPoints,
    IntEbmType * isMissingPresent
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
+   IntEbmType countInstances,
+   FloatEbmType * singleFeatureValues,
+   IntEbmType countMaximumBins,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType * countCutPoints,
+   IntEbmType * isMissing
+);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
+   IntEbmType countInstances,
+   FloatEbmType * singleFeatureValues,
+   IntEbmType countMaximumBins,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType * countCutPoints,
+   IntEbmType * isMissing
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType isMissing,

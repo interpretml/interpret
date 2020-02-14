@@ -16,4 +16,6 @@ EXPORTS
   GetInteractionScore
   FreeInteraction
   GenerateQuantileCutPoints
+  GenerateImprovedEqualWidthCutPoints
+  GenerateEqualWidthCutPoints
   Discretize

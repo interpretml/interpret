@@ -30,34 +30,33 @@ struct Junction {
    size_t         m_iSingleSplitBetweenJunctions;
 };
 
-void SortJunctionsByUnsplittable(RandomStream & randomStream, std::vector<Junction> & junctions) {
-   EBM_ASSERT(0 < junctions.size());
+void SortJunctionsByUnsplittable(RandomStream & randomStream, size_t cJunctions, Junction ** const apJunctions) {
+   EBM_ASSERT(0 < cJunctions);
 
    // sort first by number of items, but if the number of items is equal, use the pointer as a stand in for the index so that the order is stable
    // accross all implementations.  We'll use random numbers afterwards to make the ordering fair regarding position
-   std::sort(junctions.begin(), junctions.end(), [](Junction & junction1, Junction & junction2) {
-      if(junction1.m_cItemsUnsplittableAfter == junction2.m_cItemsUnsplittableAfter) {
-         return junction1.m_pJunctionFirstUnsplittable > junction2.m_pJunctionFirstUnsplittable;
+   // put the biggest ranges of identical items at the top.  We'll try and put the splits away from these big ones first.
+   std::sort(apJunctions, apJunctions + cJunctions, [](Junction * & junction1, Junction * & junction2) {
+      if(UNLIKELY(junction1->m_cItemsUnsplittableAfter == junction2->m_cItemsUnsplittableAfter)) {
+         return UNPREDICTABLE(junction1->m_pJunctionFirstUnsplittable > junction2->m_pJunctionFirstUnsplittable);
       } else {
-         return junction1.m_cItemsUnsplittableAfter > junction2.m_cItemsUnsplittableAfter;
+         return UNPREDICTABLE(junction1->m_cItemsUnsplittableAfter > junction2->m_cItemsUnsplittableAfter);
       }
    });
 
    // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
    size_t iStartEqualLengthRange = 0;
-   size_t cItems = junctions[0].m_cItemsUnsplittableAfter;
-   for(size_t i = 1; i < junctions.size(); ++i) {
-      const size_t cNewItems = junctions[i].m_cItemsUnsplittableAfter;
+   size_t cItems = apJunctions[0]->m_cItemsUnsplittableAfter;
+   for(size_t i = 1; i < cJunctions; ++i) {
+      const size_t cNewItems = apJunctions[i]->m_cItemsUnsplittableAfter;
       if(cItems != cNewItems) {
          // we have a real range
          size_t cRemainingItems = i - iStartEqualLengthRange;
          while(1 != cRemainingItems) {
             const size_t iSwap = randomStream.Next(cRemainingItems);
-            if(0 != iSwap) {
-               Junction tmp = junctions[iStartEqualLengthRange];
-               junctions[iStartEqualLengthRange] = junctions[iSwap + iStartEqualLengthRange];
-               junctions[iSwap + iStartEqualLengthRange] = tmp;
-            }
+            Junction * tmp = apJunctions[iStartEqualLengthRange];
+            apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
+            apJunctions[iStartEqualLengthRange + iSwap] = tmp;
             ++iStartEqualLengthRange;
             --cRemainingItems;
          }
@@ -65,21 +64,19 @@ void SortJunctionsByUnsplittable(RandomStream & randomStream, std::vector<Juncti
          cItems = cNewItems;
       }
    }
-   size_t cRemainingItemsOuter = junctions.size() - iStartEqualLengthRange;
+   size_t cRemainingItemsOuter = cJunctions - iStartEqualLengthRange;
    while(1 != cRemainingItemsOuter) {
       const size_t iSwap = randomStream.Next(cRemainingItemsOuter);
-      if(0 != iSwap) {
-         Junction tmp = junctions[iStartEqualLengthRange];
-         junctions[iStartEqualLengthRange] = junctions[iSwap + iStartEqualLengthRange];
-         junctions[iSwap + iStartEqualLengthRange] = tmp;
-      }
+      Junction * tmp = apJunctions[iStartEqualLengthRange];
+      apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
+      apJunctions[iStartEqualLengthRange + iSwap] = tmp;
       ++iStartEqualLengthRange;
       --cRemainingItemsOuter;
    }
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   const IntEbmType randomSeed,
+   IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
    IntEbmType countMaximumBins,
@@ -188,27 +185,66 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             }
             EBM_ASSERT(1 <= avgLength);
 
-            std::vector<Junction> junctions;
-
             FloatEbmType rangeValue = *singleFeatureValues;
             FloatEbmType * pStartSplittableRange = singleFeatureValues;
             FloatEbmType * pStartEqualRange = singleFeatureValues;
             FloatEbmType * pScan = singleFeatureValues + 1;
+            size_t cJunctions = 1;
             while(pEnd != pScan) {
-               FloatEbmType val = *pScan;
+               const FloatEbmType val = *pScan;
                if(val != rangeValue) {
-                  size_t cEqualRangeItems = pScan - pStartEqualRange;
+                  const size_t cEqualRangeItems = pScan - pStartEqualRange;
                   if(avgLength <= cEqualRangeItems) {
-                     // we have a long sequence.  Our previous items are a cuttable range
-                     Junction junction;
+                     ++cJunctions;
+                     pStartSplittableRange = pScan;
+                  }
+                  rangeValue = val;
+                  pStartEqualRange = pScan;
+               }
+               ++pScan;
+            }
+
+            RandomStream randomStream(randomSeed);
+            if(!randomStream.IsSuccess()) {
+               goto exit_error;
+            }
+
+            const size_t cBytesCombined = sizeof(Junction) + sizeof(Junction *);
+            if(IsMultiplyError(cJunctions, cBytesCombined)) {
+               goto exit_error;
+            }
+            // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
+            Junction ** const apJunctions = static_cast<Junction **>(malloc(cJunctions * cBytesCombined));
+            if(nullptr == apJunctions) {
+               goto exit_error;
+            }
+            Junction ** const apJunctionsEnd = apJunctions + cJunctions;
+            Junction * const aJunctions = reinterpret_cast<Junction *>(apJunctionsEnd);
+
+            rangeValue = *singleFeatureValues;
+            pStartSplittableRange = singleFeatureValues;
+            pStartEqualRange = singleFeatureValues;
+            pScan = singleFeatureValues + 1;
+            Junction * pJunction = aJunctions;
+            Junction ** ppJunction = apJunctions;
+            while(pEnd != pScan) {
+               const FloatEbmType val = *pScan;
+               if(val != rangeValue) {
+                  const size_t cEqualRangeItems = pScan - pStartEqualRange;
+                  if(avgLength <= cEqualRangeItems) {
                      // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
                      // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-                     junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
-                     junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
-                     junction.m_cItemsUnsplittableAfter = cEqualRangeItems;
+                     EBM_ASSERT(pJunction < aJunctions + cJunctions);
+                     pJunction->m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
+                     pJunction->m_pJunctionFirstUnsplittable = pStartEqualRange;
+                     pJunction->m_cItemsUnsplittableAfter = cEqualRangeItems;
                      // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-                     junctions.push_back(junction);
 
+                     EBM_ASSERT(ppJunction < apJunctions + cJunctions);
+                     *ppJunction = pJunction;
+
+                     ++pJunction;
+                     ++ppJunction;
                      pStartSplittableRange = pScan;
                   }
                   rangeValue = val;
@@ -217,39 +253,38 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                ++pScan;
             }
             size_t cEqualRangeItemsOuter = pEnd - pStartEqualRange;
+            EBM_ASSERT(pJunction == aJunctions + cJunctions - 1);
             if(avgLength <= cEqualRangeItemsOuter) {
                // we have a long sequence.  Our previous items are a cuttable range
-               Junction junction;
+
                // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
                // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-               junction.m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
-               junction.m_pJunctionFirstUnsplittable = pStartEqualRange;
-               junction.m_cItemsUnsplittableAfter = cEqualRangeItemsOuter;
+               pJunction->m_cItemsSplittableBefore = pStartEqualRange - pStartSplittableRange;
+               pJunction->m_pJunctionFirstUnsplittable = pStartEqualRange;
+               pJunction->m_cItemsUnsplittableAfter = cEqualRangeItemsOuter;
                // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-               junctions.push_back(junction);
             } else {
                // we have a short sequence.  Our previous items are a cuttable range
-               Junction junction;
+
                // insert it even if there are zero cuttable items between two large ranges.  We want to know about the existance of the cuttable point
                // and we do that via a zero item range.  Likewise for ranges with small numbers of items
-               junction.m_cItemsSplittableBefore = pEnd - pStartSplittableRange;
-               junction.m_pJunctionFirstUnsplittable = pEnd;
-               junction.m_cItemsUnsplittableAfter = 0;
+               pJunction->m_cItemsSplittableBefore = pEnd - pStartSplittableRange;
+               pJunction->m_pJunctionFirstUnsplittable = pEnd;
+               pJunction->m_cItemsUnsplittableAfter = 0;
                // no need to set junction.m_iSingleSplitBetweenLongRanges yet
-               junctions.push_back(junction);
             }
+            EBM_ASSERT(ppJunction == apJunctions + cJunctions - 1);
+            *ppJunction = pJunction;
 
-            RandomStream randomStream(randomSeed);
-            if(!randomStream.IsSuccess()) {
-               goto exit_error;
-            }
+            SortJunctionsByUnsplittable(randomStream, cJunctions, apJunctions);
 
-            EBM_ASSERT(0 < junctions.size());
-            SortJunctionsByUnsplittable(randomStream, junctions);
+
+
+            free(apJunctions); // both the junctions and the pointers to the junctions are in the same memory allocation
 
             // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
             // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
-
+            // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
 
             *countCutPoints = 0;
          } catch(...) {
@@ -273,6 +308,46 @@ exit_error:;
    return ret;
 }
 
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
+   IntEbmType countInstances,
+   FloatEbmType * singleFeatureValues,
+   IntEbmType countMaximumBins,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType * countCutPoints,
+   IntEbmType * isMissing
+) {
+   UNUSED(countInstances);
+   UNUSED(singleFeatureValues);
+   UNUSED(countMaximumBins);
+   UNUSED(cutPointsLowerBoundInclusive);
+   UNUSED(countCutPoints);
+   UNUSED(isMissing);
+
+   // TODO: IMPLEMENT
+
+   return 0;
+}
+
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
+   IntEbmType countInstances,
+   FloatEbmType * singleFeatureValues,
+   IntEbmType countMaximumBins,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType * countCutPoints,
+   IntEbmType * isMissing
+) {
+   UNUSED(countInstances);
+   UNUSED(singleFeatureValues);
+   UNUSED(countMaximumBins);
+   UNUSED(cutPointsLowerBoundInclusive);
+   UNUSED(countCutPoints);
+   UNUSED(isMissing);
+
+   // TODO: IMPLEMENT
+
+   return 0;
+}
+
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType isMissing,
    IntEbmType countCutPoints,
@@ -292,6 +367,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
 
    if(IntEbmType { 0 } < countInstances) {
       const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+#ifndef NDEBUG
+      for(size_t iDebug = 1; iDebug < cCutPoints; ++iDebug) {
+         EBM_ASSERT(cutPointsLowerBoundInclusive[iDebug - 1] < cutPointsLowerBoundInclusive[iDebug]);
+      }
+# endif // NDEBUG
       const size_t cInstances = static_cast<size_t>(countInstances);
       const FloatEbmType * pValue = singleFeatureValues;
       const FloatEbmType * const pValueEnd = singleFeatureValues + cInstances;

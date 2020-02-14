@@ -10,6 +10,7 @@
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
 #include <cmath> // std::exp, std::log
+#include <stdlib.h> // malloc, realloc, free
 
 #include "ebm_native.h"
 
@@ -339,6 +340,15 @@ WARNING_POP
 constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
+}
+
+// TODO: use this a lot more.  std::nothrow on new apparently doesn't always work, so we should probably catch the allocation exceptions instead or use this
+EBM_INLINE void * SmartMalloc(size_t cItems, size_t cBytesPerItem) {
+   if(IsMultiplyError(cItems, cBytesPerItem)) {
+      return nullptr;
+   } else {
+      return malloc(cItems * cBytesPerItem);
+   }
 }
 
 // TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
