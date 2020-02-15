@@ -1479,6 +1479,8 @@ TEST_CASE("GenerateQuantileCutPoints, single run (no resulting cut points)") {
    FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
    IntEbmType countCutPoints;
    IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1491,7 +1493,6 @@ TEST_CASE("GenerateQuantileCutPoints, single run (no resulting cut points)") {
       &isMissing
    );
    CHECK(0 == ret);
-   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
@@ -1520,6 +1521,8 @@ TEST_CASE("GenerateQuantileCutPoints") {
    FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
    IntEbmType countCutPoints;
    IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1532,7 +1535,6 @@ TEST_CASE("GenerateQuantileCutPoints") {
       &isMissing
    );
    CHECK(0 == ret);
-   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
@@ -1572,6 +1574,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             size_t iRandom = randomStream.Next(randomMax + 1);
             singleFeatureValues[iInstance] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
          }
+         // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
          const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
          IntEbmType countCutPoints;
          IntEbmType isMissing;

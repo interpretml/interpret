@@ -30,12 +30,15 @@ struct Junction {
    size_t         m_iSingleSplitBetweenJunctions;
 };
 
-void SortJunctionsByUnsplittable(RandomStream & randomStream, size_t cJunctions, Junction ** const apJunctions) {
+// PK VERIFIED!
+void SortJunctionsByUnsplittableDescending(RandomStream * const pRandomStream, const size_t cJunctions, Junction ** const apJunctions) {
    EBM_ASSERT(0 < cJunctions);
 
-   // sort first by number of items, but if the number of items is equal, use the pointer as a stand in for the index so that the order is stable
-   // accross all implementations.  We'll use random numbers afterwards to make the ordering fair regarding position
-   // put the biggest ranges of identical items at the top.  We'll try and put the splits away from these big ones first.
+   // sort in descending order for m_cItemsUnsplittableAfter
+   //
+   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
+   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
+   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
    std::sort(apJunctions, apJunctions + cJunctions, [](Junction * & junction1, Junction * & junction2) {
       if(UNLIKELY(junction1->m_cItemsUnsplittableAfter == junction2->m_cItemsUnsplittableAfter)) {
          return UNPREDICTABLE(junction1->m_pJunctionFirstUnsplittable > junction2->m_pJunctionFirstUnsplittable);
@@ -52,11 +55,12 @@ void SortJunctionsByUnsplittable(RandomStream & randomStream, size_t cJunctions,
       if(cItems != cNewItems) {
          // we have a real range
          size_t cRemainingItems = i - iStartEqualLengthRange;
+         EBM_ASSERT(1 <= cRemainingItems);
          while(1 != cRemainingItems) {
-            const size_t iSwap = randomStream.Next(cRemainingItems);
-            Junction * tmp = apJunctions[iStartEqualLengthRange];
+            const size_t iSwap = pRandomStream->Next(cRemainingItems);
+            Junction * pTmp = apJunctions[iStartEqualLengthRange];
             apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
-            apJunctions[iStartEqualLengthRange + iSwap] = tmp;
+            apJunctions[iStartEqualLengthRange + iSwap] = pTmp;
             ++iStartEqualLengthRange;
             --cRemainingItems;
          }
@@ -65,11 +69,12 @@ void SortJunctionsByUnsplittable(RandomStream & randomStream, size_t cJunctions,
       }
    }
    size_t cRemainingItemsOuter = cJunctions - iStartEqualLengthRange;
+   EBM_ASSERT(1 <= cRemainingItemsOuter);
    while(1 != cRemainingItemsOuter) {
-      const size_t iSwap = randomStream.Next(cRemainingItemsOuter);
-      Junction * tmp = apJunctions[iStartEqualLengthRange];
+      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
+      Junction * pTmp = apJunctions[iStartEqualLengthRange];
       apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
-      apJunctions[iStartEqualLengthRange + iSwap] = tmp;
+      apJunctions[iStartEqualLengthRange + iSwap] = pTmp;
       ++iStartEqualLengthRange;
       --cRemainingItemsOuter;
    }
@@ -122,7 +127,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    }
 
    const size_t cInstancesIncludingMissingValues = static_cast<size_t>(countInstances);
-   const size_t cMinimumInstancesPerBin = countMinimumInstancesPerBin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countMinimumInstancesPerBin);
 
    IntEbmType ret = 0;
    if(0 == cInstancesIncludingMissingValues) {
@@ -178,6 +182,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                } while(0x8 != cBits);
             }
 
+            const size_t cMinimumInstancesPerBin = 
+               countMinimumInstancesPerBin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countMinimumInstancesPerBin);
+
             FloatEbmType avgLengthFloatDontUse = static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins);
             size_t avgLength = static_cast<size_t>(std::round(avgLengthFloatDontUse));
             if(avgLength < cMinimumInstancesPerBin) {
@@ -186,17 +193,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             EBM_ASSERT(1 <= avgLength);
 
             FloatEbmType rangeValue = *singleFeatureValues;
-            FloatEbmType * pStartSplittableRange = singleFeatureValues;
             FloatEbmType * pStartEqualRange = singleFeatureValues;
             FloatEbmType * pScan = singleFeatureValues + 1;
-            size_t cJunctions = 1;
+            size_t cJunctions = 1; // we always add a junction at the end
             while(pEnd != pScan) {
                const FloatEbmType val = *pScan;
                if(val != rangeValue) {
                   const size_t cEqualRangeItems = pScan - pStartEqualRange;
                   if(avgLength <= cEqualRangeItems) {
                      ++cJunctions;
-                     pStartSplittableRange = pScan;
                   }
                   rangeValue = val;
                   pStartEqualRange = pScan;
@@ -218,11 +223,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             if(nullptr == apJunctions) {
                goto exit_error;
             }
-            Junction ** const apJunctionsEnd = apJunctions + cJunctions;
-            Junction * const aJunctions = reinterpret_cast<Junction *>(apJunctionsEnd);
+            Junction * const aJunctions = reinterpret_cast<Junction *>(apJunctions + cJunctions);
 
             rangeValue = *singleFeatureValues;
-            pStartSplittableRange = singleFeatureValues;
+            FloatEbmType * pStartSplittableRange = singleFeatureValues;
             pStartEqualRange = singleFeatureValues;
             pScan = singleFeatureValues + 1;
             Junction * pJunction = aJunctions;
@@ -276,7 +280,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             EBM_ASSERT(ppJunction == apJunctions + cJunctions - 1);
             *ppJunction = pJunction;
 
-            SortJunctionsByUnsplittable(randomStream, cJunctions, apJunctions);
+            SortJunctionsByUnsplittableDescending(&randomStream, cJunctions, apJunctions);
 
 
 
