@@ -403,7 +403,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countMinimumInstancesPerBin,
    FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * countCutPoints,
-   IntEbmType * isMissingPresent
+   IntEbmType * isMissing,
+   FloatEbmType * minValue,
+   FloatEbmType * maxValue
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countInstances,
@@ -411,7 +413,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countMaximumBins,
    FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * countCutPoints,
-   IntEbmType * isMissing
+   IntEbmType * isMissing,
+   FloatEbmType * minValue,
+   FloatEbmType * maxValue
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countInstances,
@@ -419,7 +423,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countMaximumBins,
    FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * countCutPoints,
-   IntEbmType * isMissing
+   IntEbmType * isMissing,
+   FloatEbmType * minValue,
+   FloatEbmType * maxValue
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType isMissing,

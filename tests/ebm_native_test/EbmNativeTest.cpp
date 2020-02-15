@@ -1424,11 +1424,13 @@ TEST_CASE("Discretize, increasing lengths") {
 }
 
 TEST_CASE("GenerateQuantileCutPoints, 0 instances") {
-   constexpr IntEbmType countMaximumBins = 1;
+   constexpr IntEbmType countMaximumBins = 2;
    constexpr IntEbmType countMinimumInstancesPerBin = 1;
 
    IntEbmType countCutPoints;
    IntEbmType isMissing;
+   FloatEbmType valMin;
+   FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1438,21 +1440,27 @@ TEST_CASE("GenerateQuantileCutPoints, 0 instances") {
       countMinimumInstancesPerBin,
       nullptr,
       &countCutPoints,
-      &isMissing
+      &isMissing,
+      &valMin,
+      &valMax
    );
    CHECK(0 == ret);
    CHECK(EBM_FALSE == isMissing);
+   CHECK(FloatEbmType { 0 } == valMin);
+   CHECK(FloatEbmType { 0 } == valMax);
    CHECK(0 == countCutPoints);
 }
 
 TEST_CASE("GenerateQuantileCutPoints, only missing") {
-   constexpr IntEbmType countMaximumBins = 1;
+   constexpr IntEbmType countMaximumBins = 2;
    constexpr IntEbmType countMinimumInstancesPerBin = 1;
    FloatEbmType singleFeatureValues[] { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
 
    constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
    IntEbmType countCutPoints;
    IntEbmType isMissing;
+   FloatEbmType valMin;
+   FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1462,10 +1470,45 @@ TEST_CASE("GenerateQuantileCutPoints, only missing") {
       countMinimumInstancesPerBin,
       reinterpret_cast<FloatEbmType *>(0x1), // this shouldn't be filled, so it would throw an exception if it did 
       &countCutPoints,
-      &isMissing
+      &isMissing,
+      &valMin,
+      &valMax
    );
    CHECK(0 == ret);
    CHECK(EBM_TRUE == isMissing);
+   CHECK(FloatEbmType { 0 } == valMin);
+   CHECK(FloatEbmType { 0 } == valMax);
+   CHECK(0 == countCutPoints);
+}
+
+TEST_CASE("GenerateQuantileCutPoints, just one bin") {
+   constexpr IntEbmType countMaximumBins = 1;
+   constexpr IntEbmType countMinimumInstancesPerBin = 1;
+   FloatEbmType singleFeatureValues[] { 1, 2 };
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      nullptr,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 2 } == valMax);
    CHECK(0 == countCutPoints);
 }
 
@@ -1481,6 +1524,8 @@ TEST_CASE("GenerateQuantileCutPoints, single run (no resulting cut points)") {
    IntEbmType isMissing;
    // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
    const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1490,10 +1535,14 @@ TEST_CASE("GenerateQuantileCutPoints, single run (no resulting cut points)") {
       countMinimumInstancesPerBin,
       cutPointsLowerBoundInclusive,
       &countCutPoints,
-      &isMissing
+      &isMissing,
+      &valMin,
+      &valMax
    );
    CHECK(0 == ret);
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 1 } == valMax);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
    if(expectedCutPoints.size() == cCutPoints) {
@@ -1523,6 +1572,8 @@ TEST_CASE("GenerateQuantileCutPoints") {
    IntEbmType isMissing;
    // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
    const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
       randomSeed,
@@ -1532,10 +1583,14 @@ TEST_CASE("GenerateQuantileCutPoints") {
       countMinimumInstancesPerBin,
       cutPointsLowerBoundInclusive,
       &countCutPoints,
-      &isMissing
+      &isMissing,
+      &valMin,
+      &valMax
    );
    CHECK(0 == ret);
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 0.22 } == valMin);
+   CHECK(FloatEbmType { 3.3 } == valMax);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
    if(expectedCutPoints.size() == cCutPoints) {
@@ -1578,6 +1633,9 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
          IntEbmType countCutPoints;
          IntEbmType isMissing;
+         FloatEbmType valMin;
+         FloatEbmType valMax;
+
          IntEbmType ret = GenerateQuantileCutPoints(
             randomSeed + iIteration * (randomMaxMax + 1) + randomMax, // make them all different random seeds
             countInstances,
@@ -1586,7 +1644,9 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countMinimumInstancesPerBin,
             cutPointsLowerBoundInclusive,
             &countCutPoints,
-            &isMissing
+            &isMissing,
+            &valMin,
+            &valMax
          );
          CHECK(0 == ret);
          CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
