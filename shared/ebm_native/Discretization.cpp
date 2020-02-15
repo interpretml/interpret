@@ -31,32 +31,32 @@ struct Junction {
 };
 
 // PK VERIFIED!
-void SortJunctionsByUnsplittableDescending(RandomStream * const pRandomStream, const size_t cJunctions, Junction ** const apJunctions) {
+void SortJunctionsBySplittableAscending(RandomStream * const pRandomStream, const size_t cJunctions, Junction ** const apJunctions) {
    EBM_ASSERT(0 < cJunctions);
 
-   // sort in descending order for m_cItemsUnsplittableAfter
+   // sort in ascending order for m_cItemsSplittableBefore
    //
    // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
    // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
    // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
-   std::sort(apJunctions, apJunctions + cJunctions, [](Junction * & junction1, Junction * & junction2) {
-      if(UNLIKELY(junction1->m_cItemsUnsplittableAfter == junction2->m_cItemsUnsplittableAfter)) {
-         return UNPREDICTABLE(junction1->m_pJunctionFirstUnsplittable > junction2->m_pJunctionFirstUnsplittable);
+   std::sort(apJunctions, apJunctions + cJunctions, [](Junction *& junction1, Junction *& junction2) {
+      if(PREDICTABLE(junction1->m_cItemsSplittableBefore == junction2->m_cItemsSplittableBefore)) {
+         return UNPREDICTABLE(junction1->m_pJunctionFirstUnsplittable < junction2->m_pJunctionFirstUnsplittable);
       } else {
-         return UNPREDICTABLE(junction1->m_cItemsUnsplittableAfter > junction2->m_cItemsUnsplittableAfter);
+         return UNPREDICTABLE(junction1->m_cItemsSplittableBefore < junction2->m_cItemsSplittableBefore);
       }
-   });
+      });
 
    // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
    size_t iStartEqualLengthRange = 0;
-   size_t cItems = apJunctions[0]->m_cItemsUnsplittableAfter;
-   for(size_t i = 1; i < cJunctions; ++i) {
-      const size_t cNewItems = apJunctions[i]->m_cItemsUnsplittableAfter;
-      if(cItems != cNewItems) {
+   size_t cItems = apJunctions[0]->m_cItemsSplittableBefore;
+   for(size_t i = 1; LIKELY(i < cJunctions); ++i) {
+      const size_t cNewItems = apJunctions[i]->m_cItemsSplittableBefore;
+      if(PREDICTABLE(cItems != cNewItems)) {
          // we have a real range
          size_t cRemainingItems = i - iStartEqualLengthRange;
          EBM_ASSERT(1 <= cRemainingItems);
-         while(1 != cRemainingItems) {
+         while(PREDICTABLE(1 != cRemainingItems)) {
             const size_t iSwap = pRandomStream->Next(cRemainingItems);
             Junction * pTmp = apJunctions[iStartEqualLengthRange];
             apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
@@ -70,7 +70,57 @@ void SortJunctionsByUnsplittableDescending(RandomStream * const pRandomStream, c
    }
    size_t cRemainingItemsOuter = cJunctions - iStartEqualLengthRange;
    EBM_ASSERT(1 <= cRemainingItemsOuter);
-   while(1 != cRemainingItemsOuter) {
+   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
+      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
+      Junction * pTmp = apJunctions[iStartEqualLengthRange];
+      apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
+      apJunctions[iStartEqualLengthRange + iSwap] = pTmp;
+      ++iStartEqualLengthRange;
+      --cRemainingItemsOuter;
+   }
+}
+
+// PK VERIFIED!
+void SortJunctionsByUnsplittableDescending(RandomStream * const pRandomStream, const size_t cJunctions, Junction ** const apJunctions) {
+   EBM_ASSERT(0 < cJunctions);
+
+   // sort in descending order for m_cItemsUnsplittableAfter
+   //
+   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
+   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
+   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
+   std::sort(apJunctions, apJunctions + cJunctions, [](Junction * & junction1, Junction * & junction2) {
+      if(PREDICTABLE(junction1->m_cItemsUnsplittableAfter == junction2->m_cItemsUnsplittableAfter)) {
+         return UNPREDICTABLE(junction1->m_pJunctionFirstUnsplittable > junction2->m_pJunctionFirstUnsplittable);
+      } else {
+         return UNPREDICTABLE(junction1->m_cItemsUnsplittableAfter > junction2->m_cItemsUnsplittableAfter);
+      }
+   });
+
+   // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
+   size_t iStartEqualLengthRange = 0;
+   size_t cItems = apJunctions[0]->m_cItemsUnsplittableAfter;
+   for(size_t i = 1; LIKELY(i < cJunctions); ++i) {
+      const size_t cNewItems = apJunctions[i]->m_cItemsUnsplittableAfter;
+      if(PREDICTABLE(cItems != cNewItems)) {
+         // we have a real range
+         size_t cRemainingItems = i - iStartEqualLengthRange;
+         EBM_ASSERT(1 <= cRemainingItems);
+         while(PREDICTABLE(1 != cRemainingItems)) {
+            const size_t iSwap = pRandomStream->Next(cRemainingItems);
+            Junction * pTmp = apJunctions[iStartEqualLengthRange];
+            apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
+            apJunctions[iStartEqualLengthRange + iSwap] = pTmp;
+            ++iStartEqualLengthRange;
+            --cRemainingItems;
+         }
+         iStartEqualLengthRange = i;
+         cItems = cNewItems;
+      }
+   }
+   size_t cRemainingItemsOuter = cJunctions - iStartEqualLengthRange;
+   EBM_ASSERT(1 <= cRemainingItemsOuter);
+   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
       const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
       Junction * pTmp = apJunctions[iStartEqualLengthRange];
       apJunctions[iStartEqualLengthRange] = apJunctions[iStartEqualLengthRange + iSwap];
@@ -280,6 +330,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             EBM_ASSERT(ppJunction == apJunctions + cJunctions - 1);
             *ppJunction = pJunction;
 
+            SortJunctionsBySplittableAscending(&randomStream, cJunctions, apJunctions);
             SortJunctionsByUnsplittableDescending(&randomStream, cJunctions, apJunctions);
 
 
