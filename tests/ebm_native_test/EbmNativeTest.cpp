@@ -1555,7 +1555,7 @@ TEST_CASE("GenerateQuantileCutPoints, too small") {
 TEST_CASE("GenerateQuantileCutPoints, splitable") {
    constexpr IntEbmType countMaximumBins = 1000;
    constexpr IntEbmType countMinimumInstancesPerBin = 2;
-   FloatEbmType singleFeatureValues[] { 1, 2, 8, 9 };
+   FloatEbmType singleFeatureValues[] { 0, 1, 2, 3 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
    constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
@@ -1581,7 +1581,87 @@ TEST_CASE("GenerateQuantileCutPoints, splitable") {
    );
    CHECK(0 == ret);
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
-   CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 0 } == valMin);
+   CHECK(FloatEbmType { 3 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splitable)") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 3;
+   FloatEbmType singleFeatureValues[] { 0, 1, 5, 5, 7, 8, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 0 } == valMin);
+   CHECK(FloatEbmType { 9 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 3;
+   FloatEbmType singleFeatureValues[] { 0, 1, 5, 5, 8, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 0 } == valMin);
    CHECK(FloatEbmType { 9 } == valMax);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
@@ -1742,6 +1822,246 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
    CHECK(0 == ret);
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
    CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 9 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 4, 4, 6, 6 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 4 } == valMin);
+   CHECK(FloatEbmType { 6 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 1, 4, 4, 6, 6 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 6 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 4, 4, 6, 6, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 4 } == valMin);
+   CHECK(FloatEbmType { 9 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 4, 4, 5, 6, 6 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 4 } == valMin);
+   CHECK(FloatEbmType { 6 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 1, 4, 4, 5, 6, 6 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 1 } == valMin);
+   CHECK(FloatEbmType { 6 } == valMax);
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
+   constexpr IntEbmType countMaximumBins = 1000;
+   constexpr IntEbmType countMinimumInstancesPerBin = 2;
+   FloatEbmType singleFeatureValues[] { 4, 4, 5, 6, 6, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
+
+   constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   IntEbmType countCutPoints;
+   IntEbmType isMissing;
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies singleFeatureValues
+   const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + countInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   FloatEbmType valMin;
+   FloatEbmType valMax;
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      randomSeed,
+      countInstances,
+      singleFeatureValues,
+      countMaximumBins,
+      countMinimumInstancesPerBin,
+      cutPointsLowerBoundInclusive,
+      &countCutPoints,
+      &isMissing,
+      &valMin,
+      &valMax
+   );
+   CHECK(0 == ret);
+   CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
+   CHECK(FloatEbmType { 4 } == valMin);
    CHECK(FloatEbmType { 9 } == valMax);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
