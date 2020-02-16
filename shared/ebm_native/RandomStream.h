@@ -20,7 +20,9 @@ class RandomStream final {
    bool m_bSuccess;
 
    // uniform_int_distribution isn't guaranteed to be cross platform compatible, in fact it isn't between Windows/Mac/Linux
+#ifndef LEGACY_COMPATIBILITY
    uint_fast64_t randomRemainingMax;
+#endif // LEGACY_COMPATIBILITY
    uint_fast64_t randomRemaining;
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
@@ -47,7 +49,9 @@ public:
    // exception in initialization
    RandomStream(const IntEbmType seed) try
       : m_bSuccess(false)
+#ifndef LEGACY_COMPATIBILITY
       , randomRemainingMax(0)
+#endif // LEGACY_COMPATIBILITY
       , randomRemaining(0)
 #ifdef LEGACY_COMPATIBILITY
       , m_randomGenerator(static_cast<unsigned int>(seed)) {
