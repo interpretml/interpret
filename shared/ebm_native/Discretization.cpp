@@ -358,6 +358,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   const size_t cItemsLast = static_cast<size_t>(pValuesEnd - pSplittableValuesStart);
                   if(cMinimumInstancesPerBin <= cItemsLast) {
                      ++cSplittingRanges;
+                  } else if(0 == cSplittingRanges) {
+                     *countCutPoints = 0;
+                     goto done;
                   }
                }
 
