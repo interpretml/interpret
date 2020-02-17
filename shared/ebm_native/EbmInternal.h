@@ -107,7 +107,8 @@
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
-// TODO: review all our existing EBM_INLINE values to see if we should change them to RELEASE_INLINE
+// TODO: change EBM_INLINE to INLINE_ALWAYS
+// TODO: review all our existing EBM_INLINE values to see if we should change them to INLINE_RELEASE
 #define EBM_INLINE __forceinline
 
 #else // compiler type
@@ -117,19 +118,19 @@
 // using inlining makes it much harder to debug inline functions (stepping and breakpoints don't work).  In debug builds we don't care as much about speed,
 // but we do care about debugability, so we generally want to turn off inlining in debug mode.  BUT, when I make everything non-inlined some trivial wrapper
 // functions cause a big slowdown, so we'd rather have two classes of inlining.  The "always inline" version that inlines in debug mode, and the 
-// RELEASE_INLINE version that only inlines for release builds.  BUT, unfortunately, inline functions need to be in headers (generally), but if you remove 
+// INLINE_RELEASE version that only inlines for release builds.  BUT, unfortunately, inline functions need to be in headers (generally), but if you remove 
 // the inline, then you get name collisions on the functions.  Using static is one possible solution, but it can create duplicate copies of the function inside
 // each module that the header is inlucded within if the linker isn't smart.  Another option is to use a dummy template, which forces the compiler to allow 
 // definition in a header but combines them afterwards. Lastly, using the non-forced inline works in most cases since the compiler will not inline 
 // complicated functions by default.
 #ifdef NDEBUG
-#define RELEASE_INLINE EBM_INLINE
+#define INLINE_RELEASE EBM_INLINE
 #else //NDEBUG
 // these alternates kind of suck, but keep them around incase the non-force inline stops working well later
-//#define RELEASE_INLINE_UNTEMPLATED template<bool bUnusedInline = false>
-//#define RELEASE_INLINE_TEMPLATED
-//#define RELEASE_INLINE static
-#define RELEASE_INLINE inline
+//#define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
+//#define INLINE_RELEASE_TEMPLATED
+//#define INLINE_RELEASE static
+#define INLINE_RELEASE inline
 #endif //NDEBUG
 
 

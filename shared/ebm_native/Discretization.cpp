@@ -40,7 +40,66 @@ struct SplittingRange {
 };
 
 // PK VERIFIED!
-RELEASE_INLINE void SortSplittingRangesByCountItemsAscending(RandomStream * const pRandomStream, const size_t cSplittingRanges, SplittingRange ** const apSplittingRange) {
+INLINE_RELEASE void SortSplittingRangesByCountItemsDescending(
+   RandomStream * const pRandomStream, 
+   const size_t cSplittingRanges, 
+   SplittingRange ** const apSplittingRange
+) {
+   EBM_ASSERT(1 <= cSplittingRanges);
+
+   // sort in descending order for m_cSplittableItems
+   //
+   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
+   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
+   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
+   std::sort(apSplittingRange, apSplittingRange + cSplittingRanges, [](SplittingRange *& pSplittingRange1, SplittingRange *& pSplittingRange2) {
+      if(PREDICTABLE(pSplittingRange1->m_cSplittableItems == pSplittingRange2->m_cSplittableItems)) {
+         return UNPREDICTABLE(pSplittingRange1->m_pSplittableValuesStart > pSplittingRange2->m_pSplittableValuesStart);
+      } else {
+         return UNPREDICTABLE(pSplittingRange1->m_cSplittableItems > pSplittingRange2->m_cSplittableItems);
+      }
+      });
+
+   // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
+   size_t iStartEqualLengthRange = 0;
+   size_t cItems = apSplittingRange[0]->m_cSplittableItems;
+   for(size_t i = 1; LIKELY(i < cSplittingRanges); ++i) {
+      const size_t cNewItems = apSplittingRange[i]->m_cSplittableItems;
+      if(PREDICTABLE(cItems != cNewItems)) {
+         // we have a real range
+         size_t cRemainingItems = i - iStartEqualLengthRange;
+         EBM_ASSERT(1 <= cRemainingItems);
+         while(PREDICTABLE(1 != cRemainingItems)) {
+            const size_t iSwap = pRandomStream->Next(cRemainingItems);
+            SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
+            apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
+            apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
+            ++iStartEqualLengthRange;
+            --cRemainingItems;
+         }
+         iStartEqualLengthRange = i;
+         cItems = cNewItems;
+      }
+   }
+   size_t cRemainingItemsOuter = cSplittingRanges - iStartEqualLengthRange;
+   EBM_ASSERT(1 <= cRemainingItemsOuter);
+   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
+      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
+      SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
+      apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
+      apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
+      ++iStartEqualLengthRange;
+      --cRemainingItemsOuter;
+   }
+}
+
+// PK VERIFIED!
+// TODO: Is this being used?
+INLINE_RELEASE void SortSplittingRangesByCountItemsAscending(
+   RandomStream * const pRandomStream, 
+   const size_t cSplittingRanges, 
+   SplittingRange ** const apSplittingRange
+) {
    EBM_ASSERT(1 <= cSplittingRanges);
 
    // sort in ascending order for m_cSplittableItems
@@ -90,7 +149,12 @@ RELEASE_INLINE void SortSplittingRangesByCountItemsAscending(RandomStream * cons
 }
 
 // PK VERIFIED!
-RELEASE_INLINE void SortSplittingRangesByUnsplittableDescending(RandomStream * const pRandomStream, const size_t cSplittingRanges, SplittingRange ** const apSplittingRange) {
+// TODO: Is this being used?
+INLINE_RELEASE void SortSplittingRangesByUnsplittableDescending(
+   RandomStream * const pRandomStream, 
+   const size_t cSplittingRanges, 
+   SplittingRange ** const apSplittingRange
+) {
    EBM_ASSERT(1 <= cSplittingRanges);
 
    // sort in descending order for m_cUnsplittableEitherSideMax, m_cUnsplittableEitherSideMin
@@ -146,7 +210,7 @@ RELEASE_INLINE void SortSplittingRangesByUnsplittableDescending(RandomStream * c
    }
 }
 
-RELEASE_INLINE size_t GetCountBinsMax(const bool bMissing, const IntEbmType countMaximumBins) {
+INLINE_RELEASE size_t GetCountBinsMax(const bool bMissing, const IntEbmType countMaximumBins) {
    EBM_ASSERT(IntEbmType { 2 } <= countMaximumBins);
    size_t cMaximumBins = static_cast<size_t>(countMaximumBins);
    if(PREDICTABLE(bMissing)) {
@@ -175,7 +239,7 @@ RELEASE_INLINE size_t GetCountBinsMax(const bool bMissing, const IntEbmType coun
    return cMaximumBins;
 }
 
-RELEASE_INLINE size_t GetAvgLength(const size_t cInstances, const size_t cMaximumBins, const size_t cMinimumInstancesPerBin) {
+INLINE_RELEASE size_t GetAvgLength(const size_t cInstances, const size_t cMaximumBins, const size_t cMinimumInstancesPerBin) {
    EBM_ASSERT(size_t { 1 } <= cInstances);
    EBM_ASSERT(size_t { 2 } <= cMaximumBins); // if there is just one bin, then you can't have splits, so we exit earlier
    EBM_ASSERT(size_t { 1 } <= cMinimumInstancesPerBin);
@@ -221,7 +285,7 @@ RELEASE_INLINE size_t GetAvgLength(const size_t cInstances, const size_t cMaximu
    return avgLength;
 }
 
-RELEASE_INLINE size_t RemoveMissingValues(const size_t cInstances, FloatEbmType * const aValues) {
+INLINE_RELEASE size_t RemoveMissingValues(const size_t cInstances, FloatEbmType * const aValues) {
    FloatEbmType * pCopyFrom = aValues;
    const FloatEbmType * const pValuesEnd = aValues + cInstances;
    do {
@@ -247,7 +311,7 @@ RELEASE_INLINE size_t RemoveMissingValues(const size_t cInstances, FloatEbmType 
    return cInstances;
 }
 
-RELEASE_INLINE size_t CountSplittingRanges(
+INLINE_RELEASE size_t CountSplittingRanges(
    const size_t cInstances,
    const FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength, 
@@ -312,7 +376,7 @@ RELEASE_INLINE size_t CountSplittingRanges(
    }
 }
 
-RELEASE_INLINE void FillSplittingRangeBasics(
+INLINE_RELEASE void FillSplittingRangeBasics(
    const size_t cInstances,
    FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
@@ -364,7 +428,7 @@ RELEASE_INLINE void FillSplittingRangeBasics(
    }
 }
 
-RELEASE_INLINE void FillSplittingRangeComplete(
+INLINE_RELEASE void FillSplittingRangeComplete(
    const size_t cInstances,
    FloatEbmType * const aSingleFeatureValues,
    const size_t cSplittingRanges,
@@ -411,6 +475,87 @@ RELEASE_INLINE void FillSplittingRangeComplete(
 
    // we picked the length of the required equal length ranges in order to GUARANTEE that we had sufficient cuts to give one to each SplittingRange
    pSplittingRange->m_cSplitsAssigned = 1;
+}
+
+INLINE_RELEASE void FillSplittingRangePointers(
+   const size_t cSplittingRanges,
+   SplittingRange ** const apSplittingRange,
+   SplittingRange * const aSplittingRange
+) {
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != apSplittingRange);
+   EBM_ASSERT(nullptr != aSplittingRange);
+
+   SplittingRange ** ppSplittingRange = apSplittingRange;
+   const SplittingRange * const * const apSplittingRangeEnd = apSplittingRange + cSplittingRanges;
+   SplittingRange * pSplittingRange = aSplittingRange;
+   do {
+      *ppSplittingRange = pSplittingRange;
+      ++pSplittingRange;
+      ++ppSplittingRange;
+   } while(apSplittingRangeEnd != ppSplittingRange);
+}
+
+INLINE_RELEASE size_t AssignSecondCuts(
+   RandomStream * const pRandomStream,
+   const size_t cMaximumBins,
+   const size_t cMinimumInstancesPerBin,
+   const size_t cSplittingRanges,
+   SplittingRange ** const apSplittingRange
+) {
+   // ok, at this point we've found all the long segments of equal values, and we've identified SplittingRanges where we have the option
+   // of cutting, and since we dislike having two long segments joining together, we've guaranteed that all our existing SplittingRanges
+   // have at least one cut.  In general, we'd like to isolate the ranges within each SplittingRanges away from the long strings of equal
+   // values, since the stuff in between is more likley to be somehow unique.  With 1 cut in each SplittingRange we can ensure that
+   // the long ranges are isolated from eachother, but we can't isolate the items between the long ranges.  Next, we'll try and give
+   // some of our remaining cuts to the SplittingRange, which will allow them to put cuts on both sides of the ranges, thereby isolating
+   // them from the long strings of equal values
+   //
+   // Unlike our first cut though, we're not guaranteed to have two cuts for every SplittingRange, so we have to be careful about who we give
+   // them to.  In general, we don't like small clusters since you can get overfit pretty easily if they don't have sufficient instances
+   // to group enough per class value.
+   // So, we would prefer to first give our second cuts to the largest SplittingRange, irregardless about how big it's neighbours are
+   // let's sort by the splitable items in each SplittingRange and then progress from the biggest to the smallest until we hit the minimum
+   // width
+   //
+   // the first and last SplittingRange might or might not have long ranges of unsplittable values on their tail ends.  If there are no unsplittable
+   // values on their other side, then we don't consider them here, since they don't need the second cut in order to isolate them from long ranges
+   // of unsplittable values
+   //
+   // once we reach a SplittingRange with insufficient number of items inside to put cuts on both ends, we're done since none after that point in the sort
+   // order will have enough
+
+   EBM_ASSERT(nullptr != pRandomStream);
+   EBM_ASSERT(2 <= cMaximumBins);
+   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != apSplittingRange);
+
+   EBM_ASSERT(cSplittingRanges < cMaximumBins); // if this isn't true then our guranteeed one cut per SplittingRange didn't work
+   size_t cCutsRemaining = cMaximumBins - 1 - cSplittingRanges; // we gave one GUARANTEED cut to each SplittingRange so far.  How many cuts are left?
+   if(0 != cCutsRemaining) {
+      SortSplittingRangesByCountItemsDescending(pRandomStream, cSplittingRanges, apSplittingRange);
+      SplittingRange ** ppSplittingRange = apSplittingRange;
+      const SplittingRange * const * const ppSplittingRangeEnd = apSplittingRange + cSplittingRanges;
+      do {
+         SplittingRange * pSplittingRange = *ppSplittingRange;
+         if(pSplittingRange->m_cSplittableItems < cMinimumInstancesPerBin) {
+            // we can't split this SplittingRange more than once, and all subsequent ones will be the same, so exit
+            break;
+         }
+         if(0 != pSplittingRange->m_cUnsplittableEitherSideMin) {
+            // don't give second splits to the the first or last SplittingRanges unless they have unsplittable ranges on their outside
+            EBM_ASSERT(1 == pSplittingRange->m_cSplitsAssigned);
+            pSplittingRange->m_cSplitsAssigned = 2;
+            --cCutsRemaining;
+            if(0 == cCutsRemaining) {
+               break;
+            }
+         }
+         ++ppSplittingRange;
+      } while(ppSplittingRangeEnd != ppSplittingRange);
+   }
+   return cCutsRemaining;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
@@ -524,12 +669,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                   FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
                   FillSplittingRangeComplete(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
-
-                  //size_t cCutsRemaining = cMaximumBins - 1 - cSplittingRanges; // we gave one GUARANTEED cut to each SplittingRange so far
+                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
+                  /* size_t cCutsRemaining = */ AssignSecondCuts(&randomStream, cMaximumBins, cMinimumInstancesPerBin, cSplittingRanges, apSplittingRange);
 
 
                   //// let's assign how many 
-                  //SortSplittingRangesByCountItemsAscending(&randomStream, cSplittingRanges, apSplittingRange);
                   //ppSplittingRange = apSplittingRange;
                   //const SplittingRange * const * const apSplittingRangesEnd = apSplittingRange + cSplittingRanges;
                   //const SplittingRange * const pSplittingRangesLast = aSplittingRange + cSplittingRanges - 1;
