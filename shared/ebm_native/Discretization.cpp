@@ -253,6 +253,7 @@ EBM_INLINE size_t CountSplittingRanges(
    const size_t avgLength, 
    const size_t cMinimumInstancesPerBin
 ) {
+   EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aSingleFeatureValues);
    EBM_ASSERT(1 <= avgLength);
    EBM_ASSERT(1 <= cMinimumInstancesPerBin);
@@ -309,6 +310,111 @@ EBM_INLINE size_t CountSplittingRanges(
       }
       return cSplittingRanges;
    }
+}
+
+EBM_INLINE void FillSplittingRangeBasics(
+   const size_t cInstances,
+   FloatEbmType * const aSingleFeatureValues,
+   const size_t avgLength,
+   const size_t cMinimumInstancesPerBin,
+   const size_t cSplittingRanges,
+   SplittingRange * const aSplittingRange
+) {
+   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(1 <= avgLength);
+   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != aSplittingRange);
+
+   FloatEbmType rangeValue = *aSingleFeatureValues;
+   FloatEbmType * pSplittableValuesStart = aSingleFeatureValues;
+   const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
+   FloatEbmType * pScan = aSingleFeatureValues + 1;
+   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cInstances;
+
+   SplittingRange * pSplittingRange = aSplittingRange;
+   while(pValuesEnd != pScan) {
+      const FloatEbmType val = *pScan;
+      if(val != rangeValue) {
+         size_t cEqualRangeItems = pScan - pStartEqualRange;
+         if(avgLength <= cEqualRangeItems) {
+            if(aSingleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
+               EBM_ASSERT(pSplittingRange < aSplittingRange + cSplittingRanges);
+               pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
+               pSplittingRange->m_cSplittableItems = pStartEqualRange - pSplittableValuesStart;
+               ++pSplittingRange;
+            }
+            pSplittableValuesStart = pScan;
+         }
+         rangeValue = val;
+         pStartEqualRange = pScan;
+      }
+      ++pScan;
+   }
+   if(pSplittingRange != aSplittingRange + cSplittingRanges) {
+      // we're not done, so we have one more to go.. this last one
+      EBM_ASSERT(pSplittingRange == aSplittingRange + cSplittingRanges - 1);
+      EBM_ASSERT(pSplittableValuesStart < pValuesEnd);
+      pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
+      EBM_ASSERT(pStartEqualRange < pValuesEnd);
+      const size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
+      const FloatEbmType * const pSplittableRangeEnd = avgLength <= cEqualRangeItems ? pStartEqualRange : pValuesEnd;
+      pSplittingRange->m_cSplittableItems = pSplittableRangeEnd - pSplittableValuesStart;
+   }
+}
+
+EBM_INLINE void FillSplittingRangeComplete(
+   const size_t cInstances,
+   FloatEbmType * const aSingleFeatureValues,
+   const size_t cSplittingRanges,
+   SplittingRange * const aSplittingRange
+) {
+   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(nullptr != aSingleFeatureValues);
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != aSplittingRange);
+
+   SplittingRange * pSplittingRange = aSplittingRange;
+   SplittingRange * const pSplittingRangeLast = aSplittingRange + cSplittingRanges - 1;
+   const FloatEbmType * pSingleFeatureValuesPrevEnd = aSingleFeatureValues;
+   if(1 == cSplittingRanges) {
+      aSplittingRange->m_flags = k_FirstSplittingRange | k_LastSplittingRange;
+   } else {
+      aSplittingRange->m_flags = k_FirstSplittingRange;
+      pSplittingRangeLast->m_flags = k_LastSplittingRange;
+      do {
+         const FloatEbmType * const pSingleFeatureValuesUnsplitableNext = pSplittingRange->m_pSplittableValuesStart + pSplittingRange->m_cSplittableItems;
+
+         const size_t cUnsplittablePriorItems = pSplittingRange->m_pSplittableValuesStart - pSingleFeatureValuesPrevEnd;
+         const size_t cUnsplittableSubsequentItems = (pSplittingRange + 1)->m_pSplittableValuesStart - pSingleFeatureValuesUnsplitableNext;
+
+         pSplittingRange->m_cUnsplittablePriorItems = cUnsplittablePriorItems;
+         pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
+
+         pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+         pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+
+         pSplittingRange->m_cSplitsAssigned = 1;
+         pSplittingRange->m_flags = k_MiddleSplittingRange;
+
+         pSingleFeatureValuesPrevEnd = pSingleFeatureValuesUnsplitableNext;
+         ++pSplittingRange;
+      } while(pSplittingRangeLast != pSplittingRange);
+   }
+   const FloatEbmType * const pSingleFeatureValuesUnsplitableNext = pSplittingRange->m_pSplittableValuesStart + pSplittingRange->m_cSplittableItems;
+
+   const size_t cUnsplittablePriorItems = pSplittingRange->m_pSplittableValuesStart - pSingleFeatureValuesPrevEnd;
+   const size_t cUnsplittableSubsequentItems = aSingleFeatureValues + cInstances - pSingleFeatureValuesUnsplitableNext;
+
+   pSplittingRange->m_cUnsplittablePriorItems = cUnsplittablePriorItems;
+   pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
+
+   pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+   pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+
+   pSplittingRange->m_cSplitsAssigned = 1;
+   pSplittingRange->m_flags = k_MiddleSplittingRange;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
@@ -417,115 +523,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   }
                   SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
 
-                  FloatEbmType rangeValue = *singleFeatureValues;
-                  FloatEbmType * pSplittableValuesStart = singleFeatureValues;
-                  FloatEbmType * pStartEqualRange = singleFeatureValues;
-                  FloatEbmType * pScan = singleFeatureValues + 1;
-                  SplittingRange * pSplittingRange = aSplittingRange;
-                  SplittingRange ** ppSplittingRange = apSplittingRange;
-                  size_t cRemainingSplittingRanges = cMaximumBins - 1;
-                  size_t cTotalSplittable = 0;
-                  size_t cEqualRangeItemsPrior = 0;
-                  while(pValuesEnd != pScan) {
-                     const FloatEbmType val = *pScan;
-                     if(val != rangeValue) {
-                        size_t cEqualRangeItems = pScan - pStartEqualRange;
-                        if(avgLength <= cEqualRangeItems) {
-                           if(singleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
-                              EBM_ASSERT(pSplittingRange < aSplittingRange + cSplittingRanges);
-                              const size_t cSplittable = pStartEqualRange - pSplittableValuesStart;
-                              cTotalSplittable += cSplittable;
-
-                              pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
-                              pSplittingRange->m_cSplittableItems = cSplittable;
-                              pSplittingRange->m_cUnsplittablePriorItems = cEqualRangeItemsPrior;
-                              pSplittingRange->m_cUnsplittableSubsequentItems = cEqualRangeItems;
-
-                              pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cEqualRangeItemsPrior, cEqualRangeItems);
-                              pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cEqualRangeItemsPrior, cEqualRangeItems);
-
-                              pSplittingRange->m_cSplitsAssigned = 1; // we can 100% guarantee that we have a split assinged to this range
-                              pSplittingRange->m_flags = singleFeatureValues == pSplittableValuesStart ? k_FirstSplittingRange : k_MiddleSplittingRange;
-
-                              cEqualRangeItemsPrior = cEqualRangeItems;
-
-                              EBM_ASSERT(ppSplittingRange < apSplittingRange + cSplittingRanges);
-                              *ppSplittingRange = pSplittingRange;
-
-                              ++pSplittingRange;
-                              ++ppSplittingRange;
-                              EBM_ASSERT(1 <= cRemainingSplittingRanges);
-                              --cRemainingSplittingRanges;
-                           }
-                           pSplittableValuesStart = pScan;
-                        }
-                        rangeValue = val;
-                        pStartEqualRange = pScan;
-                     }
-                     ++pScan;
-                  }
-                  size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
-                  if(avgLength <= cEqualRangeItems) {
-                     if(singleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
-                        EBM_ASSERT(pSplittingRange == aSplittingRange + cSplittingRanges - 1);
-                        const size_t cSplittable = pStartEqualRange - pSplittableValuesStart;
-                        cTotalSplittable += cSplittable;
-
-                        pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
-                        pSplittingRange->m_cSplittableItems = cSplittable;
-                        pSplittingRange->m_cUnsplittablePriorItems = cEqualRangeItemsPrior;
-                        pSplittingRange->m_cUnsplittableSubsequentItems = cEqualRangeItems;
-
-                        pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cEqualRangeItemsPrior, cEqualRangeItems);
-                        pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cEqualRangeItemsPrior, cEqualRangeItems);
-
-                        pSplittingRange->m_cSplitsAssigned = 1; // we can 100% guarantee that we have a split assinged to this range
-                        pSplittingRange->m_flags = singleFeatureValues == pSplittableValuesStart ? k_FirstSplittingRange : k_MiddleSplittingRange;
-
-                        cEqualRangeItemsPrior = cEqualRangeItems;
-
-                        EBM_ASSERT(ppSplittingRange == apSplittingRange + cSplittingRanges - 1);
-                        *ppSplittingRange = pSplittingRange;
-
-                        EBM_ASSERT(1 <= cRemainingSplittingRanges);
-                        --cRemainingSplittingRanges;
-                     } else {
-                        EBM_ASSERT(pSplittingRange == aSplittingRange + cSplittingRanges);
-                        EBM_ASSERT(ppSplittingRange == apSplittingRange + cSplittingRanges);
-                     }
-                  } else {
-                     if(pSplittingRange != aSplittingRange + cSplittingRanges) {
-                        // we're not done, so we have one more to go.. this last one
-                        EBM_ASSERT(pSplittingRange == aSplittingRange + cSplittingRanges - 1);
-                        const size_t cSplittable = pValuesEnd - pSplittableValuesStart;
-                        cTotalSplittable += cSplittable;
-
-                        pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
-                        pSplittingRange->m_cSplittableItems = cSplittable;
-                        pSplittingRange->m_cUnsplittablePriorItems = cEqualRangeItemsPrior;
-                        pSplittingRange->m_cUnsplittableSubsequentItems = cEqualRangeItems;
-
-                        pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cEqualRangeItemsPrior, cEqualRangeItems);
-                        pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cEqualRangeItemsPrior, cEqualRangeItems);
-
-                        pSplittingRange->m_cSplitsAssigned = 1; // we can 100% guarantee that we have a split assinged to this range
-                        pSplittingRange->m_flags = singleFeatureValues == pSplittableValuesStart ? k_FirstSplittingRange : k_MiddleSplittingRange;
-
-                        cEqualRangeItemsPrior = cEqualRangeItems;
-
-                        EBM_ASSERT(ppSplittingRange == apSplittingRange + cSplittingRanges - 1);
-                        *ppSplittingRange = pSplittingRange;
-
-                        EBM_ASSERT(1 <= cRemainingSplittingRanges);
-                        --cRemainingSplittingRanges;
-                     }
-                  }
-                  (aSplittingRange + cSplittingRanges - 1)->m_flags |= k_LastSplittingRange;
-
-
-
-
-
+                  FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
+                  FillSplittingRangeComplete(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
 
 
 
