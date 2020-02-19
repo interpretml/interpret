@@ -24,7 +24,7 @@ InterpretML is an open-source python package for training interpretable machine 
 - Regulatory compliance - Does my model satisfy legal requirements?
 - High-risk applications - Healthcare, finance, judicial, ...
 
-Historically, the most interpretable machine learning models were not very accurate, and the most accurate models were not very interpretable. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both high accuracy and interpretability. EBM uses modern machine learning techniques like bagging and boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
+Historically, the most interpretable machine learning models were not very accurate, and the most accurate models were not very interpretable. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both high accuracy and interpretability. EBM uses modern machine learning techniques like bagging and gradient boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
 
 <br/>
 
@@ -123,7 +123,7 @@ If you are interested contributing directly to the code base, please see [CONTRI
 
 ## Acknowledgements
 
-InterpretML was originally created by (equal contributions): Samuel Jenkins & Harsha Nori & Paul Koch & Rich Caruana
+InterpretML was originally created by (equal contributions): Samuel Jenkins, Harsha Nori, Paul Koch, and Rich Caruana
 
 Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
 
