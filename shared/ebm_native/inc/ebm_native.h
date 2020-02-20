@@ -104,7 +104,9 @@ typedef struct _EbmInteraction {
 #endif
 
 typedef double FloatEbmType;
-#define FloatEbmTypePrintf "f"
+// this needs to be in "e" format, since we internally use that format to generate "interpretable" floating point
+// numbers in text format.   See GetInterpretableCutPointFloat.
+#define FloatEbmTypePrintf "le"
 typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
 typedef uint64_t UIntEbmType;

@@ -2633,9 +2633,18 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
 }
 
 TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the ceiling instead of rounding") {
-   constexpr IntEbmType countMaximumBins = 9;
+   // our algorithm makes an internal assumption that we can give each cut point a split.  This is guaranteed if we 
+   // make the average length of the equal value long ranges the ceiling of the average instances per bin.  
+   // This test stresses that average calculation by having an average bin lenght of 2.2222222222 but if you use 
+   // a bin width of 2, then there are 3 cut points that can't get any cuts.  3 cut points means that even if you 
+   // don't give the first and last SplittingRanges an actual cut point, which can be reasonalbe since the 
+   // first and last SplittingRanges are special in that they may have no long ranges on the tail ends, 
+   // you still end up with one or more SplittingRanges that can't have a cut if you don't take the ceiling.
+
+   constexpr IntEbmType countMaximumBins = 27;
    constexpr IntEbmType countMinimumInstancesPerBin = 2;
-   FloatEbmType singleFeatureValues[] { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9 };
+   FloatEbmType singleFeatureValues[] { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 
+      17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
    constexpr IntEbmType countInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
@@ -2662,7 +2671,7 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    CHECK(0 == ret);
    CHECK((bMissing ? EBM_TRUE : EBM_FALSE) == isMissing);
    CHECK(FloatEbmType { 0 } == valMin);
-   CHECK(FloatEbmType { 9 } == valMax);
+   CHECK(FloatEbmType { 29 } == valMax);
    const size_t cCutPoints = static_cast<size_t>(countCutPoints);
    CHECK(expectedCutPoints.size() == cCutPoints);
    if(expectedCutPoints.size() == cCutPoints) {
