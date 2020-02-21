@@ -498,7 +498,7 @@ We also build on top of many great packages. Please check them out!
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
 - [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
-
+- [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 
 ## Contact us
 

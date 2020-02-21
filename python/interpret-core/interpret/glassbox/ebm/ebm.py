@@ -124,6 +124,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
+            feature_types: Feature types as list, for example "continuous" or "categorical".
             binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
         self.schema = schema
