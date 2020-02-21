@@ -702,11 +702,12 @@ INLINE_RELEASE FloatEbmType GetInterpretableCutPointFloat(const FloatEbmType low
    // it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 
    // (if the low number was almost N and the high number was just a bit above N+2), and subnormal numbers 
    // shouldn't increase the exponent by that much ever.
-   constexpr int cExponentTextDigits = 1 + std::max(
-      CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10),
-      CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10)
-   );
- 
+
+   constexpr int cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
+   constexpr int cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10);
+   constexpr int cExponentTextDigits = 
+      1 + cExponentMaxTextDigits < cExponentMinTextDigits ? cExponentMinTextDigits : cExponentMaxTextDigits;
+       
    // example: "+9.12345678901234567e+300" (this is when 17 == cMantissaTextDigits, the value for doubles)
    // 3 characters for "+9."
    // cMantissaTextDigits characters for the mantissa text

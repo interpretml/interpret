@@ -22,8 +22,8 @@ class RandomStream final {
    // uniform_int_distribution isn't guaranteed to be cross platform compatible, in fact it isn't between Windows/Mac/Linux
 #ifndef LEGACY_COMPATIBILITY
    uint_fast64_t randomRemainingMax;
-#endif // LEGACY_COMPATIBILITY
    uint_fast64_t randomRemaining;
+#endif // LEGACY_COMPATIBILITY
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
    // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object 
@@ -51,8 +51,8 @@ public:
       : m_bSuccess(false)
 #ifndef LEGACY_COMPATIBILITY
       , randomRemainingMax(0)
-#endif // LEGACY_COMPATIBILITY
       , randomRemaining(0)
+#endif // LEGACY_COMPATIBILITY
 #ifdef LEGACY_COMPATIBILITY
       , m_randomGenerator(static_cast<unsigned int>(seed)) {
 #else // LEGACY_COMPATIBILITY
