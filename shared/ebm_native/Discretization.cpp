@@ -40,6 +40,9 @@ struct SplittingRange {
    size_t         m_uniqueRandom;
 
    size_t         m_cSplitsAssigned;
+
+   FloatEbmType   m_avgRangeWidthAfterAddingOneSplit;
+
    unsigned int   m_flags;
 };
 
@@ -437,67 +440,108 @@ INLINE_RELEASE void FillSplittingRangePointers(
    } while(apSplittingRangeEnd != ppSplittingRange);
 }
 
-/*
-INLINE_RELEASE size_t AssignSecondCuts(
-   const size_t cMaximumBins,
-   const size_t cMinimumInstancesPerBin,
+size_t StuffSplitsIntoSplittingRanges(
    const size_t cSplittingRanges,
-   SplittingRange ** const apSplittingRange
+   SplittingRange * const aSplittingRange,
+   const size_t cMinimumInstancesPerBin,
+   size_t cRemainingSplits
 ) {
-   // ok, at this point we've found all the long segments of equal values, and we've identified SplittingRanges where we have the option
-   // of cutting, and since we dislike having two long segments joining together, we've guaranteed that all our existing SplittingRanges
-   // have at least one cut.  In general, we'd like to isolate the ranges within each SplittingRanges away from the long strings of equal
-   // values, since the stuff in between is more likley to be somehow unique.  With 1 cut in each SplittingRange we can ensure that
-   // the long ranges are isolated from eachother, but we can't isolate the items between the long ranges.  Next, we'll try and give
-   // some of our remaining cuts to the SplittingRange, which will allow them to put cuts on both sides of the ranges, thereby isolating
-   // them from the long strings of equal values
-   //
-   // Unlike our first cut though, we're not guaranteed to have two cuts for every SplittingRange, so we have to be careful about who we give
-   // them to.  In general, we don't like small clusters since you can get overfit pretty easily if they don't have sufficient instances
-   // to group enough per class value.
-   // So, we would prefer to first give our second cuts to the largest SplittingRange, irregardless about how big it's neighbours are
-   // let's sort by the splitable items in each SplittingRange and then progress from the biggest to the smallest until we hit the minimum
-   // width
-   //
-   // the first and last SplittingRange might or might not have long ranges of unsplittable values on their tail ends.  If there are no unsplittable
-   // values on their other side, then we don't consider them here, since they don't need the second cut in order to isolate them from long ranges
-   // of unsplittable values
-   //
-   // once we reach a SplittingRange with insufficient number of items inside to put cuts on both ends, we're done since none after that point in the sort
-   // order will have enough
-
-   EBM_ASSERT(2 <= cMaximumBins);
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
-   EBM_ASSERT(1 <= cSplittingRanges);
-   EBM_ASSERT(nullptr != apSplittingRange);
-
-   EBM_ASSERT(cSplittingRanges < cMaximumBins); // if this isn't true then our guranteeed one cut per SplittingRange didn't work
-   size_t cCutsRemaining = cMaximumBins - 1 - cSplittingRanges; // we gave one GUARANTEED cut to each SplittingRange so far.  How many cuts are left?
-   if(0 != cCutsRemaining) {
-      SortSplittingRangesByCountItemsDescending(pRandomStream, cSplittingRanges, apSplittingRange);
-      SplittingRange ** ppSplittingRange = apSplittingRange;
-      const SplittingRange * const * const ppSplittingRangeEnd = apSplittingRange + cSplittingRanges;
-      do {
-         SplittingRange * pSplittingRange = *ppSplittingRange;
-         if(pSplittingRange->m_cSplittableItems < cMinimumInstancesPerBin) {
-            // we can't split this SplittingRange more than once, and all subsequent ones will be the same, so exit
-            break;
+   class CompareSplittingRange final {
+   public:
+      EBM_INLINE constexpr bool operator() (
+         const SplittingRange * const & lhs,
+         const SplittingRange * const & rhs
+      ) const {
+         if(lhs->m_avgRangeWidthAfterAddingOneSplit == rhs->m_avgRangeWidthAfterAddingOneSplit) {
+            return lhs->m_uniqueRandom <= rhs->m_uniqueRandom;
          }
-         if(0 != pSplittingRange->m_cUnsplittableEitherSideMin) {
-            // don't give second splits to the the first or last SplittingRanges unless they have unsplittable ranges on their outside
-            EBM_ASSERT(1 == pSplittingRange->m_cSplitsAssigned);
-            pSplittingRange->m_cSplitsAssigned = 2;
-            --cCutsRemaining;
-            if(0 == cCutsRemaining) {
+         return lhs->m_avgRangeWidthAfterAddingOneSplit <= rhs->m_avgRangeWidthAfterAddingOneSplit;
+      }
+   };
+
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != aSplittingRange);
+
+   if(0 != cRemainingSplits) {
+      const FloatEbmType cMinimumInstancesPerBinFloat = static_cast<FloatEbmType>(cMinimumInstancesPerBin);
+      try {
+         std::priority_queue<SplittingRange *, std::vector<SplittingRange *>, CompareSplittingRange> queue;
+
+         SplittingRange * pSplittingRangeInit = aSplittingRange;
+         const SplittingRange * const pSplittingRangeEnd = aSplittingRange + cSplittingRanges;
+         do {
+            // we're adding one to the splits assigned here because the # of ranges is -1 from the # of splits
+            size_t newProposedRanges = pSplittingRangeInit->m_cSplitsAssigned;
+            if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideMin) {
+               // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+               // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+               // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+               // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
+               // side
+
+               ++newProposedRanges;
+               if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideMax) {
+                  // if there's just one range and there are no long ranges on either end, then one split will create
+                  // two ranges, so add 1 more.
+
+                  ++newProposedRanges;
+               }
+            }
+            const FloatEbmType avgRangeWidthAfterAddingOneSplit =
+               static_cast<FloatEbmType>(pSplittingRangeInit->m_cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
+
+            if(cMinimumInstancesPerBinFloat <= avgRangeWidthAfterAddingOneSplit) {
+               pSplittingRangeInit->m_avgRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
+               queue.push(pSplittingRangeInit);
+            }
+
+            ++pSplittingRangeInit;
+         } while(pSplittingRangeEnd != pSplittingRangeInit);
+
+         while(!queue.empty()) {
+            SplittingRange * pSplittingRangeAdd = queue.top();
+            queue.pop();
+
+            // by virtue of being in the queue, we know that we meet the minimum length requirement
+            size_t newProposedRanges = pSplittingRangeAdd->m_cSplitsAssigned + 1;
+
+            // we're adding one to the splits assigned here because the # of ranges is -1 from the # of splits
+            pSplittingRangeAdd->m_cSplitsAssigned = newProposedRanges;
+
+            --cRemainingSplits;
+            if(0 == cRemainingSplits) {
                break;
             }
+
+            if(0 == pSplittingRangeAdd->m_cUnsplittableEitherSideMin) {
+               // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+               // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+               // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+               // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
+               // side
+
+               ++newProposedRanges;
+               if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideMax) {
+                  // if there's just one range and there are no long ranges on either end, then one split will create
+                  // two ranges, so add 1 more.
+
+                  ++newProposedRanges;
+               }
+            }
+            const FloatEbmType avgRangeWidthAfterAddingOneSplit =
+               static_cast<FloatEbmType>(pSplittingRangeAdd->m_cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
+
+            if(cMinimumInstancesPerBinFloat <= avgRangeWidthAfterAddingOneSplit) {
+               pSplittingRangeAdd->m_avgRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
+               queue.push(pSplittingRangeAdd);
+            }
          }
-         ++ppSplittingRange;
-      } while(ppSplittingRangeEnd != ppSplittingRange);
+      } catch(...) {
+         LOG_0(TraceLevelWarning, "WARNING StuffSplitsIntoSplittingRanges exception");
+      }
    }
-   return cCutsRemaining;
+   return cRemainingSplits;
 }
-*/
 
 
 constexpr static char g_pPrintfForRoundTrip[] = "%+.*" FloatEbmTypePrintf;
@@ -1012,13 +1056,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   }
                   SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
 
-                  FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
-                  FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
+                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
                   FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
 
-                  /* const size_t cUsedSplits = */ FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
-                  /* size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits; */
-                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
+                  FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
+                  FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
+                  const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+                  size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
+                  cCutsRemaining = StuffSplitsIntoSplittingRanges(
+                     cSplittingRanges,
+                     aSplittingRange,
+                     cMinimumInstancesPerBin,
+                     cCutsRemaining
+                  );
+
 
                   //GetInterpretableCutPointFloat(0, 1);
                   //GetInterpretableCutPointFloat(11, 12);

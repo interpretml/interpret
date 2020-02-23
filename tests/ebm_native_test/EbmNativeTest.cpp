@@ -2702,7 +2702,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
 
    memset(cutHistogram, 0, sizeof(cutHistogram));
 
-   for(int iIteration = 0; iIteration < 1000; ++iIteration) {
+   for(int iIteration = 0; iIteration < 100; ++iIteration) {
       for(size_t randomMax = 1; randomMax <= randomMaxMax; randomMax += 2) {
          // since randomMax isn't larger than the number of instances, we'll always be chunky.  This is good for testing range collisions
          for(size_t iInstance = 0; iInstance < countInstances; ++iInstance) {
@@ -2762,6 +2762,72 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
    const size_t cMin = std::min(cBottomTotal, cTopTotal);
    const FloatEbmType ratio = static_cast<FloatEbmType>(cMin) / static_cast<FloatEbmType>(cMax);
    CHECK(0.98 <= ratio || 0 == cMax);
+}
+
+TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
+   RandomStream randomStream(randomSeed);
+   if(!randomStream.IsSuccess()) {
+      exit(1);
+   }
+
+   constexpr IntEbmType countMaximumBins = 10;
+   constexpr IntEbmType countMinimumInstancesPerBin = 3;
+   constexpr IntEbmType countInstances = 100;
+   constexpr IntEbmType maxRandomVal = 70;
+   const IntEbmType cLongBinLength = static_cast<IntEbmType>(
+      std::ceil(static_cast<FloatEbmType>(countInstances) / static_cast<FloatEbmType>(countMaximumBins))
+   );
+   FloatEbmType singleFeatureValues[countInstances];
+   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+
+   for(int iIteration = 0; iIteration < 30000; ++iIteration) {
+      memset(singleFeatureValues, 0, sizeof(singleFeatureValues));
+
+      size_t i = 0;
+      size_t cLongRanges = randomStream.Next(6);
+      for(size_t iLongRange = 0; iLongRange < cLongRanges; ++iLongRange) {
+         size_t cItems = randomStream.Next(cLongBinLength) + cLongBinLength;
+         size_t val = randomStream.Next(maxRandomVal) + 1;
+         for(size_t iItem = 0; iItem < cItems; ++iItem) {
+            singleFeatureValues[i % countInstances] = val;
+            ++i;
+         }
+      }
+      size_t cShortRanges = randomStream.Next(6);
+      for(size_t iShortRange = 0; iShortRange < cShortRanges; ++iShortRange) {
+         size_t cItems = randomStream.Next(cLongBinLength);
+         size_t val = randomStream.Next(maxRandomVal) + 1;
+         for(size_t iItem = 0; iItem < cItems; ++iItem) {
+            singleFeatureValues[i % countInstances] = val;
+            ++i;
+         }
+      }
+      for(size_t iInstance = 0; iInstance < countInstances; ++iInstance) {
+         if(0 == singleFeatureValues[iInstance]) {
+            singleFeatureValues[iInstance] = randomStream.Next(maxRandomVal) + 1;
+         }
+      }
+      IntEbmType countCutPoints;
+      IntEbmType isMissing;
+      FloatEbmType valMin;
+      FloatEbmType valMax;
+
+      std::sort(singleFeatureValues, singleFeatureValues + countInstances);
+
+      IntEbmType ret = GenerateQuantileCutPoints(
+         randomSeed + iIteration, // make them all different random seeds
+         countInstances,
+         singleFeatureValues,
+         countMaximumBins,
+         countMinimumInstancesPerBin,
+         cutPointsLowerBoundInclusive,
+         &countCutPoints,
+         &isMissing,
+         &valMin,
+         &valMax
+      );
+      CHECK(0 == ret);
+   }
 }
 
 TEST_CASE("null validationMetricReturn, boosting, regression") {

@@ -19,7 +19,7 @@ template<bool bClassification>
 class CompareTreeNodeSplittingGain final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
-   constexpr bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
+   EBM_INLINE constexpr bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
       return lhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= rhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 };
