@@ -37,13 +37,13 @@ struct SplittingRange {
    size_t         m_cUnsplittableEitherSideMax;
    size_t         m_cUnsplittableEitherSideMin;
 
+   size_t         m_uniqueRandom;
+
    size_t         m_cSplitsAssigned;
    unsigned int   m_flags;
 };
 
-// PK VERIFIED!
 INLINE_RELEASE void SortSplittingRangesByCountItemsDescending(
-   RandomStream * const pRandomStream, 
    const size_t cSplittingRanges, 
    SplittingRange ** const apSplittingRange
 ) {
@@ -51,109 +51,18 @@ INLINE_RELEASE void SortSplittingRangesByCountItemsDescending(
 
    // sort in descending order for m_cSplittableItems
    //
-   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
-   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
-   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
+   // Some items can have the same primary sort key, so sort secondarily on our random unqiue value
    std::sort(apSplittingRange, apSplittingRange + cSplittingRanges, [](SplittingRange *& pSplittingRange1, SplittingRange *& pSplittingRange2) {
       if(PREDICTABLE(pSplittingRange1->m_cSplittableItems == pSplittingRange2->m_cSplittableItems)) {
-         return UNPREDICTABLE(pSplittingRange1->m_pSplittableValuesStart > pSplittingRange2->m_pSplittableValuesStart);
+         return UNPREDICTABLE(pSplittingRange1->m_uniqueRandom > pSplittingRange2->m_uniqueRandom);
       } else {
          return UNPREDICTABLE(pSplittingRange1->m_cSplittableItems > pSplittingRange2->m_cSplittableItems);
       }
-      });
-
-   // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
-   size_t iStartEqualLengthRange = 0;
-   size_t cItems = apSplittingRange[0]->m_cSplittableItems;
-   for(size_t i = 1; LIKELY(i < cSplittingRanges); ++i) {
-      const size_t cNewItems = apSplittingRange[i]->m_cSplittableItems;
-      if(PREDICTABLE(cItems != cNewItems)) {
-         // we have a real range
-         size_t cRemainingItems = i - iStartEqualLengthRange;
-         EBM_ASSERT(1 <= cRemainingItems);
-         while(PREDICTABLE(1 != cRemainingItems)) {
-            const size_t iSwap = pRandomStream->Next(cRemainingItems);
-            SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-            apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-            apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-            ++iStartEqualLengthRange;
-            --cRemainingItems;
-         }
-         iStartEqualLengthRange = i;
-         cItems = cNewItems;
-      }
-   }
-   size_t cRemainingItemsOuter = cSplittingRanges - iStartEqualLengthRange;
-   EBM_ASSERT(1 <= cRemainingItemsOuter);
-   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
-      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
-      SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-      apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-      apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-      ++iStartEqualLengthRange;
-      --cRemainingItemsOuter;
-   }
+   });
 }
 
-// PK VERIFIED!
-// TODO: Is this being used?
-INLINE_RELEASE void SortSplittingRangesByCountItemsAscending(
-   RandomStream * const pRandomStream, 
-   const size_t cSplittingRanges, 
-   SplittingRange ** const apSplittingRange
-) {
-   EBM_ASSERT(1 <= cSplittingRanges);
-
-   // sort in ascending order for m_cSplittableItems
-   //
-   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
-   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
-   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
-   std::sort(apSplittingRange, apSplittingRange + cSplittingRanges, [](SplittingRange * & pSplittingRange1, SplittingRange * & pSplittingRange2) {
-      if(PREDICTABLE(pSplittingRange1->m_cSplittableItems == pSplittingRange2->m_cSplittableItems)) {
-         return UNPREDICTABLE(pSplittingRange1->m_pSplittableValuesStart < pSplittingRange2->m_pSplittableValuesStart);
-      } else {
-         return UNPREDICTABLE(pSplittingRange1->m_cSplittableItems < pSplittingRange2->m_cSplittableItems);
-      }
-      });
-
-   // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
-   size_t iStartEqualLengthRange = 0;
-   size_t cItems = apSplittingRange[0]->m_cSplittableItems;
-   for(size_t i = 1; LIKELY(i < cSplittingRanges); ++i) {
-      const size_t cNewItems = apSplittingRange[i]->m_cSplittableItems;
-      if(PREDICTABLE(cItems != cNewItems)) {
-         // we have a real range
-         size_t cRemainingItems = i - iStartEqualLengthRange;
-         EBM_ASSERT(1 <= cRemainingItems);
-         while(PREDICTABLE(1 != cRemainingItems)) {
-            const size_t iSwap = pRandomStream->Next(cRemainingItems);
-            SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-            apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-            apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-            ++iStartEqualLengthRange;
-            --cRemainingItems;
-         }
-         iStartEqualLengthRange = i;
-         cItems = cNewItems;
-      }
-   }
-   size_t cRemainingItemsOuter = cSplittingRanges - iStartEqualLengthRange;
-   EBM_ASSERT(1 <= cRemainingItemsOuter);
-   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
-      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
-      SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-      apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-      apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-      ++iStartEqualLengthRange;
-      --cRemainingItemsOuter;
-   }
-}
-
-// PK VERIFIED!
 // TODO: Is this being used?
 INLINE_RELEASE void SortSplittingRangesByUnsplittableDescending(
-   RandomStream * const pRandomStream, 
    const size_t cSplittingRanges, 
    SplittingRange ** const apSplittingRange
 ) {
@@ -161,13 +70,11 @@ INLINE_RELEASE void SortSplittingRangesByUnsplittableDescending(
 
    // sort in descending order for m_cUnsplittableEitherSideMax, m_cUnsplittableEitherSideMin
    //
-   // But some items can have the same primary sort key, so sort secondarily on the pointer to the original object, thus putting them secondarily in index
-   // order, which is guaranteed to be a unique ordering. We'll later randomize the order of items that have the same primary sort index, BUT we want our 
-   // initial sort order to be replicatable with the same random seed, so we need the initial sort to be stable.
+   // Some items can have the same primary sort key, so sort secondarily on our random unqiue value
    std::sort(apSplittingRange, apSplittingRange + cSplittingRanges, [](SplittingRange * & pSplittingRange1, SplittingRange * & pSplittingRange2) {
       if(PREDICTABLE(pSplittingRange1->m_cUnsplittableEitherSideMax == pSplittingRange2->m_cUnsplittableEitherSideMax)) {
          if(PREDICTABLE(pSplittingRange1->m_cUnsplittableEitherSideMin == pSplittingRange2->m_cUnsplittableEitherSideMin)) {
-            return UNPREDICTABLE(pSplittingRange1->m_pSplittableValuesStart > pSplittingRange2->m_pSplittableValuesStart);
+            return UNPREDICTABLE(pSplittingRange1->m_uniqueRandom > pSplittingRange2->m_uniqueRandom);
          } else {
             return UNPREDICTABLE(pSplittingRange1->m_cUnsplittableEitherSideMin > pSplittingRange2->m_cUnsplittableEitherSideMin);
          }
@@ -175,41 +82,6 @@ INLINE_RELEASE void SortSplittingRangesByUnsplittableDescending(
          return UNPREDICTABLE(pSplittingRange1->m_cUnsplittableEitherSideMax > pSplittingRange2->m_cUnsplittableEitherSideMax);
       }
    });
-
-   // find sections that have the same number of items and randomly shuffle the sections with equal numbers of items so that there is no directional preference
-   size_t iStartEqualLengthRange = 0;
-   size_t cItemsMax = apSplittingRange[0]->m_cUnsplittableEitherSideMax;
-   size_t cItemsMin = apSplittingRange[0]->m_cUnsplittableEitherSideMin;
-   for(size_t i = 1; LIKELY(i < cSplittingRanges); ++i) {
-      const size_t cNewItemsMax = apSplittingRange[i]->m_cUnsplittableEitherSideMax;
-      const size_t cNewItemsMin = apSplittingRange[i]->m_cUnsplittableEitherSideMin;
-      if(PREDICTABLE(PREDICTABLE(cNewItemsMax != cItemsMax) || PREDICTABLE(cNewItemsMin != cItemsMin))) {
-         // we have a real range
-         size_t cRemainingItems = i - iStartEqualLengthRange;
-         EBM_ASSERT(1 <= cRemainingItems);
-         while(PREDICTABLE(1 != cRemainingItems)) {
-            const size_t iSwap = pRandomStream->Next(cRemainingItems);
-            SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-            apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-            apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-            ++iStartEqualLengthRange;
-            --cRemainingItems;
-         }
-         iStartEqualLengthRange = i;
-         cItemsMax = cNewItemsMax;
-         cItemsMin = cNewItemsMin;
-      }
-   }
-   size_t cRemainingItemsOuter = cSplittingRanges - iStartEqualLengthRange;
-   EBM_ASSERT(1 <= cRemainingItemsOuter);
-   while(PREDICTABLE(1 != cRemainingItemsOuter)) {
-      const size_t iSwap = pRandomStream->Next(cRemainingItemsOuter);
-      SplittingRange * pTmp = apSplittingRange[iStartEqualLengthRange];
-      apSplittingRange[iStartEqualLengthRange] = apSplittingRange[iStartEqualLengthRange + iSwap];
-      apSplittingRange[iStartEqualLengthRange + iSwap] = pTmp;
-      ++iStartEqualLengthRange;
-      --cRemainingItemsOuter;
-   }
 }
 
 INLINE_RELEASE size_t PossiblyRemoveBinForMissing(const bool bMissing, const IntEbmType countMaximumBins) {
@@ -470,6 +342,38 @@ INLINE_RELEASE void FillSplittingRangeNeighbours(
    pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
 }
 
+// verified
+void FillSplittingRangeRandom(
+   RandomStream * const pRandomStream,
+   const size_t cSplittingRanges,
+   SplittingRange * const aSplittingRange
+) {
+   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(nullptr != aSplittingRange);
+
+   size_t index = 0;
+   SplittingRange * pSplittingRange = aSplittingRange;
+   const SplittingRange * const pSplittingRangeEnd = pSplittingRange + cSplittingRanges;
+   do {
+      pSplittingRange->m_uniqueRandom = index;
+      ++index;
+      ++pSplittingRange;
+   } while(pSplittingRangeEnd != pSplittingRange);
+
+   // the last index doesn't need to be swapped, since there is nothing to swap it with
+   const size_t cVisitSplittingRanges = cSplittingRanges - 1;
+   for(size_t i = 0; LIKELY(i < cVisitSplittingRanges); ++i) {
+      const size_t cPossibleSwapLocations = cSplittingRanges - i;
+      EBM_ASSERT(1 <= cPossibleSwapLocations);
+      // for randomness, we need to be able to swap with ourselves, so iSwap can be 0 
+      // and in that case we'll swap with ourselves
+      const size_t iSwap = pRandomStream->Next(cPossibleSwapLocations);
+      const size_t uniqueRandomTmp = aSplittingRange[i].m_uniqueRandom;
+      aSplittingRange[i].m_uniqueRandom = aSplittingRange[i + iSwap].m_uniqueRandom;
+      aSplittingRange[i + iSwap].m_uniqueRandom = uniqueRandomTmp;
+   }
+}
+
 INLINE_RELEASE size_t FillSplittingRangeRemaining(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
@@ -535,7 +439,6 @@ INLINE_RELEASE void FillSplittingRangePointers(
 
 /*
 INLINE_RELEASE size_t AssignSecondCuts(
-   RandomStream * const pRandomStream,
    const size_t cMaximumBins,
    const size_t cMinimumInstancesPerBin,
    const size_t cSplittingRanges,
@@ -563,7 +466,6 @@ INLINE_RELEASE size_t AssignSecondCuts(
    // once we reach a SplittingRange with insufficient number of items inside to put cuts on both ends, we're done since none after that point in the sort
    // order will have enough
 
-   EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(2 <= cMaximumBins);
    EBM_ASSERT(1 <= cMinimumInstancesPerBin);
    EBM_ASSERT(1 <= cSplittingRanges);
@@ -1112,6 +1014,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                   FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
                   FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
+                  FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
+
                   /* const size_t cUsedSplits = */ FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
                   /* size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits; */
                   FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
