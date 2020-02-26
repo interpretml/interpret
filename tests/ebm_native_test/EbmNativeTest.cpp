@@ -2770,15 +2770,15 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       exit(1);
    }
 
-   constexpr IntEbmType countMaximumBins = 10;
+   constexpr size_t cMaximumBins = 10;
    constexpr IntEbmType countMinimumInstancesPerBin = 3;
-   constexpr IntEbmType countInstances = 100;
-   constexpr IntEbmType maxRandomVal = 70;
-   const IntEbmType cLongBinLength = static_cast<IntEbmType>(
-      std::ceil(static_cast<FloatEbmType>(countInstances) / static_cast<FloatEbmType>(countMaximumBins))
+   constexpr size_t cInstances = 100;
+   constexpr size_t maxRandomVal = 70;
+   const size_t cLongBinLength = static_cast<IntEbmType>(
+      std::ceil(static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins))
    );
-   FloatEbmType singleFeatureValues[countInstances];
-   FloatEbmType cutPointsLowerBoundInclusive[countMaximumBins - 1];
+   FloatEbmType singleFeatureValues[cInstances];
+   FloatEbmType cutPointsLowerBoundInclusive[cMaximumBins - 1];
 
    for(int iIteration = 0; iIteration < 30000; ++iIteration) {
       memset(singleFeatureValues, 0, sizeof(singleFeatureValues));
@@ -2789,7 +2789,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength) + cLongBinLength;
          size_t val = randomStream.Next(maxRandomVal) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            singleFeatureValues[i % countInstances] = val;
+            singleFeatureValues[i % cInstances] = static_cast<FloatEbmType>(val);
             ++i;
          }
       }
@@ -2798,13 +2798,13 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength);
          size_t val = randomStream.Next(maxRandomVal) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            singleFeatureValues[i % countInstances] = val;
+            singleFeatureValues[i % cInstances] = static_cast<FloatEbmType>(val);
             ++i;
          }
       }
-      for(size_t iInstance = 0; iInstance < countInstances; ++iInstance) {
+      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
          if(0 == singleFeatureValues[iInstance]) {
-            singleFeatureValues[iInstance] = randomStream.Next(maxRandomVal) + 1;
+            singleFeatureValues[iInstance] = static_cast<FloatEbmType>(randomStream.Next(maxRandomVal) + 1);
          }
       }
       IntEbmType countCutPoints;
@@ -2812,13 +2812,13 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       FloatEbmType valMin;
       FloatEbmType valMax;
 
-      std::sort(singleFeatureValues, singleFeatureValues + countInstances);
+      std::sort(singleFeatureValues, singleFeatureValues + cInstances);
 
       IntEbmType ret = GenerateQuantileCutPoints(
          randomSeed + iIteration, // make them all different random seeds
-         countInstances,
+         static_cast<IntEbmType>(cInstances),
          singleFeatureValues,
-         countMaximumBins,
+         static_cast<IntEbmType>(cMaximumBins),
          countMinimumInstancesPerBin,
          cutPointsLowerBoundInclusive,
          &countCutPoints,

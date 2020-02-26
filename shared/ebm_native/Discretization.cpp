@@ -448,14 +448,13 @@ size_t StuffSplitsIntoSplittingRanges(
 ) {
    class CompareSplittingRange final {
    public:
-      EBM_INLINE constexpr bool operator() (
+      EBM_INLINE bool operator() (
          const SplittingRange * const & lhs,
          const SplittingRange * const & rhs
       ) const {
-         if(lhs->m_avgRangeWidthAfterAddingOneSplit == rhs->m_avgRangeWidthAfterAddingOneSplit) {
-            return lhs->m_uniqueRandom <= rhs->m_uniqueRandom;
-         }
-         return lhs->m_avgRangeWidthAfterAddingOneSplit <= rhs->m_avgRangeWidthAfterAddingOneSplit;
+         return lhs->m_avgRangeWidthAfterAddingOneSplit == rhs->m_avgRangeWidthAfterAddingOneSplit ? 
+            (lhs->m_uniqueRandom <= rhs->m_uniqueRandom) : 
+            (lhs->m_avgRangeWidthAfterAddingOneSplit <= rhs->m_avgRangeWidthAfterAddingOneSplit);
       }
    };
 
