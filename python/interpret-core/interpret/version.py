@@ -2,4 +2,4 @@
 # Distributed under the MIT software license
 
 # NOTE: Version is replaced by a regex script.
-__version__ = "0.1.21-prerelease"
+__version__ = "0.1.21"
