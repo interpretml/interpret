@@ -113,7 +113,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         unknown_constant=0,
         feature_names=None,
         feature_types=None,
-        binning_strategy="uniform",
+        binning_strategy="quantile",
     ):
         """ Initializes EBM preprocessor.
 
@@ -664,7 +664,7 @@ class BaseEBM(BaseEstimator):
         n_jobs=-2,
         random_state=42,
         # Preprocessor
-        binning_strategy="uniform",
+        binning_strategy="quantile",
         max_n_bins=255,
     ):
         # TODO PK sanity check all our inputs
@@ -1395,7 +1395,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
         # Preprocessor
-        binning_strategy="uniform",
+        binning_strategy="quantile",
         max_n_bins=255,
     ):
 
@@ -1498,7 +1498,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         n_jobs=-2,
         random_state=42,
         # Preprocessor
-        binning_strategy="uniform",
+        binning_strategy="quantile",
         max_n_bins=255,
     ):
 
