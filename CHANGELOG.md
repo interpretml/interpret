@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.21] - 2020-03-25
+### Added
+- Module "glassbox.ebm.research" now has purification utilities.
+- EBM now exposes "max_n_bins" argument for its preprocessing stage.
+### Fixed
+- Stack trace information exposed for extension system failures.
+- Better handling of sparse to dense conversions for all explainers.
+- Internal fixes for native code.
+- Various memory optimizations for EBM.
+- Better NaN / infinity handling within EBM.
+### Changed
+- Binning strategy for EBM now defaulted to 'quantile' instead of 'uniform'.
+
 ## [v0.1.20] - 2019-12-11
 ### Fixed
 - **Major bug fix** around EBM interactions. If you use interactions, please upgrade immediately.
