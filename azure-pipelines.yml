@@ -5,7 +5,7 @@ jobs:
       Linux:
         image.name: 'ubuntu-16.04'
       Mac:
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
       Windows:
         image.name: 'windows-2019'
     maxParallel: 3
