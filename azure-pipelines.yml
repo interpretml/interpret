@@ -5,7 +5,7 @@ jobs:
       Linux:
         image.name: 'ubuntu-16.04'
       Mac:
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
       Windows:
         image.name: 'windows-2019'
     maxParallel: 3
@@ -19,7 +19,8 @@ jobs:
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building ebm_native code (Linux)'
   - script: |
-      /bin/sh ./build.sh -32bit
+      /bin/sh ./build.sh
+      # /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building ebm_native code (Mac)'
   - script: |
@@ -48,7 +49,7 @@ jobs:
       Linux:
         image.name: 'ubuntu-16.04'
       Mac:
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
       Windows:
         image.name: 'windows-2019'
     maxParallel: 3
@@ -189,13 +190,13 @@ jobs:
         image.name: 'windows-2019'
       MacPython35:
         python.version: '3.5'
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
       MacPython36:
         python.version: '3.6'
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
       MacPython37:
         python.version: '3.7'
-        image.name: 'macOS-10.15'
+        image.name: 'macOS-10.14'
     maxParallel: 9
   pool:
     vmImage: '$(image.name)'
