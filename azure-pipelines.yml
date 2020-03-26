@@ -48,7 +48,7 @@ jobs:
       Linux:
         image.name: 'ubuntu-16.04'
       Mac:
-        image.name: 'macOS-10.13'
+        image.name: 'macOS-10.15'
       Windows:
         image.name: 'windows-2019'
     maxParallel: 3
@@ -189,13 +189,13 @@ jobs:
         image.name: 'windows-2019'
       MacPython35:
         python.version: '3.5'
-        image.name: 'macOS-10.13'
+        image.name: 'macOS-10.15'
       MacPython36:
         python.version: '3.6'
-        image.name: 'macOS-10.13'
+        image.name: 'macOS-10.15'
       MacPython37:
         python.version: '3.7'
-        image.name: 'macOS-10.13'
+        image.name: 'macOS-10.15'
     maxParallel: 9
   pool:
     vmImage: '$(image.name)'
