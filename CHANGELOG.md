@@ -12,7 +12,6 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Stack trace information exposed for extension system failures.
 - Better handling of sparse to dense conversions for all explainers.
 - Internal fixes for native code.
-- Various memory optimizations for EBM.
 - Better NaN / infinity handling within EBM.
 ### Changed
 - Binning strategy for EBM now defaulted to 'quantile' instead of 'uniform'.
