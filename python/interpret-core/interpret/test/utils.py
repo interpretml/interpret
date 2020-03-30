@@ -38,7 +38,10 @@ def get_all_explainers():
         LinearRegression,
         ExplainableBoostingRegressor,
     ]
-    specific_explainer_classes = [TreeInterpreter, ShapTree]
+    specific_explainer_classes = [
+        TreeInterpreter,
+        # ShapTree  # Disable for now, upstream issue.
+    ]
     blackbox_explainer_classes = [
         LimeTabular,
         ShapKernel,
