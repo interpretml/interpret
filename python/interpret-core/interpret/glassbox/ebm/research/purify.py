@@ -22,7 +22,7 @@ def purify_row(mat, marg, densities, i):
         _mean = np.average(mat[i, :], weights=densities[i, :])
         marg[i] += _mean
         mat[i, :] -= _mean
-    except ZeroDivisionError:
+    except ZeroDivisionError:  # pragma: no cover
         pass
     return mat, marg
 
@@ -33,7 +33,7 @@ def purify_col(mat, marg, densities, j):
         _mean = np.average(mat[:, j], weights=densities[:, j])
         marg[j] += _mean
         mat[:, j] -= _mean
-    except ZeroDivisionError:
+    except ZeroDivisionError:  # pragma: no cover
         pass
     return mat, marg
 
@@ -78,7 +78,7 @@ def calc_row_means(mat, densities):
     for i in range(mat.shape[0]):
         try:
             means.append(np.average(mat[i, :], weights=densities[i, :]))
-        except ZeroDivisionError:
+        except ZeroDivisionError:  # pragma: no cover
             means.append(0)
     return means
 
@@ -88,7 +88,7 @@ def calc_col_means(mat, densities):
     for j in range(mat.shape[1]):
         try:
             means.append(np.average(mat[:, j], weights=densities[:, j]))
-        except ZeroDivisionError:
+        except ZeroDivisionError:  # pragma: no cover
             means.append(0)
     return means
 
@@ -109,7 +109,7 @@ def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
     max_col = np.max(np.abs(col_means))
     while max_row > tol or max_col > tol:
         i += 1
-        if verbose:
+        if verbose:  # pragma: no cover
             log.info(i, max_row, max_col)
         m1, m2, mat = purify_once(mat, densities, m1, m2, randomize)
         row_means = calc_row_means(mat, densities)
