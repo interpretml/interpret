@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.1.21] - 2020-03-25
+## [v0.1.21] - 2020-04-02
 ### Added
 - Module "glassbox.ebm.research" now has purification utilities.
 - EBM now exposes "max_n_bins" argument for its preprocessing stage.
