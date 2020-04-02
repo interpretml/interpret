@@ -75,12 +75,6 @@ show(ebm_global)
 ```
 ![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
-The graphs are the entire model.<sup>[*](#intercept-footnote)</sup>  For regression, sum the scores from each graph to get your prediction.  For classification, sum the scores and take the softmax.  Nothing is hidden.  You can inspect everything.
-
-<p align="right"><i>
-   <a name="intercept-footnote">*</a>A single global intercept score is also required for computation, but not visualization
-</i></p>
-
 <br/>
 
 Understand individual predictions
@@ -499,6 +493,7 @@ We also build on top of many great packages. Please check them out!
 - [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
+- [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
 
 ## Contact us
 
