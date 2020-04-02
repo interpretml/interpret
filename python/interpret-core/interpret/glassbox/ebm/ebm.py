@@ -1280,6 +1280,11 @@ class BaseEBM(BaseEstimator):
 
         n_rows = instances.shape[1]
         data_dicts = []
+        if self.n_classes_ <= 2:
+            intercept = self.intercept_
+            if isinstance(self.intercept_, np.ndarray) or isinstance(self.intercept_, list):
+                intercept = intercept[0]
+
         for _ in range(n_rows):
             data_dict = {
                 "type": "univariate",
@@ -1288,7 +1293,7 @@ class BaseEBM(BaseEstimator):
                 "values": [],
                 "extra": {
                     "names": ["Intercept"],
-                    "scores": [self.intercept_],
+                    "scores": [intercept],
                     "values": [1],
                 },
             }
