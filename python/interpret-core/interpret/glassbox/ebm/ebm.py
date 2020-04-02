@@ -1280,8 +1280,8 @@ class BaseEBM(BaseEstimator):
 
         n_rows = instances.shape[1]
         data_dicts = []
+        intercept = self.intercept_
         if self.n_classes_ <= 2:
-            intercept = self.intercept_
             if isinstance(self.intercept_, np.ndarray) or isinstance(self.intercept_, list):
                 intercept = intercept[0]
 
