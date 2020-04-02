@@ -9,6 +9,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Module "glassbox.ebm.research" now has purification utilities.
 - EBM now exposes "max_n_bins" argument for its preprocessing stage.
 ### Fixed
+- Fix intercept not showing for local EBM binary classification.
 - Stack trace information exposed for extension system failures.
 - Better handling of sparse to dense conversions for all explainers.
 - Internal fixes for native code.
