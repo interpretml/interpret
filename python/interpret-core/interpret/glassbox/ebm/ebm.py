@@ -708,7 +708,7 @@ class BaseEBM(BaseEstimator):
     #       doesn't like parameters in the fit function, other than ones like weights that have
     #       the same length as the number of instances.  See:
     #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
-    # 
+    #
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
         # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
@@ -1282,7 +1282,9 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         intercept = self.intercept_
         if self.n_classes_ <= 2:
-            if isinstance(self.intercept_, np.ndarray) or isinstance(self.intercept_, list):
+            if isinstance(self.intercept_, np.ndarray) or isinstance(
+                self.intercept_, list
+            ):
                 intercept = intercept[0]
 
         for _ in range(n_rows):

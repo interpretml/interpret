@@ -64,7 +64,9 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
 
         except Exception as e:  # pragma: no cover
             msg = "Failure while loading {}. Failed to load entrypoint {} with exception {}.".format(
-                extension_key, entrypoint, ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                extension_key,
+                entrypoint,
+                "".join(traceback.format_exception(type(e), e, e.__traceback__)),
             )
             module_logger.warning(msg)
 

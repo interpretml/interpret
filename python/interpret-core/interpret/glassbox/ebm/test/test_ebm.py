@@ -228,11 +228,9 @@ def test_ebm_sparse():
 
     np.random.seed(0)
     n_features = 20
-    X, y = make_multilabel_classification(n_samples=100,
-                                          sparse=True,
-                                          n_features=n_features,
-                                          n_classes=1,
-                                          n_labels=2)
+    X, y = make_multilabel_classification(
+        n_samples=100, sparse=True, n_features=n_features, n_classes=1, n_labels=2
+    )
 
     # train linear model
     clf = ExplainableBoostingClassifier()

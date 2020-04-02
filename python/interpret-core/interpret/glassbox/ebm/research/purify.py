@@ -117,7 +117,7 @@ def purify(mat, densities=None, verbose=False, tol=1e-6, randomize=False):
         max_row = np.max(np.abs(row_means))
         max_col = np.max(np.abs(col_means))
     # Center m1 and m2
-    intercept = 0.
+    intercept = 0.0
     intercept += np.average(m1, weights=np.sum(densities, axis=1))
     m1 -= np.average(m1, weights=np.sum(densities, axis=1))
     intercept += np.average(m2, weights=np.sum(densities, axis=0))
