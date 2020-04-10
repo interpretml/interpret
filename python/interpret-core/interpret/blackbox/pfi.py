@@ -36,6 +36,7 @@ class ExplainParams:
     GLOBAL_IMPORTANCE_VALUES = "global_importance_values"
     GLOBAL_IMPORTANCE_RANK = "global_importance_rank"
     FEATURES = "features"
+    MODEL_TYPE = "model_type"
 
 
 class SubsetSampler(SamplerMixin):
@@ -184,9 +185,10 @@ class PermutationImportanceClassification(ExplainerMixin):
 
         evaluation_examples = data
         true_labels = labels
-        kwargs = {"type": "pfi"}
+        kwargs = {ExplainParams.MODEL_TYPE: "pfi"}
 
-        kwargs[ExplainParams.CLASSES] = getattr(y, "columns", None)
+        columns = getattr(y, "columns", None)
+        kwargs[ExplainParams.CLASSES] = [col for col in columns] if columns is not None else None
         kwargs[ExplainParams.MODEL_TASK] = "classification"
 
         dataset = data
