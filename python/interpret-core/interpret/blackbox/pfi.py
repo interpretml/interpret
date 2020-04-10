@@ -170,12 +170,6 @@ class PermutationImportanceClassification(ExplainerMixin):
         self._add_metric(predict_function, shuffled_dataset, true_labels,
                          base_metric, global_importance_values, idx)
 
-
-# explainer = PFIExplainer(clf.steps[-1][1].predict,
-#                          features=x_train.columns,
-#                          transformations=transformations,
-#                          classes=["Not leaving", "leaving"])
-
     def explain_global(self, X, y, name=None):
 
         data, labels, _, _ = unify_data(
