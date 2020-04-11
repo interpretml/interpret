@@ -14,3 +14,4 @@ def test_classifier():
 
     explainer = PermutationImportanceClassification(clf.predict, metric)
     explanation = explainer.explain_global(X, y)
+    import pdb; pdb.set_trace()

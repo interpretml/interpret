@@ -179,15 +179,15 @@ class PermutationImportanceClassification(ExplainerMixin):
 
         evaluation_examples = data
         true_labels = labels
-        kwargs = {ExplainParams.MODEL_TYPE: "pfi"}
+        mli_dict = {ExplainParams.MODEL_TYPE: "pfi"}
 
         columns = getattr(y, "columns", None)
-        kwargs[ExplainParams.CLASSES] = [col for col in columns] if columns is not None else None
-        kwargs[ExplainParams.MODEL_TASK] = "classification"
+        mli_dict[ExplainParams.CLASSES] = [col for col in columns] if columns is not None else None
+        mli_dict[ExplainParams.MODEL_TASK] = "classification"
 
         dataset = data
 
-        kwargs[ExplainParams.NUM_FEATURES] = len(data[0])
+        mli_dict[ExplainParams.NUM_FEATURES] = len(data[0])
 
 
         predict_function = predict_fn
@@ -227,18 +227,24 @@ class PermutationImportanceClassification(ExplainerMixin):
                 self._compute_dense_metric(dataset, col_idx, subset_idx, random_indexes, predict_function,
                                            true_labels, base_metric, global_importance_values)
         order = _order_imp(global_importance_values)
-        kwargs[ExplainParams.EXPECTED_VALUES] = None
-        kwargs[ExplainParams.CLASSIFICATION] = True
-        kwargs[ExplainParams.GLOBAL_IMPORTANCE_VALUES] = global_importance_values
-        kwargs[ExplainParams.GLOBAL_IMPORTANCE_RANK] = order
-        kwargs[ExplainParams.FEATURES] = self.feature_names
+        mli_dict[ExplainParams.EXPECTED_VALUES] = None
+        mli_dict[ExplainParams.CLASSIFICATION] = True
+        mli_dict[ExplainParams.GLOBAL_IMPORTANCE_VALUES] = global_importance_values
+        mli_dict[ExplainParams.GLOBAL_IMPORTANCE_RANK] = order
+        mli_dict[ExplainParams.FEATURES] = self.feature_names
+
+        internal_obj = {
+            "overall": None,
+            "specific": None,
+            "mli": mli_dict
+        }
 
         ys = [val[0] for val in y.values]
         global_selector = gen_local_selector(ys, predictions)
         name = gen_name_from_class(self) if name is None else name
         return FeatureValueExplanation(
             "global",
-            kwargs,
+            internal_obj,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
             name=name,
