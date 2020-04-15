@@ -55,19 +55,28 @@ class Metric:
     def get(self, *args):
         return f1_score(*args, **self.kwargs)
 
-class PermutationImportanceClassification(ExplainerMixin):
+
+class PermutationImportance(ExplainerMixin):
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
     def __init__(
-
-        self, predict_fn, metric, sampler=None, feature_names=None, feature_types=None
+        self, predict_fn, metric=None, sampler=None, feature_names=None, feature_types=None
     ):
         self._predict_fn_not_unified = predict_fn
         self.predict_fn = None
         self.feature_names = feature_names
         self.feature_types = feature_types
-        self.metric = Metric(metric) if isinstance(metric, str) else metric
+        if metric is None:
+            metric_func = # TODO default mse metric functio
+        elif isinstance(metric, str):
+            metric_func = _get_metric_func(metric)
+        elif  callable(metric):
+            metric_func = metric
+        else:
+            raise Exception("Unsupported metric input type {}.".format(type(metric))
+
+        self.metric = metric
         self.sampler = sampler
 
     def _add_metric(self, predict_function, shuffled_dataset, true_labels,
@@ -232,9 +241,13 @@ class PermutationImportanceClassification(ExplainerMixin):
         mli_dict[ExplainParams.GLOBAL_IMPORTANCE_VALUES] = global_importance_values
         mli_dict[ExplainParams.GLOBAL_IMPORTANCE_RANK] = order
         mli_dict[ExplainParams.FEATURES] = self.feature_names
+        overall_dict = {
+            "names": self.feature_names,
+            "scores": global_importance_values
+        }
 
         internal_obj = {
-            "overall": None,
+            "overall": overall_dict,
             "specific": None,
             "mli": mli_dict
         }
@@ -250,3 +263,8 @@ class PermutationImportanceClassification(ExplainerMixin):
             name=name,
             selector=global_selector,
         )
+
+    def visualize(self, **kwargs):
+        from interpret.glassbox.linear import LinearExplanation
+        # TODO Can the base vis be a util?
+        return LinearExplanation.visualize(self, **kwargs)
