@@ -4,6 +4,8 @@
 import scipy as sp
 import numpy as np
 
+import sklearn.metrics
+
 from ..utils import gen_name_from_class, gen_local_selector
 
 from interpret.api.base import ExplainerMixin
@@ -11,9 +13,6 @@ from interpret.api.templates import FeatureValueExplanation
 from interpret.utils import unify_predict_fn, unify_data
 from interpret.utils import gen_name_from_class, gen_global_selector
 from interpret.blackbox.sensitivity import SamplerMixin  # Where should this live?
-from sklearn.metrics import mean_squared_error
-
-from abc import ABC, abstractmethod
 
 
 def _order_imp(summary):
@@ -32,6 +31,18 @@ class ExplainParams:
     MODEL_TYPE = "model_type"
 
 
+VALID_SKLEARN_METRICS = {'mean_absolute_error',
+                         'explained_variance_score',
+                         'mean_squared_error',
+                         'mean_squared_log_error',
+                         'median_absolute_error',
+                         'r2_score',
+                         'average_precision_score',
+                         'f1_score',
+                         'fbeta_score',
+                         'precision_score',
+                         'recall_score'}
+
 
 class PermutationImportance(ExplainerMixin):
     available_explanations = ["global"]
@@ -46,10 +57,14 @@ class PermutationImportance(ExplainerMixin):
         self.predict_fn = unify_predict_fn(predict_fn, data)
         self.y_hat = self.predict_fn(data)
         if metric is None:
-            metric_func = mean_squared_error
+            metric_func = sklearn.metrics.mean_squared_error
         elif isinstance(metric, str):
-            raise Exception("Not yet supported.")
-            metric_func = _get_metric_func(metric)
+            if metric not in VALID_SKLEARN_METRICS:
+                raise Exception("Unsupported metric name {}, supported metric functions include {}. "
+                                " Passing in the metric function such as sklearn.metrics.mean_squared_error "
+                                "is also supported.".format(metric, VALID_SKLEARN_METRICS))
+            else:
+                metric_func = getattr(sklearn.metrics, metric)
         elif callable(metric):
             metric_func = metric
         else:
