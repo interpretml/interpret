@@ -11,19 +11,12 @@ from interpret.api.templates import FeatureValueExplanation
 from interpret.utils import unify_predict_fn, unify_data
 from interpret.utils import gen_name_from_class, gen_global_selector
 from interpret.blackbox.sensitivity import SamplerMixin  # Where should this live?
-from sklearn.metrics import f1_score
+from sklearn.metrics import mean_squared_error
 
 from abc import ABC, abstractmethod
 
 
 def _order_imp(summary):
-    """Compute the ranking of feature importance values.
-
-    :param summary: A 3D array of the feature importance values to be ranked.
-    :type summary: numpy.ndarray
-    :return: The rank of the feature importance values.
-    :rtype: numpy.ndarray
-    """
     return summary.argsort()[..., ::-1]
 
 
@@ -39,89 +32,43 @@ class ExplainParams:
     MODEL_TYPE = "model_type"
 
 
-class SubsetSampler(SamplerMixin):
-    def __init__(self, indices=None):
-        self.indices = indicies
-
-    def sample(self, data):
-        return data[self.indices]
-
-
-class Metric:
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.kwargs = {"average": "micro"} if not kwargs else kwargs
-
-    def get(self, *args):
-        return f1_score(*args, **self.kwargs)
-
 
 class PermutationImportance(ExplainerMixin):
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
     def __init__(
-        self, predict_fn, metric=None, sampler=None, feature_names=None, feature_types=None
+        self, predict_fn, data, labels, metric=None, sampler=None, feature_names=None, feature_types=None
     ):
-        self._predict_fn_not_unified = predict_fn
-        self.predict_fn = None
-        self.feature_names = feature_names
-        self.feature_types = feature_types
+        self.data, self.labels, self.feature_names, self.feature_types = unify_data(
+            data, labels, feature_names, feature_types
+        )
+        self.predict_fn = unify_predict_fn(predict_fn, data)
+        self.y_hat = self.predict_fn(data)
         if metric is None:
-            metric_func = # TODO default mse metric functio
+            metric_func = mean_squared_error
         elif isinstance(metric, str):
+            raise Exception("Not yet supported.")
             metric_func = _get_metric_func(metric)
-        elif  callable(metric):
+        elif callable(metric):
             metric_func = metric
         else:
-            raise Exception("Unsupported metric input type {}.".format(type(metric))
+            raise Exception("Unsupported metric input type {}.".format(type(metric)))
 
-        self.metric = metric
+        self.metric = metric_func
         self.sampler = sampler
 
     def _add_metric(self, predict_function, shuffled_dataset, true_labels,
                     base_metric, global_importance_values, idx):
-        """Compute and add the metric to the global importance values array.
-
-        :param predict_function: The prediction function.
-        :type predict_function: function
-        :param shuffled_dataset: The shuffled dataset to predict on.
-        :type shuffled_dataset: scipy.csr or numpy.ndarray
-        :param true_labels: The true labels.
-        :type true_labels: numpy.ndarray
-        :param base_metric: Base metric for unshuffled dataset.
-        :type base_metric: float
-        :param global_importance_values: Pre-allocated array of global importance values.
-        :type global_importance_values: numpy.ndarray
-        """
         shuffled_prediction = predict_function(shuffled_dataset)
         if sp.sparse.issparse(shuffled_prediction):
             shuffled_prediction = shuffled_prediction.toarray()
-        metric = self.metric.get(true_labels, shuffled_prediction)
+        metric = self.metric(self.labels, shuffled_prediction)
         importance_score = base_metric - metric
         global_importance_values[idx] = importance_score
 
     def _compute_sparse_metric(self, dataset, col_idx, random_indexes, shuffled_dataset,
                                predict_function, true_labels, base_metric, global_importance_values):
-        """Shuffle a sparse dataset column and compute the feature importance metric.
-
-        :param dataset: Dataset used as a reference point for getting column indexes per row.
-        :type dataset: scipy.csc
-        :param col_idx: The column index.
-        :type col_idx: int
-        :param random_indexes: Generated random indexes.
-        :type random_indexes: numpy.ndarray
-        :param shuffled_dataset: The dataset to shuffle.
-        :type shuffled_dataset: scipy.csr
-        :param predict_function: The prediction function.
-        :type predict_function: function
-        :param true_labels: The true labels.
-        :type true_labels: numpy.ndarray
-        :param base_metric: Base metric for unshuffled dataset.
-        :type base_metric: float
-        :param global_importance_values: Pre-allocated array of global importance values.
-        :type global_importance_values: numpy.ndarray
-        """
         # Get non zero column indexes
         indptr = dataset.indptr
         indices = dataset.indices
@@ -152,25 +99,6 @@ class PermutationImportance(ExplainerMixin):
 
     def _compute_dense_metric(self, dataset, col_idx, subset_idx, random_indexes,
                               predict_function, true_labels, base_metric, global_importance_values):
-        """Shuffle a dense dataset column and compute the feature importance metric.
-
-        :param dataset: Dataset used as a reference point for getting column indexes per row.
-        :type dataset: numpy.ndarray
-        :param col_idx: The column index.
-        :type col_idx: int
-        :param subset_idx: The subset index.
-        :type subset_idx: int
-        :param random_indexes: Generated random indexes.
-        :type random_indexes: numpy.ndarray
-        :param predict_function: The prediction function.
-        :type predict_function: function
-        :param true_labels: The true labels.
-        :type true_labels: numpy.ndarray
-        :param base_metric: Base metric for unshuffled dataset.
-        :type base_metric: float
-        :param global_importance_values: Pre-allocated array of global importance values.
-        :type global_importance_values: numpy.ndarray
-        """
         # Create a copy of the original dataset
         shuffled_dataset = np.array(dataset, copy=True)
         # Shuffle one of the columns in place
@@ -179,27 +107,24 @@ class PermutationImportance(ExplainerMixin):
         self._add_metric(predict_function, shuffled_dataset, true_labels,
                          base_metric, global_importance_values, idx)
 
-    def explain_global(self, X, y, name=None):
+    def explain_global(self, name=None):
+        if hasattr(self, "_global_explanation"):
+            return self._global_explanation
 
-        data, labels, _, _ = unify_data(
-            X, y, self.feature_names, self.feature_types
-        )
-        predict_fn = unify_predict_fn(self._predict_fn_not_unified, X)
-
-        evaluation_examples = data
-        true_labels = labels
+        evaluation_examples = self.data
+        true_labels = self.labels
         mli_dict = {ExplainParams.MODEL_TYPE: "pfi"}
 
-        columns = getattr(y, "columns", None)
+        columns = getattr(self.y_hat, "columns", None)
         mli_dict[ExplainParams.CLASSES] = [col for col in columns] if columns is not None else None
         mli_dict[ExplainParams.MODEL_TASK] = "classification"
 
-        dataset = data
+        dataset = self.data
 
-        mli_dict[ExplainParams.NUM_FEATURES] = len(data[0])
+        mli_dict[ExplainParams.NUM_FEATURES] = len(dataset[0])
 
 
-        predict_function = predict_fn
+        predict_function = self.predict_fn
         # Score the model on the given dataset
         predictions = predict_function(dataset)
         # The scikit-learn metrics can't handle sparse arrays
@@ -208,7 +133,7 @@ class PermutationImportance(ExplainerMixin):
         if sp.sparse.issparse(predictions):
             predictions = prediction.toarray()
         # Evaluate the model with given metric on the dataset
-        base_metric = self.metric.get(true_labels, predictions)
+        base_metric = self.metric(true_labels, predictions)
         column_indexes = range(dataset.shape[1])
         global_importance_values = np.zeros(dataset.shape[1])
         if sp.sparse.issparse(dataset):
@@ -252,10 +177,9 @@ class PermutationImportance(ExplainerMixin):
             "mli": mli_dict
         }
 
-        ys = [val[0] for val in y.values]
-        global_selector = gen_local_selector(ys, predictions)
+        global_selector = gen_local_selector(self.labels, predictions)
         name = gen_name_from_class(self) if name is None else name
-        return FeatureValueExplanation(
+        global_explanation = FeatureValueExplanation(
             "global",
             internal_obj,
             feature_names=self.feature_names,
@@ -263,6 +187,8 @@ class PermutationImportance(ExplainerMixin):
             name=name,
             selector=global_selector,
         )
+        self._global_explanation = global_explanation  # Not threadsafe
+        return global_explanation
 
     def visualize(self, **kwargs):
         from interpret.glassbox.linear import LinearExplanation

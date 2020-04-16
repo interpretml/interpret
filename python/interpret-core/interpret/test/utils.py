@@ -8,6 +8,7 @@ from ..blackbox import LimeTabular
 from ..blackbox import ShapKernel
 from ..blackbox import MorrisSensitivity
 from ..blackbox import PartialDependence
+from ..blackbox import PermutationImportance
 
 from ..greybox import TreeInterpreter
 from ..greybox import ShapTree
@@ -47,6 +48,7 @@ def get_all_explainers():
         ShapKernel,
         MorrisSensitivity,
         PartialDependence,
+        PermutationImportance
     ]
     all_explainers = []
     all_explainers.extend(model_explainer_classes)

@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from .utils import synthetic_classification, get_all_explainers
 from .utils import assert_valid_explanation, assert_valid_model_explainer
+from ..blackbox import PermutationImportance
 
 from ..glassbox import LogisticRegression
 
@@ -25,7 +26,9 @@ def test_spec_synthetic():
     predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
 
     for explainer_class in all_explainers:
-        if explainer_class.explainer_type == "blackbox":
+        if explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
+            explainer = explainer_class(predict_fn, data["train"]["X"], data["train"]["y"])
+        elif explainer_class.explainer_type == "blackbox":
             explainer = explainer_class(predict_fn, data["train"]["X"])
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()

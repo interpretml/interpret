@@ -1,5 +1,5 @@
 from interpret.test.utils import synthetic_regression, synthetic_classification
-from interpret.blackbox.pfi import PermutationImportanceClassification
+from interpret.blackbox import PermutationImportance
 from interpret.glassbox import ExplainableBoostingClassifier
 from sklearn import svm
 
@@ -12,6 +12,5 @@ def test_classifier():
     clf.fit(X, y)
     metric = X.columns[0]
 
-    explainer = PermutationImportanceClassification(clf.predict, metric)
-    explanation = explainer.explain_global(X, y)
-    import pdb; pdb.set_trace()
+    explainer = PermutationImportance(clf.predict, X, y)
+    explainer.explain_global()
