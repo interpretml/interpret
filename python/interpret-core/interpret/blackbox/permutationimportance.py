@@ -12,7 +12,6 @@ from interpret.api.base import ExplainerMixin
 from interpret.api.templates import FeatureValueExplanation
 from interpret.utils import unify_predict_fn, unify_data
 from interpret.utils import gen_name_from_class, gen_global_selector
-from interpret.blackbox.sensitivity import SamplerMixin  # Where should this live?
 
 
 def _order_imp(summary):
