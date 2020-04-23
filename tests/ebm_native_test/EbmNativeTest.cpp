@@ -822,7 +822,8 @@ public:
             0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0], 
             0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0], 
             countInnerBags, 
-            randomSeed
+            randomSeed,
+            nullptr
          );
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
          if(m_bNullTrainingPredictionScores) {
@@ -846,7 +847,8 @@ public:
             0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0], 
             0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0], 
             countInnerBags, 
-            randomSeed
+            randomSeed,
+            nullptr
          );
       } else {
          exit(1);
@@ -1127,7 +1129,9 @@ public:
             m_interactionClassificationTargets.size(), 
             0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 
             0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionClassificationTargets[0], 
-            0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionPredictionScores[0]);
+            0 == m_interactionClassificationTargets.size() ? nullptr : &m_interactionPredictionScores[0],
+            nullptr
+         );
       } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
          if(m_bNullInteractionPredictionScores) {
             m_interactionPredictionScores.resize(cVectorLength * m_interactionRegressionTargets.size());
@@ -1138,7 +1142,8 @@ public:
             m_interactionRegressionTargets.size(), 
             0 == m_interactionBinnedData.size() ? nullptr : &m_interactionBinnedData[0], 
             0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionRegressionTargets[0], 
-            0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionPredictionScores[0]
+            0 == m_interactionRegressionTargets.size() ? nullptr : &m_interactionPredictionScores[0],
+            nullptr
          );
       } else {
          exit(1);
@@ -2849,7 +2854,8 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
       nullptr, 
       nullptr, 
       0, 
-      randomSeed
+      randomSeed,
+      nullptr
    );
    const IntEbmType ret = BoostingStep(
       pEbmBoosting, 
@@ -2885,7 +2891,8 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
       nullptr, 
       nullptr, 
       0, 
-      randomSeed
+      randomSeed,
+      nullptr
    );
    const IntEbmType ret = BoostingStep(
       pEbmBoosting, 
@@ -2921,7 +2928,8 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
       nullptr, 
       nullptr, 
       0, 
-      randomSeed
+      randomSeed,
+      nullptr
    );
    const IntEbmType ret = BoostingStep(
       pEbmBoosting, 
@@ -2938,21 +2946,21 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, regression") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
-   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr);
+   PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);

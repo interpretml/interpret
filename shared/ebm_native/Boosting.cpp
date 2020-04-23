@@ -522,8 +522,11 @@ EbmBoostingState * AllocateBoosting(
    const void * const validationTargets, 
    const IntEbmType * const validationBinnedData, 
    const FloatEbmType * const validationPredictorScores, 
-   const IntEbmType countInnerBags
+   const IntEbmType countInnerBags,
+   const FloatEbmType * optionalTempParams
 ) {
+   UNUSED(optionalTempParams);
+
    // TODO : give AllocateBoosting the same calling parameter order as InitializeBoostingClassification
    // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
@@ -638,13 +641,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed
+   IntEbmType randomSeed,
+   const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
       ", features=%p, countFeatureCombinations=%" IntEbmTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" 
       IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" 
       IntEbmTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" 
-      IntEbmTypePrintf ", randomSeed=%" IntEbmTypePrintf, 
+      IntEbmTypePrintf ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
       countTargetClasses, 
       countFeatures, 
       static_cast<const void *>(features), 
@@ -657,7 +661,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       static_cast<const void *>(trainingPredictorScores), 
       countValidationInstances, 
       static_cast<const void *>(validationBinnedData), 
-      static_cast<const void *>(validationTargets), static_cast<const void *>(validationPredictorScores), countInnerBags, randomSeed);
+      static_cast<const void *>(validationTargets), 
+      static_cast<const void *>(validationPredictorScores), 
+      countInnerBags, 
+      randomSeed,
+      static_cast<const void *>(optionalTempParams)
+      );
    if(countTargetClasses < 0) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be negative");
       return nullptr;
@@ -687,7 +696,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       validationTargets, 
       validationBinnedData, 
       validationPredictorScores, 
-      countInnerBags
+      countInnerBags,
+      optionalTempParams
    ));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingClassification %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;
@@ -708,13 +718,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed
+   IntEbmType randomSeed,
+   const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countFeatureCombinations=%" 
       IntEbmTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntEbmTypePrintf 
       ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntEbmTypePrintf 
       ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf 
-      ", randomSeed=%" IntEbmTypePrintf, 
+      ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams = %p",
       countFeatures, 
       static_cast<const void *>(features), 
       countFeatureCombinations, 
@@ -729,7 +740,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       static_cast<const void *>(validationTargets), 
       static_cast<const void *>(validationPredictorScores), 
       countInnerBags, 
-      randomSeed
+      randomSeed,
+      static_cast<const void *>(optionalTempParams)
    );
    const PEbmBoosting pEbmBoosting = reinterpret_cast<PEbmBoosting>(AllocateBoosting(
       randomSeed, 
@@ -747,7 +759,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       validationTargets, 
       validationBinnedData, 
       validationPredictorScores, 
-      countInnerBags
+      countInnerBags,
+      optionalTempParams
    ));
    LOG_N(TraceLevelInfo, "Exited InitializeBoostingRegression %p", static_cast<void *>(pEbmBoosting));
    return pEbmBoosting;

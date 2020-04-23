@@ -126,6 +126,8 @@ class Native:
             ct.c_longlong,
             # int64_t randomSeed
             ct.c_longlong,
+            # double * optionalTempParams
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.InitializeBoostingClassification.restype = ct.c_void_p
 
@@ -160,6 +162,8 @@ class Native:
             ct.c_longlong,
             # int64_t randomSeed
             ct.c_longlong,
+            # double * optionalTempParams
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.InitializeBoostingRegression.restype = ct.c_void_p
 
@@ -234,6 +238,8 @@ class Native:
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            # double * optionalTempParams
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
@@ -250,6 +256,8 @@ class Native:
             ndpointer(dtype=np.float64, ndim=1),
             # double * predictorScores
             ndpointer(dtype=np.float64, ndim=1),
+            # double * optionalTempParams
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
@@ -593,6 +601,7 @@ class NativeEBMBoosting:
                 scores_val,
                 n_inner_bags,
                 random_state,
+                np.array([], dtype=np.float64),
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingClassification")
@@ -613,6 +622,7 @@ class NativeEBMBoosting:
                 scores_val,
                 n_inner_bags,
                 random_state,
+                np.array([], dtype=np.float64),
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingRegression")
@@ -896,7 +906,7 @@ class NativeEBMInteraction:
         # Allocate external resources
         if model_type == "classification":
             self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
-                n_classes, len(feature_array), feature_array, len(y), X, y, scores,
+                n_classes, len(feature_array), feature_array, len(y), X, y, scores, np.array([], dtype=np.float64),
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError(
@@ -904,7 +914,7 @@ class NativeEBMInteraction:
                 )
         elif model_type == "regression":
             self._interaction_pointer = self._native.lib.InitializeInteractionRegression(
-                len(feature_array), feature_array, len(y), X, y, scores,
+                len(feature_array), feature_array, len(y), X, y, scores, np.array([], dtype=np.float64),
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")

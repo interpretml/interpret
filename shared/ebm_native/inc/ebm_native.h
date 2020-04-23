@@ -312,7 +312,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed
+   IntEbmType randomSeed,
+   const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
    IntEbmType countFeatures, 
@@ -329,7 +330,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
    IntEbmType countInnerBags,
-   IntEbmType randomSeed
+   IntEbmType randomSeed,
+   const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
    PEbmBoosting ebmBoosting, 
@@ -377,7 +379,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    IntEbmType countInstances,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
-   const FloatEbmType * predictorScores
+   const FloatEbmType * predictorScores,
+   const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
    IntEbmType countFeatures, 
@@ -385,7 +388,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    IntEbmType countInstances, 
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
-   const FloatEbmType * predictorScores
+   const FloatEbmType * predictorScores,
+   const FloatEbmType * optionalTempParams
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction, 
