@@ -523,10 +523,8 @@ EbmBoostingState * AllocateBoosting(
    const IntEbmType * const validationBinnedData, 
    const FloatEbmType * const validationPredictorScores, 
    const IntEbmType countInnerBags,
-   const FloatEbmType * optionalTempParams
+   const FloatEbmType * const optionalTempParams
 ) {
-   UNUSED(optionalTempParams);
-
    // TODO : give AllocateBoosting the same calling parameter order as InitializeBoostingClassification
    // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
@@ -598,7 +596,8 @@ EbmBoostingState * AllocateBoosting(
       cFeatures, 
       cFeatureCombinations, 
       cInnerBags, 
-      randomSeed
+      randomSeed,
+      optionalTempParams
    );
    LOG_N(TraceLevelInfo, "Exited EbmBoostingState %p", static_cast<void *>(pEbmBoostingState));
    if(UNLIKELY(nullptr == pEbmBoostingState)) {
@@ -725,7 +724,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       IntEbmTypePrintf ", featureCombinations=%p, featureCombinationIndexes=%p, countTrainingInstances=%" IntEbmTypePrintf 
       ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntEbmTypePrintf 
       ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf 
-      ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams = %p",
+      ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
       countFeatures, 
       static_cast<const void *>(features), 
       countFeatureCombinations, 

@@ -32,10 +32,8 @@ EbmInteractionState * AllocateInteraction(
    const void * targets, 
    const IntEbmType * binnedData, 
    const FloatEbmType * predictorScores,
-   const FloatEbmType * optionalTempParams
+   const FloatEbmType * const optionalTempParams
 ) {
-   UNUSED(optionalTempParams);
-
    // TODO : give AllocateInteraction the same calling parameter order as InitializeInteractionClassification
 
    EBM_ASSERT(0 <= countFeatures);
@@ -59,7 +57,11 @@ EbmInteractionState * AllocateInteraction(
    size_t cInstances = static_cast<size_t>(countInstances);
 
    LOG_0(TraceLevelInfo, "Entered EbmInteractionState");
-   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(runtimeLearningTypeOrCountTargetClasses, cFeatures);
+   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(
+      runtimeLearningTypeOrCountTargetClasses, 
+      cFeatures, 
+      optionalTempParams
+   );
    LOG_N(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pEbmInteractionState");

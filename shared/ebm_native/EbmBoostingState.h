@@ -96,7 +96,8 @@ public:
       const size_t cFeatures, 
       const size_t cFeatureCombinations, 
       const size_t cSamplingSets, 
-      const IntEbmType randomSeed
+      const IntEbmType randomSeed,
+      const FloatEbmType * const optionalTempParams
    )
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatureCombinations(cFeatureCombinations)
@@ -116,7 +117,11 @@ public:
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)
       // we catch any errors in the constructor, so this should not be able to throw
-      , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) {
+      , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) 
+   {
+      // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
+      // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
+      UNUSED(optionalTempParams);
    }
 
    EBM_INLINE ~EbmBoostingState() {
