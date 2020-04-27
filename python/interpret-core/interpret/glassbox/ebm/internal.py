@@ -126,6 +126,8 @@ class Native:
             ct.c_longlong,
             # int64_t randomSeed
             ct.c_longlong,
+            # double * optionalTempParams
+            ct.POINTER(ct.c_double),
         ]
         self.lib.InitializeBoostingClassification.restype = ct.c_void_p
 
@@ -160,6 +162,8 @@ class Native:
             ct.c_longlong,
             # int64_t randomSeed
             ct.c_longlong,
+            # double * optionalTempParams
+            ct.POINTER(ct.c_double),
         ]
         self.lib.InitializeBoostingRegression.restype = ct.c_void_p
 
@@ -234,6 +238,8 @@ class Native:
             # double * predictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
+            # double * optionalTempParams
+            ct.POINTER(ct.c_double),
         ]
         self.lib.InitializeInteractionClassification.restype = ct.c_void_p
 
@@ -250,6 +256,8 @@ class Native:
             ndpointer(dtype=np.float64, ndim=1),
             # double * predictorScores
             ndpointer(dtype=np.float64, ndim=1),
+            # double * optionalTempParams
+            ct.POINTER(ct.c_double),
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
@@ -440,6 +448,7 @@ class NativeEBMBoosting:
         scores_val,
         n_inner_bags,
         random_state,
+        optional_temp_params,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -574,6 +583,9 @@ class NativeEBMBoosting:
                         "scores_val does not have the same number of logit scores as n_scores"
                     )
 
+        if optional_temp_params is not None:
+            optional_temp_params = (ct.c_double * len(optional_temp_params))(*optional_temp_params)
+
         # Allocate external resources
         if model_type == "classification":
             self._booster_pointer = self._native.lib.InitializeBoostingClassification(
@@ -593,6 +605,7 @@ class NativeEBMBoosting:
                 scores_val,
                 n_inner_bags,
                 random_state,
+                optional_temp_params,
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingClassification")
@@ -613,6 +626,7 @@ class NativeEBMBoosting:
                 scores_val,
                 n_inner_bags,
                 random_state,
+                optional_temp_params,
             )
             if not self._booster_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeBoostingRegression")
@@ -823,7 +837,7 @@ class NativeEBMInteraction:
     """
 
     def __init__(
-        self, model_type, n_classes, features, X, y, scores,
+        self, model_type, n_classes, features, X, y, scores, optional_temp_params,
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -893,10 +907,13 @@ class NativeEBMInteraction:
                         "scores does not have the same number of logit scores as n_scores"
                     )
 
+        if optional_temp_params is not None:
+            optional_temp_params = (ct.c_double * len(optional_temp_params))(*optional_temp_params)
+
         # Allocate external resources
         if model_type == "classification":
             self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
-                n_classes, len(feature_array), feature_array, len(y), X, y, scores,
+                n_classes, len(feature_array), feature_array, len(y), X, y, scores, optional_temp_params,
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError(
@@ -904,7 +921,7 @@ class NativeEBMInteraction:
                 )
         elif model_type == "regression":
             self._interaction_pointer = self._native.lib.InitializeInteractionRegression(
-                len(feature_array), feature_array, len(y), X, y, scores,
+                len(feature_array), feature_array, len(y), X, y, scores, optional_temp_params,
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")
@@ -959,6 +976,7 @@ class NativeHelper:
         early_stopping_tolerance,
         early_stopping_run_length,
         name,
+        optional_temp_params=None,
     ):
 
         min_metric = np.inf
@@ -977,6 +995,7 @@ class NativeHelper:
                 scores_val,
                 n_inner_bags,
                 random_state,
+                optional_temp_params,
             )
         ) as native_ebm_boosting:
             no_change_run_length = 0
@@ -1037,17 +1056,19 @@ class NativeHelper:
         X,
         y,
         scores,
+        optional_temp_params=None,
     ):
         # TODO PK we only need to store the top n_interactions items, so use a heap
         interaction_scores = []
         with closing(
             NativeEBMInteraction(
-                model_type=model_type,
-                n_classes=n_classes,
-                features=features,
-                X=X,
-                y=y,
-                scores=scores,
+                model_type,
+                n_classes,
+                features,
+                X,
+                y,
+                scores,
+                optional_temp_params,
             )
         ) as native_ebm_interactions:
             for feature_combination in iter_feature_combinations:

@@ -29,13 +29,21 @@ public:
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
 
-   EBM_INLINE EbmInteractionState(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cFeatures)
+   EBM_INLINE EbmInteractionState(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+      const size_t cFeatures, 
+      const FloatEbmType * const optionalTempParams
+   )
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_pDataSet(nullptr)
       , m_cLogEnterMessages(1000)
-      , m_cLogExitMessages(1000) {
+      , m_cLogExitMessages(1000) 
+   {
+      // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
+      // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
+      UNUSED(optionalTempParams);
    }
 
    EBM_INLINE ~EbmInteractionState() {

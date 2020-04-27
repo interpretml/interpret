@@ -31,7 +31,8 @@ EbmInteractionState * AllocateInteraction(
    IntEbmType countInstances, 
    const void * targets, 
    const IntEbmType * binnedData, 
-   const FloatEbmType * predictorScores
+   const FloatEbmType * predictorScores,
+   const FloatEbmType * const optionalTempParams
 ) {
    // TODO : give AllocateInteraction the same calling parameter order as InitializeInteractionClassification
 
@@ -56,7 +57,11 @@ EbmInteractionState * AllocateInteraction(
    size_t cInstances = static_cast<size_t>(countInstances);
 
    LOG_0(TraceLevelInfo, "Entered EbmInteractionState");
-   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(runtimeLearningTypeOrCountTargetClasses, cFeatures);
+   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(
+      runtimeLearningTypeOrCountTargetClasses, 
+      cFeatures, 
+      optionalTempParams
+   );
    LOG_N(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pEbmInteractionState");
@@ -77,19 +82,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countInstances,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
-   const FloatEbmType * predictorScores
+   const FloatEbmType * predictorScores,
+   const FloatEbmType * optionalTempParams
 ) {
    LOG_N(
       TraceLevelInfo, 
       "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
-      ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p", 
+      ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countTargetClasses, 
       countFeatures, 
       static_cast<const void *>(features), 
       countInstances, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
-      static_cast<const void *>(predictorScores)
+      static_cast<const void *>(predictorScores),
+      static_cast<const void *>(optionalTempParams)
    );
    if(countTargetClasses < 0) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be negative");
@@ -111,7 +118,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       countInstances, 
       targets, 
       binnedData, 
-      predictorScores
+      predictorScores,
+      optionalTempParams
    ));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionClassification %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
@@ -123,16 +131,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countInstances,
    const IntEbmType * binnedData,
    const FloatEbmType * targets,
-   const FloatEbmType * predictorScores
+   const FloatEbmType * predictorScores,
+   const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf 
-      ", binnedData=%p, targets=%p, predictorScores=%p", 
+      ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countFeatures, 
       static_cast<const void *>(features), 
       countInstances, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
-      static_cast<const void *>(predictorScores)
+      static_cast<const void *>(predictorScores),
+      static_cast<const void *>(optionalTempParams)
    );
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
       countFeatures, 
@@ -141,7 +151,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       countInstances, 
       targets, 
       binnedData, 
-      predictorScores
+      predictorScores,
+      optionalTempParams
    ));
    LOG_N(TraceLevelInfo, "Exited InitializeInteractionRegression %p", static_cast<void *>(pEbmInteraction));
    return pEbmInteraction;
