@@ -121,9 +121,8 @@ def iris_classification():
 
 
 def adult_classification():
-    # SEC: This needs to change back to SSL once UCI resolves their expired cert.
     df = pd.read_csv(
-        "http://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
+        "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
         header=None,
     ).sample(frac=0.01, random_state=42)
     df.columns = [
