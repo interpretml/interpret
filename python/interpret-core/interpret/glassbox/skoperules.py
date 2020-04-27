@@ -17,8 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class RulesExplanation(ExplanationMixin):
-    """
-    """
+    """ Visualizes rules as HTML for both global and local explanations. """
 
     explanation_type = None
 
@@ -31,6 +30,16 @@ class RulesExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -39,11 +48,29 @@ class RulesExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            HTML as string.
+        """
         from ..visual.plot import rules_to_html
 
         data_dict = self.data(key)
@@ -83,11 +110,12 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
     explainer_type = "model"
 
     def __init__(self, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes skope rules.
+        """ Initializes class.
 
         Args:
-            **kwargs: Keyword arguments to be passed to SkopeRules
-                in skope-rules.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Kwargs passed to wrapped SkopeRules at initialization time.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -224,6 +252,16 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         return rules, rule_li, prec_li, recall_li, features_dict
 
     def explain_local(self, X, y=None, name=None):
+        """ Provides local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -263,8 +301,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             name: User-defined explanation name.
 
         Returns:
-            An explanation object,
-            visualizing feature-value pairs as horizontal bar chart.
+            An explanation object.
         """
         if name is None:
             name = gen_name_from_class(self)

@@ -14,10 +14,20 @@ this.visualize_provider = None
 
 
 def get_visualize_provider():
+    """ Gets visualization provider for show() related calls.
+
+    Returns:
+        Visualization provider.
+    """
     return this.visualize_provider
 
 
 def set_visualize_provider(provider):
+    """ Sets visualization provider for show() related calls.
+
+    Args:
+        provider: Visualization provider found in "interpret.provider.visualize".
+    """
     has_render_method = hasattr(provider, "render")
     if provider is None or has_render_method:
         this.visualize_provider = provider
@@ -136,11 +146,12 @@ def _get_integer_key(key, explanation):
 def show(explanation, key=-1, **kwargs):
     """ Provides an interactive visualization for a given explanation(s).
 
-    The visualization provided is not preserved when the notebook exits.
+    By default, visualization provided is not preserved when the notebook exits.
 
     Args:
-        explanation: As provided in 'show'.
-        key: As provided in 'show'.
+        explanation: Either a scalar Explanation or list of Explanations to render as visualization.
+        key: Specific index of explanation to visualize.
+        **kwargs: Kwargs passed down to provider's render() call.
 
     Returns:
         None.

@@ -34,8 +34,7 @@ log = logging.getLogger(__name__)
 
 
 class EBMExplanation(FeatureValueExplanation):
-    """ Visualizes specifically for EBM.
-    """
+    """ Visualizes specifically for EBM. """
 
     explanation_type = None
 
@@ -48,7 +47,16 @@ class EBMExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
 
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         super(EBMExplanation, self).__init__(
             explanation_type,
             internal_obj,
@@ -59,6 +67,16 @@ class EBMExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
 
         data_dict = self.data(key)
@@ -66,7 +84,6 @@ class EBMExplanation(FeatureValueExplanation):
             return None
 
         # Overall graph
-        # TODO: Fix for multiclass classification
         if self.explanation_type == "global" and key is None:
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
@@ -711,6 +728,15 @@ class BaseEBM(BaseEstimator):
     #
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
+        """ Fits model to provided instances.
+
+        Args:
+            X: Numpy array for training instances.
+            y: Numpy array as training labels.
+
+        Returns:
+            Itself.
+        """
         # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
         #         so move everything to local variables until the end when we assign them to self.*
 
@@ -948,7 +974,6 @@ class BaseEBM(BaseEstimator):
             # also look for anything with attrib inside of it
             self._attrib_set_model_means_ = []
 
-            # TODO: Clean this up before release.
             for set_idx, feature_combination, scores in scores_gen:
                 score_mean = np.mean(scores)
 
@@ -1119,6 +1144,14 @@ class BaseEBM(BaseEstimator):
         return pair_indices
 
     def decision_function(self, X):
+        """ Predict scores from model before calling the link function.
+
+            Args:
+                X: Numpy array for instances.
+
+            Returns:
+                The sum of the additive term contributions.
+        """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
@@ -1135,6 +1168,15 @@ class BaseEBM(BaseEstimator):
         return decision_scores
 
     def explain_global(self, name=None):
+        """ Provides global explanation for model.
+
+        Args:
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object,
+            visualizing feature-value pairs as horizontal bar chart.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -1260,6 +1302,18 @@ class BaseEBM(BaseEstimator):
         )
 
     def explain_local(self, X, y=None, name=None):
+        """ Provides local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
+
         # Produce feature value pairs for each instance.
         # Values are the model graph score per respective feature combination.
         if name is None:
@@ -1368,6 +1422,7 @@ class BaseEBM(BaseEstimator):
 
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
+    """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
     # TODO PK v.2 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -1405,7 +1460,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         binning_strategy="quantile",
         max_n_bins=255,
     ):
-
         super(ExplainableBoostingClassifier, self).__init__(
             # Explainer
             feature_names=feature_names,
@@ -1436,9 +1490,43 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             binning_strategy=binning_strategy,
             max_n_bins=max_n_bins,
         )
+        """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            schema: Unused, due for deprecation.
+            n_estimators: Number of outer bags.
+            holdout_size: Unused, due for deprecation.
+            scoring: Unused, due for deprecation.
+            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            interactions: Interactions to be trained on.
+                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+            holdout_split: Validation set size for boosting.
+            data_n_episodes: Number of rounds for boosting.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
+            feature_step_n_inner_bags: Number of inner bags.
+            learning_rate: Learning rate for boosting.
+            training_step_episodes: Research use only.
+            max_tree_splits: Maximum tree splits used in boosting.
+            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            n_jobs: Number of jobs to run in parallel.
+            random_state: Random state.
+            binning_strategy: Method to bin values for pre-processing.
+            max_n_bins: Max number of bins per feature for pre-processing stage.
+        """
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
+        """ Probability estimates on provided instances.
+
+        Args:
+            X: Numpy array for instances.
+
+        Returns:
+            Probability estimate of instance for each class.
+        """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
@@ -1453,6 +1541,14 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         return prob
 
     def predict(self, X):
+        """ Predicts on provided instances.
+
+        Args:
+            X: Numpy array for instances.
+
+        Returns:
+            Predicted class label per instance.
+        """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)
@@ -1471,6 +1567,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
+    """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
     # TODO PK v.2 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -1508,7 +1605,32 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         binning_strategy="quantile",
         max_n_bins=255,
     ):
+        """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
 
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            schema: Unused, due for deprecation.
+            n_estimators: Number of outer bags.
+            holdout_size: Unused, due for deprecation.
+            scoring: Unused, due for deprecation.
+            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            interactions: Interactions to be trained on.
+                Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
+            holdout_split: Validation set size for boosting.
+            data_n_episodes: Number of rounds for boosting.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
+            feature_step_n_inner_bags: Number of inner bags.
+            learning_rate: Learning rate for boosting.
+            training_step_episodes: Research use only.
+            max_tree_splits: Maximum tree splits used in boosting.
+            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            n_jobs: Number of jobs to run in parallel.
+            random_state: Random state.
+            binning_strategy: Method to bin values for pre-processing.
+            max_n_bins: Max number of bins per feature for pre-processing stage.
+        """
         super(ExplainableBoostingRegressor, self).__init__(
             # Explainer
             feature_names=feature_names,
@@ -1541,6 +1663,14 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         )
 
     def predict(self, X):
+        """ Predicts on provided instances.
+
+        Args:
+            X: Numpy array for instances.
+
+        Returns:
+            Predicted class label per instance.
+        """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         X = self.preprocessor_.transform(X)

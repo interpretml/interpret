@@ -10,16 +10,35 @@ import numpy as np
 
 
 class PR(ExplainerMixin):
+    """ Produces precision-recall curves. """
     available_explanations = ["perf"]
     explainer_type = "perf"
 
     def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
+        """ Initializes class.
+
+        Args:
+            predict_fn: Function of blackbox that takes input, and returns prediction.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Currently unused. Due for deprecation.
+        """
         self.predict_fn = predict_fn
-        self.kwargs = kwargs
         self.feature_names = feature_names
         self.feature_types = feature_types
+        self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
+        """ Produce precision-recall curves.
+
+        Args:
+            X: Numpy array for X to compare predict function against.
+            y: Numpy vector for y to compare predict function against.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -56,16 +75,35 @@ class PR(ExplainerMixin):
 
 
 class ROC(ExplainerMixin):
+    """ Produces ROC curves. """
     available_explanations = ["perf"]
     explainer_type = "perf"
 
     def __init__(self, predict_fn, feature_names=None, feature_types=None, **kwargs):
+        """ Initializes class.
+
+        Args:
+            predict_fn: Function of blackbox that takes input, and returns prediction.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Currently unused. Due for deprecation.
+        """
         self.predict_fn = predict_fn
-        self.kwargs = kwargs
         self.feature_names = feature_names
         self.feature_types = feature_types
+        self.kwargs = kwargs
 
     def explain_perf(self, X, y, name=None):
+        """ Produce ROC curves.
+
+        Args:
+            X: Numpy array for X to compare predict function against.
+            y: Numpy vector for y to compare predict function against.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -102,6 +140,7 @@ class ROC(ExplainerMixin):
 
 
 class ROCExplanation(ExplanationMixin):
+    """ Explanation object specific to ROC explainer. """
     explanation_type = None
 
     def __init__(
@@ -113,6 +152,17 @@ class ROCExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
+
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -121,11 +171,30 @@ class ROCExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
+
         if key is None:
             return self._internal_obj["overall"]
         return None
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import plot_performance_curve
 
         data_dict = self.data(key)
@@ -143,6 +212,7 @@ class ROCExplanation(ExplanationMixin):
 
 
 class PRExplanation(ExplanationMixin):
+    """ Explanation object specific to PR explainer."""
     explanation_type = None
 
     def __init__(
@@ -154,6 +224,16 @@ class PRExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -162,11 +242,29 @@ class PRExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
         return None
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import plot_performance_curve
 
         data_dict = self.data(key)

@@ -12,6 +12,9 @@ import warnings
 
 # TODO: Make kwargs explicit.
 class LimeTabular(ExplainerMixin):
+    """ Exposes LIME tabular explainer from lime package, in interpret API form.
+    If using this please cite the original authors as can be found here: https://github.com/marcotcr/lime/blob/master/citation.bib
+    """
     available_explanations = ["local"]
     explainer_type = "blackbox"
 
@@ -26,6 +29,18 @@ class LimeTabular(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            predict_fn: Function of blackbox that takes input, and returns prediction.
+            data: Data used to initialize LIME with.
+            sampler: Currently unused. Due for deprecation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            explain_kwargs: Kwargs that will be sent to lime's explain_instance.
+            n_jobs: Number of jobs to run in parallel.
+            **kwargs: Kwargs that will be sent to lime at initialization time.
+        """
         from lime.lime_tabular import LimeTabularExplainer
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
@@ -49,6 +64,17 @@ class LimeTabular(ExplainerMixin):
         self.lime = LimeTabularExplainer(self.data, **final_kwargs)
 
     def explain_local(self, X, y=None, name=None):
+        """ Generates local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
         if name is None:
             name = gen_name_from_class(self)
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)

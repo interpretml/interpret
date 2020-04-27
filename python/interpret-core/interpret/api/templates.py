@@ -5,7 +5,8 @@ from .base import ExplanationMixin
 
 
 class FeatureValueExplanation(ExplanationMixin):
-    """ Visualizes explanation given it matches following criteria.
+    """ Handles explanations that can be visualized as horizontal bar graphs.
+        Usually these are feature-value pairs being represented.
     """
 
     explanation_type = None
@@ -19,6 +20,16 @@ class FeatureValueExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -27,6 +38,14 @@ class FeatureValueExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         # NOTE: When a non-default provider is used, it's represented as ("provider", key).
         if isinstance(key, tuple) and len(key) == 2:
             _, key = key
@@ -43,6 +62,16 @@ class FeatureValueExplanation(ExplanationMixin):
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import (
             plot_line,
             plot_bar,

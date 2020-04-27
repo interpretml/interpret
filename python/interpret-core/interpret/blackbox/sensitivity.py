@@ -44,12 +44,27 @@ class MorrisSampler(SamplerMixin):
 
 
 class MorrisSensitivity(ExplainerMixin):
+    """ Method of Morris for analyzing blackbox systems.
+    If using this please cite the package owners as can be found here: https://github.com/SALib/SALib
+
+    Morris, Max D. "Factorial sampling plans for preliminary computational experiments." Technometrics 33.2 (1991): 161-174.
+    """
+
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
     def __init__(
         self, predict_fn, data, sampler=None, feature_names=None, feature_types=None
     ):
+        """ Initializes class.
+
+        Args:
+            predict_fn: Function of blackbox that takes input, and returns prediction.
+            data: Data used to initialize LIME with.
+            sampler: Currently not user configurable. Due for deprecation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+        """
         self.data, _, self.feature_names, self.feature_types = unify_data(
             data, None, feature_names, feature_types
         )
@@ -60,6 +75,14 @@ class MorrisSensitivity(ExplainerMixin):
             self.sampler = MorrisSampler(self.data, self.feature_names)
 
     def explain_global(self, name=None):
+        """ Provides approximate global explanation for blackbox model.
+
+        Args:
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizes dependence plots.
+        """
         from SALib.analyze import morris
 
         if name is None:
@@ -115,8 +138,7 @@ class MorrisSensitivity(ExplainerMixin):
 
 
 class MorrisExplanation(FeatureValueExplanation):
-    """ Visualizes specifically for SA.
-    """
+    """ Visualizations specific to Method of Morris. """
 
     explanation_type = None
 
@@ -129,6 +151,16 @@ class MorrisExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
 
         super(MorrisExplanation, self).__init__(
             explanation_type,
@@ -140,6 +172,16 @@ class MorrisExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            HTML as a string.
+        """
         from ..visual.plot import plot_horizontal_bar, sort_take
 
         data_dict = self.data(key)

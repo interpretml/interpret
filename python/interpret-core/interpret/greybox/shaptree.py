@@ -9,6 +9,9 @@ from ..utils import unify_predict_fn, unify_data
 
 
 class ShapTree(ExplainerMixin):
+    """ Exposes tree specific SHAP approximation, in interpret API form.
+    If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
+    """
     available_explanations = ["local"]
     explainer_type = "specific"
 
@@ -22,6 +25,18 @@ class ShapTree(ExplainerMixin):
         n_jobs=1,
         **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            model: A tree object that works with Tree SHAP.
+            data: Data used to initialize SHAP with.
+            sampler: Currently unused. Due for deprecation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            explain_kwargs: Currently unused. Due for deprecation.
+            n_jobs: Number of jobs to run in parallel.
+            **kwargs: Kwargs that will be sent to SHAP at initialization time.
+        """
         import shap
 
         self.data, _, self.feature_names, self.feature_types = unify_data(

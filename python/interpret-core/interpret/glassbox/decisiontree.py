@@ -22,8 +22,7 @@ COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
 
 
 class TreeExplanation(ExplanationMixin):
-    """
-    """
+    """ Explanation object specific to trees. """
 
     explanation_type = None
 
@@ -36,6 +35,16 @@ class TreeExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
 
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
@@ -45,11 +54,29 @@ class TreeExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Dash Cytoscape object.
+        """
         import dash_cytoscape as cyto
 
         data_dict = self.data(key)
@@ -203,11 +230,13 @@ class BaseShallowDecisionTree:
     explainer_type = "model"
 
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
-        """ Initializes decision tree with low depth.
+        """ Initializes tree with low depth.
 
         Args:
-            **kwargs: Keyword arguments to be passed to DecisionTreeClassifier
-                in scikit-learn.
+            max_depth: Max depth of tree.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Kwargs sent to fit() method of tree.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -299,6 +328,16 @@ class BaseShallowDecisionTree:
         )
 
     def explain_local(self, X, y=None, name=None):
+        """ Provides local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -422,11 +461,21 @@ class BaseShallowDecisionTree:
             }
 
         recur(0)
-        return (nodes, edges)
+        return nodes, edges
 
 
 class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
+    """ Regression tree with shallow depth. """
+
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
+        """ Initializes tree with low depth.
+
+        Args:
+            max_depth: Max depth of tree.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Kwargs sent to fit() method of tree.
+        """
         super().__init__(
             max_depth=max_depth,
             feature_names=feature_names,
@@ -438,12 +487,31 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
         return self.sk_model_
 
     def fit(self, X, y):
+        """ Fits model to provided instances.
+
+        Args:
+            X: Numpy array for training instances.
+            y: Numpy array as training labels.
+
+        Returns:
+            Itself.
+        """
         self.sk_model_ = SKRT(max_depth=self.max_depth, **self.kwargs)
         return super().fit(X, y)
 
 
 class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
+    """ Classification tree with shallow depth. """
+
     def __init__(self, max_depth=3, feature_names=None, feature_types=None, **kwargs):
+        """ Initializes tree with low depth.
+
+        Args:
+            max_depth: Max depth of tree.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Kwargs sent to fit() method of tree.
+        """
         super().__init__(
             max_depth=max_depth,
             feature_names=feature_names,
@@ -455,9 +523,26 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         return self.sk_model_
 
     def fit(self, X, y):
+        """ Fits model to provided instances.
+
+        Args:
+            X: Numpy array for training instances.
+            y: Numpy array as training labels.
+
+        Returns:
+            Itself.
+        """
         self.sk_model_ = SKDT(max_depth=self.max_depth, **self.kwargs)
         return super().fit(X, y)
 
     def predict_proba(self, X):
+        """ Probability estimates on provided instances.
+
+        Args:
+            X: Numpy array for instances.
+
+        Returns:
+            Probability estimate of instance for each class.
+        """
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict_proba(X)

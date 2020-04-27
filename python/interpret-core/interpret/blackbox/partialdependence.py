@@ -9,6 +9,11 @@ from ..utils import unify_data, unify_predict_fn
 
 
 class PartialDependence(ExplainerMixin):
+    """ Partial dependence plots as defined in Friedman's paper on "Greedy function approximation: a gradient boosting machine".
+
+    Friedman, Jerome H. "Greedy function approximation: a gradient boosting machine." Annals of statistics (2001): 1189-1232.
+    """
+
     available_explanations = ["global"]
     explainer_type = "blackbox"
 
@@ -22,6 +27,17 @@ class PartialDependence(ExplainerMixin):
         num_points=10,
         std_coef=1.0,
     ):
+        """ Initializes class.
+
+        Args:
+            predict_fn: Function of blackbox that takes input, and returns prediction.
+            data: Data used to initialize LIME with.
+            sampler: Currently unused. Due for deprecation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            num_points: Number of grid points for the x axis.
+            std_coef: Co-efficient for standard deviation.
+        """
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
             data, None, feature_names, feature_types
@@ -98,6 +114,14 @@ class PartialDependence(ExplainerMixin):
         }
 
     def explain_global(self, name=None):
+        """ Provides approximate global explanation for blackbox model.
+
+        Args:
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizes dependence plots.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -147,9 +171,8 @@ class PartialDependence(ExplainerMixin):
         )
 
 
-# TODO: State criteria in docs.
 class PDPExplanation(ExplanationMixin):
-    """ Visualizes explanation given it matches following criteria.
+    """ Visualizes explanation as a partial dependence plot.
     """
 
     explanation_type = None
@@ -163,6 +186,16 @@ class PDPExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -171,11 +204,28 @@ class PDPExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
         return self._internal_obj["specific"][key]
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import plot_line, plot_bar
 
         data_dict = self.data(key)

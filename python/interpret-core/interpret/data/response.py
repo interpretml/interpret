@@ -9,6 +9,7 @@ from scipy.stats import pearsonr
 
 
 class Marginal(ExplainerMixin):
+    """ Provides a marginal plot for provided data. """
     available_explanations = ["data"]
     explainer_type = "data"
 
@@ -20,6 +21,15 @@ class Marginal(ExplainerMixin):
         random_state=1,
         **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            max_scatter_samples: Number of sample points in visualization.
+            random_state: Random state.
+            **kwargs: Unused. Due for deprecation.
+        """
         self.max_scatter_samples = max_scatter_samples
         self.random_state = random_state
         self.kwargs = kwargs
@@ -27,6 +37,16 @@ class Marginal(ExplainerMixin):
         self.feature_types = feature_types
 
     def explain_data(self, X, y, name=None):
+        """ Explains data as visualizations.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -91,6 +111,7 @@ class Marginal(ExplainerMixin):
 
 
 class MarginalExplanation(ExplanationMixin):
+    """ Explanation object specific to marginal explainer."""
     explanation_type = None
 
     def __init__(
@@ -102,6 +123,16 @@ class MarginalExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -110,6 +141,14 @@ class MarginalExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
         specific_dict = self._internal_obj["specific"][key].copy()
@@ -118,6 +157,16 @@ class MarginalExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import plot_density
         import plotly.graph_objs as go
 
@@ -211,15 +260,33 @@ class MarginalExplanation(ExplanationMixin):
 
 
 class ClassHistogram(ExplainerMixin):
+    """ Provides histogram visualizations for classification problems."""
     available_explanations = ["data"]
     explainer_type = "data"
 
     def __init__(self, feature_names=None, feature_types=None, **kwargs):
+        """ Initializes class.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            **kwargs: Unused. Due for deprecation.
+        """
         self.kwargs = kwargs
         self.feature_names = feature_names
         self.feature_types = feature_types
 
     def explain_data(self, X, y, name=None):
+        """ Generates data explanations (exploratory data analysis)
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
         if name is None:
             name = gen_name_from_class(self)
 
@@ -248,6 +315,7 @@ class ClassHistogram(ExplainerMixin):
 
 
 class ClassHistogramExplanation(ExplanationMixin):
+    """ Explanation object specific to class histogram explainer."""
     explanation_type = None
 
     def __init__(
@@ -259,6 +327,16 @@ class ClassHistogramExplanation(ExplanationMixin):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj
         self.feature_names = feature_names
@@ -267,6 +345,14 @@ class ClassHistogramExplanation(ExplanationMixin):
         self.selector = selector
 
     def data(self, key=None):
+        """ Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
         if key is None:
             return self._internal_obj["overall"]
 
@@ -276,6 +362,16 @@ class ClassHistogramExplanation(ExplanationMixin):
         return specific_dict
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import plot_density, COLORS
         import plotly.graph_objs as go
 

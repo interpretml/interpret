@@ -41,6 +41,18 @@ class TreeInterpreter(ExplainerMixin):
         explain_kwargs={},
         **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            model: A tree object that works with Tree SHAP.
+            data: Data used to initialize SHAP with.
+            sampler: Currently unused. Due for deprecation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            explain_kwargs: Currently unused. Due for deprecation.
+            n_jobs: Number of jobs to run in parallel.
+            **kwargs: Kwargs that will be sent to SHAP at initialization time.
+        """
 
         self.data, _, self.feature_names, self.feature_types = unify_data(
             data, None, feature_names, feature_types

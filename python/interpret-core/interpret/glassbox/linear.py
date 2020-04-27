@@ -16,9 +16,9 @@ from sklearn.linear_model import Lasso as SKLinear
 
 
 class BaseLinear:
-    """ Logistic regression.
+    """ Base linear model.
 
-    Currently wrapper around LogisticRegression in scikit-learn.
+    Currently wrapper around linear models in scikit-learn.
 
     https://github.com/scikit-learn/scikit-learn
 
@@ -30,7 +30,13 @@ class BaseLinear:
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
     ):
-        """ Initializes logistic regression.
+        """ Initializes class.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            linear_class: A scikit-learn linear class.
+            **kwargs: Kwargs pass to linear class at initialization time.
         """
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -39,7 +45,7 @@ class BaseLinear:
 
     @abstractmethod
     def _model(self):
-        # This method should be overriden
+        # This method should be overridden.
         return None
 
     def fit(self, X, y):
@@ -247,8 +253,7 @@ class BaseLinear:
 
 
 class LinearExplanation(FeatureValueExplanation):
-    """ Visualizes specifically for Linear methods.
-    """
+    """ Visualizes specifically for Linear methods. """
 
     explanation_type = None
 
@@ -261,6 +266,16 @@ class LinearExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
+        """ Initializes class.
+
+        Args:
+            explanation_type:  Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dataframe whose indices correspond to explanation entries.
+        """
 
         super(LinearExplanation, self).__init__(
             explanation_type,
@@ -272,6 +287,16 @@ class LinearExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
+        """ Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list
+                that indexes the internal object for sub-plotting.
+                If an overall visualization is requested, pass None.
+
+        Returns:
+            A Plotly figure.
+        """
         from ..visual.plot import (
             sort_take,
             mli_sort_take,
@@ -327,32 +352,82 @@ class LinearExplanation(FeatureValueExplanation):
 
 
 class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
+    """ Linear regression.
+
+    Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
+    """
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            linear_class: A scikit-learn linear class.
+            **kwargs: Kwargs pass to linear class at initialization time.
+        """
         super().__init__(feature_names, feature_types, linear_class, **kwargs)
 
     def _model(self):
         return self.sk_model_
 
     def fit(self, X, y):
+        """ Fits model to provided instances.
+
+        Args:
+            X: Numpy array for training instances.
+            y: Numpy array as training labels.
+
+        Returns:
+            Itself.
+        """
         self.sk_model_ = self.linear_class(**self.kwargs)
         return super().fit(X, y)
 
 
 class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
+    """ Logistic regression.
+
+    Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
+    """
     def __init__(
-        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+        self, feature_names=None, feature_types=None, linear_class=SKLogistic, **kwargs
     ):
+        """ Initializes class.
+
+        Args:
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            linear_class: A scikit-learn linear class.
+            **kwargs: Kwargs pass to linear class at initialization time.
+        """
         super().__init__(feature_names, feature_types, linear_class, **kwargs)
 
     def _model(self):
         return self.sk_model_
 
     def fit(self, X, y):
-        self.sk_model_ = SKLogistic(**self.kwargs)
+        """ Fits model to provided instances.
+
+        Args:
+            X: Numpy array for training instances.
+            y: Numpy array as training labels.
+
+        Returns:
+            Itself.
+        """
+        self.sk_model_ = self.linear_class(**self.kwargs)
         return super().fit(X, y)
 
     def predict_proba(self, X):
+        """ Probability estimates on provided instances.
+
+        Args:
+            X: Numpy array for instances.
+
+        Returns:
+            Probability estimate of instance for each class.
+        """
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
         return self._model().predict_proba(X)
