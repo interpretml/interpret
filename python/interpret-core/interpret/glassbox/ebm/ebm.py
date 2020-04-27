@@ -1513,7 +1513,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing.
+            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             max_n_bins: Max number of bins per feature for pre-processing stage.
         """
 
@@ -1628,7 +1628,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing.
+            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             max_n_bins: Max number of bins per feature for pre-processing stage.
         """
         super(ExplainableBoostingRegressor, self).__init__(
