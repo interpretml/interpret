@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.22] - 2020-04-27
+### Upcoming Breaking Changes
+- EBM initialization arguments and public attributes will change in a near-future release.
+- There is a chance Explanation API will change in a near-future release.
+### Added
+- Docstrings for top-level API including for glassbox and blackbox.
+### Fixed
+- Minor fix for linear models where class wasn't propagating for logistic.
+### Experimental
+- For research use, exposed optional_temp_params for EBM's Python / native layer.
+
 ## [v0.1.21] - 2020-04-02
 ### Added
 - Module "glassbox.ebm.research" now has purification utilities.
@@ -248,6 +259,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.1.22]: https://github.com/microsoft/interpret/releases/tag/v0.1.22
 [v0.1.21]: https://github.com/microsoft/interpret/releases/tag/v0.1.21
 [v0.1.20]: https://github.com/microsoft/interpret/releases/tag/v0.1.20
 [v0.1.19]: https://github.com/microsoft/interpret/releases/tag/v0.1.19
