@@ -10,6 +10,7 @@ import numpy as np
 
 class RegressionPerf(ExplainerMixin):
     """ Produces variety of regression metrics (including RMSE, R^2, etc)."""
+
     available_explanations = ["perf"]
     explainer_type = "perf"
 
@@ -80,6 +81,7 @@ class RegressionPerf(ExplainerMixin):
 
 class RegressionExplanation(ExplanationMixin):
     """ Produces explanation specific to regression metrics."""
+
     explanation_type = None
 
     def __init__(

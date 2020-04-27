@@ -11,6 +11,7 @@ class ShapKernel(ExplainerMixin):
     """ Exposes SHAP kernel explainer from shap package, in interpret API form.
         If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
+
     available_explanations = ["local"]
     explainer_type = "blackbox"
 

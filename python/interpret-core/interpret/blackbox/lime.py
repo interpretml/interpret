@@ -15,6 +15,7 @@ class LimeTabular(ExplainerMixin):
     """ Exposes LIME tabular explainer from lime package, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/marcotcr/lime/blob/master/citation.bib
     """
+
     available_explanations = ["local"]
     explainer_type = "blackbox"
 

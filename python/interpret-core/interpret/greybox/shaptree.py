@@ -12,6 +12,7 @@ class ShapTree(ExplainerMixin):
     """ Exposes tree specific SHAP approximation, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
+
     available_explanations = ["local"]
     explainer_type = "specific"
 

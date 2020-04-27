@@ -11,6 +11,7 @@ import numpy as np
 
 class PR(ExplainerMixin):
     """ Produces precision-recall curves. """
+
     available_explanations = ["perf"]
     explainer_type = "perf"
 
@@ -76,6 +77,7 @@ class PR(ExplainerMixin):
 
 class ROC(ExplainerMixin):
     """ Produces ROC curves. """
+
     available_explanations = ["perf"]
     explainer_type = "perf"
 
@@ -141,6 +143,7 @@ class ROC(ExplainerMixin):
 
 class ROCExplanation(ExplanationMixin):
     """ Explanation object specific to ROC explainer. """
+
     explanation_type = None
 
     def __init__(
@@ -213,6 +216,7 @@ class ROCExplanation(ExplanationMixin):
 
 class PRExplanation(ExplanationMixin):
     """ Explanation object specific to PR explainer."""
+
     explanation_type = None
 
     def __init__(

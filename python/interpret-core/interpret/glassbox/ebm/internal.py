@@ -584,7 +584,9 @@ class NativeEBMBoosting:
                     )
 
         if optional_temp_params is not None:
-            optional_temp_params = (ct.c_double * len(optional_temp_params))(*optional_temp_params)
+            optional_temp_params = (ct.c_double * len(optional_temp_params))(
+                *optional_temp_params
+            )
 
         # Allocate external resources
         if model_type == "classification":
@@ -837,7 +839,7 @@ class NativeEBMInteraction:
     """
 
     def __init__(
-        self, model_type, n_classes, features, X, y, scores, optional_temp_params,
+        self, model_type, n_classes, features, X, y, scores, optional_temp_params
     ):
 
         """ Initializes internal wrapper for EBM C code.
@@ -908,12 +910,21 @@ class NativeEBMInteraction:
                     )
 
         if optional_temp_params is not None:
-            optional_temp_params = (ct.c_double * len(optional_temp_params))(*optional_temp_params)
+            optional_temp_params = (ct.c_double * len(optional_temp_params))(
+                *optional_temp_params
+            )
 
         # Allocate external resources
         if model_type == "classification":
             self._interaction_pointer = self._native.lib.InitializeInteractionClassification(
-                n_classes, len(feature_array), feature_array, len(y), X, y, scores, optional_temp_params,
+                n_classes,
+                len(feature_array),
+                feature_array,
+                len(y),
+                X,
+                y,
+                scores,
+                optional_temp_params,
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError(
@@ -921,7 +932,13 @@ class NativeEBMInteraction:
                 )
         elif model_type == "regression":
             self._interaction_pointer = self._native.lib.InitializeInteractionRegression(
-                len(feature_array), feature_array, len(y), X, y, scores, optional_temp_params,
+                len(feature_array),
+                feature_array,
+                len(y),
+                X,
+                y,
+                scores,
+                optional_temp_params,
             )
             if not self._interaction_pointer:  # pragma: no cover
                 raise MemoryError("Out of memory in InitializeInteractionRegression")
@@ -1062,13 +1079,7 @@ class NativeHelper:
         interaction_scores = []
         with closing(
             NativeEBMInteraction(
-                model_type,
-                n_classes,
-                features,
-                X,
-                y,
-                scores,
-                optional_temp_params,
+                model_type, n_classes, features, X, y, scores, optional_temp_params
             )
         ) as native_ebm_interactions:
             for feature_combination in iter_feature_combinations:

@@ -356,6 +356,7 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
+
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
     ):
@@ -391,6 +392,7 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
+
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=SKLogistic, **kwargs
     ):

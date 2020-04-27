@@ -10,6 +10,7 @@ from scipy.stats import pearsonr
 
 class Marginal(ExplainerMixin):
     """ Provides a marginal plot for provided data. """
+
     available_explanations = ["data"]
     explainer_type = "data"
 
@@ -112,6 +113,7 @@ class Marginal(ExplainerMixin):
 
 class MarginalExplanation(ExplanationMixin):
     """ Explanation object specific to marginal explainer."""
+
     explanation_type = None
 
     def __init__(
@@ -261,6 +263,7 @@ class MarginalExplanation(ExplanationMixin):
 
 class ClassHistogram(ExplainerMixin):
     """ Provides histogram visualizations for classification problems."""
+
     available_explanations = ["data"]
     explainer_type = "data"
 
@@ -316,6 +319,7 @@ class ClassHistogram(ExplainerMixin):
 
 class ClassHistogramExplanation(ExplanationMixin):
     """ Explanation object specific to class histogram explainer."""
+
     explanation_type = None
 
     def __init__(

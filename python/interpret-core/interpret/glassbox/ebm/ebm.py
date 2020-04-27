@@ -1347,11 +1347,7 @@ class BaseEBM(BaseEstimator):
                 "names": [],
                 "scores": [],
                 "values": [],
-                "extra": {
-                    "names": ["Intercept"],
-                    "scores": [intercept],
-                    "values": [1],
-                },
+                "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
             }
             data_dicts.append(data_dict)
 
@@ -1423,6 +1419,7 @@ class BaseEBM(BaseEstimator):
 
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
+
     # TODO PK v.2 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
@@ -1568,6 +1565,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
+
     # TODO PK v.2 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
