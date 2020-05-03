@@ -48,7 +48,7 @@ In addition to EBM, InterpretML also supports methods like LIME, SHAP, linear mo
 
 ## Installation
 
-Python 3.5+ | Linux, Mac OS X, Windows
+Python 3.5+ | Linux, Mac OS, Windows
 ```sh
 pip install interpret
 ```
