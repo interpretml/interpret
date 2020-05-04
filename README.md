@@ -57,7 +57,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 In addition to these, Interpret is extended by the following repositories:
 
 - [**Interpret-Community**](https://github.com/interpretml/interpret-community): Experimental repository with additional interpretability methods and utility functions to handle real-world datasets and workflows.
-- [**Interpret-Text-Contrib**](https://github.com/interpretml/interpret-text-contrib): Supports a collection of interpretability techniques for models trained on text data.
+- [**Interpret-Text**](https://github.com/interpretml/interpret-text): Supports a collection of interpretability techniques for models trained on text data.
 
 # Train a glassbox model
 
