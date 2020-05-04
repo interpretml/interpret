@@ -1,6 +1,4 @@
-
-
-# InterpretML - Alpha Release
+# Interpret - Alpha Release
 
 ![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
@@ -8,27 +6,29 @@
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/293/master.svg?style=flat-square)
 ![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/293/master.svg?style=flat-square)
 ![Maintenance](https://img.shields.io/maintenance/yes/2020?style=flat-square)
-
 <br/>
-
-> ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
->
+> ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
 > ### Let there be light.
 
-<br/>
+Interpret is an open-source package that incorporates state-of-the-art machine learning interpretability techniques under one roof. With this package, you can train interpretable glassbox models and explain blackbox systems. Interpret helps you understand your model's global behavior, or understand the reasons behind individual predictions.
 
-InterpretML is an open-source python package for training interpretable machine learning models and explaining blackbox systems. Interpretability is essential for:
+Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
-- Detecting bias - Does my model discriminate?
+- Detecting fairness issues - Does my model discriminate?
 - Human-AI cooperation - How can I understand and trust the model's decisions?
 - Regulatory compliance - Does my model satisfy legal requirements?
 - High-risk applications - Healthcare, finance, judicial, ...
 
-Historically, the most interpretable machine learning models were not very accurate, and the most accurate models were not very interpretable. Microsoft Research has developed an algorithm called the Explainable Boosting Machine (EBM)<sup>[*](#ebm-footnote)</sup> which has both high accuracy and interpretability. EBM uses modern machine learning techniques like bagging and gradient boosting to breathe new life into traditional GAMs (Generalized Additive Models). This makes them as accurate as random forests and gradient boosted trees, and also enhances their intelligibility and editability.
+# Installation
 
-<br/>
+Python 3.5+ | Linux, Mac, Windows
+```sh
+pip install interpret
+```
 
-[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb)
+# Introducing Explainable Boosting Machine (EBM)
+
+EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations)</sup>. It uses modern machine learning techniques like bagging, gradient boosting, and automatic interaction detection to breathe new life into traditional GAMs (Generalized Additive Models). This makes EBMs as accurate as state-of-the-art techniques like random forests and gradient boosted trees. However, unlike these blackbox models, EBMs produce lossless explanations and are editable by domain experts.
 
 | Dataset/AUROC | Domain  | Logistic Regression | Random Forest | XGBoost        | Explainable Boosting Machine |
 |---------------|---------|:-------------------:|:-------------:|:--------------:|:----------------------------:|
@@ -38,22 +38,28 @@ Historically, the most interpretable machine learning models were not very accur
 | Telecom Churn | Business| .804±.015           | .824±.002     | .850±.006      | **_.851±.005_**              |
 | Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_**| .975±.005                    |
 
-<br/>
+[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/benchmarks/EBM%20Classification%20Comparison.ipynb)
 
-In addition to EBM, InterpretML also supports methods like LIME, SHAP, linear models, partial dependence, decision trees and rule lists.  The package makes it easy to compare and contrast models to find the best one for your needs.
+# Supported Techniques
 
-<a name="ebm-footnote">*</a> *EBM is a fast implementation of GA<sup>2</sup>M. Details on the algorithm can be found [here](https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/KDD2015FinalDraftIntelligibleModels4HealthCare_igt143e-caruanaA.pdf).*
+|Interpretability Technique|Type|Examples|
+|--|--|--------------------|
+|Explainable Boosting|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
+|Decision Tree|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
+|Decision Rule List|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
+|Linear/Logistic Regression|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
+|SHAP Kernel Explainer|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+|SHAP Tree Explainer|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+|LIME|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+|Morris Sensitivity Analysis|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+|Partial Dependence|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 
----
+In addition to these, Interpret is extended by the following repositories:
 
-## Installation
+- [**Interpret-Community**](https://github.com/interpretml/interpret-community): Experimental repository with additional interpretability methods and utility functions to handle real-world datasets and workflows.
+- [**Interpret-Text-Contrib**](https://github.com/interpretml/interpret-text-contrib): Supports a collection of interpretability techniques for models trained on text data.
 
-Python 3.5+ | Linux, Mac OS, Windows
-```sh
-pip install interpret
-```
-
-## Getting Started
+# Train a glassbox model
 
 Let's fit an Explainable Boosting Machine
 
@@ -63,6 +69,7 @@ from interpret.glassbox import ExplainableBoostingClassifier
 ebm = ExplainableBoostingClassifier()
 ebm.fit(X_train, y_train)
 
+# or substitute with LogisticRegression, DecisionTreeClassifier, RuleListClassifier, ...
 # EBM supports pandas dataframes, numpy arrays, and handles "string" data natively.
 ```
 
@@ -73,7 +80,7 @@ from interpret import show
 ebm_global = ebm.explain_global()
 show(ebm_global)
 ```
-![Global Explanation Image](examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
+![Global Explanation Image](./examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
 
 <br/>
 
@@ -82,7 +89,7 @@ Understand individual predictions
 ebm_local = ebm.explain_local(X_test, y_test)
 show(ebm_local)
 ```
-![Local Explanation Image](examples/python/assets/readme_ebm_local_specific.PNG?raw=true)
+![Local Explanation Image](./examples/python/assets/readme_ebm_local_specific.PNG?raw=true)
 
 <br/>
 
@@ -90,56 +97,35 @@ And if you have multiple models, compare them
 ```python
 show([logistic_regression, decision_tree])
 ```
-![Dashboard Image](examples/python/assets/readme_dashboard.PNG?raw=true)
-
+![Dashboard Image](./examples/python/assets/readme_dashboard.PNG?raw=true)
+<br/>
 <br/>
 
-## Example Notebooks
-
-- [Interpretable machine learning models for binary classification](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)
-- [Interpretable machine learning models for regression](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Regression%20Methods.ipynb)
-- [Blackbox interpretability for binary classification](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)
-- [Blackbox interpretability for regression](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Regressors.ipynb)
-
-## Roadmap
-
-Currently we're working on:
-- R language interface (R is currently a WIP. Basic EBM classification can be done via the ebm_classify & ebm_predict_proba functions, but the predictions are a bit less accurate than in python. No plotting included yet, but other R plotting tools can do a basic job visualizing EBM models)
-- Missing Values Support
-- Improved Categorical Encoding
-- Interaction effect purification (see citations for details)
-
-...and lots more! Get in touch to find out more.
-
-## Contributing
-
-If you are interested contributing directly to the code base, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Acknowledgements
+# Acknowledgements
 
 InterpretML was originally created by (equal contributions): Samuel Jenkins, Harsha Nori, Paul Koch, and Rich Caruana
+
+EBMs are fast derivative of GA2M, invented by: Yin Lou, Rich Caruana, Johannes Gehrke, and Giles Hooker
 
 Many people have supported us along the way. Check out [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md)!
 
 We also build on top of many great packages. Please check them out!
 
 [plotly](https://github.com/plotly/plotly.py) |
-[dash](https://github.com/plotly/dash) | 
-[scikit-learn](https://github.com/scikit-learn/scikit-learn) | 
+[dash](https://github.com/plotly/dash) |
+[scikit-learn](https://github.com/scikit-learn/scikit-learn) |
 [lime](https://github.com/marcotcr/lime) |
 [shap](https://github.com/slundberg/shap) |
 [salib](https://github.com/SALib/SALib) |
 [skope-rules](https://github.com/scikit-learn-contrib/skope-rules) |
 [treeinterpreter](https://github.com/andosa/treeinterpreter) |
-[gevent](https://github.com/gevent/gevent) | 
+[gevent](https://github.com/gevent/gevent) |
 [joblib](https://github.com/joblib/joblib) |
-[pytest](https://github.com/pytest-dev/pytest) | 
-[jupyter](https://github.com/jupyter/notebook) 
+[pytest](https://github.com/pytest-dev/pytest) |
+[jupyter](https://github.com/jupyter/notebook)
 
+# <a name="citations">Citations</a>
 
-## Citations
-
-<br/>
 <details open>
   <summary><strong>InterpretML</strong></summary>
   <hr/>
@@ -483,8 +469,7 @@ We also build on top of many great packages. Please check them out!
   <hr/>
 </details>
 
-
-## External links
+# External links
 
 - [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
 - [On Model Explainability: From LIME, SHAP, to Explainable Boosting](https://everdark.github.io/k9/notebooks/ml/model_explain/model_explain.nb.html)
@@ -495,13 +480,12 @@ We also build on top of many great packages. Please check them out!
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 - [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
 
-## Contact us
+# Contact us
 
 There are multiple ways to get in touch:
 - Email us at interpret@microsoft.com
 - Or, feel free to raise a GitHub issue
 
-
 <br/>
 <br/>
 <br/>
@@ -549,6 +533,5 @@ There are multiple ways to get in touch:
 <br/>
 <br/>
 <br/>
-
 
 > ### If a tree fell in your random forest, would anyone notice?
