@@ -26,7 +26,7 @@ Python 3.5+ | Linux, Mac, Windows
 pip install interpret
 ```
 
-# Introducing Explainable Boosting Machine (EBM)
+# Introducing the Explainable Boosting Machine (EBM)
 
 EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations)</sup>. It uses modern machine learning techniques like bagging, gradient boosting, and automatic interaction detection to breathe new life into traditional GAMs (Generalized Additive Models). This makes EBMs as accurate as state-of-the-art techniques like random forests and gradient boosted trees. However, unlike these blackbox models, EBMs produce lossless explanations and are editable by domain experts.
 
