@@ -13,14 +13,11 @@ jobs:
     vmImage: '$(image.name)'
   steps:
   - script: |
-      sudo apt-get -y update
-      sudo apt-get -y install g++-multilib
       /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Building ebm_native code (Linux)'
   - script: |
       /bin/sh ./build.sh
-      # /bin/sh ./build.sh -32bit
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Building ebm_native code (Mac)'
   - script: |
@@ -70,8 +67,6 @@ jobs:
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - script: |
-      sudo apt-get -y update
-      sudo apt-get -y install g++-multilib
       /bin/sh ./tests/ebm_native_test/ebm_native_test.sh -nobuildebmnative
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Testing ebm_native code (Linux)'

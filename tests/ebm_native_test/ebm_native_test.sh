@@ -105,78 +105,7 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
-#    echo "Compiling $bin_file with $clang_pp_bin for macOS release|x86"
-#    intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native_test"
-#    bin_path="$root_path/tmp/clang/bin/release/mac/x86/ebm_native_test"
-#    lib_file_body="_ebm_native_mac_x86"
-#    log_file="$intermediate_path/ebm_native_test_release_mac_x86_build_log.txt"
-#    compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
-
-#    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    [ -d "$bin_path" ] || mkdir -p "$bin_path"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    compile_out=`eval $compile_command`
-#    ret_code=$?
-#    echo -n "$compile_out"
-#    echo -n "$compile_out" > "$log_file"
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    cp "$staging_path/lib$lib_file_body.dylib" "$bin_path/"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    "$bin_path/$bin_file"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-
-#    echo "Compiling $bin_file with $clang_pp_bin for macOS debug|x86"
-#    intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native_test"
-#    bin_path="$root_path/tmp/clang/bin/debug/mac/x86/ebm_native_test"
-#    lib_file_body="_ebm_native_mac_x86_debug"
-#    log_file="$intermediate_path/ebm_native_test_debug_mac_x86_build_log.txt"
-#    compile_command="$clang_pp_bin $compile_mac -m32 -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
-
-#    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    [ -d "$bin_path" ] || mkdir -p "$bin_path"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    compile_out=`eval $compile_command`
-#    ret_code=$?
-#    echo -n "$compile_out"
-#    echo -n "$compile_out" > "$log_file"
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    cp "$staging_path/lib$lib_file_body.dylib" "$bin_path/"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-#    "$bin_path/$bin_file"
-#    ret_code=$?
-#    if [ $ret_code -ne 0 ]; then 
-#       exit $ret_code
-#    fi
-
 elif [ "$os_type" = "Linux" ]; then
-   # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
    # "readelf -d <lib_filename.so>" should show library rpath:    $ORIGIN/    OR    ${ORIGIN}/    for Linux so that the console app will find the ebm_native library in the same directory as the app: https://stackoverflow.com/questions/6288206/lookup-failure-when-linking-using-rpath-and-origin
    # the -l<library> parameter for some reason adds a lib at the start and .so at the end
 
@@ -259,7 +188,22 @@ elif [ "$os_type" = "Linux" ]; then
    log_file="$intermediate_path/ebm_native_test_release_linux_x86_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   if [ -d "$intermediate_path" ]; then
+      printf "%s\n" "Doing first time installation of x86"
+
+      # this is the first time we're being compiled x86 on this machine, so install other required items
+
+      # TODO consider NOT running sudo inside this script and move that requirement to the caller
+      #      per https://askubuntu.com/questions/425754/how-do-i-run-a-sudo-command-inside-a-script
+
+      sudo apt-get -y install g++-multilib
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+
+      mkdir -p "$intermediate_path"
+   fi
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code

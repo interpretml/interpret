@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# TODO also build our html resources here, and also in the .bat file for Windows
+
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
@@ -116,81 +118,7 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-
-   if [ $build_32_bit -eq 1 ]; then
-      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x86"
-      intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x86/ebm_native"
-      bin_path="$root_path/tmp/clang/bin/release/mac/x86/ebm_native"
-      bin_file="lib_ebm_native_mac_x86.dylib"
-      log_file="$intermediate_path/ebm_native_release_mac_x86_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m32 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
-      
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      compile_out=`eval $compile_command`
-      ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-
-      printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x86"
-      intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x86/ebm_native"
-      bin_path="$root_path/tmp/clang/bin/debug/mac/x86/ebm_native"
-      bin_file="lib_ebm_native_mac_x86_debug.dylib"
-      log_file="$intermediate_path/ebm_native_debug_mac_x86_build_log.txt"
-      compile_command="$clang_pp_bin $compile_mac -m32 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
-      
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      [ -d "$bin_path" ] || mkdir -p "$bin_path"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      compile_out=`eval $compile_command`
-      ret_code=$?
-      printf "%s\n" "$compile_out"
-      printf "%s\n" "$compile_out" > "$log_file"
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$python_lib/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-      cp "$bin_path/$bin_file" "$staging_path/"
-      ret_code=$?
-      if [ $ret_code -ne 0 ]; then 
-         exit $ret_code
-      fi
-   fi
 elif [ "$os_type" = "Linux" ]; then
-
-   # to cross compile for different architectures x86/x64, run the following command: sudo apt-get install g++-multilib
 
    # try moving some of these g++ specific warnings into compile_all if clang eventually supports them
    compile_linux="$compile_all"
@@ -287,7 +215,22 @@ elif [ "$os_type" = "Linux" ]; then
       log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
       
-      [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+      if [ -d "$intermediate_path" ]; then
+         printf "%s\n" "Doing first time installation of x86"
+
+         # this is the first time we're being compiled x86 on this machine, so install other required items
+
+         # TODO consider NOT running sudo inside this script and move that requirement to the caller
+         #      per https://askubuntu.com/questions/425754/how-do-i-run-a-sudo-command-inside-a-script
+
+         sudo apt-get -y install g++-multilib
+         ret_code=$?
+         if [ $ret_code -ne 0 ]; then 
+            exit $ret_code
+         fi
+
+         mkdir -p "$intermediate_path"
+      fi
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
