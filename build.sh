@@ -215,7 +215,7 @@ elif [ "$os_type" = "Linux" ]; then
       log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
       compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
       
-      if [ -d "$intermediate_path" ]; then
+      if [ ! -d "$intermediate_path" ]; then
          printf "%s\n" "Doing first time installation of x86"
 
          # this is the first time we're being compiled x86 on this machine, so install other required items
