@@ -93,10 +93,6 @@ public:
 
    size_t m_cInstancesInBucket;
 
-#ifdef LEGACY_COMPATIBILITY
-   ActiveDataType m_bucketValue;
-#endif // LEGACY_COMPATIBILITY
-
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
@@ -572,11 +568,10 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-size_t CompressHistogramBuckets(
+size_t SumHistogramBuckets(
    const SamplingMethod * const pTrainingSet, 
    const size_t cHistogramBuckets, 
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-   size_t * const pcInstancesTotal, 
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
@@ -585,7 +580,7 @@ size_t CompressHistogramBuckets(
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered CompressHistogramBuckets");
+   LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
 
    EBM_ASSERT(1 <= cHistogramBuckets);
 
@@ -609,40 +604,8 @@ size_t CompressHistogramBuckets(
    // for binned bucket arrays that have a small set of labels, this loop will be fast and result in no movements.  For binned bucket arrays that are long 
    // and have many different labels, we are more likley to find bins with zero items, and that's where we get a win by compressing it down to just the 
    // non-zero binned buckets, even though this requires one more member variable in the binned bucket array
-#ifdef LEGACY_COMPATIBILITY
-   ActiveDataType iBucket = 0;
-#endif // LEGACY_COMPATIBILITY
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-#ifdef LEGACY_COMPATIBILITY
-      if(UNLIKELY(0 == pCopyFrom->m_cInstancesInBucket)) {
-         HistogramBucket<bClassification> * pCopyTo = pCopyFrom;
-         goto skip_first_check;
-         do {
-            ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
-            if(LIKELY(0 != pCopyFrom->m_cInstancesInBucket)) {
-#ifndef NDEBUG
-               cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
-#endif // NDEBUG
-               ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyTo, aHistogramBucketsEndDebug);
-               memcpy(pCopyTo, pCopyFrom, cBytesPerHistogramBucket);
-
-               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-                  aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
-               }
-
-               pCopyTo->m_bucketValue = static_cast<ActiveDataType>(iBucket);
-               pCopyTo = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyTo, 1);
-            }
-            skip_first_check:
-            ++iBucket;
-            pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
-         } while(pCopyFromEnd != pCopyFrom);
-         // TODO: eliminate this extra variable copy by making our outer loop use pCopyTo which is equal to pCopyFrom in the outer loop
-         pCopyFrom = pCopyTo;
-         break;
-      }
-#endif // LEGACY_COMPATIBILITY
 #ifndef NDEBUG
       cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
 #endif // NDEBUG
@@ -660,30 +623,15 @@ size_t CompressHistogramBuckets(
          aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
       }
 
-#ifdef LEGACY_COMPATIBILITY
-      pCopyFrom->m_bucketValue = static_cast<ActiveDataType>(iBucket);
-      ++iBucket;
-#endif // LEGACY_COMPATIBILITY
-
       pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
    EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 
-#ifdef LEGACY_COMPATIBILITY
-   const size_t cFinalItems = (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) / cBytesPerHistogramBucket;
-#else
-   // TODO : after we've eliminated the compression and removed LEGACY_COMPATIBILITY, we won't need to return cFinalItems, so we can return cInstancesTotal
-   //   directly instead of using a pointer
-   const size_t cFinalItems = cHistogramBuckets;
-#endif
-
    const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
    EBM_ASSERT(cInstancesTotal == cInstancesTotalDebug);
 
-   *pcInstancesTotal = cInstancesTotal;
-
-   LOG_0(TraceLevelVerbose, "Exited CompressHistogramBuckets");
-   return cFinalItems;
+   LOG_0(TraceLevelVerbose, "Exited SumHistogramBuckets");
+   return cInstancesTotal;
 }
 
 #endif // HISTOGRAM_BUCKET_H

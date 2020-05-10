@@ -20,17 +20,13 @@ class RandomStream final {
    bool m_bSuccess;
 
    // uniform_int_distribution isn't guaranteed to be cross platform compatible, in fact it isn't between Windows/Mac/Linux
-#ifndef LEGACY_COMPATIBILITY
    uint_fast64_t randomRemainingMax;
    uint_fast64_t randomRemaining;
-#endif // LEGACY_COMPATIBILITY
 
    // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
    // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object 
    // has been initialized
-#ifdef LEGACY_COMPATIBILITY
-   std::default_random_engine m_randomGenerator;
-#else // LEGACY_COMPATIBILITY
+
    // we won't be able to generate perfeclty identical results between platforms given that true floating point determinism would required
    // that we implement our own floating poing processing in software, rather than use hardware, and that would be too slow.
    // More Details: https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/
@@ -42,22 +38,15 @@ class RandomStream final {
 
    // use std::mt19937_64 for cross platform random number identical results for the random number generator
    std::mt19937_64 m_randomGenerator;
-#endif // LEGACY_COMPATIBILITY
 
 public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling 
    // exception in initialization
    RandomStream(const IntEbmType seed) try
       : m_bSuccess(false)
-#ifndef LEGACY_COMPATIBILITY
       , randomRemainingMax(0)
       , randomRemaining(0)
-#endif // LEGACY_COMPATIBILITY
-#ifdef LEGACY_COMPATIBILITY
-      , m_randomGenerator(static_cast<unsigned int>(seed)) {
-#else // LEGACY_COMPATIBILITY
       , m_randomGenerator(static_cast<uint_fast64_t>(static_cast<uint64_t>(seed))) {
-#endif // LEGACY_COMPATIBILITY
       // an unfortunate thing about function exception handling is that accessing non-static data from the catch block gives undefined behavior
       // so, we can't set m_bSuccess to false if an error occurs, so instead we set it to false in the static initialization
       // C++ guarantees that initialization will occur in the order the variables are declared (not in the order of initialization)
@@ -70,16 +59,6 @@ public:
       // C++ exceptions are suposed to be thrown by value and caught by reference, so it shouldn't be a pointer, and we shouldn't leak memory
    }
 
-#ifdef LEGACY_COMPATIBILITY
-   EBM_INLINE size_t Next(const size_t maxValueExclusive) {
-      // anyone calling this function should wrap it in an try/catch.  We're not wrapping it here because if this is being called in a loop we'd rather
-      // move the try/catch overhead to ourside that loop
-
-      // initializing uniform_int_distribution doesn't have official nothrow properties, but a random number generator should not have to throw
-      std::uniform_int_distribution<size_t> distribution(size_t { 0 }, maxValueExclusive - 1);
-      return distribution(m_randomGenerator);
-   }
-#else // LEGACY_COMPATIBILITY
    EBM_INLINE size_t Next(const size_t maxValueExclusive) {
       // std::uniform_int_distribution doesn't give cross platform identical results, so roll our own (it's more efficient too I think, or at least not worse)
       static_assert(std::numeric_limits<size_t>::max() <= k_max - k_min, "k_max - k_min isn't large enough to encompass size_t");
@@ -119,7 +98,6 @@ public:
 
       return static_cast<size_t>(ret);
    }
-#endif // LEGACY_COMPATIBILITY
 
    EBM_INLINE bool IsSuccess() const {
       return m_bSuccess;

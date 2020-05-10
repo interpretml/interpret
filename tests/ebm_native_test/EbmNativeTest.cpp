@@ -1182,7 +1182,6 @@ public:
    }
 };
 
-#ifndef LEGACY_COMPATIBILITY
 TEST_CASE("test random number generator equivalency") {
    TestApi test = TestApi(2);
    test.AddFeatures({ FeatureTest(2) });
@@ -1210,7 +1209,6 @@ TEST_CASE("test random number generator equivalency") {
    // and if there are any differences between environments then this will catch those
    CHECK_APPROX(modelValue, -0.037461811081225427);
 }
-#endif // LEGACY_COMPATIBILITY
 
 TEST_CASE("Discretize, zero instances") {
    UNUSED(testCaseHidden);
@@ -4206,15 +4204,7 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
             test.InitializeInteraction();
 
             FloatEbmType metric = test.InteractionScore({ 0, 1 });
-#ifdef LEGACY_COMPATIBILITY
-            if(cBins == 1) {
-               CHECK_APPROX(metric, 0);
-            } else {
-               CHECK_APPROX(metric, 49 * cInstances);
-            }
-#else // LEGACY_COMPATIBILITY
             CHECK_APPROX(metric, 0);
-#endif // LEGACY_COMPATIBILITY
          }
       }
    }
@@ -4241,21 +4231,7 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
 
             FloatEbmType metric = test.InteractionScore({ 0, 1 });
 
-#ifdef LEGACY_COMPATIBILITY
-            if(cBins == 1) {
-               CHECK_APPROX(metric, 0);
-            } else {
-#ifdef EXPAND_BINARY_LOGITS
-               // TODO : check if it's surprising that our interaction score doubles when we change a binary classification with 1 logit to a binary 
-               // classification with 2 logits
-               CHECK_APPROX(metric, 0.5 * cInstances);
-#else // EXPAND_BINARY_LOGITS
-               CHECK_APPROX(metric, 0.25 * cInstances);
-#endif // EXPAND_BINARY_LOGITS
-            }
-#else // LEGACY_COMPATIBILITY
             CHECK_APPROX(metric, 0);
-#endif // LEGACY_COMPATIBILITY
          }
       }
    }

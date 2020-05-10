@@ -417,12 +417,8 @@ public:
       EBM_ASSERT(!std::isnan(cInstances)); // this starts as an integer
       EBM_ASSERT(!std::isinf(cInstances)); // this starts as an integer
 
-#ifdef LEGACY_COMPATIBILITY
-      const FloatEbmType ret = LIKELY(FloatEbmType { 0 } != cInstances) ? sumResidualError / cInstances * sumResidualError : FloatEbmType { 0 };
-#else // LEGACY_COMPATIBILITY
       EBM_ASSERT(FloatEbmType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
       const FloatEbmType ret = sumResidualError / cInstances * sumResidualError;
-#endif // LEGACY_COMPATIBILITY
 
       // for both classification and regression, we're squaring sumResidualError, and cInstances is positive.  No reasonable floating point implementation 
       // should turn this negative
@@ -525,9 +521,6 @@ public:
       EBM_ASSERT(!std::isnan(cInstances)); // this starts as an integer
       EBM_ASSERT(!std::isinf(cInstances)); // this starts as an integer
 
-#ifdef LEGACY_COMPATIBILITY
-      return LIKELY(FloatEbmType { 0 } != cInstances) ? sumResidualError / cInstances : FloatEbmType { 0 };
-#else // LEGACY_COMPATIBILITY
       // -infinity <= sumResidualError && sumResidualError <= infinity (it's regression which has a larger range)
 
       // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatEbmType>::max() or std::numeric_limits<FloatEbmType>::min(), 
@@ -538,7 +531,6 @@ public:
       // subtract +infinity-(+infinity) or -infinity-(-infinity), which will result in NaN.  After that, everything melts down to NaN.
       EBM_ASSERT(FloatEbmType { 1 } <= cInstances); // we shouldn't be making splits with children with less than 1 instance
       return sumResidualError / cInstances;
-#endif // LEGACY_COMPATIBILITY
       
       // since the sumResidualError inputs can be anything, we can return can be anything, including NaN, or +-infinity
    }

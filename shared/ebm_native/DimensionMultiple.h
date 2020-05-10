@@ -970,9 +970,7 @@ FloatEbmType SweepMultiDiemensional(
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
-#ifndef LEGACY_COMPATIBILITY
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
-#endif // LEGACY_COMPATIBILITY
 
    FloatEbmType bestSplit = k_illegalGain;
    size_t iBin = 0;
@@ -1004,10 +1002,9 @@ FloatEbmType SweepMultiDiemensional(
          );
          if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->m_cInstancesInBucket)) {
             FloatEbmType splittingScore = FloatEbmType { 0 };
-#ifndef LEGACY_COMPATIBILITY
             EBM_ASSERT(0 < pTotalsLow->m_cInstancesInBucket);
             EBM_ASSERT(0 < pTotalsHigh->m_cInstancesInBucket);
-#endif // LEGACY_COMPATIBILITY
+
             FloatEbmType cLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLow->m_cInstancesInBucket);
             FloatEbmType cHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHigh->m_cInstancesInBucket);
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -1432,14 +1429,10 @@ bool BoostMultiDimensional(
       );
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, aHistogramBucketsEndDebug);
 
-#ifndef LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
-#endif // LEGACY_COMPATIBILITY
 
       FloatEbmType splittingScoreParent = FloatEbmType { 0 };
-#ifndef LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < pTotal->m_cInstancesInBucket);
-#endif // LEGACY_COMPATIBILITY
       FloatEbmType cInstancesInParentBucket = static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          // TODO : we can make this faster by doing the division in ComputeNodeSplittingScoreParent after we add all the numerators 
@@ -2442,9 +2435,7 @@ bool CalculateInteractionScore(
       // (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension2);
 
-#ifndef LEGACY_COMPATIBILITY
       EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
-#endif // LEGACY_COMPATIBILITY
 
       // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
       FloatEbmType bestSplittingScore = FloatEbmType { 0 };

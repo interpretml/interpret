@@ -138,9 +138,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    size_t cInstancesRight = pTreeNode->GetInstances();
    size_t cInstancesLeft = 0;
    FloatEbmType BEST_nodeSplittingScore = k_illegalGain;
-#ifndef LEGACY_COMPATIBILITY
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
-#endif // LEGACY_COMPATIBILITY
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
@@ -152,10 +150,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       }
       cInstancesLeft += CHANGE_cInstances;
       if(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft)) {
-#ifndef LEGACY_COMPATIBILITY
          EBM_ASSERT(0 < cInstancesRight);
          EBM_ASSERT(0 < cInstancesLeft);
-#endif // LEGACY_COMPATIBILITY
 
          const FloatEbmType cInstancesRightFloatEbmType = static_cast<FloatEbmType>(cInstancesRight);
          const FloatEbmType cInstancesLeftFloatEbmType = static_cast<FloatEbmType>(cInstancesLeft);
@@ -261,16 +257,12 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
    EBM_ASSERT(FloatEbmType { 0 } <= BEST_nodeSplittingScore);
 
-#ifdef LEGACY_COMPATIBILITY
-   UNUSED(pRandomStream);
-#else // LEGACY_COMPATIBILITY
    const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
    if(UNLIKELY(1 < cSweepItems)) {
       // pRandomStream->Next(cSweepItems) can throw exceptions from the random number generator.  We would catch any exceptions in our caller
       const size_t iRandom = pRandomStream->Next(cSweepItems);
       pSweepTreeNodeStart = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode * iRandom);
    }
-#endif // LEGACY_COMPATIBILITY
 
    TreeNode<bClassification> * const pLeftChild =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
@@ -291,12 +283,11 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    pRightChild->SetInstances(cInstancesParent - BEST_cInstancesLeft);
 
    const FloatEbmType cInstancesParentFloatEbmType = static_cast<FloatEbmType>(cInstancesParent);
-#ifndef LEGACY_COMPATIBILITY
+
    // if the total instances is 0 then we should be using our specialty handling of that case
    // if the total instances if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
    // parent should ever have zero instances
    EBM_ASSERT(0 < cInstancesParent);
-#endif // LEGACY_COMPATIBILITY
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FloatEbmType originalParentScore = 0;
@@ -341,16 +332,10 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
-#ifdef LEGACY_COMPATIBILITY
-   pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = 
-      (BEST_pHistogramBucketEntry->m_bucketValue + BEST_pHistogramBucketEntryNext->m_bucketValue) / 2;
-   UNUSED(aHistogramBucket);
-#else // LEGACY_COMPATIBILITY
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
    pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue = 
       (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket;
-#endif // LEGACY_COMPATIBILITY
 
    LOG_N(
       TraceLevelVerbose, 
@@ -888,12 +873,10 @@ bool BoostSingleDimensional(
    // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
    // (dimensions with 1 bin don't contribute anything since they always have the same value)
    EBM_ASSERT(1 <= cHistogramBuckets);
-   size_t cInstancesTotal;
-   cHistogramBuckets = CompressHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(
+   const size_t cInstancesTotal = SumHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(
       pTrainingSet, 
       cHistogramBuckets, 
       aHistogramBuckets, 
-      &cInstancesTotal, 
       aSumHistogramBucketVectorEntry, 
       runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG

@@ -13,18 +13,10 @@
 extern "C" {
 #endif // __cplusplus
 
-// TODO: add a bin cut determination interface.  Base it on a tree building algorithm
-
-// TODO test that disabling this leads to equivalent or better results on a lot of data, then remove the sections that use it
-#define LEGACY_COMPATIBILITY
-#ifdef LEGACY_COMPATIBILITY
-#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  0
-#else // LEGACY_COMPATIBILITY
-// Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" says use 6 as the minimum instances
-https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  6
-#endif // LEGACY_COMPATIBILITY
-
+// Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
+// says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
+// TODO: try setting this to 6 and run tests to verify the best value.  For now do no harm and choose a value closest to our original of zero
+#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  1
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
