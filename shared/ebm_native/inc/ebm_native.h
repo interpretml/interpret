@@ -16,7 +16,7 @@ extern "C" {
 // Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
 // says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
 // TODO: try setting this to 6 and run tests to verify the best value.  For now do no harm and choose a value closest to our original of zero
-#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  1
+#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  10
 
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS

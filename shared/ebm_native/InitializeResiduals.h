@@ -110,6 +110,7 @@ public:
    }
 };
 
+#ifndef EXPAND_BINARY_LOGITS
 template<>
 class InitializeResiduals<2> {
 public:
@@ -155,6 +156,7 @@ public:
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
    }
 };
+#endif // EXPAND_BINARY_LOGITS
 
 template<>
 class InitializeResiduals<k_Regression> {

@@ -1053,8 +1053,7 @@ FloatEbmType SweepMultiDiemensional(
    } while(iBin < cBins - 1);
    *piBestCut = iBestCut;
 
-   EBM_ASSERT(std::isnan(bestSplit) || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
-
+   EBM_ASSERT(std::isnan(bestSplit) || bestSplit == k_illegalGain || FloatEbmType { 0 } <= bestSplit); // sumation of positive numbers should be positive
    return bestSplit;
 }
 

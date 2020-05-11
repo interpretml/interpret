@@ -429,7 +429,7 @@ bool EbmBoostingState::Initialize(
 
    if(bClassification) {
       FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.classification.m_aTempFloatVector;
-      if(size_t { 2 } == static_cast<size_t>(m_runtimeLearningTypeOrCountTargetClasses)) {
+      if(IsBinaryClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
             InitializeResiduals<2>::Func(
                cTrainingInstances, 

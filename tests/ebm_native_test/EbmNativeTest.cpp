@@ -2777,7 +2777,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
    constexpr IntEbmType countMinimumInstancesPerBin = 3;
    constexpr size_t cInstances = 100;
    constexpr size_t maxRandomVal = 70;
-   const size_t cLongBinLength = static_cast<IntEbmType>(
+   const size_t cLongBinLength = static_cast<size_t>(
       std::ceil(static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins))
    );
    FloatEbmType singleFeatureValues[cInstances];

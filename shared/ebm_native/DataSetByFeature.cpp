@@ -46,8 +46,15 @@ EBM_INLINE static const FloatEbmType * ConstructResidualErrors(
    FloatEbmType * aResidualErrors = static_cast<FloatEbmType *>(malloc(cBytes));
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses) {
-         InitializeResiduals<2>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, ptrdiff_t { 2 }, aTempFloatVector);
+      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         InitializeResiduals<2>::Func(
+            cInstances, 
+            aTargetData, 
+            aPredictorScores, 
+            aResidualErrors, 
+            ptrdiff_t { 2 }, 
+            aTempFloatVector
+         );
       } else {
          InitializeResiduals<k_DynamicClassification>::Func(
             cInstances, 
