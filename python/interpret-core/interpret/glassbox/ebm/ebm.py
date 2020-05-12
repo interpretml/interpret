@@ -508,6 +508,7 @@ class BaseCoreEBM:
                 X=X_train,
                 y=y_train,
                 scores=scores_train,
+                min_cases_for_splits=self.min_cases_for_splits,
             )
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
@@ -676,6 +677,10 @@ class BaseEBM(BaseEstimator):
         # TODO PK v.2 eliminate training_step_episodes (if not, rename to boosting_step_episodes)
         training_step_episodes=1,
         max_tree_splits=2,
+        # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
+        # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
+        # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
+        # For now do no harm and choose a value close to our original of zero
         min_cases_for_splits=2,
         # Overall
         n_jobs=-2,

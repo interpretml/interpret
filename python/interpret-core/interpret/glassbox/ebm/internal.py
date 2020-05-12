@@ -176,7 +176,7 @@ class Native:
             ct.c_double,
             # int64_t countTreeSplitsMax
             ct.c_longlong,
-            # int64_t countInstancesRequiredForParentSplitMin
+            # int64_t countInstancesRequiredForChildSplitMin
             ct.c_longlong,
             # double * trainingWeights
             # ndpointer(dtype=np.float64, ndim=1),
@@ -268,6 +268,8 @@ class Native:
             ct.c_longlong,
             # int64_t * featureIndexes
             ndpointer(dtype=np.int64, ndim=1),
+            # int64_t countInstancesRequiredForChildSplitMin
+            ct.c_longlong,
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
         ]
@@ -648,7 +650,7 @@ class NativeEBMBoosting:
         feature_combination_index,
         learning_rate,
         max_tree_splits,
-        min_cases_for_split,
+        min_cases_for_splits,
         boosting_step_episodes,
     ):
 
@@ -660,7 +662,7 @@ class NativeEBMBoosting:
                 to boost on.
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
-            min_cases_for_split: Min observations required to split.
+            min_cases_for_splits: Min observations required to split.
             boosting_step_episodes: Number of episodes to boost feature step.
 
         Returns:
@@ -678,7 +680,7 @@ class NativeEBMBoosting:
                     feature_combination_index,
                     learning_rate,
                     max_tree_splits,
-                    min_cases_for_split,
+                    min_cases_for_splits,
                     0,
                     0,
                     ct.byref(gain),
@@ -953,7 +955,7 @@ class NativeEBMInteraction:
         self._native.lib.FreeInteraction(self._interaction_pointer)
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_index_tuple):
+    def get_interaction_score(self, feature_index_tuple, min_cases_for_splits):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
@@ -961,6 +963,7 @@ class NativeEBMInteraction:
             self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
+            min_cases_for_splits,
             ct.byref(score),
         )
         if return_code != 0:  # pragma: no cover
@@ -1028,7 +1031,7 @@ class NativeHelper:
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
                         max_tree_splits=max_tree_splits,
-                        min_cases_for_split=min_cases_for_splits,
+                        min_cases_for_splits=min_cases_for_splits,
                         boosting_step_episodes=boosting_step_episodes,
                     )
 
@@ -1073,6 +1076,7 @@ class NativeHelper:
         X,
         y,
         scores,
+        min_cases_for_splits,
         optional_temp_params=None,
     ):
         # TODO PK we only need to store the top n_interactions items, so use a heap
@@ -1084,7 +1088,8 @@ class NativeHelper:
         ) as native_ebm_interactions:
             for feature_combination in iter_feature_combinations:
                 score = native_ebm_interactions.get_interaction_score(
-                    feature_combination
+                    feature_combination,
+                    min_cases_for_splits,
                 )
                 interaction_scores.append((feature_combination, score))
 

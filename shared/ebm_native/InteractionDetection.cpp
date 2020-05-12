@@ -247,16 +247,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    PEbmInteraction ebmInteraction,
    IntEbmType countFeaturesInCombination,
    const IntEbmType * featureIndexes,
+   IntEbmType countInstancesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreReturn
 ) {
    LOG_COUNTED_N(
       &g_cLogGetInteractionScoreParametersMessages, 
       TraceLevelInfo, 
       TraceLevelVerbose, 
-      "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntEbmTypePrintf ", featureIndexes=%p, interactionScoreReturn=%p", 
+      "GetInteractionScore parameters: ebmInteraction=%p, countFeaturesInCombination=%" IntEbmTypePrintf ", featureIndexes=%p, countInstancesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreReturn=%p", 
       static_cast<void *>(ebmInteraction), 
       countFeaturesInCombination, 
       static_cast<const void *>(featureIndexes), 
+      countInstancesRequiredForChildSplitMin,
       static_cast<void *>(interactionScoreReturn)
    );
 
@@ -294,6 +296,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
          *interactionScoreReturn = 0;
       }
       return 0;
+   }
+
+   size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
+   if(IntEbmType { 1 } <= countInstancesRequiredForChildSplitMin) {
+      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countInstancesRequiredForChildSplitMin);
+      if(!IsNumberConvertable<size_t, IntEbmType>(countInstancesRequiredForChildSplitMin)) {
+         // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
+         // the same results as if we used the true number
+         cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+      }
+   } else {
+      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore countInstancesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    const Feature * const aFeatures = pEbmInteractionState->m_aFeatures;
@@ -365,7 +379,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
          pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
          pEbmInteractionState, 
          pFeatureCombination, 
-         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         cInstancesRequiredForChildSplitMin, 
          interactionScoreReturn
       );
    } else {
@@ -373,7 +387,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       ret = GetInteractionScorePerTargetClasses<k_Regression>(
          pEbmInteractionState, 
          pFeatureCombination, 
-         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         cInstancesRequiredForChildSplitMin, 
          interactionScoreReturn
       );
    }

@@ -582,7 +582,7 @@ size_t SumHistogramBuckets(
 
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
 
-   EBM_ASSERT(1 <= cHistogramBuckets);
+   EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
 
 #ifndef NDEBUG
    size_t cInstancesTotalDebug = 0;

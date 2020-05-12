@@ -357,7 +357,6 @@ bool GrowDecisionTree(
    const size_t cInstancesTotal, 
    const HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, 
    const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    FloatEbmType * const pTotalGain
@@ -377,46 +376,8 @@ bool GrowDecisionTree(
 
    EBM_ASSERT(nullptr != pTotalGain);
    EBM_ASSERT(1 <= cInstancesTotal); // filter these out at the start where we can handle this case easily
-   // cHistogramBuckets could only be zero if cInstancesTotal.  We should filter out that special case at our entry point though!!
-   EBM_ASSERT(1 <= cHistogramBuckets);
-   // TODO: I think we can eliminate the check for 1 == cHistogramBuckets once we get ride of bucket compresssion (on zeros)
-   // TODO: do we already have a separate solution for no splits, which we could use for 0 == cTreeSplitsMax
-   if(UNLIKELY(cInstancesTotal < cInstancesRequiredForParentSplitMin || 1 == cHistogramBuckets || 0 == cTreeSplitsMax)) {
-      // there will be no splits at all
-
-      // TODO : this section can probably be eliminated in the future when we disable cInstancesRequiredForParentSplitMin, and butcket 
-      // compression (making 2 <= cHistogramBuckets), and 0 == cTreeSplitsMax can be handled by using our non-splitting specialty boosting function
-
-   no_splits:;
-
-      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
-         return true;
-      }
-
-      // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
-
-      if(bClassification) {
-         FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-            FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-               aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
-            );
-            aValues[iVector] = smallChangeToModel;
-         }
-      } else {
-         EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-         const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-            aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cInstancesTotal)
-         );
-         FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         pValues[0] = smallChangeToModel;
-      }
-
-      LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
-      *pTotalGain = FloatEbmType { 0 };
-      return false;
-   }
+   EBM_ASSERT(2 <= cHistogramBuckets); // filter these out at the start where we can handle this case easily
+   EBM_ASSERT(1 <= cTreeSplitsMax); // filter these out at the start where we can handle this case easily
 
    // there will be at least one split
 
@@ -477,20 +438,46 @@ retry_with_bigger_tree_node_children_array:
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
 #endif // NDEBUG
-         )) {
-         goto no_splits;
+         )) 
+      {
+         // there will be no splits at all
+         if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
+            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
+            return true;
+         }
+
+         // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
+         if(bClassification) {
+            FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+               FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+                  aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
+               );
+               aValues[iVector] = smallChangeToModel;
+            }
+         } else {
+            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+            const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+               aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cInstancesTotal)
+            );
+            FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+            pValues[0] = smallChangeToModel;
+         }
+
+         LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
+         *pTotalGain = FloatEbmType { 0 };
+         return false;
       }
 
       if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
          EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable(cInstancesRequiredForParentSplitMin) && 
+            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable() && 
             !GetRightTreeNodeChild<bClassification>(
                pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
                cBytesPerTreeNode
-               )->IsSplittable(cInstancesRequiredForParentSplitMin
-            )
+               )->IsSplittable()
          );
 
          if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
@@ -606,7 +593,7 @@ retry_with_bigger_tree_node_children_array:
                pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
                cBytesPerTreeNode
             );
-         if(pLeftChild->IsSplittable(cInstancesRequiredForParentSplitMin)) {
+         if(pLeftChild->IsSplittable()) {
             TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < 
@@ -652,7 +639,7 @@ retry_with_bigger_tree_node_children_array:
             compilerLearningTypeOrCountTargetClasses)>(pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
             cBytesPerTreeNode
          );
-         if(pRightChild->IsSplittable(cInstancesRequiredForParentSplitMin)) {
+         if(pRightChild->IsSplittable()) {
             TreeNode<bClassification> * pTreeNodeChildrenAvailableStorageSpaceNext =
                AddBytesTreeNode<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode << 1);
             if(cBytesBuffer2 < 
@@ -812,7 +799,6 @@ bool BoostSingleDimensional(
    const SamplingMethod * const pTrainingSet, 
    const FeatureCombination * const pFeatureCombination, 
    const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    FloatEbmType * const pTotalGain, 
@@ -870,9 +856,9 @@ bool BoostSingleDimensional(
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
    size_t cHistogramBuckets = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
-   // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
-   // (dimensions with 1 bin don't contribute anything since they always have the same value)
-   EBM_ASSERT(1 <= cHistogramBuckets);
+   // dimensions with 1 bin don't contribute anything since they always have the same value, 
+   // so we pre-filter these out and handle them separately
+   EBM_ASSERT(2 <= cHistogramBuckets);
    const size_t cInstancesTotal = SumHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(
       pTrainingSet, 
       cHistogramBuckets, 
@@ -885,7 +871,6 @@ bool BoostSingleDimensional(
    );
 
    EBM_ASSERT(1 <= cInstancesTotal);
-   EBM_ASSERT(1 <= cHistogramBuckets);
 
    bool bRet = GrowDecisionTree<compilerLearningTypeOrCountTargetClasses>(
       pRandomStream, 
@@ -896,7 +881,6 @@ bool BoostSingleDimensional(
       cInstancesTotal, 
       aSumHistogramBucketVectorEntry, 
       cTreeSplitsMax, 
-      cInstancesRequiredForParentSplitMin, 
       cInstancesRequiredForChildSplitMin, 
       pSmallChangeToModelOverwriteSingleSamplingSet, 
       pTotalGain

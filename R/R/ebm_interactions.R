@@ -33,11 +33,12 @@ initialize_interaction_regression <- function(features, binned_data, targets, pr
    return(ebm_interaction)
 }
 
-get_interaction_score <- function(ebm_interaction, feature_indexes) {
+get_interaction_score <- function(ebm_interaction, feature_indexes, n_instances_required_for_child_split_min) {
    stopifnot(class(ebm_interaction) == "externalptr")
    feature_indexes <- as.double(feature_indexes)
+   n_instances_required_for_child_split_min <- as.double(n_instances_required_for_child_split_min)
 
-   interaction_score <- .Call(GetInteractionScore_R, ebm_interaction, feature_indexes)
+   interaction_score <- .Call(GetInteractionScore_R, ebm_interaction, feature_indexes, n_instances_required_for_child_split_min)
    if(is.null(interaction_score)) {
       stop("error in GetInteractionScore_R")
    }

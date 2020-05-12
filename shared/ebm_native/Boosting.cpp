@@ -785,7 +785,6 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    const size_t iFeatureCombination, 
    const FloatEbmType learningRate, 
    const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
    const FloatEbmType * const aTrainingWeights, 
    const FloatEbmType * const aValidationWeights, 
@@ -819,7 +818,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain = FloatEbmType { 0 };
-         if(0 == pFeatureCombination->m_cFeatures) {
+         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->m_cFeatures))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
                pCachedThreadResources, 
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
@@ -838,7 +837,6 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pFeatureCombination, 
                cTreeSplitsMax, 
-               cInstancesRequiredForParentSplitMin, 
                cInstancesRequiredForChildSplitMin, 
                pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
                &gain, 
@@ -965,7 +963,6 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
    const size_t iFeatureCombination, 
    const FloatEbmType learningRate, 
    const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
    const FloatEbmType * const aTrainingWeights, 
    const FloatEbmType * const aValidationWeights, 
@@ -980,7 +977,6 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
          iFeatureCombination, 
          learningRate, 
          cTreeSplitsMax, 
-         cInstancesRequiredForParentSplitMin, 
          cInstancesRequiredForChildSplitMin, 
          aTrainingWeights, 
          aValidationWeights, 
@@ -993,7 +989,6 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
          iFeatureCombination, 
          learningRate, 
          cTreeSplitsMax, 
-         cInstancesRequiredForParentSplitMin, 
          cInstancesRequiredForChildSplitMin, 
          aTrainingWeights, 
          aValidationWeights, 
@@ -1009,7 +1004,6 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
    const size_t iFeatureCombination, 
    const FloatEbmType learningRate, 
    const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForParentSplitMin, 
    const size_t cInstancesRequiredForChildSplitMin, 
    const FloatEbmType * const aTrainingWeights, 
    const FloatEbmType * const aValidationWeights, 
@@ -1026,7 +1020,6 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
       iFeatureCombination, 
       learningRate, 
       cTreeSplitsMax, 
-      cInstancesRequiredForParentSplitMin, 
       cInstancesRequiredForChildSplitMin, 
       aTrainingWeights, 
       aValidationWeights, 
@@ -1064,7 +1057,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    IntEbmType indexFeatureCombination,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForParentSplitMin,
+   IntEbmType countInstancesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * gainReturn
@@ -1074,13 +1067,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "GenerateModelFeatureCombinationUpdate parameters: ebmBoosting=%p, indexFeatureCombination=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf 
-      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countInstancesRequiredForParentSplitMin=%" IntEbmTypePrintf 
+      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countInstancesRequiredForChildSplitMin=%" IntEbmTypePrintf 
       ", trainingWeights=%p, validationWeights=%p, gainReturn=%p", 
       static_cast<void *>(ebmBoosting), 
       indexFeatureCombination, 
       learningRate, 
       countTreeSplitsMax, 
-      countInstancesRequiredForParentSplitMin, 
+      countInstancesRequiredForChildSplitMin, 
       static_cast<const void *>(trainingWeights), 
       static_cast<const void *>(validationWeights), 
       static_cast<void *>(gainReturn)
@@ -1115,12 +1108,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   EBM_ASSERT(0 <= countInstancesRequiredForParentSplitMin); // if there is 1 instance, then it can't be split, but we accept this input from our user
-   size_t cInstancesRequiredForParentSplitMin = static_cast<size_t>(countInstancesRequiredForParentSplitMin);
-   if(!IsNumberConvertable<size_t, IntEbmType>(countInstancesRequiredForParentSplitMin)) {
-      // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
-      // the same results as if we used the true number
-      cInstancesRequiredForParentSplitMin = std::numeric_limits<size_t>::max();
+   size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
+   if(IntEbmType { 1 } <= countInstancesRequiredForChildSplitMin) {
+      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countInstancesRequiredForChildSplitMin);
+      if(!IsNumberConvertable<size_t, IntEbmType>(countInstancesRequiredForChildSplitMin)) {
+         // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
+         // the same results as if we used the true number
+         cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+      }
+   } else {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countInstancesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
@@ -1148,8 +1145,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          iFeatureCombination, 
          learningRate, 
          cTreeSplitsMax, 
-         cInstancesRequiredForParentSplitMin, 
-         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         cInstancesRequiredForChildSplitMin, 
          trainingWeights, 
          validationWeights, 
          gainReturn
@@ -1161,8 +1157,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          iFeatureCombination, 
          learningRate, 
          cTreeSplitsMax, 
-         cInstancesRequiredForParentSplitMin, 
-         TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin, 
+         cInstancesRequiredForChildSplitMin, 
          trainingWeights, 
          validationWeights, 
          gainReturn
@@ -1477,7 +1472,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    IntEbmType indexFeatureCombination,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForParentSplitMin,
+   IntEbmType countInstancesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricReturn
@@ -1506,7 +1501,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       indexFeatureCombination, 
       learningRate, 
       countTreeSplitsMax, 
-      countInstancesRequiredForParentSplitMin, 
+      countInstancesRequiredForChildSplitMin, 
       trainingWeights, 
       validationWeights, 
       &gain

@@ -142,7 +142,7 @@ boosting_step <- function(
    index_feature_combination, 
    learning_rate, 
    n_tree_splits_max, 
-   n_instances_required_for_parent_split_min, 
+   n_instances_required_for_child_split_min, 
    training_weights, 
    validation_weights
 ) {
@@ -150,7 +150,7 @@ boosting_step <- function(
    index_feature_combination <- as.double(index_feature_combination)
    learning_rate <- as.double(learning_rate)
    n_tree_splits_max <- as.double(n_tree_splits_max)
-   n_instances_required_for_parent_split_min <- as.double(n_instances_required_for_parent_split_min)
+   n_instances_required_for_child_split_min <- as.double(n_instances_required_for_child_split_min)
    if(!is.null(training_weights)) {
       training_weights <- as.double(training_weights)
    }
@@ -164,7 +164,7 @@ boosting_step <- function(
       index_feature_combination, 
       learning_rate, 
       n_tree_splits_max, 
-      n_instances_required_for_parent_split_min, 
+      n_instances_required_for_child_split_min, 
       training_weights, 
       validation_weights
    )
@@ -285,7 +285,7 @@ cyclic_gradient_boost <- function(
    random_state,
    learning_rate,
    n_tree_splits_max, 
-   n_instances_required_for_parent_split_min, 
+   n_instances_required_for_child_split_min, 
    data_n_episodes,
    early_stopping_run_length
 #   name
@@ -318,7 +318,7 @@ cyclic_gradient_boost <- function(
                feature_combination_index - 1, 
                learning_rate, 
                n_tree_splits_max, 
-               n_instances_required_for_parent_split_min, 
+               n_instances_required_for_child_split_min, 
                NULL,
                NULL
             )

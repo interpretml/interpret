@@ -263,7 +263,7 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t { -1 };
 static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
 static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
 static constexpr IntEbmType k_countTreeSplitsMaxDefault = IntEbmType { 4 };
-static constexpr IntEbmType k_countInstancesRequiredForParentSplitMinDefault = IntEbmType { 2 };
+static constexpr IntEbmType k_countInstancesRequiredForChildSplitMinDefault = IntEbmType { 1 };
 
 class TestApi {
    enum class Stage {
@@ -861,7 +861,7 @@ public:
       m_stage = Stage::InitializedBoosting;
    }
 
-   FloatEbmType Boost(const IntEbmType indexFeatureCombination, const std::vector<FloatEbmType> trainingWeights = {}, const std::vector<FloatEbmType> validationWeights = {}, const FloatEbmType learningRate = k_learningRateDefault, const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntEbmType countInstancesRequiredForParentSplitMin = k_countInstancesRequiredForParentSplitMinDefault) {
+   FloatEbmType Boost(const IntEbmType indexFeatureCombination, const std::vector<FloatEbmType> trainingWeights = {}, const std::vector<FloatEbmType> validationWeights = {}, const FloatEbmType learningRate = k_learningRateDefault, const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntEbmType countInstancesRequiredForChildSplitMin = k_countInstancesRequiredForChildSplitMinDefault) {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
@@ -880,7 +880,7 @@ public:
       if(countTreeSplitsMax < FloatEbmType { 0 }) {
          exit(1);
       }
-      if(countInstancesRequiredForParentSplitMin < FloatEbmType { 0 }) {
+      if(countInstancesRequiredForChildSplitMin < FloatEbmType { 0 }) {
          exit(1);
       }
 
@@ -890,7 +890,7 @@ public:
          indexFeatureCombination, 
          learningRate, 
          countTreeSplitsMax, 
-         countInstancesRequiredForParentSplitMin, 
+         countInstancesRequiredForChildSplitMin,
          0 == trainingWeights.size() ? nullptr : &trainingWeights[0], 
          0 == validationWeights.size() ? nullptr : &validationWeights[0], 
          &validationMetricReturn
@@ -1155,7 +1155,7 @@ public:
       m_stage = Stage::InitializedInteraction;
    }
 
-   FloatEbmType InteractionScore(const std::vector<IntEbmType> featuresInCombination) const {
+   FloatEbmType InteractionScore(const std::vector<IntEbmType> featuresInCombination, const IntEbmType countInstancesRequiredForChildSplitMin = k_countInstancesRequiredForChildSplitMinDefault) const {
       if(Stage::InitializedInteraction != m_stage) {
          exit(1);
       }
@@ -1173,6 +1173,7 @@ public:
          m_pEbmInteraction, 
          featuresInCombination.size(), 
          0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], 
+         countInstancesRequiredForChildSplitMin,
          &interactionScoreReturn
       );
       if(0 != ret) {
@@ -2860,7 +2861,7 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
       0, 
       k_learningRateDefault, 
       k_countTreeSplitsMaxDefault, 
-      k_countInstancesRequiredForParentSplitMinDefault, 
+      k_countInstancesRequiredForChildSplitMinDefault,
       nullptr, 
       nullptr, 
       nullptr
@@ -2897,7 +2898,7 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
       0, 
       k_learningRateDefault, 
       k_countTreeSplitsMaxDefault, 
-      k_countInstancesRequiredForParentSplitMinDefault, 
+      k_countInstancesRequiredForChildSplitMinDefault,
       nullptr, 
       nullptr, 
       nullptr
@@ -2934,7 +2935,7 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
       0, 
       k_learningRateDefault, 
       k_countTreeSplitsMaxDefault, 
-      k_countInstancesRequiredForParentSplitMinDefault, 
+      k_countInstancesRequiredForChildSplitMinDefault,
       nullptr, 
       nullptr, 
       nullptr
@@ -2945,21 +2946,21 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
 
 TEST_CASE("null interactionScoreReturn, interaction, regression") {
    PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countInstancesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countInstancesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, nullptr);
+   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countInstancesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
@@ -3154,7 +3155,7 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    CHECK_APPROX(modelValue, 0.32430253082567057);
 }
 
-TEST_CASE("zero countInstancesRequiredForParentSplitMin, boosting, regression") {
+TEST_CASE("zero countInstancesRequiredForChildSplitMin, boosting, regression") {
    // TODO : call test.Boost many more times in a loop, and verify the output remains the same as previous runs
    // TODO : add classification binary and multiclass versions of this
 

@@ -13,11 +13,6 @@
 extern "C" {
 #endif // __cplusplus
 
-// Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
-// says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-// TODO: try setting this to 6 and run tests to verify the best value.  For now do no harm and choose a value closest to our original of zero
-#define TODO_REMOVE_THIS_DEFAULT_cInstancesRequiredForChildSplitMin  10
-
 //#define EXPAND_BINARY_LOGITS
 // TODO: implement REDUCE_MULTICLASS_LOGITS
 //#define REDUCE_MULTICLASS_LOGITS
@@ -330,7 +325,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    IntEbmType indexFeatureCombination, 
    FloatEbmType learningRate, 
    IntEbmType countTreeSplitsMax, 
-   IntEbmType countInstancesRequiredForParentSplitMin, 
+   IntEbmType countInstancesRequiredForChildSplitMin, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
    FloatEbmType * gainReturn
@@ -346,7 +341,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    IntEbmType indexFeatureCombination,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForParentSplitMin,
+   IntEbmType countInstancesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricReturn
@@ -387,6 +382,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInt
    PEbmInteraction ebmInteraction, 
    IntEbmType countFeaturesInCombination, 
    const IntEbmType * featureIndexes, 
+   IntEbmType countInstancesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(

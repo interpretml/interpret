@@ -154,9 +154,9 @@ struct TreeNode final : public TreeNodeData<bClassification> {
 
 public:
 
-   EBM_INLINE bool IsSplittable(size_t cInstancesRequiredForParentSplitMin) const {
+   EBM_INLINE bool IsSplittable() const {
       return this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast != 
-         this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst && cInstancesRequiredForParentSplitMin <= this->GetInstances();
+         this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
 
    EBM_INLINE FloatEbmType EXTRACT_GAIN_BEFORE_SPLITTING() {
