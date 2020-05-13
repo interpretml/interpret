@@ -18,6 +18,53 @@ log = logging.getLogger(__name__)
 # TODO: Clean up
 class EBMUtils:
     @staticmethod
+    def convert_to_intervals(cuts):
+        cuts = np.array(cuts, dtype = np.float64)
+
+        if np.isnan(cuts).any():
+            raise Exception("cuts cannot contain nan")
+
+        if np.isinf(cuts).any():
+            raise Exception("cuts cannot contain infinity")
+
+        smaller = np.insert(cuts, 0, -np.inf)
+        larger = np.append(cuts, np.inf)
+        intervals = list(zip(smaller, larger))
+
+        if any(x[1] <= x[0] for x in intervals):
+            raise Exception("cuts must contain increasing values")
+
+        return intervals
+
+    @staticmethod
+    def convert_to_cuts(intervals):
+        if len(intervals) == 0:
+            raise Exception("intervals must have at least one interval")
+
+        if any(len(x) != 2 for x in intervals):
+            raise Exception("intervals must be a list of tuples")
+
+        if intervals[0][0] != -np.inf:
+            raise Exception("intervals must start from -inf")
+
+        if intervals[-1][-1] != np.inf:
+            raise Exception("intervals must end with inf")
+
+        cuts = [x[0] for x in intervals[1:]]
+        cuts_verify = [x[1] for x in intervals[:-1]]
+
+        if np.isnan(cuts).any():
+            raise Exception("intervals cannot contain NaN")
+
+        if any(x[0] != x[1] for x in zip(cuts, cuts_verify)):
+            raise Exception("intervals must contain adjacent sections")
+
+        if any(higher <= lower for lower, higher in zip(cuts, cuts[1:])):
+            raise Exception("intervals must contain increasing sections")
+
+        return cuts
+
+    @staticmethod
     def get_count_scores_c(n_classes):
         # this should reflect how the C code represents scores
         return 1 if n_classes <= 2 else n_classes
