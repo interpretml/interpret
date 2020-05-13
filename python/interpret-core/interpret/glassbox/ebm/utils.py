@@ -153,7 +153,6 @@ class EBMUtils:
 
             # Get the current column(s) to process
             feature_idxs = feature_combination["attributes"]
-            feature_idxs = list(reversed(feature_idxs))
             sliced_X = X[feature_idxs, :]
             scores = tensor[tuple(sliced_X)]
 

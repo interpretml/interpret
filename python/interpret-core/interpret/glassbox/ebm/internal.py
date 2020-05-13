@@ -776,6 +776,12 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
+        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+            if 2 < self._n_classes:
+                array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
+            else:
+                array = np.ascontiguousarray(np.transpose(array, (1, 0)))
+
         return array
 
     def get_best_model(self):
@@ -823,6 +829,12 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
+        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+            if 2 < self._n_classes:
+                array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
+            else:
+                array = np.ascontiguousarray(np.transpose(array, (1, 0)))
+
         return array
 
     def get_current_model(self):

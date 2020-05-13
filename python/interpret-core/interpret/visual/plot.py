@@ -556,6 +556,8 @@ def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
     bin_labels_right = data_dict["right_names"]
     bin_vals = data_dict["scores"]
 
+    bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1,0)))
+
     heatmap = go.Heatmap(z=bin_vals, x=bin_labels_left, y=bin_labels_right)
     if data_dict.get("scores_range", None) is not None:
         heatmap["zmin"] = data_dict["scores_range"][0]
