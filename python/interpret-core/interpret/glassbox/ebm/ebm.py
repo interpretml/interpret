@@ -124,7 +124,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        schema=None,
         max_n_bins=255,
         missing_constant=0,
         unknown_constant=0,
@@ -135,8 +134,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """ Initializes EBM preprocessor.
 
         Args:
-            schema: A dictionary that encapsulates column information,
-                    such as type and domain.
             max_n_bins: Max number of bins to process numeric features.
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
@@ -144,7 +141,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             feature_types: Feature types as list, for example "continuous" or "categorical".
             binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
-        self.schema = schema
         self.max_n_bins = max_n_bins
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
@@ -176,14 +172,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.col_types_ = []
         self.has_fitted_ = False
 
-        self.schema_ = (
-            self.schema
-            if self.schema is not None
-            else autogen_schema(
-                X, feature_names=self.feature_names, feature_types=self.feature_types
-            )
-        )
-        schema = self.schema_
+        schema = autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
 
         for col_idx in range(X.shape[1]):
             col_name = list(schema.keys())[col_idx]
@@ -256,13 +245,12 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        schema = self.schema_
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
-            col_info = schema[list(schema.keys())[col_idx]]
-            assert col_info["column_number"] == col_idx
+            col_type = self.col_types_[col_idx]
             col_data = X[:, col_idx]
-            if col_info["type"] == "continuous":
+
+            if col_type == "continuous":
                 col_data = col_data.astype(float)
                 bin_edges = self.col_bin_edges_[col_idx].copy()
 
@@ -273,14 +261,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 # NOTE: NA handling done later.
                 # digitized[np.isnan(col_data)] = self.missing_constant
                 X_new[:, col_idx] = digitized
-            elif col_info["type"] == "ordinal":
+            elif col_type == "ordinal":
                 mapping = self.col_mapping_[col_idx]
                 mapping[np.nan] = self.missing_constant
                 vec_map = np.vectorize(
                     lambda x: mapping[x] if x in mapping else self.unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
-            elif col_info["type"] == "categorical":
+            elif col_type == "categorical":
                 mapping = self.col_mapping_[col_idx]
                 mapping[np.nan] = self.missing_constant
                 vec_map = np.vectorize(
@@ -614,7 +602,7 @@ class BaseEBM(BaseEstimator):
 
     # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
     #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
-    #             feature_names, feature_types, schema, main_attr, interactions (for specific columns)
+    #             feature_names, feature_types, main_attr, interactions (for specific columns)
     #             per : https://scikit-learn.org/dev/developers/develop.html
     #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore,
     #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
@@ -641,8 +629,6 @@ class BaseEBM(BaseEstimator):
         #             copy our internal bin cutting function -> we can make this easier by having a clean function just for bin cutting
         #             that other people can either call or copy if they want to do this specialized work of having exactly the same
         #             bins across two different ML algorithms.
-        # TODO PK v.2 can we eliminate the schema parameter given that we also take feature_names and feature_types definitions in this interface?
-        schema=None,
         # Ensemble
         n_estimators=16,
         # TODO PK v.2 holdout_size doesn't seem to do anything.  Eliminate.  holdout_split is used
@@ -694,9 +680,6 @@ class BaseEBM(BaseEstimator):
         # Arguments for explainer
         self.feature_names = feature_names
         self.feature_types = feature_types
-
-        # Arguments for data
-        self.schema = schema
 
         # Arguments for ensemble
         self.n_estimators = n_estimators
@@ -760,16 +743,12 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            schema=self.schema,
             max_n_bins=self.max_n_bins,
             binning_strategy=self.binning_strategy,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
         )
         self.preprocessor_.fit(X)
-
-        # TODO PK v.2 get rid of self.schema_ here since that's already included in self.preprocessor_.schema_
-        self.schema_ = self.preprocessor_.schema_
 
         X_orig = X
         X = self.preprocessor_.transform(X)
@@ -1436,8 +1415,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
-        # Data
-        schema=None,
         # Ensemble
         n_estimators=16,
         holdout_size=0.15,
@@ -1466,8 +1443,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Data
-            schema=schema,
             # Ensemble
             n_estimators=n_estimators,
             holdout_size=holdout_size,
@@ -1497,7 +1472,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            schema: Unused, due for deprecation.
             n_estimators: Number of outer bags.
             holdout_size: Unused, due for deprecation.
             scoring: Unused, due for deprecation.
@@ -1582,8 +1556,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
-        # Data
-        schema=None,
         # Ensemble
         n_estimators=16,
         holdout_size=0.15,
@@ -1613,7 +1585,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            schema: Unused, due for deprecation.
             n_estimators: Number of outer bags.
             holdout_size: Unused, due for deprecation.
             scoring: Unused, due for deprecation.
@@ -1638,8 +1609,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Data
-            schema=schema,
             # Ensemble
             n_estimators=n_estimators,
             holdout_size=holdout_size,
