@@ -353,7 +353,6 @@ class BaseCoreEBM:
         # Native
         feature_step_n_inner_bags,
         learning_rate,
-        boosting_step_episodes,
         max_tree_splits,
         min_cases_for_splits,
         # Overall
@@ -377,7 +376,6 @@ class BaseCoreEBM:
         # Arguments for internal EBM.
         self.feature_step_n_inner_bags = feature_step_n_inner_bags
         self.learning_rate = learning_rate
-        self.boosting_step_episodes = boosting_step_episodes
         self.max_tree_splits = max_tree_splits
         self.min_cases_for_splits = min_cases_for_splits
 
@@ -466,7 +464,6 @@ class BaseCoreEBM:
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
             min_cases_for_splits=self.min_cases_for_splits,
-            boosting_step_episodes=self.boosting_step_episodes,
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
@@ -544,7 +541,6 @@ class BaseCoreEBM:
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
             min_cases_for_splits=self.min_cases_for_splits,
-            boosting_step_episodes=self.boosting_step_episodes,
             data_n_episodes=self.data_n_episodes,
             early_stopping_tolerance=self.early_stopping_tolerance,
             early_stopping_run_length=self.early_stopping_run_length,
@@ -576,7 +572,6 @@ class BaseCoreEBM:
         return self
 
 
-# TODO PK v.2 Should we be exposing data in this class, or use helper functions to return the values?
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -612,14 +607,14 @@ class BaseEBM(BaseEstimator):
         # Explainer
         # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per
         # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
-        feature_names=None,
+        feature_names,
         # TODO PK v.2 look at how sklearn has thought about feature types -> https://github.com/scikit-learn/scikit-learn/pull/3346
         #      also look at lightGBM's categorical_feature parameter
         #      https://towardsdatascience.com/catboost-vs-light-gbm-vs-xgboost-5f93620723db
         #
         # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per
         # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
-        feature_types=None,
+        feature_types,
         # Data
         # TODO PK v.2 either add a bin_cuts parameter here, or add a preprocessor/transformer class input parameter here so that the user
         #             can specify a common algorithm for bin cutting to compare against other algorithms.
@@ -630,13 +625,10 @@ class BaseEBM(BaseEstimator):
         #             that other people can either call or copy if they want to do this specialized work of having exactly the same
         #             bins across two different ML algorithms.
         # Ensemble
-        n_estimators=16,
-        # TODO PK v.2 holdout_size doesn't seem to do anything.  Eliminate.  holdout_split is used
-        holdout_size=0.15,
-        scoring=None,
+        n_estimators,
         # Core
         # TODO PK v.2 change main_attr -> main_features (also look for anything with attr in it)
-        main_attr="all",
+        main_attr,
         # TODO PK v.2 we should probably have two types of interaction terms.
         #             The first is either a number or array of numbres that indicates
         #             how many interactions at each dimension level (starting at two)
@@ -649,31 +641,28 @@ class BaseEBM(BaseEstimator):
         # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
         #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
-        interactions=0,
+        interactions,
         # TODO PK v.2 use validation_size instead of holdout_split, since sklearn uses "test_size"
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        # TODO PK v.2 eliminate early_stopping_tolerance (use zero for this!)
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
+        holdout_split,
+        data_n_episodes,
+        early_stopping_tolerance,
+        early_stopping_run_length,
         # Native
         # TODO PK v.2 feature_step_n_inner_bags -> n_inner_bags
-        feature_step_n_inner_bags=0,
-        learning_rate=0.01,
-        # TODO PK v.2 eliminate training_step_episodes (if not, rename to boosting_step_episodes)
-        training_step_episodes=1,
-        max_tree_splits=2,
+        feature_step_n_inner_bags,
+        learning_rate,
+        max_tree_splits,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
         # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
         # For now do no harm and choose a value close to our original of zero
-        min_cases_for_splits=2,
+        min_cases_for_splits,
         # Overall
-        n_jobs=-2,
-        random_state=42,
+        n_jobs,
+        random_state,
         # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
+        binning_strategy,
+        max_n_bins,
     ):
         # TODO PK sanity check all our inputs
 
@@ -683,8 +672,6 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for ensemble
         self.n_estimators = n_estimators
-        self.holdout_size = holdout_size
-        self.scoring = scoring
 
         # Arguments for EBM beyond training a feature-step.
         self.main_attr = main_attr
@@ -697,7 +684,6 @@ class BaseEBM(BaseEstimator):
         # Arguments for internal EBM.
         self.feature_step_n_inner_bags = feature_step_n_inner_bags
         self.learning_rate = learning_rate
-        self.training_step_episodes = training_step_episodes
         self.max_tree_splits = max_tree_splits
         self.min_cases_for_splits = min_cases_for_splits
 
@@ -780,7 +766,6 @@ class BaseEBM(BaseEstimator):
                     # Native
                     feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                     learning_rate=self.learning_rate,
-                    boosting_step_episodes=self.training_step_episodes,
                     max_tree_splits=self.max_tree_splits,
                     min_cases_for_splits=self.min_cases_for_splits,
                     # Overall
@@ -806,7 +791,6 @@ class BaseEBM(BaseEstimator):
                     # Native
                     feature_step_n_inner_bags=self.feature_step_n_inner_bags,
                     learning_rate=self.learning_rate,
-                    boosting_step_episodes=self.training_step_episodes,
                     max_tree_splits=self.max_tree_splits,
                     min_cases_for_splits=self.min_cases_for_splits,
                     # Overall
@@ -814,18 +798,13 @@ class BaseEBM(BaseEstimator):
                 )
                 estimators.append(estimator)
 
-        # TODO PK v.2 eliminate self.n_classes_ for our public interface BaseEBM
-        #             and let our consumers use len(self.classes_) like scikit
-        #             our private BaseCoreEBM should continue to keep n_classes_
-        self.n_classes_ = n_classes
-
         # Train base models for main effects, pair detection.
 
         # scikit-learn returns an np.array for classification and
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                EBMUtils.get_count_scores_c(self.n_classes_),
+                EBMUtils.get_count_scores_c(n_classes),
                 dtype=np.float64,
                 order="C",
             )
@@ -1319,7 +1298,7 @@ class BaseEBM(BaseEstimator):
         n_rows = instances.shape[1]
         data_dicts = []
         intercept = self.intercept_
-        if self.n_classes_ <= 2:
+        if not is_classifier(self) or len(self.classes_) <= 2:
             if isinstance(self.intercept_, np.ndarray) or isinstance(
                 self.intercept_, list
             ):
@@ -1417,19 +1396,16 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         feature_types=None,
         # Ensemble
         n_estimators=16,
-        holdout_size=0.15,
-        scoring=None,
         # Core
         main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
+        early_stopping_tolerance=0,
         early_stopping_run_length=50,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
-        training_step_episodes=1,
         max_tree_splits=2,
         min_cases_for_splits=2,
         # Overall
@@ -1445,8 +1421,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_types=feature_types,
             # Ensemble
             n_estimators=n_estimators,
-            holdout_size=holdout_size,
-            scoring=scoring,
             # Core
             main_attr=main_attr,
             interactions=interactions,
@@ -1457,7 +1431,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
             max_tree_splits=max_tree_splits,
             min_cases_for_splits=min_cases_for_splits,
             # Overall
@@ -1473,8 +1446,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             n_estimators: Number of outer bags.
-            holdout_size: Unused, due for deprecation.
-            scoring: Unused, due for deprecation.
             main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
@@ -1484,7 +1455,6 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
             feature_step_n_inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            training_step_episodes: Research use only.
             max_tree_splits: Maximum tree splits used in boosting.
             min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
@@ -1558,19 +1528,16 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         feature_types=None,
         # Ensemble
         n_estimators=16,
-        holdout_size=0.15,
-        scoring=None,
         # Core
         main_attr="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
+        early_stopping_tolerance=0,
         early_stopping_run_length=50,
         # Native
         feature_step_n_inner_bags=0,
         learning_rate=0.01,
-        training_step_episodes=1,
         max_tree_splits=2,
         min_cases_for_splits=2,
         # Overall
@@ -1586,8 +1553,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             n_estimators: Number of outer bags.
-            holdout_size: Unused, due for deprecation.
-            scoring: Unused, due for deprecation.
             main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
@@ -1597,7 +1562,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
             feature_step_n_inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            training_step_episodes: Research use only.
             max_tree_splits: Maximum tree splits used in boosting.
             min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
@@ -1611,8 +1575,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_types=feature_types,
             # Ensemble
             n_estimators=n_estimators,
-            holdout_size=holdout_size,
-            scoring=scoring,
             # Core
             main_attr=main_attr,
             interactions=interactions,
@@ -1623,7 +1585,6 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             # Native
             feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
             max_tree_splits=max_tree_splits,
             min_cases_for_splits=min_cases_for_splits,
             # Overall

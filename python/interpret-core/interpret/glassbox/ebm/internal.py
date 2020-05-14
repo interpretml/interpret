@@ -651,7 +651,6 @@ class NativeEBMBoosting:
         learning_rate,
         max_tree_splits,
         min_cases_for_splits,
-        boosting_step_episodes,
     ):
 
         """ Conducts a boosting step per feature
@@ -663,7 +662,6 @@ class NativeEBMBoosting:
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
             min_cases_for_splits: Min observations required to split.
-            boosting_step_episodes: Number of episodes to boost feature step.
 
         Returns:
             Validation loss for the boosting step.
@@ -674,38 +672,37 @@ class NativeEBMBoosting:
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
-            for i in range(boosting_step_episodes):
-                model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
-                    self._booster_pointer,
-                    feature_combination_index,
-                    learning_rate,
-                    max_tree_splits,
-                    min_cases_for_splits,
-                    0,
-                    0,
-                    ct.byref(gain),
-                )
-                if not model_update_tensor_pointer:  # pragma: no cover
-                    raise MemoryError(
-                        "Out of memory in GenerateModelFeatureCombinationUpdate"
-                    )
-
-                shape = self._get_feature_combination_shape(feature_combination_index)
-                # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
-                model_update_tensor = Native.make_ndarray(
-                    model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+            model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
+                self._booster_pointer,
+                feature_combination_index,
+                learning_rate,
+                max_tree_splits,
+                min_cases_for_splits,
+                0,
+                0,
+                ct.byref(gain),
+            )
+            if not model_update_tensor_pointer:  # pragma: no cover
+                raise MemoryError(
+                    "Out of memory in GenerateModelFeatureCombinationUpdate"
                 )
 
-                return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
-                    self._booster_pointer,
-                    feature_combination_index,
-                    model_update_tensor,
-                    ct.byref(metric_output),
+            shape = self._get_feature_combination_shape(feature_combination_index)
+            # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
+            model_update_tensor = Native.make_ndarray(
+                model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+            )
+
+            return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
+                self._booster_pointer,
+                feature_combination_index,
+                model_update_tensor,
+                ct.byref(metric_output),
+            )
+            if return_code != 0:  # pragma: no cover
+                raise Exception(
+                    "Out of memory in ApplyModelFeatureCombinationUpdate"
                 )
-                if return_code != 0:  # pragma: no cover
-                    raise Exception(
-                        "Out of memory in ApplyModelFeatureCombinationUpdate"
-                    )
 
         # log.debug("Boosting step end")
         return metric_output.value
@@ -1003,7 +1000,6 @@ class NativeHelper:
         learning_rate,
         max_tree_splits,
         min_cases_for_splits,
-        boosting_step_episodes,
         data_n_episodes,
         early_stopping_tolerance,
         early_stopping_run_length,
@@ -1044,7 +1040,6 @@ class NativeHelper:
                         learning_rate=learning_rate,
                         max_tree_splits=max_tree_splits,
                         min_cases_for_splits=min_cases_for_splits,
-                        boosting_step_episodes=boosting_step_episodes,
                     )
 
                     min_metric = min(curr_metric, min_metric)
