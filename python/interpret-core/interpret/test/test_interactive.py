@@ -164,6 +164,7 @@ def test_show(explanation):
 
 
 @pytest.mark.visual
+@pytest.mark.xfail(strict=False)
 def test_preserve(explanation, text_explanation):
     # Overall
     result = preserve(explanation)
