@@ -861,16 +861,10 @@ class BaseEBM(BaseEstimator):
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
-        self.inter_indices_ = pair_indices
-
         X = np.ascontiguousarray(X.T)
 
-        # Average base models into one.
-        self.attributes_ = EBMUtils.gen_features(
-            self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
-        )
         if isinstance(self.main_attr, str) and self.main_attr == "all":
-            main_indices = [[x] for x in range(len(self.attributes_))]
+            main_indices = [[x] for x in range(X.shape[0])]
         elif isinstance(self.main_attr, list) and all(
             isinstance(x, int) for x in self.main_attr
         ):
