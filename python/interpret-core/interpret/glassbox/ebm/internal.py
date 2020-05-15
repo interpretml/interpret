@@ -648,7 +648,7 @@ class NativeEBMBoosting:
         self,
         feature_combination_index,
         learning_rate,
-        max_tree_splits,
+        max_leaf_nodes,
         min_samples_leaf,
     ):
 
@@ -659,7 +659,7 @@ class NativeEBMBoosting:
             feature_combination_index: The index for the feature combination
                 to boost on.
             learning_rate: Learning rate as a float.
-            max_tree_splits: Max tree splits on feature step.
+            max_leaf_nodes: Max leaf nodes on feature step.
             min_samples_leaf: Min observations required to split.
 
         Returns:
@@ -675,7 +675,7 @@ class NativeEBMBoosting:
                 self._booster_pointer,
                 feature_combination_index,
                 learning_rate,
-                max_tree_splits,
+                max_leaf_nodes - 1,
                 min_samples_leaf,
                 0,
                 0,
@@ -997,7 +997,7 @@ class NativeHelper:
         n_inner_bags,
         random_state,
         learning_rate,
-        max_tree_splits,
+        max_leaf_nodes,
         min_samples_leaf,
         max_rounds,
         early_stopping_tolerance,
@@ -1037,7 +1037,7 @@ class NativeHelper:
                     curr_metric = native_ebm_boosting.boosting_step(
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
-                        max_tree_splits=max_tree_splits,
+                        max_leaf_nodes=max_leaf_nodes,
                         min_samples_leaf=min_samples_leaf,
                     )
 

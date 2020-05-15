@@ -353,7 +353,7 @@ class BaseCoreEBM:
         # Native
         inner_bags,
         learning_rate,
-        max_tree_splits,
+        max_leaf_nodes,
         min_samples_leaf,
         # Overall
         random_state,
@@ -376,7 +376,7 @@ class BaseCoreEBM:
         # Arguments for internal EBM.
         self.inner_bags = inner_bags
         self.learning_rate = learning_rate
-        self.max_tree_splits = max_tree_splits
+        self.max_leaf_nodes = max_leaf_nodes
         self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
@@ -459,7 +459,7 @@ class BaseCoreEBM:
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_tree_splits=self.max_tree_splits,
+            max_leaf_nodes=self.max_leaf_nodes,
             min_samples_leaf=self.min_samples_leaf,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
@@ -534,7 +534,7 @@ class BaseCoreEBM:
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_tree_splits=self.max_tree_splits,
+            max_leaf_nodes=self.max_leaf_nodes,
             min_samples_leaf=self.min_samples_leaf,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
@@ -626,7 +626,7 @@ class BaseEBM(BaseEstimator):
         early_stopping_rounds,
         # Native
         learning_rate,
-        max_tree_splits,
+        max_leaf_nodes,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
         # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
@@ -659,7 +659,7 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for internal EBM.
         self.learning_rate = learning_rate
-        self.max_tree_splits = max_tree_splits
+        self.max_leaf_nodes = max_leaf_nodes
         self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
@@ -741,7 +741,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_tree_splits=self.max_tree_splits,
+                    max_leaf_nodes=self.max_leaf_nodes,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
@@ -766,7 +766,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_tree_splits=self.max_tree_splits,
+                    max_leaf_nodes=self.max_leaf_nodes,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
@@ -1372,7 +1372,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         early_stopping_rounds=50,
         # Native
         learning_rate=0.01,
-        max_tree_splits=2,
+        max_leaf_nodes=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
@@ -1397,7 +1397,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_rounds=early_stopping_rounds,
             # Native
             learning_rate=learning_rate,
-            max_tree_splits=max_tree_splits,
+            max_leaf_nodes=max_leaf_nodes,
             min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
@@ -1421,7 +1421,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
-            max_tree_splits: Maximum tree splits used in boosting.
+            max_leaf_nodes: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
@@ -1504,7 +1504,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         early_stopping_rounds=50,
         # Native
         learning_rate=0.01,
-        max_tree_splits=2,
+        max_leaf_nodes=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
@@ -1528,7 +1528,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
-            max_tree_splits: Maximum tree splits used in boosting.
+            max_leaf_nodes: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
@@ -1551,7 +1551,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_rounds=early_stopping_rounds,
             # Native
             learning_rate=learning_rate,
-            max_tree_splits=max_tree_splits,
+            max_leaf_nodes=max_leaf_nodes,
             min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
