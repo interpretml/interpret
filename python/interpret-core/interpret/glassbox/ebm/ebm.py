@@ -124,29 +124,29 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        max_n_bins=255,
+        max_bins=255,
         missing_constant=0,
         unknown_constant=0,
         feature_names=None,
         feature_types=None,
-        binning_strategy="quantile",
+        binning="quantile",
     ):
         """ Initializes EBM preprocessor.
 
         Args:
-            max_n_bins: Max number of bins to process numeric features.
+            max_bins: Max number of bins to process numeric features.
             missing_constant: Missing encoded as this constant.
             unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
-            binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
+            binning: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
-        self.max_n_bins = max_n_bins
+        self.max_bins = max_bins
         self.missing_constant = missing_constant
         self.unknown_constant = unknown_constant
         self.feature_names = feature_names
         self.feature_types = feature_types
-        self.binning_strategy = binning_strategy
+        self.binning = binning
 
     def fit(self, X):
         """ Fits transformer to provided instances.
@@ -187,21 +187,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
 
                 uniq_vals = set(col_data[~np.isnan(col_data)])
-                if len(uniq_vals) < self.max_n_bins:
+                if len(uniq_vals) < self.max_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    if self.binning_strategy == "uniform":
-                        bins = self.max_n_bins
-                    elif self.binning_strategy == "quantile":
+                    if self.binning == "uniform":
+                        bins = self.max_bins
+                    elif self.binning == "quantile":
                         bins = np.unique(
                             np.quantile(
-                                col_data, q=np.linspace(0, 1, self.max_n_bins + 1)
+                                col_data, q=np.linspace(0, 1, self.max_bins + 1)
                             )
                         )
                     else:  # pragma: no cover
                         raise ValueError(
-                            "Unknown binning_strategy: '{}'.".format(
-                                self.binning_strategy
+                            "Unknown binning: '{}'.".format(
+                                self.binning
                             )
                         )
 
@@ -346,15 +346,15 @@ class BaseCoreEBM:
         # Core
         main_features,
         interactions,
-        holdout_split,
-        data_n_episodes,
+        early_stopping_validation,
+        max_rounds,
         early_stopping_tolerance,
-        early_stopping_run_length,
+        early_stopping_rounds,
         # Native
-        feature_step_n_inner_bags,
+        inner_bags,
         learning_rate,
         max_tree_splits,
-        min_cases_for_splits,
+        min_samples_leaf,
         # Overall
         random_state,
     ):
@@ -368,16 +368,16 @@ class BaseCoreEBM:
         # Arguments for EBM beyond training a feature-step.
         self.main_features = main_features
         self.interactions = interactions
-        self.holdout_split = holdout_split
-        self.data_n_episodes = data_n_episodes
+        self.early_stopping_validation = early_stopping_validation
+        self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
-        self.early_stopping_run_length = early_stopping_run_length
+        self.early_stopping_rounds = early_stopping_rounds
 
         # Arguments for internal EBM.
-        self.feature_step_n_inner_bags = feature_step_n_inner_bags
+        self.inner_bags = inner_bags
         self.learning_rate = learning_rate
         self.max_tree_splits = max_tree_splits
-        self.min_cases_for_splits = min_cases_for_splits
+        self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
         self.random_state = random_state
@@ -390,7 +390,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.holdout_split,
+            test_size=self.early_stopping_validation,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -456,14 +456,14 @@ class BaseCoreEBM:
             X_val=X_val,
             y_val=y_val,
             scores_val=None,
-            n_inner_bags=self.feature_step_n_inner_bags,
+            n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
-            min_cases_for_splits=self.min_cases_for_splits,
-            data_n_episodes=self.data_n_episodes,
+            min_samples_leaf=self.min_samples_leaf,
+            max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
-            early_stopping_run_length=self.early_stopping_run_length,
+            early_stopping_rounds=self.early_stopping_rounds,
             name="Main",
         )
 
@@ -490,7 +490,7 @@ class BaseCoreEBM:
                 X=X_train,
                 y=y_train,
                 scores=scores_train,
-                min_cases_for_splits=self.min_cases_for_splits,
+                min_samples_leaf=self.min_samples_leaf,
             )
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
@@ -531,14 +531,14 @@ class BaseCoreEBM:
             X_val=X_val,
             y_val=y_val,
             scores_val=scores_val,
-            n_inner_bags=self.feature_step_n_inner_bags,
+            n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
             max_tree_splits=self.max_tree_splits,
-            min_cases_for_splits=self.min_cases_for_splits,
-            data_n_episodes=self.data_n_episodes,
+            min_samples_leaf=self.min_samples_leaf,
+            max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
-            early_stopping_run_length=self.early_stopping_run_length,
+            early_stopping_rounds=self.early_stopping_rounds,
             name="Pair",
         )
 
@@ -558,7 +558,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.holdout_split,
+            test_size=self.early_stopping_validation,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -602,7 +602,8 @@ class BaseEBM(BaseEstimator):
         #             that other people can either call or copy if they want to do this specialized work of having exactly the same
         #             bins across two different ML algorithms.
         # Ensemble
-        n_estimators,
+        outer_bags,
+        inner_bags,
         # Core
         # TODO PK v.3 in the future deprecate mains in favor of "boosting_stage_plan"
         mains,
@@ -619,27 +620,24 @@ class BaseEBM(BaseEstimator):
         #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions,
-        # TODO PK v.2 use validation_size instead of holdout_split, since sklearn uses "test_size"
-        holdout_split,
-        data_n_episodes,
+        early_stopping_validation,
+        max_rounds,
         early_stopping_tolerance,
-        early_stopping_run_length,
+        early_stopping_rounds,
         # Native
-        # TODO PK v.2 feature_step_n_inner_bags -> n_inner_bags
-        feature_step_n_inner_bags,
         learning_rate,
         max_tree_splits,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
         # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
         # For now do no harm and choose a value close to our original of zero
-        min_cases_for_splits,
+        min_samples_leaf,
         # Overall
         n_jobs,
         random_state,
         # Preprocessor
-        binning_strategy,
-        max_n_bins,
+        binning,
+        max_bins,
     ):
         # TODO PK sanity check all our inputs
 
@@ -648,29 +646,29 @@ class BaseEBM(BaseEstimator):
         self.feature_types = feature_types
 
         # Arguments for ensemble
-        self.n_estimators = n_estimators
+        self.outer_bags = outer_bags
+        self.inner_bags = inner_bags
 
         # Arguments for EBM beyond training a feature-step.
         self.mains = mains
         self.interactions = interactions
-        self.holdout_split = holdout_split
-        self.data_n_episodes = data_n_episodes
+        self.early_stopping_validation = early_stopping_validation
+        self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
-        self.early_stopping_run_length = early_stopping_run_length
+        self.early_stopping_rounds = early_stopping_rounds
 
         # Arguments for internal EBM.
-        self.feature_step_n_inner_bags = feature_step_n_inner_bags
         self.learning_rate = learning_rate
         self.max_tree_splits = max_tree_splits
-        self.min_cases_for_splits = min_cases_for_splits
+        self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
         self.n_jobs = n_jobs
         self.random_state = random_state
 
         # Arguments for preprocessor
-        self.binning_strategy = binning_strategy
-        self.max_n_bins = max_n_bins
+        self.binning = binning
+        self.max_bins = max_bins
 
     # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
     #       doesn't like parameters in the fit function, other than ones like weights that have
@@ -706,8 +704,8 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            max_n_bins=self.max_n_bins,
-            binning_strategy=self.binning_strategy,
+            max_bins=self.max_bins,
+            binning=self.binning,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
         )
@@ -727,7 +725,7 @@ class BaseEBM(BaseEstimator):
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
                 )
-            for i in range(self.n_estimators):
+            for i in range(self.outer_bags):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
@@ -736,15 +734,15 @@ class BaseEBM(BaseEstimator):
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
-                    holdout_split=self.holdout_split,
-                    data_n_episodes=self.data_n_episodes,
+                    early_stopping_validation=self.early_stopping_validation,
+                    max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
-                    early_stopping_run_length=self.early_stopping_run_length,
+                    early_stopping_rounds=self.early_stopping_rounds,
                     # Native
-                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
                     max_tree_splits=self.max_tree_splits,
-                    min_cases_for_splits=self.min_cases_for_splits,
+                    min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
                 )
@@ -752,7 +750,7 @@ class BaseEBM(BaseEstimator):
         else:
             n_classes = -1
             y = y.astype(np.float64, casting="unsafe", copy=False)
-            for i in range(self.n_estimators):
+            for i in range(self.outer_bags):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
@@ -761,15 +759,15 @@ class BaseEBM(BaseEstimator):
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
-                    holdout_split=self.holdout_split,
-                    data_n_episodes=self.data_n_episodes,
+                    early_stopping_validation=self.early_stopping_validation,
+                    max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
-                    early_stopping_run_length=self.early_stopping_run_length,
+                    early_stopping_rounds=self.early_stopping_rounds,
                     # Native
-                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
                     max_tree_splits=self.max_tree_splits,
-                    min_cases_for_splits=self.min_cases_for_splits,
+                    min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
                 )
@@ -794,7 +792,7 @@ class BaseEBM(BaseEstimator):
             return estimator.fit_parallel(X, y, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y, n_classes) for i in range(self.n_estimators)
+            (estimators[i], X, y, n_classes) for i in range(self.outer_bags)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
@@ -827,7 +825,7 @@ class BaseEBM(BaseEstimator):
 
                 staged_fit_args_iter = (
                     (estimators[i], X, y, pair_indices)
-                    for i in range(self.n_estimators)
+                    for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -995,7 +993,7 @@ class BaseEBM(BaseEstimator):
             _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
                 X,
                 y,
-                test_size=self.holdout_split,
+                test_size=self.early_stopping_validation,
                 random_state=estimator.random_state,
                 is_classification=is_classifier(self),
                 is_train=False,
@@ -1363,72 +1361,72 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         feature_names=None,
         feature_types=None,
         # Ensemble
-        n_estimators=16,
+        outer_bags=16,
+        inner_bags=0,
         # Core
         mains="all",
         interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
+        early_stopping_validation=0.15,
+        max_rounds=5000,
         early_stopping_tolerance=0,
-        early_stopping_run_length=50,
+        early_stopping_rounds=50,
         # Native
-        feature_step_n_inner_bags=0,
         learning_rate=0.01,
         max_tree_splits=2,
-        min_cases_for_splits=2,
+        min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
         # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
+        binning="quantile",
+        max_bins=255,
     ):
         super(ExplainableBoostingClassifier, self).__init__(
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
             # Ensemble
-            n_estimators=n_estimators,
+            outer_bags=outer_bags,
+            inner_bags=inner_bags,
             # Core
             mains=mains,
             interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
+            early_stopping_validation=early_stopping_validation,
+            max_rounds=max_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
+            early_stopping_rounds=early_stopping_rounds,
             # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
             max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
+            min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
             # Preprocessor
-            binning_strategy=binning_strategy,
-            max_n_bins=max_n_bins,
+            binning=binning,
+            max_bins=max_bins,
         )
         """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            n_estimators: Number of outer bags.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            holdout_split: Validation set size for boosting.
-            data_n_episodes: Number of rounds for boosting.
+            early_stopping_validation: Validation set size for boosting.
+            max_rounds: Number of rounds for boosting.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
-            feature_step_n_inner_bags: Number of inner bags.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
             max_tree_splits: Maximum tree splits used in boosting.
-            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_n_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            max_bins: Max number of bins per feature for pre-processing stage.
         """
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
@@ -1495,72 +1493,72 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         feature_names=None,
         feature_types=None,
         # Ensemble
-        n_estimators=16,
+        outer_bags=16,
+        inner_bags=0,
         # Core
         mains="all",
         interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
+        early_stopping_validation=0.15,
+        max_rounds=5000,
         early_stopping_tolerance=0,
-        early_stopping_run_length=50,
+        early_stopping_rounds=50,
         # Native
-        feature_step_n_inner_bags=0,
         learning_rate=0.01,
         max_tree_splits=2,
-        min_cases_for_splits=2,
+        min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
         # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
+        binning="quantile",
+        max_bins=255,
     ):
         """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            n_estimators: Number of outer bags.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            holdout_split: Validation set size for boosting.
-            data_n_episodes: Number of rounds for boosting.
+            early_stopping_validation: Validation set size for boosting.
+            max_rounds: Number of rounds for boosting.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
-            feature_step_n_inner_bags: Number of inner bags.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
             max_tree_splits: Maximum tree splits used in boosting.
-            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_n_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            max_bins: Max number of bins per feature for pre-processing stage.
         """
         super(ExplainableBoostingRegressor, self).__init__(
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
             # Ensemble
-            n_estimators=n_estimators,
+            outer_bags=outer_bags,
+            inner_bags=inner_bags,
             # Core
             mains=mains,
             interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
+            early_stopping_validation=early_stopping_validation,
+            max_rounds=max_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
+            early_stopping_rounds=early_stopping_rounds,
             # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
             learning_rate=learning_rate,
             max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
+            min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
             # Preprocessor
-            binning_strategy=binning_strategy,
-            max_n_bins=max_n_bins,
+            binning=binning,
+            max_bins=max_bins,
         )
 
     def predict(self, X):

@@ -649,7 +649,7 @@ class NativeEBMBoosting:
         feature_combination_index,
         learning_rate,
         max_tree_splits,
-        min_cases_for_splits,
+        min_samples_leaf,
     ):
 
         """ Conducts a boosting step per feature
@@ -660,7 +660,7 @@ class NativeEBMBoosting:
                 to boost on.
             learning_rate: Learning rate as a float.
             max_tree_splits: Max tree splits on feature step.
-            min_cases_for_splits: Min observations required to split.
+            min_samples_leaf: Min observations required to split.
 
         Returns:
             Validation loss for the boosting step.
@@ -676,7 +676,7 @@ class NativeEBMBoosting:
                 feature_combination_index,
                 learning_rate,
                 max_tree_splits,
-                min_cases_for_splits,
+                min_samples_leaf,
                 0,
                 0,
                 ct.byref(gain),
@@ -963,7 +963,7 @@ class NativeEBMInteraction:
         self._native.lib.FreeInteraction(self._interaction_pointer)
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_index_tuple, min_cases_for_splits):
+    def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
@@ -971,7 +971,7 @@ class NativeEBMInteraction:
             self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
-            min_cases_for_splits,
+            min_samples_leaf,
             ct.byref(score),
         )
         if return_code != 0:  # pragma: no cover
@@ -998,10 +998,10 @@ class NativeHelper:
         random_state,
         learning_rate,
         max_tree_splits,
-        min_cases_for_splits,
-        data_n_episodes,
+        min_samples_leaf,
+        max_rounds,
         early_stopping_tolerance,
-        early_stopping_run_length,
+        early_stopping_rounds,
         name,
         optional_temp_params=None,
     ):
@@ -1028,7 +1028,7 @@ class NativeHelper:
             no_change_run_length = 0
             bp_metric = np.inf
             log.info("Start boosting {0}".format(name))
-            for episode_index in range(data_n_episodes):
+            for episode_index in range(max_rounds):
                 if episode_index % 10 == 0:
                     log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
                     log.debug("Metric: {0}".format(min_metric))
@@ -1038,7 +1038,7 @@ class NativeHelper:
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
                         max_tree_splits=max_tree_splits,
-                        min_cases_for_splits=min_cases_for_splits,
+                        min_samples_leaf=min_samples_leaf,
                     )
 
                     min_metric = min(curr_metric, min_metric)
@@ -1058,8 +1058,8 @@ class NativeHelper:
                     no_change_run_length += 1
 
                 if (
-                    early_stopping_run_length >= 0
-                    and no_change_run_length >= early_stopping_run_length
+                    early_stopping_rounds >= 0
+                    and no_change_run_length >= early_stopping_rounds
                 ):
                     break
 
@@ -1082,7 +1082,7 @@ class NativeHelper:
         X,
         y,
         scores,
-        min_cases_for_splits,
+        min_samples_leaf,
         optional_temp_params=None,
     ):
         # TODO PK we only need to store the top n_interactions items, so use a heap
@@ -1095,7 +1095,7 @@ class NativeHelper:
             for feature_combination in iter_feature_combinations:
                 score = native_ebm_interactions.get_interaction_score(
                     feature_combination,
-                    min_cases_for_splits,
+                    min_samples_leaf,
                 )
                 interaction_scores.append((feature_combination, score))
 

@@ -40,7 +40,7 @@ def test_ebm_synthetic_multiclass():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, n_estimators=2)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, outer_bags=2)
     clf.fit(X, y)
 
     prob_scores = clf.predict_proba(X)
@@ -57,7 +57,7 @@ def test_ebm_synthetic_multiclass_pairwise():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, n_estimators=2)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
     with pytest.raises(RuntimeError):
         clf.fit(X, y)
 
@@ -95,7 +95,7 @@ def test_prefit_ebm():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, data_n_episodes=0)
+    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=0, max_rounds=0)
     clf.fit(X, y)
 
     for _, model_feature_combination in enumerate(clf.attribute_set_models_):
@@ -247,5 +247,5 @@ def test_zero_validation():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, holdout_split=0)
+    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, early_stopping_validation=0)
     clf.fit(X, y)
