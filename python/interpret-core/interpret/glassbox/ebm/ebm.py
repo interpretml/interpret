@@ -419,14 +419,11 @@ class BaseCoreEBM:
         else:  # pragma: no cover
             raise RuntimeError("Argument 'main_attr' has invalid value")
 
-        main_feature_combinations = EBMUtils.gen_feature_combinations(
-            main_feature_indices
-        )
-        self.feature_combinations_ = []
+        self.feature_groups_ = []
         self.model_ = []
 
         # Train main effects
-        self._fit_main(main_feature_combinations, X_train, y_train, X_val, y_val)
+        self._fit_main(main_feature_indices, X_train, y_train, X_val, y_val)
 
         # Build interaction terms, if required
         self.inter_indices_, self.inter_scores_ = self._build_interactions(
@@ -441,7 +438,7 @@ class BaseCoreEBM:
 
         return self
 
-    def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
+    def _fit_main(self, main_feature_groups, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
 
         (
@@ -452,7 +449,7 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=main_feature_combinations,
+            feature_combinations=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
             scores_train=None,
@@ -470,7 +467,7 @@ class BaseCoreEBM:
             name="Main",
         )
 
-        self.feature_combinations_ = main_feature_combinations
+        self.feature_groups_ = main_feature_groups
 
         return
 
@@ -479,7 +476,7 @@ class BaseCoreEBM:
             log.info("Estimating with FAST")
 
             scores_train = EBMUtils.decision_function(
-                X_train, self.feature_combinations_, self.model_, self.intercept_
+                X_train, self.feature_groups_, self.model_, self.intercept_
             )
 
             iter_feature_combinations = combinations(range(len(self.col_types)), 2)
@@ -513,13 +510,11 @@ class BaseCoreEBM:
         log.info("Training interactions")
 
         scores_train = EBMUtils.decision_function(
-            X_train, self.feature_combinations_, self.model_, self.intercept_
+            X_train, self.feature_groups_, self.model_, self.intercept_
         )
         scores_val = EBMUtils.decision_function(
-            X_val, self.feature_combinations_, self.model_, self.intercept_
+            X_val, self.feature_groups_, self.model_, self.intercept_
         )
-
-        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
 
         (
             model_update,
@@ -529,7 +524,7 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=inter_feature_combinations,
+            feature_combinations=inter_indices,
             X_train=X_train,
             y_train=y_train,
             scores_train=scores_train,
@@ -548,7 +543,7 @@ class BaseCoreEBM:
         )
 
         self.model_.extend(model_update)
-        self.feature_combinations_.extend(inter_feature_combinations)
+        self.feature_groups_.extend(inter_indices)
 
         return
 
@@ -831,14 +826,14 @@ class BaseEBM(BaseEstimator):
                 new_model = []
                 new_feature_combinations = []
                 for i, feature_combination in enumerate(
-                    estimator.feature_combinations_
+                    estimator.feature_groups_
                 ):
-                    if len(feature_combination["attributes"]) != 1:
+                    if len(feature_combination) != 1:
                         continue
                     new_model.append(estimator.model_[i])
-                    new_feature_combinations.append(estimator.feature_combinations_[i])
+                    new_feature_combinations.append(estimator.feature_groups_[i])
                 estimator.model_ = new_model
-                estimator.feature_combinations_ = new_feature_combinations
+                estimator.feature_groups_ = new_feature_combinations
                 estimator.inter_episode_idx_ = 0
 
             if len(pair_indices) != 0:
@@ -875,16 +870,14 @@ class BaseEBM(BaseEstimator):
             )
             raise RuntimeError(msg)
 
-        # TODO PK v.2 attribute_sets_ -> feature_combinations_
-        self.attribute_sets_ = EBMUtils.gen_feature_combinations(main_indices)
-        self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
+        self.feature_groups_ = main_indices + pair_indices
 
         # Merge estimators into one.
         # TODO PK v.2 consider exposing our models as pandas.NDFrame
         # TODO PK v.2 attribute_set_models_ -> model_
         self.attribute_set_models_ = []
         self.model_errors_ = []
-        for index, _ in enumerate(self.attribute_sets_):
+        for index, _ in enumerate(self.feature_groups_):
             log_odds_tensors = []
             for estimator in estimators:
                 log_odds_tensors.append(estimator.model_[index])
@@ -911,12 +904,12 @@ class BaseEBM(BaseEstimator):
         # Extract feature names and feature types.
         self.feature_names = []
         self.feature_types = []
-        for index, feature_combination in enumerate(self.attribute_sets_):
+        for index, feature_indices in enumerate(self.feature_groups_):
             feature_name = EBMUtils.gen_feature_name(
-                feature_combination["attributes"], self.preprocessor_.col_names_
+                feature_indices, self.preprocessor_.col_names_
             )
             feature_type = EBMUtils.gen_feature_type(
-                feature_combination["attributes"], self.preprocessor_.col_types_
+                feature_indices, self.preprocessor_.col_types_
             )
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
@@ -924,14 +917,14 @@ class BaseEBM(BaseEstimator):
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
-                X, self.attribute_sets_, self.attribute_set_models_
+                X, self.feature_groups_, self.attribute_set_models_
             )
             # TODO PK v.2 _attrib_set_model_means_ -> _model_means_
             # (or something else matching what this is being used for)
             # also look for anything with attrib inside of it
             self._attrib_set_model_means_ = []
 
-            for set_idx, feature_combination, scores in scores_gen:
+            for set_idx, _, scores in scores_gen:
                 score_mean = np.mean(scores)
 
                 self.attribute_set_models_[set_idx] = (
@@ -944,7 +937,7 @@ class BaseEBM(BaseEstimator):
         else:
             # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+                x, self.feature_groups_, self.attribute_set_models_, self.intercept_
             )
 
             postprocessed = multiclass_postprocess(
@@ -955,10 +948,10 @@ class BaseEBM(BaseEstimator):
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, self.attribute_sets_, self.attribute_set_models_
+            X, self.feature_groups_, self.attribute_set_models_
         )
         self.mean_abs_scores_ = []
-        for set_idx, feature_combination, scores in scores_gen:
+        for set_idx, _, scores in scores_gen:
             mean_abs_score = np.mean(np.abs(scores))
             self.mean_abs_scores_.append(mean_abs_score)
 
@@ -1024,7 +1017,7 @@ class BaseEBM(BaseEstimator):
                 is_train=False,
             )
 
-            n_base_feature_combinations = len(estimator.feature_combinations_) - len(
+            n_base_feature_combinations = len(estimator.feature_groups_) - len(
                 estimator.inter_indices_
             )
 
@@ -1032,7 +1025,7 @@ class BaseEBM(BaseEstimator):
                 estimator.model_type,
                 X_val,
                 y_val,
-                estimator.feature_combinations_[:n_base_feature_combinations],
+                estimator.feature_groups_[:n_base_feature_combinations],
                 estimator.model_[:n_base_feature_combinations],
                 estimator.intercept_,
             )
@@ -1040,7 +1033,7 @@ class BaseEBM(BaseEstimator):
                 estimator.model_type,
                 X_val,
                 y_val,
-                estimator.feature_combinations_,
+                estimator.feature_groups_,
                 estimator.model_,
                 estimator.intercept_,
             )
@@ -1053,8 +1046,8 @@ class BaseEBM(BaseEstimator):
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_combinations_[:n_full_idx]
-                    + estimator.feature_combinations_[n_full_idx + 1 :],
+                    estimator.feature_groups_[:n_full_idx]
+                    + estimator.feature_groups_[n_full_idx + 1 :],
                     estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1 :],
                     estimator.intercept_,
                 )
@@ -1062,8 +1055,8 @@ class BaseEBM(BaseEstimator):
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_combinations_[:n_base_feature_combinations]
-                    + estimator.feature_combinations_[n_full_idx : n_full_idx + 1],
+                    estimator.feature_groups_[:n_base_feature_combinations]
+                    + estimator.feature_groups_[n_full_idx : n_full_idx + 1],
                     estimator.model_[:n_base_feature_combinations]
                     + estimator.model_[n_full_idx : n_full_idx + 1],
                     estimator.intercept_,
@@ -1118,7 +1111,7 @@ class BaseEBM(BaseEstimator):
         X = np.ascontiguousarray(X.T)
 
         decision_scores = EBMUtils.decision_function(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.attribute_set_models_, self.intercept_
         )
 
         # TODO PK v.2 these decision_scores are unexpanded.  We need to expand them
@@ -1142,8 +1135,8 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, feature_combination in enumerate(
-            self.attribute_sets_
+        for feature_combination_index, _ in enumerate(
+            self.feature_groups_
         ):
             errors = self.model_errors_[feature_combination_index]
             scores = self.attribute_set_models_[feature_combination_index]
@@ -1157,16 +1150,13 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_combination_index, feature_combination in enumerate(
-            self.attribute_sets_
+        for feature_combination_index, feature_indexes in enumerate(
+            self.feature_groups_
         ):
             model_graph = self.attribute_set_models_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
             errors = self.model_errors_[feature_combination_index]
-            feature_indexes = self.attribute_sets_[feature_combination_index][
-                "attributes"
-            ]
 
             if len(feature_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
@@ -1284,7 +1274,7 @@ class BaseEBM(BaseEstimator):
         instances = np.ascontiguousarray(instances.T)
 
         scores_gen = EBMUtils.scores_by_feature_combination(
-            instances, self.attribute_sets_, self.attribute_set_models_
+            instances, self.feature_groups_, self.attribute_set_models_
         )
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
@@ -1313,9 +1303,9 @@ class BaseEBM(BaseEstimator):
                 feature_name = self.feature_names[set_idx]
                 data_dicts[row_idx]["names"].append(feature_name)
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
-                if len(feature_combination["attributes"]) == 1:
+                if len(feature_combination) == 1:
                     data_dicts[row_idx]["values"].append(
-                        X[row_idx, feature_combination["attributes"][0]]
+                        X[row_idx, feature_combination[0]]
                     )
                 else:
                     data_dicts[row_idx]["values"].append("")
@@ -1323,14 +1313,14 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             scores = EBMUtils.classifier_predict_proba(
                 instances,
-                self.attribute_sets_,
+                self.feature_groups_,
                 self.attribute_set_models_,
                 self.intercept_,
             )[:, 1]
         else:
             scores = EBMUtils.regressor_predict(
                 instances,
-                self.attribute_sets_,
+                self.feature_groups_,
                 self.attribute_set_models_,
                 self.intercept_,
             )
@@ -1476,7 +1466,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         X = np.ascontiguousarray(X.T)
 
         prob = EBMUtils.classifier_predict_proba(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.attribute_set_models_, self.intercept_
         )
         return prob
 
@@ -1499,7 +1489,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         return EBMUtils.classifier_predict(
             X,
-            self.attribute_sets_,
+            self.feature_groups_,
             self.attribute_set_models_,
             self.intercept_,
             self.classes_,
@@ -1607,5 +1597,5 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         X = np.ascontiguousarray(X.T)
 
         return EBMUtils.regressor_predict(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.attribute_set_models_, self.intercept_
         )

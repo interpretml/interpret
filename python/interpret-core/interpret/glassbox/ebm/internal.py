@@ -416,8 +416,7 @@ class Native:
         feature_combinations_ar = (
             Native.EbmNativeFeatureCombination * len(feature_combinations)
         )()
-        for idx, feature_combination in enumerate(feature_combinations):
-            features_in_combination = feature_combination["attributes"]
+        for idx, features_in_combination in enumerate(feature_combinations):
             feature_combinations_ar[idx].countFeaturesInCombination = len(
                 features_in_combination
             )
@@ -532,7 +531,7 @@ class NativeEBMBoosting:
         self._features = features
         feature_array = Native.convert_features_to_c(features)
 
-        self._feature_combinations = feature_combinations
+        self._feature_groups = feature_combinations
         (
             feature_combinations_array,
             feature_combination_indexes,
@@ -709,12 +708,12 @@ class NativeEBMBoosting:
 
     def _get_feature_combination_shape(self, feature_combination_index):
         # TODO PK do this once during construction so that we don't have to do it again
-        #         and so that we don't have to store self._features & self._feature_combinations
+        #         and so that we don't have to store self._features & self._feature_groups
 
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_combination = self._feature_combinations[feature_combination_index]
-        for _, feature_idx in enumerate(feature_combination["attributes"]):
+        feature_indexes = self._feature_groups[feature_combination_index]
+        for _, feature_idx in enumerate(feature_indexes):
             n_bins = self._features[feature_idx]["n_bins"]
             dimensions.append(n_bins)
 
@@ -773,7 +772,7 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+        if len(self._feature_groups[feature_combination_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -783,7 +782,7 @@ class NativeEBMBoosting:
 
     def get_best_model(self):
         model = []
-        for index in range(len(self._feature_combinations)):
+        for index in range(len(self._feature_groups)):
             model_feature_combination = self._get_best_model_feature_combination(index)
             model.append(model_feature_combination)
 
@@ -826,7 +825,7 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+        if len(self._feature_groups[feature_combination_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -836,7 +835,7 @@ class NativeEBMBoosting:
 
     def get_current_model(self):
         model = []
-        for index in range(len(self._feature_combinations)):
+        for index in range(len(self._feature_groups)):
             model_feature_combination = self._get_current_model_feature_combination(
                 index
             )

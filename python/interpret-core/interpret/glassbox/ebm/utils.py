@@ -137,22 +137,12 @@ class EBMUtils:
         return features
 
     @staticmethod
-    def gen_feature_combinations(feature_indices):
-        feature_combinations = [None] * len(feature_indices)
-        for i, indices in enumerate(feature_indices):
-            # TODO PK v.2 remove n_attributes (this is the only place it is used, but it's public)
-            # TODO PK v.2 rename all instances of "attributes" -> "features"
-            feature_combination = {"n_attributes": len(indices), "attributes": indices}
-            feature_combinations[i] = feature_combination
-        return feature_combinations
-
-    @staticmethod
     def scores_by_feature_combination(X, feature_combinations, model):
         for set_idx, feature_combination in enumerate(feature_combinations):
             tensor = model[set_idx]
 
             # Get the current column(s) to process
-            feature_idxs = feature_combination["attributes"]
+            feature_idxs = feature_combination
             sliced_X = X[feature_idxs, :]
             scores = tensor[tuple(sliced_X)]
 
