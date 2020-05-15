@@ -417,7 +417,7 @@ class BaseCoreEBM:
         ):
             main_feature_indices = [[x] for x in self.main_features]
         else:  # pragma: no cover
-            raise RuntimeError("Argument 'main_attr' has invalid value")
+            raise RuntimeError("Argument 'mains' has invalid value")
 
         self.feature_groups_ = []
         self.model_ = []
@@ -579,24 +579,6 @@ class BaseEBM(BaseEstimator):
     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
     # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
-    # According to scikit-learn convention, everything related to the dataset should be passed into the fit function, but
-    # also according to convention the fit function should have only X, y, and instance weights.  For intelligibility
-    # we need to include things like the names of features, so we need to break one of these rules.  We have chosen
-    # to pass information about the dataset into the __init__ function because then it's possible to do the training
-    # first and then later set things like the features names after training.  Also, people have become accustomed
-    # to passing optional parameters into the __init__ function, but not the fit function, so we maintain that by
-    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names,
-    # but this still gives the user ultimate control since they can either keep the DataFrame names or pass in new ones to __init__
-    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their
-    # potential size.  We don't have that issue with our smaller extra dataset dependent parameters
-
-    # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
-    #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
-    #             feature_names, feature_types, main_attr, interactions (for specific columns)
-    #             per : https://scikit-learn.org/dev/developers/develop.html
-    #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore,
-    #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
-
     def __init__(
         self,
         # Explainer
@@ -622,8 +604,8 @@ class BaseEBM(BaseEstimator):
         # Ensemble
         n_estimators,
         # Core
-        # TODO PK v.2 change main_attr -> main_features (also look for anything with attr in it)
-        main_attr,
+        # TODO PK v.3 in the future deprecate mains in favor of "boosting_stage_plan"
+        mains,
         # TODO PK v.2 we should probably have two types of interaction terms.
         #             The first is either a number or array of numbres that indicates
         #             how many interactions at each dimension level (starting at two)
@@ -669,7 +651,7 @@ class BaseEBM(BaseEstimator):
         self.n_estimators = n_estimators
 
         # Arguments for EBM beyond training a feature-step.
-        self.main_attr = main_attr
+        self.mains = mains
         self.interactions = interactions
         self.holdout_split = holdout_split
         self.data_n_episodes = data_n_episodes
@@ -752,7 +734,7 @@ class BaseEBM(BaseEstimator):
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
                     # Core
-                    main_features=self.main_attr,
+                    main_features=self.mains,
                     interactions=self.interactions,
                     holdout_split=self.holdout_split,
                     data_n_episodes=self.data_n_episodes,
@@ -777,7 +759,7 @@ class BaseEBM(BaseEstimator):
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
                     # Core
-                    main_features=self.main_attr,
+                    main_features=self.mains,
                     interactions=self.interactions,
                     holdout_split=self.holdout_split,
                     data_n_episodes=self.data_n_episodes,
@@ -858,15 +840,15 @@ class BaseEBM(BaseEstimator):
 
         X = np.ascontiguousarray(X.T)
 
-        if isinstance(self.main_attr, str) and self.main_attr == "all":
+        if isinstance(self.mains, str) and self.mains == "all":
             main_indices = [[x] for x in range(X.shape[0])]
-        elif isinstance(self.main_attr, list) and all(
-            isinstance(x, int) for x in self.main_attr
+        elif isinstance(self.mains, list) and all(
+            isinstance(x, int) for x in self.mains
         ):
-            main_indices = [[x] for x in self.main_attr]
+            main_indices = [[x] for x in self.mains]
         else:  # pragma: no cover
-            msg = "Argument 'main_attr' has invalid value (valid values are 'all'|list<int>): {}".format(
-                self.main_attr
+            msg = "Argument 'mains' has invalid value (valid values are 'all'|list<int>): {}".format(
+                self.mains
             )
             raise RuntimeError(msg)
 
@@ -1383,7 +1365,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Ensemble
         n_estimators=16,
         # Core
-        main_attr="all",
+        mains="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -1408,7 +1390,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             # Ensemble
             n_estimators=n_estimators,
             # Core
-            main_attr=main_attr,
+            mains=mains,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
@@ -1432,7 +1414,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             n_estimators: Number of outer bags.
-            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
             holdout_split: Validation set size for boosting.
@@ -1515,7 +1497,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Ensemble
         n_estimators=16,
         # Core
-        main_attr="all",
+        mains="all",
         interactions=0,
         holdout_split=0.15,
         data_n_episodes=2000,
@@ -1539,7 +1521,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             n_estimators: Number of outer bags.
-            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
             holdout_split: Validation set size for boosting.
@@ -1562,7 +1544,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             # Ensemble
             n_estimators=n_estimators,
             # Core
-            main_attr=main_attr,
+            mains=mains,
             interactions=interactions,
             holdout_split=holdout_split,
             data_n_episodes=data_n_episodes,
