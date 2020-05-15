@@ -125,8 +125,6 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         max_bins=255,
-        missing_constant=0,
-        unknown_constant=0,
         feature_names=None,
         feature_types=None,
         binning="quantile",
@@ -135,15 +133,11 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         Args:
             max_bins: Max number of bins to process numeric features.
-            missing_constant: Missing encoded as this constant.
-            unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
             binning: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
         self.max_bins = max_bins
-        self.missing_constant = missing_constant
-        self.unknown_constant = unknown_constant
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.binning = binning
@@ -245,6 +239,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
+        missing_constant = -1
+        unknown_constant = -2
+
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
             col_type = self.col_types_[col_idx]
@@ -259,20 +256,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 digitized -= 1
 
                 # NOTE: NA handling done later.
-                # digitized[np.isnan(col_data)] = self.missing_constant
+                # digitized[np.isnan(col_data)] = missing_constant
                 X_new[:, col_idx] = digitized
             elif col_type == "ordinal":
                 mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = self.missing_constant
+                mapping[np.nan] = missing_constant
                 vec_map = np.vectorize(
-                    lambda x: mapping[x] if x in mapping else self.unknown_constant
+                    lambda x: mapping[x] if x in mapping else unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
             elif col_type == "categorical":
                 mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = self.missing_constant
+                mapping[np.nan] = missing_constant
                 vec_map = np.vectorize(
-                    lambda x: mapping[x] if x in mapping else self.unknown_constant
+                    lambda x: mapping[x] if x in mapping else unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
 
