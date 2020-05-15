@@ -893,13 +893,15 @@ class BaseEBM(BaseEstimator):
             self.model_errors_.append(model_errors)
 
         # Get episode indexes for base estimators.
-        self.main_episode_idxs_ = []
-        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
-        #             (but does this need to be exposed at all)
-        self.inter_episode_idxs_ = []
+        main_episode_idxs = []
+        inter_episode_idxs = []
         for estimator in estimators:
-            self.main_episode_idxs_.append(estimator.main_episode_idx_)
-            self.inter_episode_idxs_.append(estimator.inter_episode_idx_)
+            main_episode_idxs.append(estimator.main_episode_idx_)
+            inter_episode_idxs.append(estimator.inter_episode_idx_)
+
+        self.early_stopping_breakpoints_ = [main_episode_idxs]
+        if len(pair_indices) != 0:
+            self.early_stopping_breakpoints_.append([inter_episode_idxs])
 
         # Extract feature names and feature types.
         self.feature_names = []
