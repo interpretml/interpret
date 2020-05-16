@@ -851,7 +851,7 @@ class BaseEBM(BaseEstimator):
 
         # Merge estimators into one.
         self.additive_terms_ = []
-        self.model_errors_ = []
+        self.term_standard_deviations_ = []
         for index, _ in enumerate(self.feature_groups_):
             log_odds_tensors = []
             for estimator in estimators:
@@ -865,7 +865,7 @@ class BaseEBM(BaseEstimator):
             #             do it HERE AND apply post processing before returning
 
             self.additive_terms_.append(averaged_model)
-            self.model_errors_.append(model_errors)
+            self.term_standard_deviations_.append(model_errors)
 
         # Get episode indexes for base estimators.
         main_episode_idxs = []
@@ -896,7 +896,7 @@ class BaseEBM(BaseEstimator):
             scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.feature_groups_, self.additive_terms_
             )
-            self._additive_term_means_ = []
+            self._original_means_ = []
 
             for set_idx, _, scores in scores_gen:
                 score_mean = np.mean(scores)
@@ -907,7 +907,7 @@ class BaseEBM(BaseEstimator):
 
                 # Add mean center adjustment back to intercept
                 self.intercept_ += score_mean
-                self._additive_term_means_.append(score_mean)
+                self._original_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
@@ -1112,7 +1112,7 @@ class BaseEBM(BaseEstimator):
         for feature_combination_index, _ in enumerate(
             self.feature_groups_
         ):
-            errors = self.model_errors_[feature_combination_index]
+            errors = self.term_standard_deviations_[feature_combination_index]
             scores = self.additive_terms_[feature_combination_index]
 
             lower_bound = min(lower_bound, np.min(scores - errors))
@@ -1130,7 +1130,7 @@ class BaseEBM(BaseEstimator):
             model_graph = self.additive_terms_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = self.model_errors_[feature_combination_index]
+            errors = self.term_standard_deviations_[feature_combination_index]
 
             if len(feature_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
