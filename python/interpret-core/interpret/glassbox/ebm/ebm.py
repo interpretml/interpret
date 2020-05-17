@@ -490,6 +490,7 @@ class BaseCoreEBM:
                 scores=scores_train,
                 min_samples_leaf=self.min_samples_leaf,
             )
+            final_indices = [list(x) for x in final_indices]
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
             final_scores = []
@@ -878,7 +879,7 @@ class BaseEBM(BaseEstimator):
 
         self.early_stopping_breakpoints_ = [main_episode_idxs]
         if len(pair_indices) != 0:
-            self.early_stopping_breakpoints_.append([inter_episode_idxs])
+            self.early_stopping_breakpoints_.append(inter_episode_idxs)
 
         # Extract feature names and feature types.
         self.feature_names = []
