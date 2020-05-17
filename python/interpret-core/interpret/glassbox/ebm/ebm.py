@@ -124,22 +124,22 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        max_bins=255,
         feature_names=None,
         feature_types=None,
+        max_bins=255,
         binning="quantile",
     ):
         """ Initializes EBM preprocessor.
 
         Args:
-            max_bins: Max number of bins to process numeric features.
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
+            max_bins: Max number of bins to process numeric features.
             binning: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
-        self.max_bins = max_bins
         self.feature_names = feature_names
         self.feature_types = feature_types
+        self.max_bins = max_bins
         self.binning = binning
 
     def fit(self, X):
@@ -707,10 +707,10 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            max_bins=self.max_bins,
-            binning=self.binning,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
+            max_bins=self.max_bins,
+            binning=self.binning,
         )
         self.preprocessor_.fit(X)
 
@@ -1353,74 +1353,76 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
+        # Preprocessor
+        max_bins=255,
+        binning="quantile",
+        # Stages
+        mains="all",
+        interactions=0,
         # Ensemble
         outer_bags=16,
         inner_bags=0,
-        # Core
-        mains="all",
-        interactions=0,
-        early_stopping_validation=0.15,
-        max_rounds=5000,
-        early_stopping_tolerance=0,
-        early_stopping_rounds=50,
-        # Native
+        # Boosting
         learning_rate=0.01,
+        early_stopping_validation=0.15,
+        early_stopping_rounds=50,
+        early_stopping_tolerance=0,
+        max_rounds=5000,
+        # Trees
         max_leaves=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
-        # Preprocessor
-        binning="quantile",
-        max_bins=255,
     ):
-        super(ExplainableBoostingClassifier, self).__init__(
-            # Explainer
-            feature_names=feature_names,
-            feature_types=feature_types,
-            # Ensemble
-            outer_bags=outer_bags,
-            inner_bags=inner_bags,
-            # Core
-            mains=mains,
-            interactions=interactions,
-            early_stopping_validation=early_stopping_validation,
-            max_rounds=max_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_rounds=early_stopping_rounds,
-            # Native
-            learning_rate=learning_rate,
-            max_leaves=max_leaves,
-            min_samples_leaf=min_samples_leaf,
-            # Overall
-            n_jobs=n_jobs,
-            random_state=random_state,
-            # Preprocessor
-            binning=binning,
-            max_bins=max_bins,
-        )
         """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            early_stopping_validation: Validation set size for boosting.
-            max_rounds: Number of rounds for boosting.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
+            early_stopping_validation: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_bins: Max number of bins per feature for pre-processing stage.
         """
+        super(ExplainableBoostingClassifier, self).__init__(
+            # Explainer
+            feature_names=feature_names,
+            feature_types=feature_types,
+            # Preprocessor
+            max_bins=max_bins,
+            binning=binning,
+            # Stages
+            mains=mains,
+            interactions=interactions,
+            # Ensemble
+            outer_bags=outer_bags,
+            inner_bags=inner_bags,
+            # Boosting
+            learning_rate=learning_rate,
+            early_stopping_validation=early_stopping_validation,
+            early_stopping_rounds=early_stopping_rounds,
+            early_stopping_tolerance=early_stopping_tolerance,
+            max_rounds=max_rounds,
+            # Trees
+            max_leaves=max_leaves,
+            min_samples_leaf=min_samples_leaf,
+            # Overall
+            n_jobs=n_jobs,
+            random_state=random_state,
+        )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
@@ -1485,73 +1487,75 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
+        # Preprocessor
+        max_bins=255,
+        binning="quantile",
+        # Stages
+        mains="all",
+        interactions=0,
         # Ensemble
         outer_bags=16,
         inner_bags=0,
-        # Core
-        mains="all",
-        interactions=0,
-        early_stopping_validation=0.15,
-        max_rounds=5000,
-        early_stopping_tolerance=0,
-        early_stopping_rounds=50,
-        # Native
+        # Boosting
         learning_rate=0.01,
+        early_stopping_validation=0.15,
+        early_stopping_rounds=50,
+        early_stopping_tolerance=0,
+        max_rounds=5000,
+        # Trees
         max_leaves=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
-        # Preprocessor
-        binning="quantile",
-        max_bins=255,
     ):
         """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            outer_bags: Number of outer bags.
-            inner_bags: Number of inner bags.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
             mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            early_stopping_validation: Validation set size for boosting.
-            max_rounds: Number of rounds for boosting.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
+            early_stopping_validation: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
             max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_bins: Max number of bins per feature for pre-processing stage.
         """
         super(ExplainableBoostingRegressor, self).__init__(
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
+            # Preprocessor
+            max_bins=max_bins,
+            binning=binning,
+            # Stages
+            mains=mains,
+            interactions=interactions,
             # Ensemble
             outer_bags=outer_bags,
             inner_bags=inner_bags,
-            # Core
-            mains=mains,
-            interactions=interactions,
-            early_stopping_validation=early_stopping_validation,
-            max_rounds=max_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_rounds=early_stopping_rounds,
-            # Native
+            # Boosting
             learning_rate=learning_rate,
+            early_stopping_validation=early_stopping_validation,
+            early_stopping_rounds=early_stopping_rounds,
+            early_stopping_tolerance=early_stopping_tolerance,
+            max_rounds=max_rounds,
+            # Trees
             max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
-            # Preprocessor
-            binning=binning,
-            max_bins=max_bins,
         )
 
     def predict(self, X):
