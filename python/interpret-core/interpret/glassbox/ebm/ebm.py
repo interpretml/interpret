@@ -164,6 +164,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.col_names_ = []
         self.col_types_ = []
+
         self.has_fitted_ = False
 
         schema = autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
@@ -350,7 +351,7 @@ class BaseCoreEBM:
         # Native
         inner_bags,
         learning_rate,
-        max_leaf_nodes,
+        max_leaves,
         min_samples_leaf,
         # Overall
         random_state,
@@ -373,7 +374,7 @@ class BaseCoreEBM:
         # Arguments for internal EBM.
         self.inner_bags = inner_bags
         self.learning_rate = learning_rate
-        self.max_leaf_nodes = max_leaf_nodes
+        self.max_leaves = max_leaves
         self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
@@ -456,7 +457,7 @@ class BaseCoreEBM:
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_leaf_nodes=self.max_leaf_nodes,
+            max_leaves=self.max_leaves,
             min_samples_leaf=self.min_samples_leaf,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
@@ -531,7 +532,7 @@ class BaseCoreEBM:
             n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_leaf_nodes=self.max_leaf_nodes,
+            max_leaves=self.max_leaves,
             min_samples_leaf=self.min_samples_leaf,
             max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
@@ -579,25 +580,31 @@ class BaseEBM(BaseEstimator):
     def __init__(
         self,
         # Explainer
-        # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per
-        # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
-        feature_names,
-        # TODO PK v.2 look at how sklearn has thought about feature types -> https://github.com/scikit-learn/scikit-learn/pull/3346
-        #      also look at lightGBM's categorical_feature parameter
-        #      https://towardsdatascience.com/catboost-vs-light-gbm-vs-xgboost-5f93620723db
         #
-        # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per
-        # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
+        # feature_names in scikit-learn convention should probably be passed in via the fit function.  Also,
+        #   we can get feature_names via pandas dataframes, and those would only be known at fit time, so
+        #   we need a version of feature_names_out_ with the underscore to indicate items set at fit time.
+        #   Despite this, we need to recieve a list of feature_names here to be compatible with blackbox explainations
+        #   where we still need to have feature_names, but we do not have a fit function since we explain existing
+        #   models without fitting them ourselves.  To conform to a common explaination API we get the feature_names
+        #   here.
+        feature_names,
+
+        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate 
+        #   feature_types.  The benefit to them is that they can accept multiple ways of specifying categoricals like:
+        #   categorical = [true, false, true, true] OR categorical = [1, 4, 8] OR categorical = 'all'/'auto'/'none'
+        #   We're choosing a different route because for visualization we want to be able to express multiple
+        #   different types of data.  For example, if the user has data with strings of "low", "medium", "high"
+        #   We want to keep both the ordinal nature of this feature and we wish to preserve the text for visualization
+        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't 
+        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings 
+        #   back anyways.  So we need some way to express both the categorical nature of features and the order 
+        #   mapping.  We can do this and more complicated conversions via:
+        #   feature_types = ["categorical", ["low", "medium", "high"], "continuous", "time", "bool"]
         feature_types,
         # Data
-        # TODO PK v.2 either add a bin_cuts parameter here, or add a preprocessor/transformer class input parameter here so that the user
-        #             can specify a common algorithm for bin cutting to compare against other algorithms.
-        #             PK -> I favor the simple solution of just passing in bin_cuts, since the user can then specify their own bin_cuts, which could be important
-        #             for AUC or interpretability visualizations.  Anyone wanting to do specialized work in comparing our algorithm against others may want
-        #             to precisely duplicate our binning procedure, but this is a very very small subset of our users, so they can just
-        #             copy our internal bin cutting function -> we can make this easier by having a clean function just for bin cutting
-        #             that other people can either call or copy if they want to do this specialized work of having exactly the same
-        #             bins across two different ML algorithms.
+        #
+        # TODO PK v.3 add a bin_cuts parameter to allow the user to control binning
         # Ensemble
         outer_bags,
         inner_bags,
@@ -623,11 +630,10 @@ class BaseEBM(BaseEstimator):
         early_stopping_rounds,
         # Native
         learning_rate,
-        max_leaf_nodes,
+        max_leaves,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-        # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
-        # For now do no harm and choose a value close to our original of zero
+        # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
         min_samples_leaf,
         # Overall
         n_jobs,
@@ -656,7 +662,7 @@ class BaseEBM(BaseEstimator):
 
         # Arguments for internal EBM.
         self.learning_rate = learning_rate
-        self.max_leaf_nodes = max_leaf_nodes
+        self.max_leaves = max_leaves
         self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
@@ -738,7 +744,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_leaf_nodes=self.max_leaf_nodes,
+                    max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
@@ -763,7 +769,7 @@ class BaseEBM(BaseEstimator):
                     # Native
                     inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    max_leaf_nodes=self.max_leaf_nodes,
+                    max_leaves=self.max_leaves,
                     min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
@@ -859,10 +865,6 @@ class BaseEBM(BaseEstimator):
 
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
-
-            # TODO PK v.2 if we end up choosing to expand/contract by removing
-            #             logits from multiclass models, averaged_model
-            #             do it HERE AND apply post processing before returning
 
             self.additive_terms_.append(averaged_model)
             self.term_standard_deviations_.append(model_errors)
@@ -1088,7 +1090,6 @@ class BaseEBM(BaseEstimator):
             X, self.feature_groups_, self.additive_terms_, self.intercept_
         )
 
-        # TODO PK v.2 these decision_scores are unexpanded.  We need to expand them
         return decision_scores
 
     def explain_global(self, name=None):
@@ -1364,7 +1365,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         early_stopping_rounds=50,
         # Native
         learning_rate=0.01,
-        max_leaf_nodes=3,
+        max_leaves=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
@@ -1389,7 +1390,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_rounds=early_stopping_rounds,
             # Native
             learning_rate=learning_rate,
-            max_leaf_nodes=max_leaf_nodes,
+            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
@@ -1413,7 +1414,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
-            max_leaf_nodes: Maximum leaf nodes used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
@@ -1496,7 +1497,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         early_stopping_rounds=50,
         # Native
         learning_rate=0.01,
-        max_leaf_nodes=3,
+        max_leaves=3,
         min_samples_leaf=2,
         # Overall
         n_jobs=-2,
@@ -1520,7 +1521,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             learning_rate: Learning rate for boosting.
-            max_leaf_nodes: Maximum leaf nodes used in boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
             min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
@@ -1543,7 +1544,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             early_stopping_rounds=early_stopping_rounds,
             # Native
             learning_rate=learning_rate,
-            max_leaf_nodes=max_leaf_nodes,
+            max_leaves=max_leaves,
             min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
