@@ -490,7 +490,6 @@ class BaseCoreEBM:
                 scores=scores_train,
                 min_samples_leaf=self.min_samples_leaf,
             )
-            final_indices = [list(x) for x in final_indices]
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
             final_scores = []
@@ -1066,7 +1065,7 @@ class BaseEBM(BaseEstimator):
         pair_weighted_ranks = sorted(pair_weighted_ranks.items(), key=lambda x: x[1])
 
         # Retrieve top K pairs
-        pair_indices = [x[0] for x in pair_weighted_ranks[: self.interactions]]
+        pair_indices = [list(x[0]) for x in pair_weighted_ranks[: self.interactions]]
 
         return pair_indices
 
