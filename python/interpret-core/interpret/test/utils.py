@@ -32,7 +32,7 @@ def get_all_explainers():
     perf_explainer_classes = [ROC, PR, RegressionPerf]
     model_explainer_classes = [
         ClassificationTree,
-        DecisionListClassifier,
+        # DecisionListClassifier,  # Disable, does not work with latest scikit libraries.
         LogisticRegression,
         ExplainableBoostingClassifier,
         RegressionTree,

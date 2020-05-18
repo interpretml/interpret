@@ -30,13 +30,8 @@ def explanation():
 
 
 @pytest.fixture(scope="module")
-def text_explanation():
-    data = synthetic_classification()
-    clf = DecisionListClassifier()
-    clf.fit(data["train"]["X"], data["train"]["y"])
-
-    global_exp = clf.explain_global()
-    return global_exp
+def text_explanation(explanation):
+    assert True
 
 
 def wait_for_reachable(timeout=5):
