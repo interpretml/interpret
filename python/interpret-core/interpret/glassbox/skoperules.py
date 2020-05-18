@@ -16,7 +16,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class RulesExplanation(ExplanationMixin):
+class RulesExplanation(ExplanationMixin):  # pragma: no cover
     """ Visualizes rules as HTML for both global and local explanations. """
 
     explanation_type = None
