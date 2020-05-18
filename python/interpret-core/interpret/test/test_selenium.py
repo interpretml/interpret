@@ -4,6 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 from .utils import synthetic_classification, get_all_explainers
 from ..glassbox import LogisticRegression
 from ..glassbox.decisiontree import TreeExplanation
+from ..blackbox import PermutationImportance
 from ..visual.interactive import set_show_addr, shutdown_show_server, show_link
 from copy import deepcopy
 import os
@@ -24,7 +25,9 @@ def all_explanations():
     explanations = []
     predict_fn = lambda x: blackbox.predict_proba(x)  # noqa: E731
     for explainer_class in all_explainers:
-        if explainer_class.explainer_type == "blackbox":
+        if explainer_class == PermutationImportance:
+            explainer = explainer_class(predict_fn, data["train"]["X"], data["train"]["y"])
+        elif explainer_class.explainer_type == "blackbox":
             explainer = explainer_class(predict_fn, data["train"]["X"])
         elif explainer_class.explainer_type == "model":
             explainer = explainer_class()
