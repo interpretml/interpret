@@ -48,10 +48,10 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 |--|--|--------------------|
 |Explainable Boosting|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
 |Decision Tree|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
-|Decision Rule List|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
+|Decision Rule List|glassbox model|Coming Soon|
 |Linear/Logistic Regression|glassbox model|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Interpretable%20Classification%20Methods.ipynb)|
 |SHAP Kernel Explainer|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
-|SHAP Tree Explainer|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
+|SHAP Tree Explainer|blackbox explainer|Coming Soon|
 |LIME|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 |Morris Sensitivity Analysis|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 |Partial Dependence|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
