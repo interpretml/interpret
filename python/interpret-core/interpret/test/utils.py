@@ -8,7 +8,6 @@ from ..blackbox import LimeTabular
 from ..blackbox import ShapKernel
 from ..blackbox import MorrisSensitivity
 from ..blackbox import PartialDependence
-from ..blackbox import PermutationImportance
 
 from ..greybox import TreeInterpreter
 from ..greybox import ShapTree
@@ -32,7 +31,7 @@ def get_all_explainers():
     perf_explainer_classes = [ROC, PR, RegressionPerf]
     model_explainer_classes = [
         ClassificationTree,
-        # DecisionListClassifier,  # Disable, does not work with latest scikit libraries.
+        # DecisionListClassifier,  # NOTE: Wait on skoperules to work with latest scikit.
         LogisticRegression,
         ExplainableBoostingClassifier,
         RegressionTree,

@@ -29,9 +29,15 @@ def explanation():
     return global_exp
 
 
-@pytest.fixture(scope="module")
-def text_explanation(explanation):
-    assert True
+# TODO: Re-enable on skoperules working with latest scikit learn.
+# @pytest.fixture(scope="module")
+# def text_explanation(explanation):
+#     data = synthetic_classification()
+#     clf = DecisionListClassifier()
+#     clf.fit(data["train"]["X"], data["train"]["y"])
+#
+#     global_exp = clf.explain_global()
+#     return global_exp
 
 
 def wait_for_reachable(timeout=5):
@@ -159,8 +165,7 @@ def test_show(explanation):
 
 
 @pytest.mark.visual
-@pytest.mark.xfail(strict=False)
-def test_preserve(explanation, text_explanation):
+def test_preserve(explanation):
     # Overall
     result = preserve(explanation)
     assert result is None
@@ -175,9 +180,9 @@ def test_preserve(explanation, text_explanation):
     result = preserve(explanation, selector_key)
     assert result is None
 
-    # Handle text explanations
-    result = preserve(text_explanation)
-    assert result is None
+    # # Handle text explanations
+    # result = preserve(text_explanation)
+    # assert result is None
 
     # Output to file
     path = os.path.join(tempfile.mkdtemp(), "test_preserve_output.html")
