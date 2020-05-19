@@ -344,7 +344,7 @@ class BaseCoreEBM:
         # Core
         main_features,
         interactions,
-        early_stopping_validation,
+        validation_size,
         max_rounds,
         early_stopping_tolerance,
         early_stopping_rounds,
@@ -366,7 +366,7 @@ class BaseCoreEBM:
         # Arguments for EBM beyond training a feature-step.
         self.main_features = main_features
         self.interactions = interactions
-        self.early_stopping_validation = early_stopping_validation
+        self.validation_size = validation_size
         self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
         self.early_stopping_rounds = early_stopping_rounds
@@ -388,7 +388,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.early_stopping_validation,
+            test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -556,7 +556,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.early_stopping_validation,
+            test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -609,7 +609,7 @@ class BaseEBM(BaseEstimator):
         outer_bags,
         inner_bags,
         # Core
-        # TODO PK v.3 in the future deprecate mains in favor of "boosting_stage_plan"
+        # TODO PK v.3 mains will be deprecated in the future in favor of "boosting_stage_plan"
         mains,
         # TODO PK v.2 we should probably have two types of interaction terms.
         #             The first is either a number or array of numbres that indicates
@@ -624,7 +624,7 @@ class BaseEBM(BaseEstimator):
         #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions,
-        early_stopping_validation,
+        validation_size,
         max_rounds,
         early_stopping_tolerance,
         early_stopping_rounds,
@@ -655,7 +655,7 @@ class BaseEBM(BaseEstimator):
         # Arguments for EBM beyond training a feature-step.
         self.mains = mains
         self.interactions = interactions
-        self.early_stopping_validation = early_stopping_validation
+        self.validation_size = validation_size
         self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
         self.early_stopping_rounds = early_stopping_rounds
@@ -737,7 +737,7 @@ class BaseEBM(BaseEstimator):
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
-                    early_stopping_validation=self.early_stopping_validation,
+                    validation_size=self.validation_size,
                     max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
                     early_stopping_rounds=self.early_stopping_rounds,
@@ -762,7 +762,7 @@ class BaseEBM(BaseEstimator):
                     # Core
                     main_features=self.mains,
                     interactions=self.interactions,
-                    early_stopping_validation=self.early_stopping_validation,
+                    validation_size=self.validation_size,
                     max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
                     early_stopping_rounds=self.early_stopping_rounds,
@@ -898,7 +898,7 @@ class BaseEBM(BaseEstimator):
             scores_gen = EBMUtils.scores_by_feature_combination(
                 X, self.feature_groups_, self.additive_terms_
             )
-            self._original_means_ = []
+            self._original_term_means_ = []
 
             for set_idx, _, scores in scores_gen:
                 score_mean = np.mean(scores)
@@ -909,7 +909,7 @@ class BaseEBM(BaseEstimator):
 
                 # Add mean center adjustment back to intercept
                 self.intercept_ += score_mean
-                self._original_means_.append(score_mean)
+                self._original_term_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
@@ -987,7 +987,7 @@ class BaseEBM(BaseEstimator):
             _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
                 X,
                 y,
-                test_size=self.early_stopping_validation,
+                test_size=self.validation_size,
                 random_state=estimator.random_state,
                 is_classification=is_classifier(self),
                 is_train=False,
@@ -1364,7 +1364,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        early_stopping_validation=0.15,
+        validation_size=0.15,
         early_stopping_rounds=50,
         early_stopping_tolerance=0,
         max_rounds=5000,
@@ -1388,7 +1388,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            early_stopping_validation: Validation set size for boosting.
+            validation_size: Validation set size for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
@@ -1412,7 +1412,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
             inner_bags=inner_bags,
             # Boosting
             learning_rate=learning_rate,
-            early_stopping_validation=early_stopping_validation,
+            validation_size=validation_size,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
             max_rounds=max_rounds,
@@ -1498,7 +1498,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         inner_bags=0,
         # Boosting
         learning_rate=0.01,
-        early_stopping_validation=0.15,
+        validation_size=0.15,
         early_stopping_rounds=50,
         early_stopping_tolerance=0,
         max_rounds=5000,
@@ -1522,7 +1522,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             outer_bags: Number of outer bags.
             inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            early_stopping_validation: Validation set size for boosting.
+            validation_size: Validation set size for boosting.
             early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
             early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
             max_rounds: Number of rounds for boosting.
@@ -1546,7 +1546,7 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
             inner_bags=inner_bags,
             # Boosting
             learning_rate=learning_rate,
-            early_stopping_validation=early_stopping_validation,
+            validation_size=validation_size,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
             max_rounds=max_rounds,

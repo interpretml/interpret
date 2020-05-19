@@ -247,5 +247,5 @@ def test_zero_validation():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, early_stopping_validation=0)
+    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, validation_size=0)
     clf.fit(X, y)
