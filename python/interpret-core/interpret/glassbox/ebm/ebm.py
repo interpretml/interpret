@@ -876,9 +876,9 @@ class BaseEBM(BaseEstimator):
             main_episode_idxs.append(estimator.main_episode_idx_)
             inter_episode_idxs.append(estimator.inter_episode_idx_)
 
-        self.early_stopping_breakpoints_ = [main_episode_idxs]
+        self.breakpoint_iteration_ = [main_episode_idxs]
         if len(pair_indices) != 0:
-            self.early_stopping_breakpoints_.append(inter_episode_idxs)
+            self.breakpoint_iteration_.append(inter_episode_idxs)
 
         # Extract feature names and feature types.
         self.feature_names = []
