@@ -1,4 +1,4 @@
-# Interpret - Alpha Release
+# InterpretML - Alpha Release
 
 ![License](https://img.shields.io/github/license/microsoft/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
@@ -10,7 +10,7 @@
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
 > ### Let there be light.
 
-Interpret is an open-source package that incorporates state-of-the-art machine learning interpretability techniques under one roof. With this package, you can train interpretable glassbox models and explain blackbox systems. Interpret helps you understand your model's global behavior, or understand the reasons behind individual predictions.
+InterpretML is an open-source package that incorporates state-of-the-art machine learning interpretability techniques under one roof. With this package, you can train interpretable glassbox models and explain blackbox systems. InterpretML helps you understand your model's global behavior, or understand the reasons behind individual predictions.
 
 Interpretability is essential for:
 - Model debugging - Why did my model make this mistake?
@@ -56,7 +56,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 |Morris Sensitivity Analysis|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 |Partial Dependence|blackbox explainer|[Notebooks](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/master/examples/python/notebooks/Explaining%20Blackbox%20Classifiers.ipynb)|
 
-In addition to these, Interpret is extended by the following repositories:
+In addition to these, InterpretML is extended by the following repositories:
 
 - [**Interpret-Community**](https://github.com/interpretml/interpret-community): Experimental repository with additional interpretability methods and utility functions to handle real-world datasets and workflows.
 - [**Interpret-Text**](https://github.com/interpretml/interpret-text): Supports a collection of interpretability techniques for models trained on text data.
@@ -481,6 +481,7 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 - [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
+- [Model Interpretation with Microsoft’s Interpret ML](https://medium.com/@sand.mayur/model-interpretation-with-microsofts-interpret-ml-85aa0ad697ae)
 
 # Contact us
 
