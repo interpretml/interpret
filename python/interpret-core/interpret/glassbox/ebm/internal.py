@@ -416,8 +416,7 @@ class Native:
         feature_combinations_ar = (
             Native.EbmNativeFeatureCombination * len(feature_combinations)
         )()
-        for idx, feature_combination in enumerate(feature_combinations):
-            features_in_combination = feature_combination["attributes"]
+        for idx, features_in_combination in enumerate(feature_combinations):
             feature_combinations_ar[idx].countFeaturesInCombination = len(
                 features_in_combination
             )
@@ -532,7 +531,7 @@ class NativeEBMBoosting:
         self._features = features
         feature_array = Native.convert_features_to_c(features)
 
-        self._feature_combinations = feature_combinations
+        self._feature_groups = feature_combinations
         (
             feature_combinations_array,
             feature_combination_indexes,
@@ -649,9 +648,8 @@ class NativeEBMBoosting:
         self,
         feature_combination_index,
         learning_rate,
-        max_tree_splits,
-        min_cases_for_splits,
-        boosting_step_episodes,
+        max_leaves,
+        min_samples_leaf,
     ):
 
         """ Conducts a boosting step per feature
@@ -661,9 +659,8 @@ class NativeEBMBoosting:
             feature_combination_index: The index for the feature combination
                 to boost on.
             learning_rate: Learning rate as a float.
-            max_tree_splits: Max tree splits on feature step.
-            min_cases_for_splits: Min observations required to split.
-            boosting_step_episodes: Number of episodes to boost feature step.
+            max_leaves: Max leaf nodes on feature step.
+            min_samples_leaf: Min observations required to split.
 
         Returns:
             Validation loss for the boosting step.
@@ -674,50 +671,49 @@ class NativeEBMBoosting:
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
-            for i in range(boosting_step_episodes):
-                model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
-                    self._booster_pointer,
-                    feature_combination_index,
-                    learning_rate,
-                    max_tree_splits,
-                    min_cases_for_splits,
-                    0,
-                    0,
-                    ct.byref(gain),
-                )
-                if not model_update_tensor_pointer:  # pragma: no cover
-                    raise MemoryError(
-                        "Out of memory in GenerateModelFeatureCombinationUpdate"
-                    )
-
-                shape = self._get_feature_combination_shape(feature_combination_index)
-                # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
-                model_update_tensor = Native.make_ndarray(
-                    model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+            model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
+                self._booster_pointer,
+                feature_combination_index,
+                learning_rate,
+                max_leaves - 1,
+                min_samples_leaf,
+                0,
+                0,
+                ct.byref(gain),
+            )
+            if not model_update_tensor_pointer:  # pragma: no cover
+                raise MemoryError(
+                    "Out of memory in GenerateModelFeatureCombinationUpdate"
                 )
 
-                return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
-                    self._booster_pointer,
-                    feature_combination_index,
-                    model_update_tensor,
-                    ct.byref(metric_output),
+            shape = self._get_feature_combination_shape(feature_combination_index)
+            # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
+            model_update_tensor = Native.make_ndarray(
+                model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
+            )
+
+            return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
+                self._booster_pointer,
+                feature_combination_index,
+                model_update_tensor,
+                ct.byref(metric_output),
+            )
+            if return_code != 0:  # pragma: no cover
+                raise Exception(
+                    "Out of memory in ApplyModelFeatureCombinationUpdate"
                 )
-                if return_code != 0:  # pragma: no cover
-                    raise Exception(
-                        "Out of memory in ApplyModelFeatureCombinationUpdate"
-                    )
 
         # log.debug("Boosting step end")
         return metric_output.value
 
     def _get_feature_combination_shape(self, feature_combination_index):
         # TODO PK do this once during construction so that we don't have to do it again
-        #         and so that we don't have to store self._features & self._feature_combinations
+        #         and so that we don't have to store self._features & self._feature_groups
 
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_combination = self._feature_combinations[feature_combination_index]
-        for _, feature_idx in enumerate(feature_combination["attributes"]):
+        feature_indexes = self._feature_groups[feature_combination_index]
+        for _, feature_idx in enumerate(feature_indexes):
             n_bins = self._features[feature_idx]["n_bins"]
             dimensions.append(n_bins)
 
@@ -776,7 +772,7 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+        if len(self._feature_groups[feature_combination_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -786,7 +782,7 @@ class NativeEBMBoosting:
 
     def get_best_model(self):
         model = []
-        for index in range(len(self._feature_combinations)):
+        for index in range(len(self._feature_groups)):
             model_feature_combination = self._get_best_model_feature_combination(index)
             model.append(model_feature_combination)
 
@@ -829,7 +825,7 @@ class NativeEBMBoosting:
         shape = self._get_feature_combination_shape(feature_combination_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_combinations[feature_combination_index]["attributes"]) == 2:
+        if len(self._feature_groups[feature_combination_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -839,7 +835,7 @@ class NativeEBMBoosting:
 
     def get_current_model(self):
         model = []
-        for index in range(len(self._feature_combinations)):
+        for index in range(len(self._feature_groups)):
             model_feature_combination = self._get_current_model_feature_combination(
                 index
             )
@@ -967,7 +963,7 @@ class NativeEBMInteraction:
         self._native.lib.FreeInteraction(self._interaction_pointer)
         log.info("Deallocation interaction end")
 
-    def get_interaction_score(self, feature_index_tuple, min_cases_for_splits):
+    def get_interaction_score(self, feature_index_tuple, min_samples_leaf):
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
@@ -975,7 +971,7 @@ class NativeEBMInteraction:
             self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
-            min_cases_for_splits,
+            min_samples_leaf,
             ct.byref(score),
         )
         if return_code != 0:  # pragma: no cover
@@ -1001,12 +997,11 @@ class NativeHelper:
         n_inner_bags,
         random_state,
         learning_rate,
-        max_tree_splits,
-        min_cases_for_splits,
-        boosting_step_episodes,
-        data_n_episodes,
+        max_leaves,
+        min_samples_leaf,
+        max_rounds,
         early_stopping_tolerance,
-        early_stopping_run_length,
+        early_stopping_rounds,
         name,
         optional_temp_params=None,
     ):
@@ -1033,7 +1028,7 @@ class NativeHelper:
             no_change_run_length = 0
             bp_metric = np.inf
             log.info("Start boosting {0}".format(name))
-            for episode_index in range(data_n_episodes):
+            for episode_index in range(max_rounds):
                 if episode_index % 10 == 0:
                     log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
                     log.debug("Metric: {0}".format(min_metric))
@@ -1042,9 +1037,8 @@ class NativeHelper:
                     curr_metric = native_ebm_boosting.boosting_step(
                         feature_combination_index=feature_combination_index,
                         learning_rate=learning_rate,
-                        max_tree_splits=max_tree_splits,
-                        min_cases_for_splits=min_cases_for_splits,
-                        boosting_step_episodes=boosting_step_episodes,
+                        max_leaves=max_leaves,
+                        min_samples_leaf=min_samples_leaf,
                     )
 
                     min_metric = min(curr_metric, min_metric)
@@ -1064,8 +1058,8 @@ class NativeHelper:
                     no_change_run_length += 1
 
                 if (
-                    early_stopping_run_length >= 0
-                    and no_change_run_length >= early_stopping_run_length
+                    early_stopping_rounds >= 0
+                    and no_change_run_length >= early_stopping_rounds
                 ):
                     break
 
@@ -1088,7 +1082,7 @@ class NativeHelper:
         X,
         y,
         scores,
-        min_cases_for_splits,
+        min_samples_leaf,
         optional_temp_params=None,
     ):
         # TODO PK we only need to store the top n_interactions items, so use a heap
@@ -1101,7 +1095,7 @@ class NativeHelper:
             for feature_combination in iter_feature_combinations:
                 score = native_ebm_interactions.get_interaction_score(
                     feature_combination,
-                    min_cases_for_splits,
+                    min_samples_leaf,
                 )
                 interaction_scores.append((feature_combination, score))
 

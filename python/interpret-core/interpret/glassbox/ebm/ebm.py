@@ -124,33 +124,23 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        schema=None,
-        max_n_bins=255,
-        missing_constant=0,
-        unknown_constant=0,
         feature_names=None,
         feature_types=None,
-        binning_strategy="quantile",
+        max_bins=255,
+        binning="quantile",
     ):
         """ Initializes EBM preprocessor.
 
         Args:
-            schema: A dictionary that encapsulates column information,
-                    such as type and domain.
-            max_n_bins: Max number of bins to process numeric features.
-            missing_constant: Missing encoded as this constant.
-            unknown_constant: Unknown encoded as this constant.
             feature_names: Feature names as list.
             feature_types: Feature types as list, for example "continuous" or "categorical".
-            binning_strategy: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
+            max_bins: Max number of bins to process numeric features.
+            binning: Strategy to compute bins according to density if "quantile" or equidistant if "uniform".
         """
-        self.schema = schema
-        self.max_n_bins = max_n_bins
-        self.missing_constant = missing_constant
-        self.unknown_constant = unknown_constant
         self.feature_names = feature_names
         self.feature_types = feature_types
-        self.binning_strategy = binning_strategy
+        self.max_bins = max_bins
+        self.binning = binning
 
     def fit(self, X):
         """ Fits transformer to provided instances.
@@ -174,16 +164,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.col_names_ = []
         self.col_types_ = []
+
         self.has_fitted_ = False
 
-        self.schema_ = (
-            self.schema
-            if self.schema is not None
-            else autogen_schema(
-                X, feature_names=self.feature_names, feature_types=self.feature_types
-            )
-        )
-        schema = self.schema_
+        schema = autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
 
         for col_idx in range(X.shape[1]):
             col_name = list(schema.keys())[col_idx]
@@ -198,21 +182,21 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 col_data = col_data.astype(float)
 
                 uniq_vals = set(col_data[~np.isnan(col_data)])
-                if len(uniq_vals) < self.max_n_bins:
+                if len(uniq_vals) < self.max_bins:
                     bins = list(sorted(uniq_vals))
                 else:
-                    if self.binning_strategy == "uniform":
-                        bins = self.max_n_bins
-                    elif self.binning_strategy == "quantile":
+                    if self.binning == "uniform":
+                        bins = self.max_bins
+                    elif self.binning == "quantile":
                         bins = np.unique(
                             np.quantile(
-                                col_data, q=np.linspace(0, 1, self.max_n_bins + 1)
+                                col_data, q=np.linspace(0, 1, self.max_bins + 1)
                             )
                         )
                     else:  # pragma: no cover
                         raise ValueError(
-                            "Unknown binning_strategy: '{}'.".format(
-                                self.binning_strategy
+                            "Unknown binning: '{}'.".format(
+                                self.binning
                             )
                         )
 
@@ -256,13 +240,15 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "has_fitted_")
 
-        schema = self.schema_
+        missing_constant = -1
+        unknown_constant = -2
+
         X_new = np.copy(X)
         for col_idx in range(X.shape[1]):
-            col_info = schema[list(schema.keys())[col_idx]]
-            assert col_info["column_number"] == col_idx
+            col_type = self.col_types_[col_idx]
             col_data = X[:, col_idx]
-            if col_info["type"] == "continuous":
+
+            if col_type == "continuous":
                 col_data = col_data.astype(float)
                 bin_edges = self.col_bin_edges_[col_idx].copy()
 
@@ -271,20 +257,20 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                 digitized -= 1
 
                 # NOTE: NA handling done later.
-                # digitized[np.isnan(col_data)] = self.missing_constant
+                # digitized[np.isnan(col_data)] = missing_constant
                 X_new[:, col_idx] = digitized
-            elif col_info["type"] == "ordinal":
+            elif col_type == "ordinal":
                 mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = self.missing_constant
+                mapping[np.nan] = missing_constant
                 vec_map = np.vectorize(
-                    lambda x: mapping[x] if x in mapping else self.unknown_constant
+                    lambda x: mapping[x] if x in mapping else unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
-            elif col_info["type"] == "categorical":
+            elif col_type == "categorical":
                 mapping = self.col_mapping_[col_idx]
-                mapping[np.nan] = self.missing_constant
+                mapping[np.nan] = missing_constant
                 vec_map = np.vectorize(
-                    lambda x: mapping[x] if x in mapping else self.unknown_constant
+                    lambda x: mapping[x] if x in mapping else unknown_constant
                 )
                 X_new[:, col_idx] = vec_map(col_data)
 
@@ -358,16 +344,15 @@ class BaseCoreEBM:
         # Core
         main_features,
         interactions,
-        holdout_split,
-        data_n_episodes,
+        validation_size,
+        max_rounds,
         early_stopping_tolerance,
-        early_stopping_run_length,
+        early_stopping_rounds,
         # Native
-        feature_step_n_inner_bags,
+        inner_bags,
         learning_rate,
-        boosting_step_episodes,
-        max_tree_splits,
-        min_cases_for_splits,
+        max_leaves,
+        min_samples_leaf,
         # Overall
         random_state,
     ):
@@ -381,17 +366,16 @@ class BaseCoreEBM:
         # Arguments for EBM beyond training a feature-step.
         self.main_features = main_features
         self.interactions = interactions
-        self.holdout_split = holdout_split
-        self.data_n_episodes = data_n_episodes
+        self.validation_size = validation_size
+        self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
-        self.early_stopping_run_length = early_stopping_run_length
+        self.early_stopping_rounds = early_stopping_rounds
 
         # Arguments for internal EBM.
-        self.feature_step_n_inner_bags = feature_step_n_inner_bags
+        self.inner_bags = inner_bags
         self.learning_rate = learning_rate
-        self.boosting_step_episodes = boosting_step_episodes
-        self.max_tree_splits = max_tree_splits
-        self.min_cases_for_splits = min_cases_for_splits
+        self.max_leaves = max_leaves
+        self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
         self.random_state = random_state
@@ -404,7 +388,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.holdout_split,
+            test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -431,16 +415,13 @@ class BaseCoreEBM:
         ):
             main_feature_indices = [[x] for x in self.main_features]
         else:  # pragma: no cover
-            raise RuntimeError("Argument 'main_attr' has invalid value")
+            raise RuntimeError("Argument 'mains' has invalid value")
 
-        main_feature_combinations = EBMUtils.gen_feature_combinations(
-            main_feature_indices
-        )
-        self.feature_combinations_ = []
+        self.feature_groups_ = []
         self.model_ = []
 
         # Train main effects
-        self._fit_main(main_feature_combinations, X_train, y_train, X_val, y_val)
+        self._fit_main(main_feature_indices, X_train, y_train, X_val, y_val)
 
         # Build interaction terms, if required
         self.inter_indices_, self.inter_scores_ = self._build_interactions(
@@ -455,7 +436,7 @@ class BaseCoreEBM:
 
         return self
 
-    def _fit_main(self, main_feature_combinations, X_train, y_train, X_val, y_val):
+    def _fit_main(self, main_feature_groups, X_train, y_train, X_val, y_val):
         log.info("Train main effects")
 
         (
@@ -466,26 +447,25 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=main_feature_combinations,
+            feature_combinations=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
             scores_train=None,
             X_val=X_val,
             y_val=y_val,
             scores_val=None,
-            n_inner_bags=self.feature_step_n_inner_bags,
+            n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_tree_splits=self.max_tree_splits,
-            min_cases_for_splits=self.min_cases_for_splits,
-            boosting_step_episodes=self.boosting_step_episodes,
-            data_n_episodes=self.data_n_episodes,
+            max_leaves=self.max_leaves,
+            min_samples_leaf=self.min_samples_leaf,
+            max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
-            early_stopping_run_length=self.early_stopping_run_length,
+            early_stopping_rounds=self.early_stopping_rounds,
             name="Main",
         )
 
-        self.feature_combinations_ = main_feature_combinations
+        self.feature_groups_ = main_feature_groups
 
         return
 
@@ -494,7 +474,7 @@ class BaseCoreEBM:
             log.info("Estimating with FAST")
 
             scores_train = EBMUtils.decision_function(
-                X_train, self.feature_combinations_, self.model_, self.intercept_
+                X_train, self.feature_groups_, self.model_, self.intercept_
             )
 
             iter_feature_combinations = combinations(range(len(self.col_types)), 2)
@@ -508,7 +488,7 @@ class BaseCoreEBM:
                 X=X_train,
                 y=y_train,
                 scores=scores_train,
-                min_cases_for_splits=self.min_cases_for_splits,
+                min_samples_leaf=self.min_samples_leaf,
             )
         elif isinstance(self.interactions, int) and self.interactions == 0:
             final_indices = []
@@ -528,13 +508,11 @@ class BaseCoreEBM:
         log.info("Training interactions")
 
         scores_train = EBMUtils.decision_function(
-            X_train, self.feature_combinations_, self.model_, self.intercept_
+            X_train, self.feature_groups_, self.model_, self.intercept_
         )
         scores_val = EBMUtils.decision_function(
-            X_val, self.feature_combinations_, self.model_, self.intercept_
+            X_val, self.feature_groups_, self.model_, self.intercept_
         )
-
-        inter_feature_combinations = EBMUtils.gen_feature_combinations(inter_indices)
 
         (
             model_update,
@@ -544,27 +522,26 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=inter_feature_combinations,
+            feature_combinations=inter_indices,
             X_train=X_train,
             y_train=y_train,
             scores_train=scores_train,
             X_val=X_val,
             y_val=y_val,
             scores_val=scores_val,
-            n_inner_bags=self.feature_step_n_inner_bags,
+            n_inner_bags=self.inner_bags,
             random_state=self.random_state,
             learning_rate=self.learning_rate,
-            max_tree_splits=self.max_tree_splits,
-            min_cases_for_splits=self.min_cases_for_splits,
-            boosting_step_episodes=self.boosting_step_episodes,
-            data_n_episodes=self.data_n_episodes,
+            max_leaves=self.max_leaves,
+            min_samples_leaf=self.min_samples_leaf,
+            max_rounds=self.max_rounds,
             early_stopping_tolerance=self.early_stopping_tolerance,
-            early_stopping_run_length=self.early_stopping_run_length,
+            early_stopping_rounds=self.early_stopping_rounds,
             name="Pair",
         )
 
         self.model_.extend(model_update)
-        self.feature_combinations_.extend(inter_feature_combinations)
+        self.feature_groups_.extend(inter_indices)
 
         return
 
@@ -579,7 +556,7 @@ class BaseCoreEBM:
         X_train, X_val, y_train, y_val = EBMUtils.ebm_train_test_split(
             X,
             y,
-            test_size=self.holdout_split,
+            test_size=self.validation_size,
             random_state=self.random_state,
             is_classification=self.model_type == "classification",
         )
@@ -588,7 +565,6 @@ class BaseCoreEBM:
         return self
 
 
-# TODO PK v.2 Should we be exposing data in this class, or use helper functions to return the values?
 class BaseEBM(BaseEstimator):
     """Client facing SK EBM."""
 
@@ -601,56 +577,40 @@ class BaseEBM(BaseEstimator):
     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
     # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
-    # According to scikit-learn convention, everything related to the dataset should be passed into the fit function, but
-    # also according to convention the fit function should have only X, y, and instance weights.  For intelligibility
-    # we need to include things like the names of features, so we need to break one of these rules.  We have chosen
-    # to pass information about the dataset into the __init__ function because then it's possible to do the training
-    # first and then later set things like the features names after training.  Also, people have become accustomed
-    # to passing optional parameters into the __init__ function, but not the fit function, so we maintain that by
-    # using __init__.  This is slightly inconcistent if the user passes in a pandas DataFrame which has feature column names,
-    # but this still gives the user ultimate control since they can either keep the DataFrame names or pass in new ones to __init__
-    # Lastly, scikit-learn probably doesn't include X, y, and weights in __init__ because those should be pickled given their
-    # potential size.  We don't have that issue with our smaller extra dataset dependent parameters
-
-    # TODO PK v.2 per above, we've decided to pass information related to the dataset in via __init__, but
-    #             we need to decide then if we inlcude the trailing underscores for these variables, which include:
-    #             feature_names, feature_types, schema, main_attr, interactions (for specific columns)
-    #             per : https://scikit-learn.org/dev/developers/develop.html
-    #             "Attributes that have been estimated from the data must always have a name ending with trailing underscore,
-    #             for example the coefficients of some regression estimator would be stored in a coef_ attribute after fit has been called."
-
     def __init__(
         self,
         # Explainer
-        # TODO PK v.2 feature_names is currently by feature_combination.  Perahps we need to make one per
-        # feature as well, so would be called feature_names_by_feature and feature_names_by_feature_combination
-        feature_names=None,
-        # TODO PK v.2 look at how sklearn has thought about feature types -> https://github.com/scikit-learn/scikit-learn/pull/3346
-        #      also look at lightGBM's categorical_feature parameter
-        #      https://towardsdatascience.com/catboost-vs-light-gbm-vs-xgboost-5f93620723db
         #
-        # TODO PK v.2 feature_types is currently by feature_combination.  Perahps we need to make one per
-        # feature as well, so would be called feature_types_by_feature and feature_types_by_feature_combination
-        feature_types=None,
+        # feature_names in scikit-learn convention should probably be passed in via the fit function.  Also,
+        #   we can get feature_names via pandas dataframes, and those would only be known at fit time, so
+        #   we need a version of feature_names_out_ with the underscore to indicate items set at fit time.
+        #   Despite this, we need to recieve a list of feature_names here to be compatible with blackbox explainations
+        #   where we still need to have feature_names, but we do not have a fit function since we explain existing
+        #   models without fitting them ourselves.  To conform to a common explaination API we get the feature_names
+        #   here.
+        feature_names,
+
+        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate 
+        #   feature_types.  The benefit to them is that they can accept multiple ways of specifying categoricals like:
+        #   categorical = [true, false, true, true] OR categorical = [1, 4, 8] OR categorical = 'all'/'auto'/'none'
+        #   We're choosing a different route because for visualization we want to be able to express multiple
+        #   different types of data.  For example, if the user has data with strings of "low", "medium", "high"
+        #   We want to keep both the ordinal nature of this feature and we wish to preserve the text for visualization
+        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't 
+        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings 
+        #   back anyways.  So we need some way to express both the categorical nature of features and the order 
+        #   mapping.  We can do this and more complicated conversions via:
+        #   feature_types = ["categorical", ["low", "medium", "high"], "continuous", "time", "bool"]
+        feature_types,
         # Data
-        # TODO PK v.2 either add a bin_cuts parameter here, or add a preprocessor/transformer class input parameter here so that the user
-        #             can specify a common algorithm for bin cutting to compare against other algorithms.
-        #             PK -> I favor the simple solution of just passing in bin_cuts, since the user can then specify their own bin_cuts, which could be important
-        #             for AUC or interpretability visualizations.  Anyone wanting to do specialized work in comparing our algorithm against others may want
-        #             to precisely duplicate our binning procedure, but this is a very very small subset of our users, so they can just
-        #             copy our internal bin cutting function -> we can make this easier by having a clean function just for bin cutting
-        #             that other people can either call or copy if they want to do this specialized work of having exactly the same
-        #             bins across two different ML algorithms.
-        # TODO PK v.2 can we eliminate the schema parameter given that we also take feature_names and feature_types definitions in this interface?
-        schema=None,
+        #
+        # TODO PK v.3 add a bin_cuts parameter to allow the user to control binning
         # Ensemble
-        n_estimators=16,
-        # TODO PK v.2 holdout_size doesn't seem to do anything.  Eliminate.  holdout_split is used
-        holdout_size=0.15,
-        scoring=None,
+        outer_bags,
+        inner_bags,
         # Core
-        # TODO PK v.2 change main_attr -> main_features (also look for anything with attr in it)
-        main_attr="all",
+        # TODO PK v.3 mains will be deprecated in the future in favor of "boosting_stage_plan"
+        mains,
         # TODO PK v.2 we should probably have two types of interaction terms.
         #             The first is either a number or array of numbres that indicates
         #             how many interactions at each dimension level (starting at two)
@@ -663,31 +623,24 @@ class BaseEBM(BaseEstimator):
         # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
         #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
         # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
-        interactions=0,
-        # TODO PK v.2 use validation_size instead of holdout_split, since sklearn uses "test_size"
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        # TODO PK v.2 eliminate early_stopping_tolerance (use zero for this!)
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
+        interactions,
+        validation_size,
+        max_rounds,
+        early_stopping_tolerance,
+        early_stopping_rounds,
         # Native
-        # TODO PK v.2 feature_step_n_inner_bags -> n_inner_bags
-        feature_step_n_inner_bags=0,
-        learning_rate=0.01,
-        # TODO PK v.2 eliminate training_step_episodes (if not, rename to boosting_step_episodes)
-        training_step_episodes=1,
-        max_tree_splits=2,
+        learning_rate,
+        max_leaves,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-        # TODO PK v.2: try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
-        # For now do no harm and choose a value close to our original of zero
-        min_cases_for_splits=2,
+        # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
+        min_samples_leaf,
         # Overall
-        n_jobs=-2,
-        random_state=42,
+        n_jobs,
+        random_state,
         # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
+        binning,
+        max_bins,
     ):
         # TODO PK sanity check all our inputs
 
@@ -695,36 +648,30 @@ class BaseEBM(BaseEstimator):
         self.feature_names = feature_names
         self.feature_types = feature_types
 
-        # Arguments for data
-        self.schema = schema
-
         # Arguments for ensemble
-        self.n_estimators = n_estimators
-        self.holdout_size = holdout_size
-        self.scoring = scoring
+        self.outer_bags = outer_bags
+        self.inner_bags = inner_bags
 
         # Arguments for EBM beyond training a feature-step.
-        self.main_attr = main_attr
+        self.mains = mains
         self.interactions = interactions
-        self.holdout_split = holdout_split
-        self.data_n_episodes = data_n_episodes
+        self.validation_size = validation_size
+        self.max_rounds = max_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
-        self.early_stopping_run_length = early_stopping_run_length
+        self.early_stopping_rounds = early_stopping_rounds
 
         # Arguments for internal EBM.
-        self.feature_step_n_inner_bags = feature_step_n_inner_bags
         self.learning_rate = learning_rate
-        self.training_step_episodes = training_step_episodes
-        self.max_tree_splits = max_tree_splits
-        self.min_cases_for_splits = min_cases_for_splits
+        self.max_leaves = max_leaves
+        self.min_samples_leaf = min_samples_leaf
 
         # Arguments for overall
         self.n_jobs = n_jobs
         self.random_state = random_state
 
         # Arguments for preprocessor
-        self.binning_strategy = binning_strategy
-        self.max_n_bins = max_n_bins
+        self.binning = binning
+        self.max_bins = max_bins
 
     # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
     #       doesn't like parameters in the fit function, other than ones like weights that have
@@ -760,16 +707,12 @@ class BaseEBM(BaseEstimator):
 
         # Build preprocessor
         self.preprocessor_ = EBMPreprocessor(
-            schema=self.schema,
-            max_n_bins=self.max_n_bins,
-            binning_strategy=self.binning_strategy,
             feature_names=self.feature_names,
             feature_types=self.feature_types,
+            max_bins=self.max_bins,
+            binning=self.binning,
         )
         self.preprocessor_.fit(X)
-
-        # TODO PK v.2 get rid of self.schema_ here since that's already included in self.preprocessor_.schema_
-        self.schema_ = self.preprocessor_.schema_
 
         X_orig = X
         X = self.preprocessor_.transform(X)
@@ -785,25 +728,24 @@ class BaseEBM(BaseEstimator):
                 raise RuntimeError(
                     "Multiclass with interactions currently not supported."
                 )
-            for i in range(self.n_estimators):
+            for i in range(self.outer_bags):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="classification",
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
                     # Core
-                    main_features=self.main_attr,
+                    main_features=self.mains,
                     interactions=self.interactions,
-                    holdout_split=self.holdout_split,
-                    data_n_episodes=self.data_n_episodes,
+                    validation_size=self.validation_size,
+                    max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
-                    early_stopping_run_length=self.early_stopping_run_length,
+                    early_stopping_rounds=self.early_stopping_rounds,
                     # Native
-                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    boosting_step_episodes=self.training_step_episodes,
-                    max_tree_splits=self.max_tree_splits,
-                    min_cases_for_splits=self.min_cases_for_splits,
+                    max_leaves=self.max_leaves,
+                    min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
                 )
@@ -811,34 +753,28 @@ class BaseEBM(BaseEstimator):
         else:
             n_classes = -1
             y = y.astype(np.float64, casting="unsafe", copy=False)
-            for i in range(self.n_estimators):
+            for i in range(self.outer_bags):
                 estimator = BaseCoreEBM(
                     # Data
                     model_type="regression",
                     col_types=self.preprocessor_.col_types_,
                     col_n_bins=self.preprocessor_.col_n_bins_,
                     # Core
-                    main_features=self.main_attr,
+                    main_features=self.mains,
                     interactions=self.interactions,
-                    holdout_split=self.holdout_split,
-                    data_n_episodes=self.data_n_episodes,
+                    validation_size=self.validation_size,
+                    max_rounds=self.max_rounds,
                     early_stopping_tolerance=self.early_stopping_tolerance,
-                    early_stopping_run_length=self.early_stopping_run_length,
+                    early_stopping_rounds=self.early_stopping_rounds,
                     # Native
-                    feature_step_n_inner_bags=self.feature_step_n_inner_bags,
+                    inner_bags=self.inner_bags,
                     learning_rate=self.learning_rate,
-                    boosting_step_episodes=self.training_step_episodes,
-                    max_tree_splits=self.max_tree_splits,
-                    min_cases_for_splits=self.min_cases_for_splits,
+                    max_leaves=self.max_leaves,
+                    min_samples_leaf=self.min_samples_leaf,
                     # Overall
                     random_state=self.random_state + i,
                 )
                 estimators.append(estimator)
-
-        # TODO PK v.2 eliminate self.n_classes_ for our public interface BaseEBM
-        #             and let our consumers use len(self.classes_) like scikit
-        #             our private BaseCoreEBM should continue to keep n_classes_
-        self.n_classes_ = n_classes
 
         # Train base models for main effects, pair detection.
 
@@ -846,7 +782,7 @@ class BaseEBM(BaseEstimator):
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                EBMUtils.get_count_scores_c(self.n_classes_),
+                EBMUtils.get_count_scores_c(n_classes),
                 dtype=np.float64,
                 order="C",
             )
@@ -859,7 +795,7 @@ class BaseEBM(BaseEstimator):
             return estimator.fit_parallel(X, y, n_classes)
 
         train_model_args_iter = (
-            (estimators[i], X, y, n_classes) for i in range(self.n_estimators)
+            (estimators[i], X, y, n_classes) for i in range(self.outer_bags)
         )
 
         estimators = provider.parallel(train_model, train_model_args_iter)
@@ -873,14 +809,14 @@ class BaseEBM(BaseEstimator):
                 new_model = []
                 new_feature_combinations = []
                 for i, feature_combination in enumerate(
-                    estimator.feature_combinations_
+                    estimator.feature_groups_
                 ):
-                    if len(feature_combination["attributes"]) != 1:
+                    if len(feature_combination) != 1:
                         continue
                     new_model.append(estimator.model_[i])
-                    new_feature_combinations.append(estimator.feature_combinations_[i])
+                    new_feature_combinations.append(estimator.feature_groups_[i])
                 estimator.model_ = new_model
-                estimator.feature_combinations_ = new_feature_combinations
+                estimator.feature_groups_ = new_feature_combinations
                 estimator.inter_episode_idx_ = 0
 
             if len(pair_indices) != 0:
@@ -892,7 +828,7 @@ class BaseEBM(BaseEstimator):
 
                 staged_fit_args_iter = (
                     (estimators[i], X, y, pair_indices)
-                    for i in range(self.n_estimators)
+                    for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -903,36 +839,26 @@ class BaseEBM(BaseEstimator):
         else:  # pragma: no cover
             raise RuntimeError("Argument 'interaction' has invalid value")
 
-        self.inter_indices_ = pair_indices
-
         X = np.ascontiguousarray(X.T)
 
-        # Average base models into one.
-        self.attributes_ = EBMUtils.gen_features(
-            self.preprocessor_.col_types_, self.preprocessor_.col_n_bins_
-        )
-        if isinstance(self.main_attr, str) and self.main_attr == "all":
-            main_indices = [[x] for x in range(len(self.attributes_))]
-        elif isinstance(self.main_attr, list) and all(
-            isinstance(x, int) for x in self.main_attr
+        if isinstance(self.mains, str) and self.mains == "all":
+            main_indices = [[x] for x in range(X.shape[0])]
+        elif isinstance(self.mains, list) and all(
+            isinstance(x, int) for x in self.mains
         ):
-            main_indices = [[x] for x in self.main_attr]
+            main_indices = [[x] for x in self.mains]
         else:  # pragma: no cover
-            msg = "Argument 'main_attr' has invalid value (valid values are 'all'|list<int>): {}".format(
-                self.main_attr
+            msg = "Argument 'mains' has invalid value (valid values are 'all'|list<int>): {}".format(
+                self.mains
             )
             raise RuntimeError(msg)
 
-        # TODO PK v.2 attribute_sets_ -> feature_combinations_
-        self.attribute_sets_ = EBMUtils.gen_feature_combinations(main_indices)
-        self.attribute_sets_.extend(EBMUtils.gen_feature_combinations(pair_indices))
+        self.feature_groups_ = main_indices + pair_indices
 
         # Merge estimators into one.
-        # TODO PK v.2 consider exposing our models as pandas.NDFrame
-        # TODO PK v.2 attribute_set_models_ -> model_
-        self.attribute_set_models_ = []
-        self.model_errors_ = []
-        for index, _ in enumerate(self.attribute_sets_):
+        self.additive_terms_ = []
+        self.term_standard_deviations_ = []
+        for index, _ in enumerate(self.feature_groups_):
             log_odds_tensors = []
             for estimator in estimators:
                 log_odds_tensors.append(estimator.model_[index])
@@ -940,31 +866,29 @@ class BaseEBM(BaseEstimator):
             averaged_model = np.average(np.array(log_odds_tensors), axis=0)
             model_errors = np.std(np.array(log_odds_tensors), axis=0)
 
-            # TODO PK v.2 if we end up choosing to expand/contract by removing
-            #             logits from multiclass models, averaged_model
-            #             do it HERE AND apply post processing before returning
-
-            self.attribute_set_models_.append(averaged_model)
-            self.model_errors_.append(model_errors)
+            self.additive_terms_.append(averaged_model)
+            self.term_standard_deviations_.append(model_errors)
 
         # Get episode indexes for base estimators.
-        self.main_episode_idxs_ = []
-        # TODO PK v.2 inter_episode_idxs_ -> interaction_episode_idxs_
-        #             (but does this need to be exposed at all)
-        self.inter_episode_idxs_ = []
+        main_episode_idxs = []
+        inter_episode_idxs = []
         for estimator in estimators:
-            self.main_episode_idxs_.append(estimator.main_episode_idx_)
-            self.inter_episode_idxs_.append(estimator.inter_episode_idx_)
+            main_episode_idxs.append(estimator.main_episode_idx_)
+            inter_episode_idxs.append(estimator.inter_episode_idx_)
+
+        self.breakpoint_iteration_ = [main_episode_idxs]
+        if len(pair_indices) != 0:
+            self.breakpoint_iteration_.append(inter_episode_idxs)
 
         # Extract feature names and feature types.
         self.feature_names = []
         self.feature_types = []
-        for index, feature_combination in enumerate(self.attribute_sets_):
+        for index, feature_indices in enumerate(self.feature_groups_):
             feature_name = EBMUtils.gen_feature_name(
-                feature_combination["attributes"], self.preprocessor_.col_names_
+                feature_indices, self.preprocessor_.col_names_
             )
             feature_type = EBMUtils.gen_feature_type(
-                feature_combination["attributes"], self.preprocessor_.col_types_
+                feature_indices, self.preprocessor_.col_types_
             )
             self.feature_types.append(feature_type)
             self.feature_names.append(feature_name)
@@ -972,43 +896,40 @@ class BaseEBM(BaseEstimator):
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
             scores_gen = EBMUtils.scores_by_feature_combination(
-                X, self.attribute_sets_, self.attribute_set_models_
+                X, self.feature_groups_, self.additive_terms_
             )
-            # TODO PK v.2 _attrib_set_model_means_ -> _model_means_
-            # (or something else matching what this is being used for)
-            # also look for anything with attrib inside of it
-            self._attrib_set_model_means_ = []
+            self._original_term_means_ = []
 
-            for set_idx, feature_combination, scores in scores_gen:
+            for set_idx, _, scores in scores_gen:
                 score_mean = np.mean(scores)
 
-                self.attribute_set_models_[set_idx] = (
-                    self.attribute_set_models_[set_idx] - score_mean
+                self.additive_terms_[set_idx] = (
+                    self.additive_terms_[set_idx] - score_mean
                 )
 
                 # Add mean center adjustment back to intercept
                 self.intercept_ += score_mean
-                self._attrib_set_model_means_.append(score_mean)
+                self._original_term_means_.append(score_mean)
         else:
             # Postprocess model graphs for multiclass
             binned_predict_proba = lambda x: EBMUtils.classifier_predict_proba(
-                x, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+                x, self.feature_groups_, self.additive_terms_, self.intercept_
             )
 
             postprocessed = multiclass_postprocess(
-                X, self.attribute_set_models_, binned_predict_proba, self.feature_types
+                X, self.additive_terms_, binned_predict_proba, self.feature_types
             )
-            self.attribute_set_models_ = postprocessed["feature_graphs"]
+            self.additive_terms_ = postprocessed["feature_graphs"]
             self.intercept_ = postprocessed["intercepts"]
 
         # Generate overall importance
         scores_gen = EBMUtils.scores_by_feature_combination(
-            X, self.attribute_sets_, self.attribute_set_models_
+            X, self.feature_groups_, self.additive_terms_
         )
-        self.mean_abs_scores_ = []
-        for set_idx, feature_combination, scores in scores_gen:
+        self.feature_importances_ = []
+        for set_idx, _, scores in scores_gen:
             mean_abs_score = np.mean(np.abs(scores))
-            self.mean_abs_scores_.append(mean_abs_score)
+            self.feature_importances_.append(mean_abs_score)
 
         # Generate selector
         self.global_selector = gen_global_selector(
@@ -1066,13 +987,13 @@ class BaseEBM(BaseEstimator):
             _, X_val, _, y_val = EBMUtils.ebm_train_test_split(
                 X,
                 y,
-                test_size=self.holdout_split,
+                test_size=self.validation_size,
                 random_state=estimator.random_state,
                 is_classification=is_classifier(self),
                 is_train=False,
             )
 
-            n_base_feature_combinations = len(estimator.feature_combinations_) - len(
+            n_base_feature_combinations = len(estimator.feature_groups_) - len(
                 estimator.inter_indices_
             )
 
@@ -1080,7 +1001,7 @@ class BaseEBM(BaseEstimator):
                 estimator.model_type,
                 X_val,
                 y_val,
-                estimator.feature_combinations_[:n_base_feature_combinations],
+                estimator.feature_groups_[:n_base_feature_combinations],
                 estimator.model_[:n_base_feature_combinations],
                 estimator.intercept_,
             )
@@ -1088,7 +1009,7 @@ class BaseEBM(BaseEstimator):
                 estimator.model_type,
                 X_val,
                 y_val,
-                estimator.feature_combinations_,
+                estimator.feature_groups_,
                 estimator.model_,
                 estimator.intercept_,
             )
@@ -1101,8 +1022,8 @@ class BaseEBM(BaseEstimator):
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_combinations_[:n_full_idx]
-                    + estimator.feature_combinations_[n_full_idx + 1 :],
+                    estimator.feature_groups_[:n_full_idx]
+                    + estimator.feature_groups_[n_full_idx + 1 :],
                     estimator.model_[:n_full_idx] + estimator.model_[n_full_idx + 1 :],
                     estimator.intercept_,
                 )
@@ -1110,8 +1031,8 @@ class BaseEBM(BaseEstimator):
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_combinations_[:n_base_feature_combinations]
-                    + estimator.feature_combinations_[n_full_idx : n_full_idx + 1],
+                    estimator.feature_groups_[:n_base_feature_combinations]
+                    + estimator.feature_groups_[n_full_idx : n_full_idx + 1],
                     estimator.model_[:n_base_feature_combinations]
                     + estimator.model_[n_full_idx : n_full_idx + 1],
                     estimator.intercept_,
@@ -1144,7 +1065,7 @@ class BaseEBM(BaseEstimator):
         pair_weighted_ranks = sorted(pair_weighted_ranks.items(), key=lambda x: x[1])
 
         # Retrieve top K pairs
-        pair_indices = [x[0] for x in pair_weighted_ranks[: self.interactions]]
+        pair_indices = [list(x[0]) for x in pair_weighted_ranks[: self.interactions]]
 
         return pair_indices
 
@@ -1166,10 +1087,9 @@ class BaseEBM(BaseEstimator):
         X = np.ascontiguousarray(X.T)
 
         decision_scores = EBMUtils.decision_function(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.additive_terms_, self.intercept_
         )
 
-        # TODO PK v.2 these decision_scores are unexpanded.  We need to expand them
         return decision_scores
 
     def explain_global(self, name=None):
@@ -1190,11 +1110,11 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, feature_combination in enumerate(
-            self.attribute_sets_
+        for feature_combination_index, _ in enumerate(
+            self.feature_groups_
         ):
-            errors = self.model_errors_[feature_combination_index]
-            scores = self.attribute_set_models_[feature_combination_index]
+            errors = self.term_standard_deviations_[feature_combination_index]
+            scores = self.additive_terms_[feature_combination_index]
 
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
@@ -1205,16 +1125,13 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_combination_index, feature_combination in enumerate(
-            self.attribute_sets_
+        for feature_combination_index, feature_indexes in enumerate(
+            self.feature_groups_
         ):
-            model_graph = self.attribute_set_models_[feature_combination_index]
+            model_graph = self.additive_terms_[feature_combination_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = self.model_errors_[feature_combination_index]
-            feature_indexes = self.attribute_sets_[feature_combination_index][
-                "attributes"
-            ]
+            errors = self.term_standard_deviations_[feature_combination_index]
 
             if len(feature_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
@@ -1283,7 +1200,7 @@ class BaseEBM(BaseEstimator):
         overall_dict = {
             "type": "univariate",
             "names": self.feature_names,
-            "scores": self.mean_abs_scores_,
+            "scores": self.feature_importances_,
         }
         internal_obj = {
             "overall": overall_dict,
@@ -1332,7 +1249,7 @@ class BaseEBM(BaseEstimator):
         instances = np.ascontiguousarray(instances.T)
 
         scores_gen = EBMUtils.scores_by_feature_combination(
-            instances, self.attribute_sets_, self.attribute_set_models_
+            instances, self.feature_groups_, self.additive_terms_
         )
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
@@ -1340,7 +1257,7 @@ class BaseEBM(BaseEstimator):
         n_rows = instances.shape[1]
         data_dicts = []
         intercept = self.intercept_
-        if self.n_classes_ <= 2:
+        if not is_classifier(self) or len(self.classes_) <= 2:
             if isinstance(self.intercept_, np.ndarray) or isinstance(
                 self.intercept_, list
             ):
@@ -1361,9 +1278,9 @@ class BaseEBM(BaseEstimator):
                 feature_name = self.feature_names[set_idx]
                 data_dicts[row_idx]["names"].append(feature_name)
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
-                if len(feature_combination["attributes"]) == 1:
+                if len(feature_combination) == 1:
                     data_dicts[row_idx]["values"].append(
-                        X[row_idx, feature_combination["attributes"][0]]
+                        X[row_idx, feature_combination[0]]
                     )
                 else:
                     data_dicts[row_idx]["values"].append("")
@@ -1371,15 +1288,15 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self):
             scores = EBMUtils.classifier_predict_proba(
                 instances,
-                self.attribute_sets_,
-                self.attribute_set_models_,
+                self.feature_groups_,
+                self.additive_terms_,
                 self.intercept_,
             )[:, 1]
         else:
             scores = EBMUtils.regressor_predict(
                 instances,
-                self.attribute_sets_,
-                self.attribute_set_models_,
+                self.feature_groups_,
+                self.additive_terms_,
                 self.intercept_,
             )
 
@@ -1398,7 +1315,7 @@ class BaseEBM(BaseEstimator):
                 {
                     "explanation_type": "ebm_local",
                     "value": {
-                        "scores": self.attribute_set_models_,
+                        "scores": self.additive_terms_,
                         "intercept": self.intercept_,
                         "perf": perf_list,
                     },
@@ -1436,88 +1353,76 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
-        # Data
-        schema=None,
-        # Ensemble
-        n_estimators=16,
-        holdout_size=0.15,
-        scoring=None,
-        # Core
-        main_attr="all",
+        # Preprocessor
+        max_bins=255,
+        binning="quantile",
+        # Stages
+        mains="all",
         interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
-        # Native
-        feature_step_n_inner_bags=0,
+        # Ensemble
+        outer_bags=16,
+        inner_bags=0,
+        # Boosting
         learning_rate=0.01,
-        training_step_episodes=1,
-        max_tree_splits=2,
-        min_cases_for_splits=2,
+        validation_size=0.15,
+        early_stopping_rounds=50,
+        early_stopping_tolerance=0,
+        max_rounds=5000,
+        # Trees
+        max_leaves=3,
+        min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
-        # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
     ):
-        super(ExplainableBoostingClassifier, self).__init__(
-            # Explainer
-            feature_names=feature_names,
-            feature_types=feature_types,
-            # Data
-            schema=schema,
-            # Ensemble
-            n_estimators=n_estimators,
-            holdout_size=holdout_size,
-            scoring=scoring,
-            # Core
-            main_attr=main_attr,
-            interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
-            # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
-            learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
-            max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
-            # Overall
-            n_jobs=n_jobs,
-            random_state=random_state,
-            # Preprocessor
-            binning_strategy=binning_strategy,
-            max_n_bins=max_n_bins,
-        )
         """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            schema: Unused, due for deprecation.
-            n_estimators: Number of outer bags.
-            holdout_size: Unused, due for deprecation.
-            scoring: Unused, due for deprecation.
-            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            holdout_split: Validation set size for boosting.
-            data_n_episodes: Number of rounds for boosting.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
-            feature_step_n_inner_bags: Number of inner bags.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            training_step_episodes: Research use only.
-            max_tree_splits: Maximum tree splits used in boosting.
-            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            validation_size: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_n_bins: Max number of bins per feature for pre-processing stage.
         """
+        super(ExplainableBoostingClassifier, self).__init__(
+            # Explainer
+            feature_names=feature_names,
+            feature_types=feature_types,
+            # Preprocessor
+            max_bins=max_bins,
+            binning=binning,
+            # Stages
+            mains=mains,
+            interactions=interactions,
+            # Ensemble
+            outer_bags=outer_bags,
+            inner_bags=inner_bags,
+            # Boosting
+            learning_rate=learning_rate,
+            validation_size=validation_size,
+            early_stopping_rounds=early_stopping_rounds,
+            early_stopping_tolerance=early_stopping_tolerance,
+            max_rounds=max_rounds,
+            # Trees
+            max_leaves=max_leaves,
+            min_samples_leaf=min_samples_leaf,
+            # Overall
+            n_jobs=n_jobs,
+            random_state=random_state,
+        )
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
@@ -1538,7 +1443,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         X = np.ascontiguousarray(X.T)
 
         prob = EBMUtils.classifier_predict_proba(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.additive_terms_, self.intercept_
         )
         return prob
 
@@ -1561,8 +1466,8 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
         return EBMUtils.classifier_predict(
             X,
-            self.attribute_sets_,
-            self.attribute_set_models_,
+            self.feature_groups_,
+            self.additive_terms_,
             self.intercept_,
             self.classes_,
         )
@@ -1582,87 +1487,75 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         # Explainer
         feature_names=None,
         feature_types=None,
-        # Data
-        schema=None,
-        # Ensemble
-        n_estimators=16,
-        holdout_size=0.15,
-        scoring=None,
-        # Core
-        main_attr="all",
+        # Preprocessor
+        max_bins=255,
+        binning="quantile",
+        # Stages
+        mains="all",
         interactions=0,
-        holdout_split=0.15,
-        data_n_episodes=2000,
-        early_stopping_tolerance=1e-5,
-        early_stopping_run_length=50,
-        # Native
-        feature_step_n_inner_bags=0,
+        # Ensemble
+        outer_bags=16,
+        inner_bags=0,
+        # Boosting
         learning_rate=0.01,
-        training_step_episodes=1,
-        max_tree_splits=2,
-        min_cases_for_splits=2,
+        validation_size=0.15,
+        early_stopping_rounds=50,
+        early_stopping_tolerance=0,
+        max_rounds=5000,
+        # Trees
+        max_leaves=3,
+        min_samples_leaf=2,
         # Overall
         n_jobs=-2,
         random_state=42,
-        # Preprocessor
-        binning_strategy="quantile",
-        max_n_bins=255,
     ):
         """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog.
 
         Args:
             feature_names: List of feature names.
             feature_types: List of feature types.
-            schema: Unused, due for deprecation.
-            n_estimators: Number of outer bags.
-            holdout_size: Unused, due for deprecation.
-            scoring: Unused, due for deprecation.
-            main_attr: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
+            max_bins: Max number of bins per feature for pre-processing stage.
+            binning: Method to bin values for pre-processing. Choose "uniform" or "quantile".
+            mains: Features to be trained on in main effects stage. Either "all" or a list of feature indexes.
             interactions: Interactions to be trained on.
                 Either a list of lists of feature indices, or an integer for number of automatically detected interactions.
-            holdout_split: Validation set size for boosting.
-            data_n_episodes: Number of rounds for boosting.
-            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
-            early_stopping_run_length: Number of rounds of no improvement to trigger early stopping.
-            feature_step_n_inner_bags: Number of inner bags.
+            outer_bags: Number of outer bags.
+            inner_bags: Number of inner bags.
             learning_rate: Learning rate for boosting.
-            training_step_episodes: Research use only.
-            max_tree_splits: Maximum tree splits used in boosting.
-            min_cases_for_splits: Minimum number of cases for tree splits used in boosting.
+            validation_size: Validation set size for boosting.
+            early_stopping_rounds: Number of rounds of no improvement to trigger early stopping.
+            early_stopping_tolerance: Tolerance that dictates the smallest delta required to be considered an improvement.
+            max_rounds: Number of rounds for boosting.
+            max_leaves: Maximum leaf nodes used in boosting.
+            min_samples_leaf: Minimum number of cases for tree splits used in boosting.
             n_jobs: Number of jobs to run in parallel.
             random_state: Random state.
-            binning_strategy: Method to bin values for pre-processing. Choose "uniform" or "quantile".
-            max_n_bins: Max number of bins per feature for pre-processing stage.
         """
         super(ExplainableBoostingRegressor, self).__init__(
             # Explainer
             feature_names=feature_names,
             feature_types=feature_types,
-            # Data
-            schema=schema,
-            # Ensemble
-            n_estimators=n_estimators,
-            holdout_size=holdout_size,
-            scoring=scoring,
-            # Core
-            main_attr=main_attr,
+            # Preprocessor
+            max_bins=max_bins,
+            binning=binning,
+            # Stages
+            mains=mains,
             interactions=interactions,
-            holdout_split=holdout_split,
-            data_n_episodes=data_n_episodes,
-            early_stopping_tolerance=early_stopping_tolerance,
-            early_stopping_run_length=early_stopping_run_length,
-            # Native
-            feature_step_n_inner_bags=feature_step_n_inner_bags,
+            # Ensemble
+            outer_bags=outer_bags,
+            inner_bags=inner_bags,
+            # Boosting
             learning_rate=learning_rate,
-            training_step_episodes=training_step_episodes,
-            max_tree_splits=max_tree_splits,
-            min_cases_for_splits=min_cases_for_splits,
+            validation_size=validation_size,
+            early_stopping_rounds=early_stopping_rounds,
+            early_stopping_tolerance=early_stopping_tolerance,
+            max_rounds=max_rounds,
+            # Trees
+            max_leaves=max_leaves,
+            min_samples_leaf=min_samples_leaf,
             # Overall
             n_jobs=n_jobs,
             random_state=random_state,
-            # Preprocessor
-            binning_strategy=binning_strategy,
-            max_n_bins=max_n_bins,
         )
 
     def predict(self, X):
@@ -1683,5 +1576,5 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         X = np.ascontiguousarray(X.T)
 
         return EBMUtils.regressor_predict(
-            X, self.attribute_sets_, self.attribute_set_models_, self.intercept_
+            X, self.feature_groups_, self.additive_terms_, self.intercept_
         )
