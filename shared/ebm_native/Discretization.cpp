@@ -752,7 +752,6 @@ size_t SplitSegment(
 
    const size_t iValuesStart,
    const size_t cSplittableItems,
-   const FloatEbmType * const aValues,
    const NeighbourJump * const aNeighbourJumps,
 
    // prior to calling this function, the caller must remove the endpoints if any
@@ -769,7 +768,6 @@ size_t SplitSegment(
    EBM_ASSERT(1 <= cMinimumInstancesPerBin);
    // we need to be able to put down at least one split not at the edges
    EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
-   EBM_ASSERT(nullptr != aValues);
    EBM_ASSERT(nullptr != aNeighbourJumps);
    EBM_ASSERT(1 <= cCENTERSplitsAssigned);
    EBM_ASSERT(cCENTERSplitsAssigned + 1 <= cSplittableItems / cMinimumInstancesPerBin);
@@ -1012,11 +1010,15 @@ size_t SplitSegment(
          const FloatEbmType distance = iFractionalAspirational - iFractionalMoving;
          const FloatEbmType distanceScaled = distance * scaleEarlier;
 
-         // for now allow a range that is less than cMinimumInstancesPerBin in length.  We haven't materialized
-         // it here, so there's a chance things will ultimately resolve with this bin being greater than
-         // cMinimumInstancesPerBin.  Even if we end up with a bin less than cMinimumInstancesPerBin after
-         // materializing, we try a post-process step that might create enough space for this range to expand
-         // into a large enough size
+         if(distanceScaled < cMinimumInstancesPerBin) {
+            // TODO : handle this
+
+            // for now allow a range that is less than cMinimumInstancesPerBin in length.  We haven't materialized
+            // it here, so there's a chance things will ultimately resolve with this bin being greater than
+            // cMinimumInstancesPerBin.  Even if we end up with a bin less than cMinimumInstancesPerBin after
+            // materializing, we try a post-process step that might create enough space for this range to expand
+            // into a large enough size
+         }
 
          const FloatEbmType iNewFractionalMoving = iFractionalActual - distanceScaled;
 
