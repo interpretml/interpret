@@ -1649,53 +1649,53 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                   FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
                   FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
-                  const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
-                  size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
-                  cCutsRemaining = StuffSplitsIntoSplittingRanges(
-                     cSplittingRanges,
-                     aSplittingRange,
-                     cMinimumInstancesPerBin,
-                     cCutsRemaining
-                  );
+                  //const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+                  //size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
+                  //cCutsRemaining = StuffSplitsIntoSplittingRanges(
+                  //   cSplittingRanges,
+                  //   aSplittingRange,
+                  //   cMinimumInstancesPerBin,
+                  //   cCutsRemaining
+                  //);
 
-                  for(size_t i = 0; i < cSplittingRanges; ++i) {
-                     size_t cCENTERSplitsAssigned = aSplittingRange[i].m_cSplitsAssigned;
-                     if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMin) {
-                        // our first and last SplittingRanges can either have a long range of equal items on their tail ends
-                        // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
-                        // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
-                        // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
-                        // side
+                  //for(size_t i = 0; i < cSplittingRanges; ++i) {
+                  //   size_t cCENTERSplitsAssigned = aSplittingRange[i].m_cSplitsAssigned;
+                  //   if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMin) {
+                  //      // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+                  //      // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+                  //      // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+                  //      // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
+                  //      // side
 
-                        ++cCENTERSplitsAssigned;
-                        if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMax) {
-                           // if there's just one range and there are no long ranges on either end, then one split will create
-                           // two ranges, so add 1 more.
+                  //      ++cCENTERSplitsAssigned;
+                  //      if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMax) {
+                  //         // if there's just one range and there are no long ranges on either end, then one split will create
+                  //         // two ranges, so add 1 more.
 
-                           ++cCENTERSplitsAssigned;
-                        }
-                     }
-                     if(3 <= cCENTERSplitsAssigned) {
-                        // take our the end splits
-                        cCENTERSplitsAssigned -= 2;
+                  //         ++cCENTERSplitsAssigned;
+                  //      }
+                  //   }
+                  //   if(3 <= cCENTERSplitsAssigned) {
+                  //      // take our the end splits
+                  //      cCENTERSplitsAssigned -= 2;
 
-                        std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
+                  //      std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
 
-                        //TradeSplitSegment(
-                        //   &bestSplitPoints,
-                        //   cMinimumInstancesPerBin,
-                        //   aSplittingRange[i].m_pSplittableValuesStart - singleFeatureValues,
-                        //   aSplittingRange[i].m_cSplittableItems,
-                        //   singleFeatureValues,
-                        //   aNeighbourJumps,
-                        //   cCENTERSplitsAssigned,
-                        //   // for efficiency we include space for the end point cuts even if they don't exist
-                        //   aSplitPoints
-                        //);
-                     } else {
-                        //EBM_ASSERT(false); // the condition of 1 split needs to be handled!
-                     }
-                  }
+                  //      //TradeSplitSegment(
+                  //      //   &bestSplitPoints,
+                  //      //   cMinimumInstancesPerBin,
+                  //      //   aSplittingRange[i].m_pSplittableValuesStart - singleFeatureValues,
+                  //      //   aSplittingRange[i].m_cSplittableItems,
+                  //      //   singleFeatureValues,
+                  //      //   aNeighbourJumps,
+                  //      //   cCENTERSplitsAssigned,
+                  //      //   // for efficiency we include space for the end point cuts even if they don't exist
+                  //      //   aSplitPoints
+                  //      //);
+                  //   } else {
+                  //      //EBM_ASSERT(false); // the condition of 1 split needs to be handled!
+                  //   }
+                  //}
 
 
 

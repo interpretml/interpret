@@ -118,7 +118,22 @@ elif [ "$os_type" = "Linux" ]; then
    log_file="$intermediate_path/ebm_native_test_release_linux_x64_build_log.txt"
    compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -l$lib_file_body -o \"$bin_path/$bin_file\" 2>&1"
 
-   [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
+   if [ ! -d "$intermediate_path" ]; then
+      printf "%s\n" "Doing first time installation of x64"
+
+      # this is the first time we're being compiled x64 on this machine, so install other required items
+
+      # TODO consider NOT running sudo inside this script and move that requirement to the caller
+      #      per https://askubuntu.com/questions/425754/how-do-i-run-a-sudo-command-inside-a-script
+
+      sudo apt-get -y install valgrind
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+
+      mkdir -p "$intermediate_path"
+   fi
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -140,7 +155,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   "$bin_path/$bin_file"
+   valgrind --leak-check=yes "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code

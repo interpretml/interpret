@@ -61,7 +61,8 @@ public:
 
    EBM_INLINE size_t Next(const size_t maxValueExclusive) {
       // std::uniform_int_distribution doesn't give cross platform identical results, so roll our own (it's more efficient too I think, or at least not worse)
-      static_assert(std::numeric_limits<size_t>::max() - 1 < k_max - k_min, "k_max - k_min isn't large enough to encompass size_t");
+      static_assert(0 == k_min, "k_min must be zero");
+      static_assert(std::numeric_limits<uint_fast64_t>::max() == k_max, "k_max must be uint_fast64_t");
       static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint_fast64_t>::max(), "uint_fast64_t isn't large enough to encompass size_t");
       const uint_fast64_t maxValueExclusiveConverted = static_cast<uint_fast64_t>(maxValueExclusive);
 
