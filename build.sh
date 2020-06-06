@@ -49,6 +49,9 @@ if [ "$os_type" = "Darwin" ]; then
       exit $ret_code
    fi
 
+
+   ########################## macOS release|x64
+
    printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS release|x64"
    intermediate_path="$root_path/tmp/clang/intermediate/release/mac/x64/ebm_native"
    bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
@@ -83,6 +86,9 @@ if [ "$os_type" = "Darwin" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
+
+
+   ########################## macOS debug|x64
 
    printf "%s\n" "Compiling ebm_native with $clang_pp_bin for macOS debug|x64"
    intermediate_path="$root_path/tmp/clang/intermediate/debug/mac/x64/ebm_native"
@@ -137,6 +143,9 @@ elif [ "$os_type" = "Linux" ]; then
       exit $ret_code
    fi
 
+
+   ########################## Linux release|x64
+
    printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x64"
    intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x64/ebm_native"
    bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
@@ -171,6 +180,9 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
+
+
+   ########################## Linux debug|x64
 
    printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x64"
    intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x64/ebm_native"
@@ -208,6 +220,9 @@ elif [ "$os_type" = "Linux" ]; then
    fi
 
    if [ $build_32_bit -eq 1 ]; then
+
+      ########################## Linux release|x86
+
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux release|x86"
       intermediate_path="$root_path/tmp/gcc/intermediate/release/linux/x86/ebm_native"
       bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
@@ -257,6 +272,9 @@ elif [ "$os_type" = "Linux" ]; then
       if [ $ret_code -ne 0 ]; then 
          exit $ret_code
       fi
+
+
+      ########################## Linux debug|x86
 
       printf "%s\n" "Compiling ebm_native with $g_pp_bin for Linux debug|x86"
       intermediate_path="$root_path/tmp/gcc/intermediate/debug/linux/x86/ebm_native"
