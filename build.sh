@@ -89,7 +89,7 @@ if [ "$os_type" = "Darwin" ]; then
    bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
    bin_file="lib_ebm_native_mac_x64_debug.dylib"
    log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
-   compile_command="$clang_pp_bin $compile_mac -m64 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -fsanitize=address,undefined -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -177,7 +177,7 @@ elif [ "$os_type" = "Linux" ]; then
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
    bin_file="lib_ebm_native_linux_x64_debug.so"
    log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m64 -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -fsanitize=address,undefined -fno-omit-frame-pointer -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -263,7 +263,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m32 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m32 -fsanitize=address,undefined -fno-omit-frame-pointer -o \"$bin_path/$bin_file\" 2>&1"
       
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?
