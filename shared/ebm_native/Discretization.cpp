@@ -562,18 +562,17 @@ INLINE_RELEASE size_t SplitSegment(
    size_t iAheadSplitPointInit = 1 + k_SplitExploreDistance < iTop ? 1 + k_SplitExploreDistance : iTop;
 
    for(size_t i = 1; i < iTop; ++i) {
-      const size_t iTotalDist = iAheadSplitPointInit - iBehindSplitPointInit;
       const size_t iBehindDist = i - iBehindSplitPointInit;
       const size_t iAheadDist = iAheadSplitPointInit - i;
       const SplitPoint * const pSplitBehind = &aSplitsWithENDPOINTS[iBehindSplitPointInit];
       const SplitPoint * const pSplitAhead = &aSplitsWithENDPOINTS[iAheadSplitPointInit];
 
-      const size_t iActualBehind = pSplitBehind->m_iActual;
+      const ptrdiff_t iActualBehind = pSplitBehind->m_iActual;
       const FloatEbmType iBehindValue = iActualBehind < 0 ?
          pSplitBehind->m_iFractionalAspirational :
          static_cast<FloatEbmType>(iActualBehind);
 
-      const size_t iActualAhead = pSplitAhead->m_iActual;
+      const ptrdiff_t iActualAhead = pSplitAhead->m_iActual;
       const FloatEbmType iAheadValue = iActualAhead < 0 ?
          pSplitAhead->m_iFractionalAspirational :
          static_cast<FloatEbmType>(iActualAhead);
