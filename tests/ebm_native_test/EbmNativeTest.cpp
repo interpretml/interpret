@@ -1218,7 +1218,6 @@ TEST_CASE("Discretize, zero instances") {
    constexpr IntEbmType  cInstances = 0;
 
    Discretize(
-      EBM_FALSE,
       countCuts,
       cutPointsLowerBoundInclusive,
       cInstances,
@@ -1227,7 +1226,6 @@ TEST_CASE("Discretize, zero instances") {
    );
 
    Discretize(
-      EBM_TRUE,
       countCuts,
       cutPointsLowerBoundInclusive,
       cInstances,
@@ -1238,7 +1236,7 @@ TEST_CASE("Discretize, zero instances") {
 
 TEST_CASE("Discretize, zero cuts, known missing") {
    FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 1, 1, 1, 1, 1, 1, 1, 0, 1, 1 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
 
    constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
    static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
@@ -1247,10 +1245,8 @@ TEST_CASE("Discretize, zero cuts, known missing") {
    constexpr IntEbmType countCuts = 0;
    IntEbmType singleFeatureDiscretized[cInstances];
    const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
-   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
 
    Discretize(
-      isMissing,
       countCuts,
       nullptr,
       IntEbmType { cInstances },
@@ -1265,7 +1261,7 @@ TEST_CASE("Discretize, zero cuts, known missing") {
 
 TEST_CASE("Discretize, zero cuts, unknown missing") {
    FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, -1, 0, 0 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
 
    constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
    static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
@@ -1273,10 +1269,8 @@ TEST_CASE("Discretize, zero cuts, unknown missing") {
       );
    constexpr IntEbmType countCuts = 0;
    IntEbmType singleFeatureDiscretized[cInstances];
-   const IntEbmType isMissing = EBM_FALSE;
 
    Discretize(
-      isMissing,
       countCuts,
       nullptr,
       IntEbmType { cInstances },
@@ -1292,7 +1286,7 @@ TEST_CASE("Discretize, zero cuts, unknown missing") {
 TEST_CASE("Discretize, known missing") {
    const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 1, 1, 2, 2, 2, 3, 3, 0, 8, 10 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, 10, 7, 9 };
 
    constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
    static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
@@ -1301,10 +1295,8 @@ TEST_CASE("Discretize, known missing") {
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
    IntEbmType singleFeatureDiscretized[cInstances];
    const bool bMissing = std::any_of(singleFeatureValues, singleFeatureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
-   const IntEbmType isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
 
    Discretize(
-      isMissing,
       countCuts,
       cutPointsLowerBoundInclusive,
       IntEbmType { cInstances },
@@ -1320,7 +1312,7 @@ TEST_CASE("Discretize, known missing") {
 TEST_CASE("Discretize, unknown missing") {
    const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    FloatEbmType singleFeatureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, -1, 7, 9 };
+   const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, 10, 7, 9 };
 
    constexpr size_t cInstances = sizeof(singleFeatureValues) / sizeof(singleFeatureValues[0]);
    static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
@@ -1328,10 +1320,8 @@ TEST_CASE("Discretize, unknown missing") {
       );
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
    IntEbmType singleFeatureDiscretized[cInstances];
-   const IntEbmType isMissing = EBM_FALSE;
 
    Discretize(
-      isMissing,
       countCuts,
       cutPointsLowerBoundInclusive,
       IntEbmType { cInstances },
@@ -1359,7 +1349,6 @@ TEST_CASE("Discretize, increasing lengths") {
          // first try it without missing values
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
          Discretize(
-            EBM_FALSE,
             cCutPoints,
             cutPointsLowerBoundInclusive,
             1,
@@ -1370,7 +1359,6 @@ TEST_CASE("Discretize, increasing lengths") {
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
          Discretize(
-            EBM_FALSE,
             cCutPoints,
             cutPointsLowerBoundInclusive,
             1,
@@ -1381,7 +1369,6 @@ TEST_CASE("Discretize, increasing lengths") {
 
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
          Discretize(
-            EBM_FALSE,
             cCutPoints,
             cutPointsLowerBoundInclusive,
             1,
@@ -1393,7 +1380,26 @@ TEST_CASE("Discretize, increasing lengths") {
          // now try it indicating that there can be missing values, which should take the 0 value position and bump everything else up
          singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
          Discretize(
-            EBM_TRUE,
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint));
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
+         Discretize(
+            cCutPoints,
+            cutPointsLowerBoundInclusive,
+            1,
+            singleFeatureValues,
+            singleFeatureDiscretized
+         );
+         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1); // any exact matches are inclusive to the upper bound
+
+         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
+         Discretize(
             cCutPoints,
             cutPointsLowerBoundInclusive,
             1,
@@ -1401,28 +1407,6 @@ TEST_CASE("Discretize, increasing lengths") {
             singleFeatureDiscretized
          );
          CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1);
-
-         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
-         Discretize(
-            EBM_TRUE,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            1,
-            singleFeatureValues,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 2); // any exact matches are inclusive to the upper bound
-
-         singleFeatureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
-         Discretize(
-            EBM_TRUE,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            1,
-            singleFeatureValues,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 2);
       }
    }
 }

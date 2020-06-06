@@ -943,7 +943,7 @@ INLINE_RELEASE size_t TradeSplitSegment(
       cCENTERSplitsAssigned, aSplitsWithENDPOINTS);
 }
 
-INLINE_RELEASE size_t StuffSplitsIntoSplittingRanges(
+size_t StuffSplitsIntoSplittingRanges(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange,
    const size_t cMinimumInstancesPerBin,
@@ -1792,14 +1792,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
-   IntEbmType isMissing,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType countInstances,
    const FloatEbmType * singleFeatureValues,
    IntEbmType * singleFeatureDiscretized
 ) {
-   EBM_ASSERT(EBM_FALSE == isMissing || EBM_TRUE == isMissing);
    EBM_ASSERT(0 <= countCutPoints);
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(countCutPoints))); // this needs to point to real memory, otherwise it's invalid
    EBM_ASSERT(0 == countInstances || 0 == countCutPoints || nullptr != cutPointsLowerBoundInclusive);
@@ -1821,65 +1819,37 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
       IntEbmType * pDiscretized = singleFeatureDiscretized;
 
       if(size_t { 0 } == cCutPoints) {
-         const IntEbmType missingVal = EBM_FALSE != isMissing ? IntEbmType { 0 } : IntEbmType { -1 };
-         const IntEbmType nonMissingVal = EBM_FALSE != isMissing ? IntEbmType { 1 } : IntEbmType { 0 };
          do {
             const FloatEbmType val = *pValue;
-            const IntEbmType result = UNPREDICTABLE(std::isnan(val)) ? missingVal : nonMissingVal;
+            const IntEbmType result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 1 } : IntEbmType { 0 };
             *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
       } else {
+         const ptrdiff_t missingVal = static_cast<ptrdiff_t>(cCutPoints + size_t { 1 });
          const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
-         if(EBM_FALSE != isMissing) {
-            // there are missing values.  We need to bump up all indexes by 1 and make missing zero
-            do {
-               ptrdiff_t middle = ptrdiff_t { 0 };
-               const FloatEbmType val = *pValue;
-               if(!std::isnan(val)) {
-                  ptrdiff_t high = highStart;
-                  ptrdiff_t low = 0;
-                  FloatEbmType midVal;
-                  do {
-                     middle = (low + high) >> 1;
-                     EBM_ASSERT(0 <= middle && middle <= highStart);
-                     midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
-                     high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
-                     low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
-                  } while(LIKELY(low <= high));
-                  // we bump up all indexes to allow missing to be 0
-                  middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 2 } : middle + ptrdiff_t { 1 };
-                  EBM_ASSERT(ptrdiff_t { 0 } <= middle - ptrdiff_t { 1 } && middle - ptrdiff_t { 1 } <= static_cast<ptrdiff_t>(cCutPoints));
-               }
-               *pDiscretized = static_cast<IntEbmType>(middle);
-               ++pDiscretized;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
-         } else {
-            // there are no missing values, but check anyways. If there are missing anyways, then make them -1
-            do {
-               ptrdiff_t middle = ptrdiff_t { -1 };
-               const FloatEbmType val = *pValue;
-               if(!std::isnan(val)) {
-                  ptrdiff_t high = highStart;
-                  ptrdiff_t low = 0;
-                  FloatEbmType midVal;
-                  do {
-                     middle = (low + high) >> 1;
-                     EBM_ASSERT(0 <= middle && middle <= highStart);
-                     midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
-                     high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
-                     low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
-                  } while(LIKELY(low <= high));
-                  middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : middle;
-                  EBM_ASSERT(ptrdiff_t { 0 } <= middle && middle <= static_cast<ptrdiff_t>(cCutPoints));
-               }
-               *pDiscretized = static_cast<IntEbmType>(middle);
-               ++pDiscretized;
-               ++pValue;
-            } while(LIKELY(pValueEnd != pValue));
-         }
+         do {
+            const FloatEbmType val = *pValue;
+            ptrdiff_t middle = missingVal;
+            if(!std::isnan(val)) {
+               ptrdiff_t high = highStart;
+               ptrdiff_t low = 0;
+               FloatEbmType midVal;
+               do {
+                  middle = (low + high) >> 1;
+                  EBM_ASSERT(ptrdiff_t { 0 } <= middle && static_cast<size_t>(middle) < cCutPoints);
+                  midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
+                  high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
+                  low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
+               } while(LIKELY(low <= high));
+               middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : middle;
+               EBM_ASSERT(ptrdiff_t { 0 } <= middle && middle <= static_cast<ptrdiff_t>(cCutPoints));
+            }
+            *pDiscretized = static_cast<IntEbmType>(middle);
+            ++pDiscretized;
+            ++pValue;
+         } while(LIKELY(pValueEnd != pValue));
       }
    }
 }

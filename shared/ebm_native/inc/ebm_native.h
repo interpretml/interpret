@@ -422,7 +422,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * maxValue
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
-   IntEbmType isMissing,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType countInstances,
