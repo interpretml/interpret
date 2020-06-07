@@ -103,14 +103,14 @@ public:
    EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket += other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER(m_aHistogramBucketVectorEntry)[iVector].Add(ARRAY_TO_POINTER_CONST(other.m_aHistogramBucketVectorEntry)[iVector]);
+         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Add(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
    EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket -= other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER(m_aHistogramBucketVectorEntry)[iVector].Subtract(ARRAY_TO_POINTER_CONST(other.m_aHistogramBucketVectorEntry)[iVector]);
+         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Subtract(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
@@ -131,7 +131,7 @@ public:
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cInstancesInBucket);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ARRAY_TO_POINTER_CONST(m_aHistogramBucketVectorEntry)[iVector].AssertZero();
+         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].AssertZero();
       }
 #endif // NDEBUG
    }
@@ -166,7 +166,7 @@ void BinDataSetTrainingZeroDimensions(
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
    HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-      ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
+      ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
    do {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
       //   in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -315,7 +315,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
          ++pCountOccurrences;
          pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
          const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
-         HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER(
+         HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(
             pHistogramBucketEntry->m_aHistogramBucketVectorEntry
          );
          size_t iVector = 0;
@@ -511,7 +511,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
       size_t iBucket = 0;
       size_t iDimension = 0;
       do {
-         const Feature * const pInputFeature = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
+         const Feature * const pInputFeature = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
          const size_t cBins = pInputFeature->m_cBins;
          const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
          pInputData += iInstance;
@@ -533,7 +533,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
          // residualError could be NaN
          // for classification, residualError can be anything from -1 to +1 (it cannot be infinity!)
          // for regression, residualError can be anything from +infinity or -infinity
-         ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError += residualError;
+         ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError += residualError;
          // m_sumResidualError could be NaN, or anything from +infinity or -infinity in the case of regression
          if(bClassification) {
             EBM_ASSERT(
@@ -552,14 +552,14 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
                !std::isinf(denominator) && -k_epsilonResidualError <= denominator && denominator <= FloatEbmType { 0.25 }
             ); // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
 
-            const FloatEbmType oldDenominator = ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
+            const FloatEbmType oldDenominator = ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
             // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
             EBM_ASSERT(std::isnan(oldDenominator) || !std::isinf(oldDenominator) && -k_epsilonResidualError <= oldDenominator);
             const FloatEbmType newDenominator = oldDenominator + denominator;
             // since any one denominatory is limited to -1 <= denominator <= 1, the sum must be representable by a 64 bit number, 
             EBM_ASSERT(std::isnan(newDenominator) || !std::isinf(newDenominator) && -k_epsilonResidualError <= newDenominator);
             // which will always be representable by a float or double, so we can't overflow to inifinity or -infinity
-            ARRAY_TO_POINTER(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(newDenominator);
+            ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(newDenominator);
          }
          ++pResidualError;
       }
@@ -620,7 +620,7 @@ size_t SumHistogramBuckets(
          // and that is if almost all bins have either 0 or 1 instances, which would happen if we didn't bin at all
          // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
          // will be continuous in an ML problem.
-         aSumHistogramBucketVectorEntry[iVector].Add(ARRAY_TO_POINTER(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
+         aSumHistogramBucketVectorEntry[iVector].Add(ArrayToPointer(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
       }
 
       pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);

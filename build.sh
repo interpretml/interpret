@@ -1,23 +1,38 @@
 #!/bin/sh
 
-# TODO also build our html resources here, and also in the .bat file for Windows
 
-# - we'd like to enable static code analysis here, but these seem difficult at the moment:
-#   - NOTE: scan-build and clang-tidy are really the same thing, but with different interfaces
+# We run the clang-tidy and Visual Studio static analysis tools on the build server.  Warnings do not stop the build, 
+# so these need to be inspected to catch static analysis issues.  The results can be viewed in the build logs here:
+# https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary
+# By clicking on the build of interest, then "Build ebm_native Windows", then "View raw log"
+#
+# Ideally we'd prefer to have static analysis running on all OSes, but we can probably just rely on our
+# build system to handle this aspect since adding it in multiple places adds complexity to this build script.
+# Also, I ran into issues when I first tried it, which to me suggests these might introduce periodic issues:
 #   - on Mac, clang-tidy doesn't seem to come by default in the OS.  You are suposed to 
-#     "brew reinstall llvm", but I got a message that llvm was a built in part of the system and it
-#     suggested that upgrading was a very bad idea.  You could also compile it from scratch, but this seems
+#     "brew reinstall llvm", but I got a message that llvm was part of the OS and it suggested 
+#     that upgrading was a very bad idea.  You could also compile it from scratch, but this seems
 #     to me like it would complicate this build script too much for the benefit
 #   - on Linux, I was able to get clang-tidy to work by using "sudo apt-get -y install clang clang-tidy"
 #     but this requires installing clang and clang-tidy.  I have a better solution using Visual Studio
-#   - on Ubuntu/Linux, "sudo apt-get -y install cppcheck" seems to hang my build machines, so that sucks
-#   - Visual Studio now includes support for both it's own static analysis tool and clang-tidy.
-#     Even though we'd prefer to have static analysis running on all OSes, we can probably just rely on our
-#     build system to handle this aspect
+#   - on Ubuntu, "sudo apt-get -y install cppcheck" seems to hang my build machines, so that sucks.
+#   - Visual Studio now includes support for both it's own static analysis tool and clang-tidy.  This seems to
+#     be the easiest ways to access these tools for us since they require no additional installation.
 #   - by adding "/p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True" to MSBuild I can get the static
-#     analysis tools to run on the build system, but they won't run in typical builds in Visual Studio.
+#     analysis tools to run on the build system, but they won't run in typical builds in Visual Studio, which
+#     would slow down our builds.
+#   - If you want to enable these static checks on build in Visual Studio, go to:
+#     "Solution Explorer" -> right click the project "ebm_native" -> "Properties" -> "Code Analysis"
+#     From there you can enable "Clang-Tidy" and "Enable Code Analysis on Build"
+#   - You also for free see the Visual Studio static analysis in the "Error List" window if you have
+#     "Build + IntelliSense" selected in the drop down window with that option.
 #   - any static analysis warnings don't kill the build it seems.  That's good since static analysis tool warnings
 #     constantly change, so we probably don't want to turn them into errors otherwise it'll constantly be breaking.
+#   - https://include-what-you-use.org/ is alpha, and it looks like it changes a lot.  Doesn't seem worth the benefit.
+#   - NOTE: scan-build and clang-tidy are really the same thing, but with different interfaces
+
+
+# TODO also build our html resources here, and also in the .bat file for Windows
 
 clang_pp_bin=clang++
 g_pp_bin=g++

@@ -99,7 +99,7 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
          size_t acDivisionIntegersEnd[k_cDimensionsMax];
          size_t iDimension = 0;
          do {
-            acDivisionIntegersEnd[iDimension] = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+            acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
             ++iDimension;
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
@@ -302,7 +302,7 @@ bool EbmBoostingState::Initialize(
             EBM_ASSERT(nullptr != featureCombinationIndexes);
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
-            FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+            FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
             do {
                const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
                EBM_ASSERT(0 <= indexFeatureInterop);
@@ -937,7 +937,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {

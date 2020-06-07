@@ -205,7 +205,7 @@ public:
          FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
          *ppValues = pValuesNext;
 
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ARRAY_TO_POINTER_CONST(this->m_aHistogramBucketVectorEntry);
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(this->m_aHistogramBucketVectorEntry);
          do {
             FloatEbmType smallChangeToModel;
             if(bClassification) {

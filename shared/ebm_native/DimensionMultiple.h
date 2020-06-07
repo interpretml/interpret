@@ -36,7 +36,7 @@ void GetTotalsDebugSlow(
    size_t valueMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
    do {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionInitialize].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionInitialize].m_pFeature->m_cBins;
       EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
@@ -69,7 +69,7 @@ void GetTotalsDebugSlow(
          EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop));
          iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
-         const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+         const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cBins;
 
@@ -101,7 +101,7 @@ void CompareTotalsDebug(
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
    for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
       if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
          aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
          aiLast[iDimensionDebug] = cBins - 1;
@@ -149,7 +149,7 @@ void CompareTotalsDebug(
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-//      const size_t cBins = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+//      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -170,7 +170,7 @@ void CompareTotalsDebug(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountBinsInitialize->m_iCur = 0;
 //      EBM_ASSERT(2 <= pFeatureCombinationEntry->m_pFeature->m_cBins);
@@ -278,7 +278,7 @@ void CompareTotalsDebug(
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
 //   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-//      const size_t cBins = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+//      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -299,7 +299,7 @@ void CompareTotalsDebug(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -450,7 +450,7 @@ void BuildFastTotals(
    const FastTotalState<bClassification> * const pFastTotalStateEnd = &fastTotalState[cDimensions];
    {
       FastTotalState<bClassification> * pFastTotalStateInitialize = fastTotalState;
-      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
+      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
       size_t multiply = 1;
       EBM_ASSERT(0 < cDimensions);
       do {
@@ -608,7 +608,7 @@ void BuildFastTotals(
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   {
 //      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-//      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry);
+//      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
 //      EBM_ASSERT(1 <= cDimensions);
 //      do {
 //         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -661,14 +661,14 @@ void BuildFastTotals(
 //      pHistogramBucket->m_cInstancesInBucket = cInstancesInBucket;
 //      pPrevious->m_cInstancesInBucket = cInstancesInBucket;
 //      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-//         const FloatEbmType sumResidualError = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
-//         ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
-//         ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
+//         const FloatEbmType sumResidualError = ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError + ArrayToPointer(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
+//         ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
+//         ArrayToPointer(pPrevious->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError = sumResidualError;
 //
 //         if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
-//            const FloatEbmType sumDenominator = ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
-//            ARRAY_TO_POINTER(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
-//            ARRAY_TO_POINTER(pPrevious->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
+//            const FloatEbmType sumDenominator = ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator() + ArrayToPointer(pPrevious->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator();
+//            ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
+//            ArrayToPointer(pPrevious->m_aHistogramBucketVectorEntry)[iVector].SetSumDenominator(sumDenominator);
 //         }
 //      }
 //
@@ -792,7 +792,7 @@ void GetTotals(
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry);
+   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
    const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cDimensions];
    const size_t * piPointInitialize = aiPoint;
 
@@ -957,7 +957,7 @@ FloatEbmType SweepMultiDiemensional(
    *piBin = 0;
    size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
-   const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionSweep].m_pFeature->m_cBins;
+   const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionSweep].m_pFeature->m_cBins;
    EBM_ASSERT(2 <= cBins);
 
    size_t iBestCut = 0;
@@ -1012,11 +1012,11 @@ FloatEbmType SweepMultiDiemensional(
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
-                  ARRAY_TO_POINTER(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
+                  ArrayToPointer(pTotalsLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowInstancesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
                const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
-                  ARRAY_TO_POINTER(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
+                  ArrayToPointer(pTotalsHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighInstancesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
@@ -1190,7 +1190,7 @@ bool BoostMultiDimensional(
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
       // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       EBM_ASSERT(2 <= cBins);
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -1268,7 +1268,7 @@ bool BoostMultiDimensional(
    // make a copy of the original binned buckets for debugging purposes
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
@@ -1378,7 +1378,7 @@ bool BoostMultiDimensional(
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != 
-   //               ARRAY_TO_POINTER(pFeatureCombinations->m_FeatureCombinationEntry)[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //               ArrayToPointer(pFeatureCombinations->m_FeatureCombinationEntry)[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -1401,8 +1401,8 @@ bool BoostMultiDimensional(
    if(2 == cDimensions) {
       FloatEbmType splittingScore;
 
-      const size_t cBinsDimension1 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
-      const size_t cBinsDimension2 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
+      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
+      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
@@ -1438,7 +1438,7 @@ bool BoostMultiDimensional(
          // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
          const FloatEbmType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(
-            ARRAY_TO_POINTER_CONST(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+            ArrayToPointer(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
             cInstancesInParentBucket
          );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
@@ -1680,13 +1680,13 @@ bool BoostMultiDimensional(
 
             if(bClassification) {
                prediction = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  ArrayToPointer(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                  ArrayToPointer(pTotal->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
                );
             } else {
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                  ARRAY_TO_POINTER(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                  ArrayToPointer(pTotal->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                   static_cast<FloatEbmType>(pTotal->m_cInstancesInBucket)
                );
             }
@@ -1777,37 +1777,37 @@ bool BoostMultiDimensional(
 
                if(bClassification) {
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      pTotals2LowLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      pTotals2LowHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      pTotals2HighLowBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      pTotals2HighHighBest->m_aHistogramBucketVectorEntry[iVector].GetSumDenominator()
                   );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals2LowLowBest->m_cInstancesInBucket)
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals2LowHighBest->m_cInstancesInBucket)
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals2HighLowBest->m_cInstancesInBucket)
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals2HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals2HighHighBest->m_cInstancesInBucket)
                   );
                }
@@ -1914,37 +1914,37 @@ bool BoostMultiDimensional(
 
                if(bClassification) {
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                     ArrayToPointer(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                     ArrayToPointer(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                     ArrayToPointer(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                     ArrayToPointer(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
                   );
                } else {
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1LowLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals1LowLowBest->m_cInstancesInBucket)
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1LowHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals1LowHighBest->m_cInstancesInBucket)
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1HighLowBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals1HighLowBest->m_cInstancesInBucket)
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                     ARRAY_TO_POINTER(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                     ArrayToPointer(pTotals1HighHighBest->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                      static_cast<FloatEbmType>(pTotals1HighHighBest->m_cInstancesInBucket)
                   );
                }
@@ -2028,8 +2028,8 @@ WARNING_POP
 //      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
 //      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket * ));
 //
-//      const size_t cBinsDimension1 = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
-//      const size_t cBinsDimension2 = ARRAY_TO_POINTER(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
+//      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
+//      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
 //
 //      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
 //
@@ -2114,13 +2114,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -2157,13 +2157,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -2200,13 +2200,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -2242,13 +2242,13 @@ WARNING_POP
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
-//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
-//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ARRAY_TO_POINTER(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
 //                  }
 //
 //                  // MODIFY HERE
@@ -2309,7 +2309,7 @@ bool CalculateInteractionScore(
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
       EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -2388,7 +2388,7 @@ bool CalculateInteractionScore(
    // make a copy of the original binned buckets for debugging purposes
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
@@ -2425,8 +2425,8 @@ bool CalculateInteractionScore(
       HistogramBucket<bClassification> * pTotalsHighHigh =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      const size_t cBinsDimension1 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
-      const size_t cBinsDimension2 = ARRAY_TO_POINTER_CONST(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
+      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
+      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
       // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
       // (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension1);
@@ -2512,21 +2512,21 @@ bool CalculateInteractionScore(
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                            const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
-                              ARRAY_TO_POINTER(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+                              ArrayToPointer(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
                               cLowLowInstancesInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
                            const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
-                              ARRAY_TO_POINTER(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                              ArrayToPointer(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
                            const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(
-                              ARRAY_TO_POINTER(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                              ArrayToPointer(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
                            const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(
-                              ARRAY_TO_POINTER(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                              ArrayToPointer(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
