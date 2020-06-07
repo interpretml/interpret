@@ -13,7 +13,7 @@ for %%x in (%*) do (
    )
 )
 
-MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Release /p:Platform=x64
+MSBuild.exe "%root_path%shared\ebm_native\ebm_native.vcxproj" /p:Configuration=Release /p:Platform=x64 /p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True
 IF %ERRORLEVEL% NEQ 0 (
    ECHO MSBuild for Release x64 returned error code %ERRORLEVEL%
    EXIT /B %ERRORLEVEL%

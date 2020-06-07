@@ -2,6 +2,23 @@
 
 # TODO also build our html resources here, and also in the .bat file for Windows
 
+# - we'd like to enable static code analysis here, but these seem difficult at the moment:
+#   - NOTE: scan-build and clang-tidy are really the same thing, but with different interfaces
+#   - on Mac, clang-tidy doesn't seem to come by default in the OS.  You are suposed to 
+#     "brew reinstall llvm", but I got a message that llvm was a built in part of the system and it
+#     suggested that upgrading was a very bad idea.  You could also compile it from scratch, but this seems
+#     to me like it would complicate this build script too much for the benefit
+#   - on Linux, I was able to get clang-tidy to work by using "sudo apt-get -y install clang clang-tidy"
+#     but this requires installing clang and clang-tidy.  I have a better solution using Visual Studio
+#   - on Ubuntu/Linux, "sudo apt-get -y install cppcheck" seems to hang my build machines, so that sucks
+#   - Visual Studio now includes support for both it's own static analysis tool and clang-tidy.
+#     Even though we'd prefer to have static analysis running on all OSes, we can probably just rely on our
+#     build system to handle this aspect
+#   - by adding "/p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True" to MSBuild I can get the static
+#     analysis tools to run on the build system, but they won't run in typical builds in Visual Studio.
+#   - any static analysis warnings don't kill the build it seems.  That's good since static analysis tool warnings
+#     constantly change, so we probably don't want to turn them into errors otherwise it'll constantly be breaking.
+
 clang_pp_bin=clang++
 g_pp_bin=g++
 os_type=`uname`
