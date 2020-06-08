@@ -1170,7 +1170,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 //    distinction down into a sub-function
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t countCompilerDimensions>
 bool BoostMultiDimensional(
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   CachedBoostingThreadResources * const pCachedThreadResources, 
    const SamplingSet * const pTrainingSet,
    const FeatureCombination * const pFeatureCombination, 
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 

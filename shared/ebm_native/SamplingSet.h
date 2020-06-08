@@ -38,15 +38,16 @@ private:
    static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);
 
 public:
-   const DataSetByFeatureCombination * const m_pOriginDataSet;
+    const DataSetByFeatureCombination * const m_pOriginDataSet;
 
-   // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or FractionalType or both, and perf how this 
-   //   changes things.  We don't get a benefit anywhere by storing the raw data in both formats since it is never converted anyways, but this count is!
+   // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
+   // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
+   // the raw data in both formats since it is never converted anyways, but this count is!
    const size_t * const m_aCountOccurrences;
 
    size_t GetTotalCountInstanceOccurrences() const;
 
-   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** apSamplingSets);
+   static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
       const DataSetByFeatureCombination * const pOriginDataSet, 

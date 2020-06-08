@@ -135,17 +135,9 @@ bool EbmBoostingState::Initialize(
 
    const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
-   if(bClassification) {
-      if(m_cachedThreadResourcesUnion.classification.IsError()) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.classification.IsError()");
-         return true;
-      }
-   } else {
-      EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
-      if(m_cachedThreadResourcesUnion.regression.IsError()) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResourcesUnion.regression.IsError()");
-         return true;
-      }
+   if(m_cachedThreadResources.IsError()) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResources.IsError()");
+      return true;
    }
 
    if(0 != m_cFeatures && nullptr == m_aFeatures) {
@@ -351,12 +343,7 @@ bool EbmBoostingState::Initialize(
       } while(iFeatureCombination < m_cFeatureCombinations);
 
       if(0 != cBytesArrayEquivalentSplitMax) {
-         void * const aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
-         if(bClassification) {
-            m_cachedThreadResourcesUnion.classification.m_aEquivalentSplits = aEquivalentSplits;
-         } else {
-            m_cachedThreadResourcesUnion.regression.m_aEquivalentSplits = aEquivalentSplits;
-         }
+         m_cachedThreadResources.m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
       }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
@@ -427,8 +414,8 @@ bool EbmBoostingState::Initialize(
       }
    }
 
+   FloatEbmType * const aTempFloatVector = m_cachedThreadResources.m_aTempFloatVector;
    if(bClassification) {
-      FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.classification.m_aTempFloatVector;
       if(IsBinaryClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
             InitializeResiduals<2>::Func(
@@ -454,7 +441,6 @@ bool EbmBoostingState::Initialize(
       }
    } else {
       EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
-      FloatEbmType * const aTempFloatVector = m_cachedThreadResourcesUnion.regression.m_aTempFloatVector;
       if(0 != cTrainingInstances) {
          InitializeResiduals<k_Regression>::Func(
             cTrainingInstances, 
@@ -765,17 +751,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    return pEbmBoosting;
 }
 
-template<bool bClassification>
-EBM_INLINE CachedBoostingThreadResources<bClassification> * GetCachedThreadResources(EbmBoostingState * pEbmBoostingState);
-template<>
-EBM_INLINE CachedBoostingThreadResources<true> * GetCachedThreadResources<true>(EbmBoostingState * pEbmBoostingState) {
-   return &pEbmBoostingState->m_cachedThreadResourcesUnion.classification;
-}
-template<>
-EBM_INLINE CachedBoostingThreadResources<false> * GetCachedThreadResources<false>(EbmBoostingState * pEbmBoostingState) {
-   return &pEbmBoostingState->m_cachedThreadResourcesUnion.regression;
-}
-
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -799,7 +774,6 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdatePerTargetClasses");
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
-   CachedBoostingThreadResources<bClassification> * const pCachedThreadResources = GetCachedThreadResources<bClassification>(pEbmBoostingState);
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->m_cFeatures;
 
@@ -820,7 +794,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          FloatEbmType gain = FloatEbmType { 0 };
          if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->m_cFeatures))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
-               pCachedThreadResources, 
+               &pEbmBoostingState->m_cachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
                pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses
@@ -833,7 +807,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          } else if(1 == pFeatureCombination->m_cFeatures) {
             if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
                &pEbmBoostingState->m_randomStream, 
-               pCachedThreadResources, 
+               &pEbmBoostingState->m_cachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pFeatureCombination, 
                cTreeSplitsMax, 
@@ -849,7 +823,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else {
             if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(
-               pCachedThreadResources, 
+               &pEbmBoostingState->m_cachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pFeatureCombination, 
                pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
@@ -1229,9 +1203,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
 
    // if the count of training instances is zero, then pEbmBoostingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmBoostingState->m_pTrainingSet) {
-      FloatEbmType * const aTempFloatVector = IsClassification(compilerLearningTypeOrCountTargetClasses) ?
-         pEbmBoostingState->m_cachedThreadResourcesUnion.classification.m_aTempFloatVector :
-         pEbmBoostingState->m_cachedThreadResourcesUnion.regression.m_aTempFloatVector;
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_cachedThreadResources.m_aTempFloatVector;
 
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,

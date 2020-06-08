@@ -74,7 +74,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    RandomStream * const pRandomStream, 
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, 
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, 
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   CachedBoostingThreadResources * const pCachedThreadResources, 
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, 
    const size_t cInstancesRequiredForChildSplitMin, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
@@ -103,7 +103,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
-      pCachedThreadResources->m_aSumHistogramBucketVectorEntry1;
+      pCachedThreadResources->GetSumHistogramBucketVectorEntry1Array<bClassification>();
    memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
    FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->m_aTempFloatVector;
@@ -347,10 +347,19 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    return false;
 }
 
+template<bool bClassification>
+class CompareTreeNodeSplittingGain final {
+public:
+   // TODO : check how efficient this is.  Is there a faster way to to this
+   EBM_INLINE bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
+      return lhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= rhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+   }
+};
+
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool GrowDecisionTree(
    RandomStream * const pRandomStream, 
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   CachedBoostingThreadResources * const pCachedThreadResources, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
    const size_t cHistogramBuckets, 
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, 
@@ -532,26 +541,25 @@ retry_with_bigger_tree_node_children_array:
          return false;
       }
 
-      // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't split below is if both our children 
-      // nodes don't have enough cases
-      // to split, but that should rare
+      // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't 
+      // split below is if both our children nodes don't have enough cases to split, but that should rare
 
-      // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the overhead is too large to benefit, 
-      // but we also aren't bottlenecked if we only have 2-3 splits, so we don't care about performance issues.  On the other hand, we don't want
-      // to change this to an array scan because in theory the user can specify very deep trees, and we don't want to hang on an O(N^2) operation
-      // if they do.  So, let's keep the priority queue, and only the priority queue since it handles all scenarios without any real cost and is simpler
+      // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the 
+      // overhead is too large to benefit, but we also aren't bottlenecked if we only have 2-3 splits, 
+      // so we don't care about performance issues.  On the other hand, we don't want to change this to an 
+      // array scan because in theory the user can specify very deep trees, and we don't want to hang on 
+      // an O(N^2) operation if they do.  So, let's keep the priority queue, and only the priority queue 
+      // since it handles all scenarios without any real cost and is simpler
       // than implementing an optional array scan PLUS a priority queue for deep trees.
-      std::priority_queue<
-         TreeNode<bClassification> *,
-         std::vector<TreeNode<bClassification> *>,
-         CompareTreeNodeSplittingGain<bClassification>
-      > * pBestTreeNodeToSplit = &pCachedThreadResources->m_bestTreeNodeToSplit.m_queue;
+      
+      // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
+      //       the TreeNode datastructure
 
-      // it is ridiculous that we need to do this in order to clear the tree (there is no "clear" function), but inside this queue is a chunk of memory, 
-      // and we want to ensure that the chunk of memory stays in L1 cache, so we pop all the previous garbage off instead of allocating a new one!
-      while(!pBestTreeNodeToSplit->empty()) {
-         pBestTreeNodeToSplit->pop();
-      }
+      std::priority_queue<
+         TreeNode<bClassification> *, 
+         std::vector<TreeNode<bClassification> *>, 
+         CompareTreeNodeSplittingGain<bClassification>
+      > bestTreeNodeToSplit;
 
       cSplits = 0;
       TreeNode<bClassification> * pParentTreeNode = pRootTreeNode;
@@ -566,7 +574,7 @@ retry_with_bigger_tree_node_children_array:
 
       do {
          // there is no way to get the top and pop at the same time.. would be good to get a better queue, but our code isn't bottlenecked by it
-         pParentTreeNode = pBestTreeNodeToSplit->top();
+         pParentTreeNode = bestTreeNodeToSplit.top();
          // In theory we can have nodes with equal gain values here, but this is very very rare to occur in practice
          // We handle equal gain values in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint because we 
          // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
@@ -576,7 +584,7 @@ retry_with_bigger_tree_node_children_array:
          // Even if all of these things are true, after one non-symetric cut, we won't see that scenario anymore since the residuals won't be
          // symetric anymore.  This is so rare, and limited to one cut, so we shouldn't bother to handle it since the complexity of doing so
          // outweights the benefits.
-         pBestTreeNodeToSplit->pop();
+         bestTreeNodeToSplit.pop();
 
       skip_first_push_pop:
 
@@ -621,7 +629,7 @@ retry_with_bigger_tree_node_children_array:
 #endif // NDEBUG
                )) {
                pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
-               pBestTreeNodeToSplit->push(pLeftChild);
+               bestTreeNodeToSplit.push(pLeftChild);
             } else {
                goto no_left_split;
             }
@@ -667,7 +675,7 @@ retry_with_bigger_tree_node_children_array:
 #endif // NDEBUG
                )) {
                pTreeNodeChildrenAvailableStorageSpaceCur = pTreeNodeChildrenAvailableStorageSpaceNext;
-               pBestTreeNodeToSplit->push(pRightChild);
+               bestTreeNodeToSplit.push(pRightChild);
             } else {
                goto no_right_split;
             }
@@ -681,8 +689,8 @@ retry_with_bigger_tree_node_children_array:
             pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
          }
          ++cSplits;
-      } while(cSplits < cTreeSplitsMax && UNLIKELY(!pBestTreeNodeToSplit->empty()));
-      // we DON'T need to call SetLeafAfterDone() on any items that remain in the pBestTreeNodeToSplit queue because everything in that queue has set 
+      } while(cSplits < cTreeSplitsMax && UNLIKELY(!bestTreeNodeToSplit.empty()));
+      // we DON'T need to call SetLeafAfterDone() on any items that remain in the bestTreeNodeToSplit queue because everything in that queue has set 
       // a non-NaN nodeSplittingScore value
 
       // regression can be -infinity or slightly negative in extremely rare circumstances.
@@ -697,7 +705,7 @@ retry_with_bigger_tree_node_children_array:
       );
    } catch(...) {
       // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-      // calling anything inside pBestTreeNodeToSplit can throw exceptions, possibly (it's not documented)
+      // calling anything inside bestTreeNodeToSplit can throw exceptions, possibly (it's not documented)
       LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
    }
@@ -734,7 +742,7 @@ retry_with_bigger_tree_node_children_array:
 // training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostZeroDimensional(
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   CachedBoostingThreadResources * const pCachedThreadResources, 
    const SamplingSet * const pTrainingSet,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
@@ -795,7 +803,7 @@ bool BoostZeroDimensional(
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostSingleDimensional(
    RandomStream * const pRandomStream, 
-   CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
+   CachedBoostingThreadResources * const pCachedThreadResources, 
    const SamplingSet * const pTrainingSet,
    const FeatureCombination * const pFeatureCombination, 
    const size_t cTreeSplitsMax, 
@@ -852,7 +860,7 @@ bool BoostSingleDimensional(
    );
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
-      pCachedThreadResources->m_aSumHistogramBucketVectorEntry;
+      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray<bClassification>();
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
    size_t cHistogramBuckets = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;

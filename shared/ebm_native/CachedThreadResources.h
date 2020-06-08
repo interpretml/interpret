@@ -15,52 +15,11 @@
 
 #include "TreeNode.h"
 
-template<bool bClassification>
-class CompareTreeNodeSplittingGain final {
-public:
-   // TODO : check how efficient this is.  Is there a faster way to to this
-   EBM_INLINE bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
-      return lhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= rhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
-   }
-};
-
-template<bool bClassification>
-class SafeTreeNodeQueue final {
-   // make it zero the error just in case someone introduces an initialization bug such that this doesn't set set.  The default will be an error then
-   bool m_bSuccess;
-
-public:
-   // THIS SHOULD ALWAYS BE THE LAST ITEM IN THIS STRUCTURE.  C++ guarantees that constructions initialize data members in the order that they are declared
-   // since this class can potentially throw an exception in the constructor, we leave it last so that we are guaranteed that the rest of our object 
-   // has been initialized
-   std::priority_queue<TreeNode<bClassification> *, std::vector<TreeNode<bClassification> *>, CompareTreeNodeSplittingGain<bClassification>> m_queue;
-
-   // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of 
-   // handling exception in initialization
-   SafeTreeNodeQueue() try
-      : m_bSuccess(false)
-      , m_queue() {
-      // an unfortunate thing about function exception handling is that accessing non-static data from the catch block gives undefined behavior
-      // so, we can't set m_bSuccess to false if an error occurs, so instead we set it to false in the static initialization
-      // C++ guarantees that initialization will occur in the order the variables are declared (not in the order of initialization)
-      // but since we put m_bSuccess at the top, if an exception occurs then our m_bSuccess will be left as false since it won't call the 
-      // initializer which sets it to true
-      // https://en.cppreference.com/w/cpp/language/function-try-block
-      m_bSuccess = true;
-   } catch(...) {
-      // the only reason we should potentially find outselves here is if there was an exception thrown during construction
-      // C++ exceptions are suposed to be thrown by value and caught by reference, so it shouldn't be a pointer, and we shouldn't leak memory
-   }
-
-   EBM_INLINE bool IsSuccess() const {
-      return m_bSuccess;
-   }
-};
 
 template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
-template<bool bClassification>
+// TODO : rename this to CachedThreadResources
 class CachedBoostingThreadResources {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -71,27 +30,36 @@ class CachedBoostingThreadResources {
    void * m_aThreadByteBuffer2;
    size_t m_cThreadByteBufferCapacity2;
 
+   void * const m_aSumHistogramBucketVectorEntry;
+   void * const m_aSumHistogramBucketVectorEntry1;
+
 public:
 
-   HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry;
-   HistogramBucketVectorEntry<bClassification> * const m_aSumHistogramBucketVectorEntry1;
-   FloatEbmType * const m_aTempFloatVector;
+   template<bool bClassification>
+   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntryArray() {
+      return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry);
+   }
 
+   template<bool bClassification>
+   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntry1Array() {
+      return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry1);
+   }
+
+   FloatEbmType * const m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   SafeTreeNodeQueue<bClassification> m_bestTreeNodeToSplit;
-
-   CachedBoostingThreadResources(const size_t cVectorLength)
+   CachedBoostingThreadResources(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
       : m_aThreadByteBuffer1(nullptr)
       , m_cThreadByteBufferCapacity1(0)
       , m_aThreadByteBuffer2(nullptr)
       , m_cThreadByteBufferCapacity2(0)
-      , m_aSumHistogramBucketVectorEntry(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
-      , m_aSumHistogramBucketVectorEntry1(new (std::nothrow) HistogramBucketVectorEntry<bClassification>[cVectorLength])
-      , m_aTempFloatVector(new (std::nothrow) FloatEbmType[cVectorLength])
+      // TODO : do we need to check that the multiplication doesn't overflow here
+      , m_aSumHistogramBucketVectorEntry(malloc(GetVectorLength(runtimeLearningTypeOrCountTargetClasses) * (IsClassification(runtimeLearningTypeOrCountTargetClasses) ? sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>))))
+      // TODO : do we need to check that the multiplication doesn't overflow here
+      , m_aSumHistogramBucketVectorEntry1(malloc(GetVectorLength(runtimeLearningTypeOrCountTargetClasses) * (IsClassification(runtimeLearningTypeOrCountTargetClasses) ? sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>))))
+      , m_aTempFloatVector(MallocArray<FloatEbmType>(GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_aEquivalentSplits(nullptr)
-      , m_bestTreeNodeToSplit() {
-      EBM_ASSERT(0 < cVectorLength);
+   {
    }
 
    ~CachedBoostingThreadResources() {
@@ -99,9 +67,9 @@ public:
 
       free(m_aThreadByteBuffer1);
       free(m_aThreadByteBuffer2);
-      delete[] m_aSumHistogramBucketVectorEntry;
-      delete[] m_aSumHistogramBucketVectorEntry1;
-      delete[] m_aTempFloatVector;
+      free(m_aSumHistogramBucketVectorEntry);
+      free(m_aSumHistogramBucketVectorEntry1);
+      free(m_aTempFloatVector);
       free(m_aEquivalentSplits);
 
       LOG_0(TraceLevelInfo, "Exited ~CachedBoostingThreadResources");
@@ -153,7 +121,7 @@ public:
    }
 
    EBM_INLINE bool IsError() const {
-      return !m_bestTreeNodeToSplit.IsSuccess() || nullptr == m_aSumHistogramBucketVectorEntry || 
+      return nullptr == m_aSumHistogramBucketVectorEntry || 
          nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aTempFloatVector;
    }
 };

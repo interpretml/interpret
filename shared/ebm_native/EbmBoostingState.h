@@ -26,36 +26,6 @@
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 
-union CachedThreadResourcesUnion {
-   CachedBoostingThreadResources<false> regression;
-   CachedBoostingThreadResources<true> classification;
-
-   EBM_INLINE CachedThreadResourcesUnion(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses) {
-      LOG_N(TraceLevelInfo, "Entered CachedThreadResourcesUnion: runtimeLearningTypeOrCountTargetClasses=%td", runtimeLearningTypeOrCountTargetClasses);
-      const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         // member classes inside a union requre explicit call to constructor
-         new(&classification) CachedBoostingThreadResources<true>(cVectorLength);
-      } else {
-         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-         // member classes inside a union requre explicit call to constructor
-         new(&regression) CachedBoostingThreadResources<false>(cVectorLength);
-      }
-      LOG_0(TraceLevelInfo, "Exited CachedThreadResourcesUnion");
-   }
-
-   EBM_INLINE ~CachedThreadResourcesUnion() {
-      // TODO: figure out why this is being called, and if that is bad!
-      //LOG_0(TraceLevelError, "ERROR ~CachedThreadResourcesUnion called.  It's union destructors should be called explicitly");
-
-      // we don't have enough information here to delete this object, so we do it from our caller
-      // we still need this destructor for a technicality that it might be called
-      // if there were an excpetion generated in the initializer list which it is constructed in
-      // but we have been careful to ensure that the class we are including it in doesn't thow exceptions in the
-      // initializer list
-   }
-};
-
 class EbmBoostingState {
 public:
    const ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
@@ -84,12 +54,9 @@ public:
 
    RandomStream m_randomStream;
 
-   // TODO CachedThreadResourcesUnion has a lot of things that aren't per thread.  Right now it's functioning as a place to put mostly things
-   // that are different between regression and classification.  In the future we'll want something like it for breaking the work into workable chunks
-   // so I'm leaving it here for now.  
    // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
    // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
-   CachedThreadResourcesUnion m_cachedThreadResourcesUnion;
+   CachedBoostingThreadResources m_cachedThreadResources;
 
    EBM_INLINE EbmBoostingState(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
@@ -117,7 +84,7 @@ public:
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_randomStream(randomSeed)
       // we catch any errors in the constructor, so this should not be able to throw
-      , m_cachedThreadResourcesUnion(runtimeLearningTypeOrCountTargetClasses) 
+      , m_cachedThreadResources(runtimeLearningTypeOrCountTargetClasses) 
    {
       // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
       // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -126,17 +93,6 @@ public:
 
    EBM_INLINE ~EbmBoostingState() {
       LOG_0(TraceLevelInfo, "Entered ~EbmBoostingState");
-
-      if(IsClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
-         // member classes inside a union requre explicit call to destructor
-         LOG_0(TraceLevelInfo, "~EbmBoostingState identified as classification type");
-         m_cachedThreadResourcesUnion.classification.~CachedBoostingThreadResources();
-      } else {
-         EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
-         // member classes inside a union requre explicit call to destructor
-         LOG_0(TraceLevelInfo, "~EbmBoostingState identified as regression type");
-         m_cachedThreadResourcesUnion.regression.~CachedBoostingThreadResources();
-      }
 
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
 

@@ -14,8 +14,6 @@
 #include "DataSetByFeatureCombination.h"
 #include "SamplingSet.h"
 
-// TODO: rename this cpp file and our h file as SamplingSet.cpp SamplingSet.h
-
 SamplingSet::~SamplingSet() {
    LOG_0(TraceLevelInfo, "Entered ~SamplingSet");
    free(const_cast<size_t *>(m_aCountOccurrences));
@@ -23,7 +21,7 @@ SamplingSet::~SamplingSet() {
 }
 
 size_t SamplingSet::GetTotalCountInstanceOccurrences() const {
-      // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
+   // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
    size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
 #ifndef NDEBUG
    size_t cTotalCountInstanceOccurrencesDebug = 0;
