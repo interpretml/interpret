@@ -8,4 +8,4 @@ CXX_STD = CXX11
 PKG_CPPFLAGS= -I$(NATIVEDIR) -I$(NATIVEDIR)/inc -DEBM_NATIVE_R
 PKG_CXXFLAGS=$(CXX_VISIBILITY)
 
-OBJECTS = interpret_R.o $(NATIVEDIR)/DataSetByFeature.o $(NATIVEDIR)/DataSetByFeatureCombination.o $(NATIVEDIR)/InteractionDetection.o $(NATIVEDIR)/Logging.o $(NATIVEDIR)/SamplingWithReplacement.o $(NATIVEDIR)/Boosting.o
+OBJECTS = interpret_R.o $(NATIVEDIR)/DataSetByFeature.o $(NATIVEDIR)/DataSetByFeatureCombination.o $(NATIVEDIR)/InteractionDetection.o $(NATIVEDIR)/Logging.o $(NATIVEDIR)/SamplingSet.o $(NATIVEDIR)/Boosting.o
