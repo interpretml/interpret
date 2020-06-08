@@ -292,7 +292,7 @@ EXIT /B 0
     <ClInclude Include="Feature.h" />
     <ClInclude Include="FeatureCombination.h" />
     <ClInclude Include="HistogramBucket.h" />
-    <ClInclude Include="CachedThreadResources.h" />
+    <ClInclude Include="CachedBoostingThreadResources.h" />
     <ClInclude Include="DataSetByFeature.h" />
     <ClInclude Include="DataSetByFeatureCombination.h" />
     <ClInclude Include="EbmInternal.h" />

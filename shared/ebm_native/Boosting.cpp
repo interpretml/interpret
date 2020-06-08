@@ -19,7 +19,7 @@
 #include "SegmentedTensor.h"
 #include "EbmStatistics.h"
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
-#include "CachedThreadResources.h"
+#include "CachedBoostingThreadResources.h"
 // feature includes
 #include "Feature.h"
 // FeatureCombination.h depends on FeatureInternal.h

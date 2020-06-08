@@ -12,7 +12,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatistics.h"
-#include "CachedThreadResources.h"
+#include "CachedBoostingThreadResources.h"
 #include "Feature.h"
 #include "SamplingSet.h"
 #include "HistogramBucket.h"
