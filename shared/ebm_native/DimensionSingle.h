@@ -735,7 +735,7 @@ retry_with_bigger_tree_node_children_array:
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostZeroDimensional(
    CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
-   const SamplingMethod * const pTrainingSet, 
+   const SamplingSet * const pTrainingSet,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
@@ -796,7 +796,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostSingleDimensional(
    RandomStream * const pRandomStream, 
    CachedBoostingThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, 
-   const SamplingMethod * const pTrainingSet, 
+   const SamplingSet * const pTrainingSet,
    const FeatureCombination * const pFeatureCombination, 
    const size_t cTreeSplitsMax, 
    const size_t cInstancesRequiredForChildSplitMin, 

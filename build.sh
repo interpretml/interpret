@@ -1,6 +1,10 @@
 #!/bin/sh
 
-
+# Periodically check the valgrind results on the build server by going to:
+# https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary
+# By clicking on the build of interest, then "Test ebm_native Linux", then "View raw log"
+# We normally have 2 "still reachable" blocks from the Testing executable.
+#
 # We run the clang-tidy and Visual Studio static analysis tools on the build server.  Warnings do not stop the build, 
 # so these need to be inspected to catch static analysis issues.  The results can be viewed in the build logs here:
 # https://dev.azure.com/ms/interpret/_build?definitionId=293&_a=summary

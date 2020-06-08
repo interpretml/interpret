@@ -405,7 +405,7 @@ bool EbmBoostingState::Initialize(
 
    EBM_ASSERT(nullptr == m_apSamplingSets);
    if(0 != cTrainingInstances) {
-      m_apSamplingSets = SamplingWithReplacement::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
+      m_apSamplingSets = SamplingSet::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
       if(UNLIKELY(nullptr == m_apSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
          return true;

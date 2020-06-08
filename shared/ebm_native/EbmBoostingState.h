@@ -69,7 +69,7 @@ public:
 
    const size_t m_cSamplingSets;
 
-   SamplingMethod ** m_apSamplingSets;
+   SamplingSet ** m_apSamplingSets;
    SegmentedTensor ** m_apCurrentModel;
    SegmentedTensor ** m_apBestModel;
 
@@ -138,7 +138,7 @@ public:
          m_cachedThreadResourcesUnion.regression.~CachedBoostingThreadResources();
       }
 
-      SamplingWithReplacement::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
+      SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
 
       delete m_pTrainingSet;
       delete m_pValidationSet;

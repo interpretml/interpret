@@ -142,7 +142,7 @@ static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void BinDataSetTrainingZeroDimensions(
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, 
-   const SamplingMethod * const pTrainingSet, 
+   const SamplingSet * const pTrainingSet,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -159,9 +159,8 @@ void BinDataSetTrainingZeroDimensions(
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
-   const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
-   const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
-   const FloatEbmType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
+   const size_t * pCountOccurrences = pTrainingSet->m_aCountOccurrences;
+   const FloatEbmType * pResidualError = pTrainingSet->m_pOriginDataSet->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
@@ -204,8 +203,8 @@ void BinDataSetTrainingZeroDimensions(
 #endif // NDEBUG
          pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
          if(bClassification) {
-            // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the 
-            //   SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might make 
+            // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the 
+            //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might make 
             //   more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a 
             //   MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the computation if 
             //   not necssary and access it through an accessor so that we can make the change entirely via macro
@@ -235,7 +234,7 @@ template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDim
 void BinDataSetTraining(HistogramBucket<IsClassification(
    compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
    const FeatureCombination * const pFeatureCombination, 
-   const SamplingMethod * const pTrainingSet, 
+   const SamplingSet * const pTrainingSet,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
@@ -266,10 +265,9 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
-   const SamplingWithReplacement * const pSamplingWithReplacement = static_cast<const SamplingWithReplacement *>(pTrainingSet);
-   const size_t * pCountOccurrences = pSamplingWithReplacement->m_aCountOccurrences;
-   const StorageDataType * pInputData = pSamplingWithReplacement->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
-   const FloatEbmType * pResidualError = pSamplingWithReplacement->m_pOriginDataSet->GetResidualPointer();
+   const size_t * pCountOccurrences = pTrainingSet->m_aCountOccurrences;
+   const StorageDataType * pInputData = pTrainingSet->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
+   const FloatEbmType * pResidualError = pTrainingSet->m_pOriginDataSet->GetResidualPointer();
 
    // this shouldn't overflow since we're accessing existing memory
    const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
@@ -341,8 +339,8 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
 #endif // NDEBUG
             pHistogramBucketVectorEntry[iVector].m_sumResidualError += cFloatOccurences * residualError;
             if(bClassification) {
-               // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the
-               //   SamplingWithReplacement sets would have this value, but I would need to store the computation in a new memory place, and it might 
+               // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the
+               //   SamplingSet sets would have this value, but I would need to store the computation in a new memory place, and it might 
                //   make more sense to calculate this values in the CPU rather than put more pressure on memory.  I think controlling this should be 
                //   done in a MACRO and we should use a class to hold the residualError and this computation from that value and then comment out the 
                //   computation if not necssary and access it through an accessor so that we can make the change entirely via macro
@@ -398,7 +396,7 @@ public:
       const size_t cRuntimeDimensions, 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
       const FeatureCombination * const pFeatureCombination, 
-      const SamplingMethod * const pTrainingSet, 
+      const SamplingSet * const pTrainingSet,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -442,7 +440,7 @@ public:
       const size_t cRuntimeDimensions, 
       HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
       const FeatureCombination * const pFeatureCombination, 
-      const SamplingMethod * const pTrainingSet, 
+      const SamplingSet * const pTrainingSet,
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -541,7 +539,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
                !std::isinf(residualError) && FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
             );
 
-            // TODO : this code gets executed for each SamplingWithReplacement set.  I could probably execute it once and then all the SamplingWithReplacement
+            // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the SamplingSet
             //   sets would have this value, but I would need to store the computation in a new memory place, and it might make more sense to calculate this 
             //   values in the CPU rather than put more pressure on memory.  I think controlling this should be done in a MACRO and we should use a class to 
             //   hold the residualError and this computation from that value and then comment out the computation if not necssary and access it through an 
@@ -569,7 +567,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 size_t SumHistogramBuckets(
-   const SamplingMethod * const pTrainingSet, 
+   const SamplingSet * const pTrainingSet,
    const size_t cHistogramBuckets, 
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
    HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, 
