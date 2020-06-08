@@ -11,6 +11,8 @@ jobs:
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - script: |
       /bin/sh ./build.sh -32bit
@@ -52,6 +54,8 @@ jobs:
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - task: DownloadBuildArtifacts@0
     inputs:
@@ -83,6 +87,8 @@ jobs:
 - job: 'Build_JS_Inline'
   pool:
     vmImage: 'ubuntu-16.04'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -109,6 +115,8 @@ jobs:
   dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
     vmImage: 'ubuntu-16.04'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - task: DownloadBuildArtifacts@0
     inputs:
@@ -195,6 +203,8 @@ jobs:
     maxParallel: 9
   pool:
     vmImage: '$(image.name)'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - task: DownloadBuildArtifacts@0
     inputs:
@@ -267,6 +277,8 @@ jobs:
   dependsOn: ['Test_ebm_native', 'Test']
   pool:
     vmImage: 'ubuntu-16.04'
+  variables:
+    runCodesignValidationInjection: false
   steps:
   - task: DownloadBuildArtifacts@0
     inputs:
