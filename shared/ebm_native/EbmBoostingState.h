@@ -24,7 +24,7 @@
 // dataset depends on features
 #include "DataSetByFeatureCombination.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
-#include "SamplingWithReplacement.h"
+#include "SamplingSet.h"
 
 union CachedThreadResourcesUnion {
    CachedBoostingThreadResources<false> regression;

@@ -305,7 +305,7 @@ EXIT /B 0
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramBucketVectorEntry.h" />
     <ClInclude Include="RandomStream.h" />
-    <ClInclude Include="SamplingWithReplacement.h" />
+    <ClInclude Include="SamplingSet.h" />
     <ClInclude Include="SegmentedTensor.h" />
     <ClInclude Include="DimensionSingle.h" />
     <ClInclude Include="TreeNode.h" />

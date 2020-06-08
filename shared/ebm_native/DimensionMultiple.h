@@ -14,7 +14,7 @@
 #include "EbmStatistics.h"
 #include "CachedThreadResources.h"
 #include "Feature.h"
-#include "SamplingWithReplacement.h"
+#include "SamplingSet.h"
 #include "HistogramBucket.h"
 
 #ifndef NDEBUG

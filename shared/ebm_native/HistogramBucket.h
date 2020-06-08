@@ -19,7 +19,7 @@
 #include "FeatureCombination.h"
 #include "DataSetByFeatureCombination.h"
 #include "DataSetByFeature.h"
-#include "SamplingWithReplacement.h"
+#include "SamplingSet.h"
 
 // we don't need to handle multi-dimensional inputs with more than 64 bits total
 // the rational is that we need to bin this data, and our binning memory will be N1*N1*...*N(D-1)*N(D)

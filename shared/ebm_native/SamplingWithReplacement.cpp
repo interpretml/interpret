@@ -12,7 +12,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h" // our header didn't need the full definition, but we use the RandomStream in here, so we need it
 #include "DataSetByFeatureCombination.h"
-#include "SamplingWithReplacement.h"
+#include "SamplingSet.h"
 
 // TODO: rename this cpp file and our h file as SamplingSet.cpp SamplingSet.h
 
