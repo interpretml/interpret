@@ -27,6 +27,51 @@ jobs:
       .\build.bat -32bit
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building ebm_native code (Windows)'
+  - task: ComponentGovernanceComponentDetection@0
+    displayName: 'Component Detection (Scan dependencies for incompatible licenses and security)'
+  - task: CredScan@2
+    displayName: 'CredScan (Scan for leaked credentials)'
+    condition: startsWith(variables['image.name'], 'windows')
+#  - task: BinSkim@3
+#    displayName: 'BinSkim'
+#    condition: startsWith(variables['image.name'], 'windows')
+#    inputs:
+#      InputType: Basic
+#      AnalyzeTarget: 'staging\*.dll'
+#      AnalyzeSymPath: 'staging'
+#      AnalyzeVerbose: true
+#  - task: AntiMalware@3
+#    displayName: 'AntiMalware'
+  - task: SdtReport@1
+    displayName: 'Generate security report'
+    condition: startsWith(variables['image.name'], 'windows')
+    inputs:
+      TsvFile: false
+      AllTools: false
+      BinSkim: false
+      CredScan: true
+      MSRD: false
+      RoslynAnalyzers: false
+      TSLint: false
+      ToolLogsNotFoundAction: 'Standard'
+  - task: PublishSecurityAnalysisLogs@2
+    displayName: 'Publish security report'
+    condition: startsWith(variables['image.name'], 'windows')
+    inputs:
+      ArtifactName: 'CodeAnalysisLogs'
+      ArtifactType: 'Container'
+      AllTools: true
+      ToolLogsNotFoundAction: 'Standard'
+  - task: PostAnalysis@1
+    displayName: 'Stop on security errors'
+    condition: startsWith(variables['image.name'], 'windows')
+    inputs:
+      AllTools: false
+      BinSkim: false
+      CredScan: true
+      RoslynAnalyzers: false
+      TSLint: false
+      ToolLogsNotFoundAction: 'Standard'
   - task: CopyFiles@2
     condition: succeeded()
     inputs:
@@ -97,6 +142,7 @@ jobs:
   - script: python build-js-bundles.py devops
     workingDirectory: 'python/scripts'
     displayName: 'Build JS bundle'
+# TODO enable ESLint here, or in a special security job
   - task: CopyFiles@2
     condition: succeeded()
     inputs:

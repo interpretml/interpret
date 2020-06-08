@@ -5,7 +5,7 @@
   "main": "index.js",
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "scripts": {
     "clean": "rm dist/bundle.js",
     "build-dev": "webpack -d --mode development",
