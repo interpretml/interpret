@@ -14,7 +14,6 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramBucketVectorEntry.h"
-#include "CachedBoostingThreadResources.h"
 #include "Feature.h"
 #include "FeatureCombination.h"
 #include "DataSetByFeatureCombination.h"

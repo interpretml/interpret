@@ -286,6 +286,7 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CachedInteractionThreadResources.h" />
     <ClInclude Include="EbmInteractionState.h" />
     <ClInclude Include="EbmBoostingState.h" />
     <ClInclude Include="inc\ebm_native.h" />

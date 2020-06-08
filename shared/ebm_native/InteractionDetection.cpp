@@ -16,6 +16,7 @@
 #include "Feature.h"
 // dataset depends on features
 #include "DataSetByFeature.h"
+#include "CachedInteractionThreadResources.h"
 // depends on the above
 #include "DimensionMultiple.h"
 
