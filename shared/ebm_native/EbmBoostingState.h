@@ -30,6 +30,10 @@ class EbmBoostingState {
 public:
    const ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
+   // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
+   const size_t m_cFeatures;
+   Feature * const m_aFeatures;
+
    const size_t m_cFeatureCombinations;
    FeatureCombination ** const m_apFeatureCombinations;
 
@@ -38,8 +42,8 @@ public:
    DataSetByFeatureCombination * m_pValidationSet;
 
    const size_t m_cSamplingSets;
-
    SamplingSet ** m_apSamplingSets;
+
    SegmentedTensor ** m_apCurrentModel;
    SegmentedTensor ** m_apBestModel;
 
@@ -48,15 +52,11 @@ public:
    SegmentedTensor * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
    SegmentedTensor * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
-   const size_t m_cFeatures;
-   // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
-   Feature * const m_aFeatures;
-
-   RandomStream m_randomStream;
-
    // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
    // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
-   CachedBoostingThreadResources m_cachedThreadResources;
+   CachedBoostingThreadResources * const m_pCachedThreadResources;
+
+   RandomStream m_randomStream;
 
    EBM_INLINE EbmBoostingState(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
@@ -82,9 +82,9 @@ public:
          SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
-      , m_randomStream(randomSeed)
+      , m_pCachedThreadResources(CachedBoostingThreadResources::Allocate(runtimeLearningTypeOrCountTargetClasses))
       // we catch any errors in the constructor, so this should not be able to throw
-      , m_cachedThreadResources(runtimeLearningTypeOrCountTargetClasses) 
+      , m_randomStream(randomSeed)
    {
       // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
       // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -93,6 +93,10 @@ public:
 
    EBM_INLINE ~EbmBoostingState() {
       LOG_0(TraceLevelInfo, "Entered ~EbmBoostingState");
+
+      if(nullptr != m_pCachedThreadResources) {
+         m_pCachedThreadResources->Free();
+      }
 
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
 

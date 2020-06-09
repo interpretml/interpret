@@ -23,8 +23,16 @@ class CachedBoostingThreadResources {
    void * m_aThreadByteBuffer2;
    size_t m_cThreadByteBufferCapacity2;
 
-   void * const m_aSumHistogramBucketVectorEntry;
-   void * const m_aSumHistogramBucketVectorEntry1;
+   void * m_aSumHistogramBucketVectorEntry;
+   void * m_aSumHistogramBucketVectorEntry1;
+
+   CachedBoostingThreadResources() {
+      // disallow calling the constructor by making it private
+   }
+
+   ~CachedBoostingThreadResources() {
+      // disallow calling the destructor by making it private
+   }
 
 public:
 
@@ -38,25 +46,11 @@ public:
       return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry1);
    }
 
-   FloatEbmType * const m_aTempFloatVector;
+   FloatEbmType * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   CachedBoostingThreadResources(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses)
-      : m_aThreadByteBuffer1(nullptr)
-      , m_cThreadByteBufferCapacity1(0)
-      , m_aThreadByteBuffer2(nullptr)
-      , m_cThreadByteBufferCapacity2(0)
-      // TODO : do we need to check that the multiplication doesn't overflow here
-      , m_aSumHistogramBucketVectorEntry(malloc(GetVectorLength(runtimeLearningTypeOrCountTargetClasses) * (IsClassification(runtimeLearningTypeOrCountTargetClasses) ? sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>))))
-      // TODO : do we need to check that the multiplication doesn't overflow here
-      , m_aSumHistogramBucketVectorEntry1(malloc(GetVectorLength(runtimeLearningTypeOrCountTargetClasses) * (IsClassification(runtimeLearningTypeOrCountTargetClasses) ? sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>))))
-      , m_aTempFloatVector(MallocArray<FloatEbmType>(GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
-      , m_aEquivalentSplits(nullptr)
-   {
-   }
-
-   ~CachedBoostingThreadResources() {
-      LOG_0(TraceLevelInfo, "Entered ~CachedBoostingThreadResources");
+   void Free() {
+      LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Free");
 
       free(m_aThreadByteBuffer1);
       free(m_aThreadByteBuffer2);
@@ -65,7 +59,38 @@ public:
       free(m_aTempFloatVector);
       free(m_aEquivalentSplits);
 
-      LOG_0(TraceLevelInfo, "Exited ~CachedBoostingThreadResources");
+      LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Free");
+   }
+
+   INLINE_RELEASE static CachedBoostingThreadResources * Allocate(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   ) {
+      LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Allocate");
+
+      CachedBoostingThreadResources * const pNew = EbmMalloc<CachedBoostingThreadResources>();
+      if(LIKELY(nullptr != pNew)) {
+         const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
+         const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
+            sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
+
+         void * const aSumHistogramBucketVectorEntry = EbmMalloc<void>(cVectorLength, cBytesPerItem);
+         if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
+            pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
+            void * const aSumHistogramBucketVectorEntry1 = EbmMalloc<void>(cVectorLength, cBytesPerItem);
+            if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
+               pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
+               FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+               if(LIKELY(nullptr != aTempFloatVector)) {
+                  pNew->m_aTempFloatVector = aTempFloatVector;
+                  LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Allocate");
+                  return pNew;
+               }
+            }
+         }
+         pNew->Free();
+      }
+      LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Allocate with error");
+      return nullptr;
    }
 
    EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
@@ -111,11 +136,6 @@ public:
 
    EBM_INLINE size_t GetThreadByteBuffer2Size() const {
       return m_cThreadByteBufferCapacity2;
-   }
-
-   EBM_INLINE bool IsError() const {
-      return nullptr == m_aSumHistogramBucketVectorEntry || 
-         nullptr == m_aSumHistogramBucketVectorEntry1 || nullptr == m_aTempFloatVector;
    }
 };
 

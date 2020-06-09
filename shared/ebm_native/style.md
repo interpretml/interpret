@@ -8,6 +8,43 @@
 - C++ is kind of the wild west in terms of style. There are recent attempts to make an official one, but the 
   landscape is still so fragmented, so here's one more.
 
+## Formatting
+
+- No tabs. Use 3 spaces for indentation (3 spaces helps identify tabs which are often 4 spaces)
+- max 120 characters per line
+- Use K&R style opening braces '{' placed on the same line as the command that opens the block, unless you need to 
+  break a line into two lines, in which case use whatever look more comprehensible
+- always include opening and closing braces, even for 1 line statements that don't require them (it helps with diffs)
+- if there is a constant in a comparison, put it on the left 
+  eg: "if(1 == number)" -> this helps avoid the error "if(1 = number)"
+- always use less than in comparisons instead of greater than
+  eg: "if(1 <= something && something < 5)" instead of "if(something >= 1 && something < 5)"
+- only use "auto" for complex types that UNDENIABLY don't benefit from knowing the type, like iterators
+- try to preserve any other formatting used throughout the code
+
+## Naming
+
+- local variables: camelCase
+- Functions: PascalCase
+- classes/structs/typedefs/enum: PascalCase
+- labels: snake_case
+- anything dangerous: SCREAMING_CASE
+- file names: snake_case generally, but PascalCase if the filename is meant to match a PascalCase class name
+
+## Abreviations
+
+- We use a couple of prefix abbreviations for brevity:
+  - p -> pointer
+  - a -> array
+  - i -> index
+  - c -> count
+  - b -> bool
+  - m_ -> member variable (and we use these for structs too so that they don't need to change when code changes)
+  - s_ -> static member variable
+  - g_ -> global (global is evil, except when it's not)
+  - k_ -> konstants (it's really constants, but we used c above for count)
+- We use the following suffixes: First/Last/End/Prev/Cur/Next/Min/Max
+
 ## Exceptions
 
 - We use exceptions very sparingly in this codebase. The only places we use exceptions are when
@@ -59,40 +96,3 @@
       code where smaller objects are more frequently made, so we get less benefit from RAII in comparison.
     - Other places and projects like in most OSes and Google don't use exceptions for many of the reasons above
       and more: https://google.github.io/styleguide/cppguide.html#Exceptions
-
-## Formatting
-
-- No tabs. Use 3 spaces for indentation (3 spaces helps identify tabs which are often 4 spaces)
-- max 120 characters per line
-- Use K&R style opening braces '{' placed on the same line as the command that opens the block, unless you need to 
-  break a line into two lines, in which case use whatever look more comprehensible
-- always include opening and closing braces, even for 1 line statements that don't require them (it helps with diffs)
-- if there is a constant in a comparison, put it on the left 
-  eg: "if(1 == number)" -> this helps avoid the error "if(1 = number)"
-- always use less than in comparisons instead of greater than
-  eg: "if(1 <= something && something < 5)" instead of "if(something >= 1 && something < 5)"
-- only use "auto" for complex types that UNDENIABLY don't benefit from knowing the type, like iterators
-- try to preserve any other formatting used throughout the code
-
-## Naming
-
-- local variables: camelCase
-- Functions: PascalCase
-- classes/structs/typedefs/enum: PascalCase
-- labels: snake_case
-- anything dangerous: SCREAMING_CASE
-- file names: snake_case generally, but PascalCase if the filename is meant to match a class name, like "SamplingSet.h"
-
-## Abreviations
-
-- We use a couple of prefix abbreviations for brevity:
-  - p -> pointer
-  - a -> array
-  - i -> index
-  - c -> count
-  - b -> bool
-  - m_ -> member variable (and we use these for structs too so that they don't need to change when code changes)
-  - s_ -> static member variable
-  - g_ -> global (global is evil, except when it's not)
-  - k_ -> konstants (it's really constants, but we used c above for count)
-- We use the following suffixes: First/Last/End/Prev/Cur/Next/Min/Max

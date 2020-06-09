@@ -45,7 +45,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    const size_t cInstances = pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   size_t * const aCountOccurrences = MallocArray<size_t>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
@@ -127,7 +127,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 
-   SamplingSet ** apSamplingSets = MallocArray<SamplingSet *>(cSamplingSetsAfterZero);
+   SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *>(cSamplingSetsAfterZero);
    if(UNLIKELY(nullptr == apSamplingSets)) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == apSamplingSets");
       return nullptr;

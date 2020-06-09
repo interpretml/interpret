@@ -370,27 +370,37 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    return num1 + num2 < num1;
 }
 
-// TODO: use this a lot more
-template<typename T, bool bZero = true>
-EBM_INLINE T * MallocArray(const size_t cItems, const size_t cBytesPerItem = sizeof(T)) {
-   // using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just exits.
-   // This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
-   // that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free
-   // everywhere for arrays.  This helper function makes it a bit nicer than pure malloc.
-   //
-   // For our own objects, we should probably just define a static CLASS_NAME::Allocate(...) function for allocation
-   // and OBJECT::Free() for deallocation and use malloc/free internally.
-   //
-   // For classes that we don't control, continue to use new and delete with std::nothrow for class objects though, 
-   // since the memory allocated that way is modest in size, and to use malloc and free for class objects would 
-   // reqiure using the inplace constructors and manually call the destructors instead of delete, and all of that 
-   // is pretty confusing to developers, but arrays require a different call to delete[] anyways which is separate 
-   // from delete, so using free instead  is maybe even a bit less confusing for keeping object and array 
-   // allocations separate.
-   // 
-   // We do also occasionally use malloc to allocate combined memory regions of multiple types, so we do use free
-   // in some cases anyways, so keeping just one type of free function (free instead of delete[]) is simpler.
+// TODO: use EbmMalloc a lot more
 
+// using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just exits.
+// This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
+// that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free
+// everywhere for arrays.  This helper function makes it a bit nicer than pure malloc.
+//
+// For our own objects, we should probably just define a static CLASS_NAME::Allocate(...) function for allocation
+// and OBJECT::Free() for deallocation and use malloc/free internally.
+//
+// For classes that we don't control, continue to use new and delete with std::nothrow for class objects though, 
+// since the memory allocated that way is modest in size, and to use malloc and free for class objects would 
+// reqiure using the inplace constructors and manually call the destructors instead of delete, and all of that 
+// is pretty confusing to developers, but arrays require a different call to delete[] anyways which is separate 
+// from delete, so using free instead  is maybe even a bit less confusing for keeping object and array 
+// allocations separate.
+// 
+// We do also occasionally use malloc to allocate combined memory regions of multiple types, so we do use free
+// in some cases anyways, so keeping just one type of free function (free instead of delete[]) is simpler.
+template<typename T, bool bZero = true>
+EBM_INLINE T * EbmMalloc() {
+   T * const a = static_cast<T *>(malloc(sizeof(T)));
+   if(bZero) {
+      if(LIKELY(nullptr != a)) {
+         memset(a, 0, sizeof(T));
+      }
+   }
+   return a;
+}
+template<typename T, bool bZero = true>
+EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem = sizeof(T)) {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
    } else {

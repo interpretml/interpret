@@ -133,8 +133,8 @@ bool EbmBoostingState::Initialize(
 
    const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
-   if(m_cachedThreadResources.IsError()) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_cachedThreadResources.IsError()");
+   if(UNLIKELY(nullptr == m_pCachedThreadResources)) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pCachedThreadResources");
       return true;
    }
 
@@ -341,7 +341,7 @@ bool EbmBoostingState::Initialize(
       } while(iFeatureCombination < m_cFeatureCombinations);
 
       if(0 != cBytesArrayEquivalentSplitMax) {
-         m_cachedThreadResources.m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
+         m_pCachedThreadResources->m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
       }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
@@ -412,7 +412,7 @@ bool EbmBoostingState::Initialize(
       }
    }
 
-   FloatEbmType * const aTempFloatVector = m_cachedThreadResources.m_aTempFloatVector;
+   FloatEbmType * const aTempFloatVector = m_pCachedThreadResources->m_aTempFloatVector;
    if(bClassification) {
       if(IsBinaryClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
@@ -792,7 +792,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          FloatEbmType gain = FloatEbmType { 0 };
          if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->m_cFeatures))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
-               &pEbmBoostingState->m_cachedThreadResources,
+               pEbmBoostingState->m_pCachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
                pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses
@@ -805,7 +805,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          } else if(1 == pFeatureCombination->m_cFeatures) {
             if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
                &pEbmBoostingState->m_randomStream, 
-               &pEbmBoostingState->m_cachedThreadResources,
+               pEbmBoostingState->m_pCachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pFeatureCombination, 
                cTreeSplitsMax, 
@@ -821,7 +821,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else {
             if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(
-               &pEbmBoostingState->m_cachedThreadResources,
+               pEbmBoostingState->m_pCachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
                pFeatureCombination, 
                pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
@@ -1201,7 +1201,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
 
    // if the count of training instances is zero, then pEbmBoostingState->m_pTrainingSet will be nullptr
    if(nullptr != pEbmBoostingState->m_pTrainingSet) {
-      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_cachedThreadResources.m_aTempFloatVector;
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_pCachedThreadResources->m_aTempFloatVector;
 
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
