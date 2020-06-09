@@ -1,3 +1,8 @@
+# We use the "Secure Development Tools" which needs to be installed in any DevOps organization that use 
+# this YAML file. The free public Azure Pipelines for OSS includes these tools by default already.
+
+# TODO: add ESLint once it's added to the "Secure Development Tools". TSLint is depricated.
+
 jobs:
 - job: 'Build_ebm_native'
   strategy:
@@ -28,12 +33,12 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Building ebm_native code (Windows)'
   - task: ComponentGovernanceComponentDetection@0
-    displayName: 'Component Detection (Scan dependencies for incompatible licenses and security)'
+    displayName: 'Scan dependencies for incompatible licenses and security issues'
   - task: CredScan@2
-    displayName: 'CredScan (Scan for leaked credentials)'
+    displayName: 'Scan codebase for leaked secrets'
     condition: startsWith(variables['image.name'], 'windows')
 #  - task: BinSkim@3
-#    displayName: 'BinSkim'
+#    displayName: 'Scan DLLs for compiler/linker security improvements'
 #    condition: startsWith(variables['image.name'], 'windows')
 #    inputs:
 #      InputType: Basic
@@ -41,7 +46,7 @@ jobs:
 #      AnalyzeSymPath: 'staging'
 #      AnalyzeVerbose: true
 #  - task: AntiMalware@3
-#    displayName: 'AntiMalware'
+#    displayName: 'AntiMalware scan'
   - task: SdtReport@1
     displayName: 'Generate security report'
     condition: startsWith(variables['image.name'], 'windows')
@@ -142,7 +147,6 @@ jobs:
   - script: python build-js-bundles.py devops
     workingDirectory: 'python/scripts'
     displayName: 'Build JS bundle'
-# TODO enable ESLint here, or in a special security job
   - task: CopyFiles@2
     condition: succeeded()
     inputs:

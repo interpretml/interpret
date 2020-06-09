@@ -52,7 +52,6 @@ public:
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-
          const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
 
          FloatEbmType * pExpVector = aExpVector;
@@ -163,9 +162,6 @@ public:
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
          const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-
-
-
          *pResidualError = residualError;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);

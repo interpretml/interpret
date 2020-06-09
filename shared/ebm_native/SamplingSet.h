@@ -38,7 +38,7 @@ private:
    static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);
 
 public:
-    const DataSetByFeatureCombination * const m_pOriginDataSet;
+   const DataSetByFeatureCombination * const m_pOriginDataSet;
 
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 

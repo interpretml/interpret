@@ -338,6 +338,7 @@ EXIT /B 0
   </ItemGroup>
   <ItemGroup>
     <None Include="ebm_native_exports.def" />
+    <None Include="style.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ebm_native_exports.txt" />
