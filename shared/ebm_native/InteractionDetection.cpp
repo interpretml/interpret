@@ -167,7 +167,7 @@ static IntEbmType GetInteractionScorePerTargetClasses(
    FloatEbmType * const pInteractionScoreReturn
 ) {
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
-   CachedInteractionThreadResources * const pCachedThreadResources = new (std::nothrow) CachedInteractionThreadResources();
+   CachedInteractionThreadResources * const pCachedThreadResources = CachedInteractionThreadResources::Allocate();
    if(nullptr == pCachedThreadResources) {
       return 1;
    }
@@ -180,10 +180,10 @@ static IntEbmType GetInteractionScorePerTargetClasses(
       cInstancesRequiredForChildSplitMin, 
       pInteractionScoreReturn
    )) {
-      delete pCachedThreadResources;
+      pCachedThreadResources->Free();
       return 1;
    }
-   delete pCachedThreadResources;
+   pCachedThreadResources->Free();
    return 0;
 }
 

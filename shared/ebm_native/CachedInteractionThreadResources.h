@@ -11,27 +11,32 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-class CachedInteractionThreadResources {
+struct CachedInteractionThreadResources final {
    // this allows us to share the memory between underlying data types
    void * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
 
-public:
-
-   CachedInteractionThreadResources()
-      : m_aThreadByteBuffer1(nullptr)
-      , m_cThreadByteBufferCapacity1(0) {
-   }
-
-   ~CachedInteractionThreadResources() {
-      LOG_0(TraceLevelInfo, "Entered ~CachedInteractionThreadResources");
+   INLINE_RELEASE void Free() {
+      LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Free");
 
       free(m_aThreadByteBuffer1);
 
-      LOG_0(TraceLevelInfo, "Exited ~CachedInteractionThreadResources");
+      free(this);
+
+      LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Free");
    }
 
-   EBM_INLINE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+   INLINE_RELEASE static CachedInteractionThreadResources * Allocate() {
+      LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Allocate");
+
+      CachedInteractionThreadResources * const pNew = EbmMalloc<CachedInteractionThreadResources>();
+
+      LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Allocate");
+
+      return pNew;
+   }
+
+   INLINE_RELEASE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
@@ -48,5 +53,7 @@ public:
       return m_aThreadByteBuffer1;
    }
 };
+static_assert(std::is_standard_layout<CachedInteractionThreadResources>::value,
+   "we use malloc to allocate this, so it needs to be standard layout");
 
 #endif // CACHED_INTERACTION_THREAD_RESOURCES_H

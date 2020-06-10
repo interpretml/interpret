@@ -94,5 +94,8 @@
       implementation and reasoning complexity.
     - In this codebase we tend to allocate and free a fairly sparse number of objects compared to most other C++
       code where smaller objects are more frequently made, so we get less benefit from RAII in comparison.
+    - we have some structs that need to be POD and malloced, and other clases that could be new-ed, but keeping 
+      straight which items requires what delete/free was becoming a maintenance issue.  
+      Having just malloc/free is simpler in this regard.
     - Other places and projects like in most OSes and Google don't use exceptions for many of the reasons above
       and more: https://google.github.io/styleguide/cppguide.html#Exceptions
