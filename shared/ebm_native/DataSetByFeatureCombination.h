@@ -15,21 +15,28 @@
 
 // TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) 
 // and apply it to as many other classes as we can
-class DataSetByFeatureCombination final {
-   FloatEbmType * const m_aResidualErrors;
-   FloatEbmType * const m_aPredictorScores;
-   const StorageDataType * const m_aTargetData;
-   const StorageDataType * const * const m_aaInputData;
-   const size_t m_cInstances;
-   const size_t m_cFeatureCombinations;
+struct DataSetByFeatureCombination final {
+   FloatEbmType * m_aResidualErrors;
+   FloatEbmType * m_aPredictorScores;
+   StorageDataType * m_aTargetData;
+   StorageDataType * * m_aaInputData;
+   size_t m_cInstances;
+   size_t m_cFeatureCombinations;
 
-   const bool m_bAllocateResidualErrors;
-   const bool m_bAllocatePredictorScores;
-   const bool m_bAllocateTargetData;
+   ~DataSetByFeatureCombination();
 
-public:
+   INLINE_RELEASE DataSetByFeatureCombination() {
+      // TODO: when we're embedded inside a POD struct we can eliminate this
+      memset(this, 0, sizeof(*this));
 
-   DataSetByFeatureCombination(
+      // we must be zeroed before being called so that we don't try and free randomized pointers
+      EBM_ASSERT(nullptr == m_aResidualErrors);
+      EBM_ASSERT(nullptr == m_aPredictorScores);
+      EBM_ASSERT(nullptr == m_aTargetData);
+      EBM_ASSERT(nullptr == m_aaInputData);
+   }
+
+   bool Initialize(
       const bool bAllocateResidualErrors, 
       const bool bAllocatePredictorScores, 
       const bool bAllocateTargetData, 
@@ -41,12 +48,6 @@ public:
       const FloatEbmType * const aPredictorScoresFrom, 
       const size_t cVectorLength
    );
-   ~DataSetByFeatureCombination();
-
-   EBM_INLINE bool IsError() const {
-      return (m_bAllocateResidualErrors && nullptr == m_aResidualErrors) || (m_bAllocatePredictorScores && nullptr == m_aPredictorScores) || 
-         (m_bAllocateTargetData && nullptr == m_aTargetData) || (0 != m_cFeatureCombinations && nullptr == m_aaInputData);
-   }
 
    EBM_INLINE FloatEbmType * GetResidualPointer() {
       EBM_ASSERT(nullptr != m_aResidualErrors);
@@ -78,5 +79,7 @@ public:
       return m_cFeatureCombinations;
    }
 };
+static_assert(std::is_standard_layout<DataSetByFeatureCombination>::value,
+   "we use memset to zero this, so it needs to be standard layout");
 
 #endif // DATA_SET_BY_FEATURE_COMBINATION_H

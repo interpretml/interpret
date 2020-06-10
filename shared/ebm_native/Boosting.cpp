@@ -346,9 +346,8 @@ bool EbmBoostingState::Initialize(
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
 
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pTrainingSet");
    if(0 != cTrainingInstances) {
-      m_pTrainingSet = new (std::nothrow) DataSetByFeatureCombination(
+      const bool bError = m_trainingSet.Initialize(
          true, 
          bClassification, 
          bClassification, 
@@ -360,16 +359,14 @@ bool EbmBoostingState::Initialize(
          aTrainingPredictorScores, 
          cVectorLength
       );
-      if(nullptr == m_pTrainingSet || m_pTrainingSet->IsError()) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pTrainingSet || m_pTrainingSet->IsError()");
+      if(bError) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_trainingSet.Initialize");
          return true;
       }
    }
-   LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pTrainingSet %p", static_cast<void *>(m_pTrainingSet));
 
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination for m_pValidationSet");
    if(0 != cValidationInstances) {
-      m_pValidationSet = new (std::nothrow) DataSetByFeatureCombination(
+      const bool bError = m_validationSet.Initialize(
          !bClassification, 
          bClassification, 
          bClassification, 
@@ -381,16 +378,15 @@ bool EbmBoostingState::Initialize(
          aValidationPredictorScores, 
          cVectorLength
       );
-      if(nullptr == m_pValidationSet || m_pValidationSet->IsError()) {
-         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pValidationSet || m_pValidationSet->IsError()");
+      if(bError) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_validationSet.Initialize");
          return true;
       }
    }
-   LOG_N(TraceLevelInfo, "Exited DataSetByFeatureCombination for m_pValidationSet %p", static_cast<void *>(m_pValidationSet));
 
    EBM_ASSERT(nullptr == m_apSamplingSets);
    if(0 != cTrainingInstances) {
-      m_apSamplingSets = SamplingSet::GenerateSamplingSets(&m_randomStream, m_pTrainingSet, m_cSamplingSets);
+      m_apSamplingSets = SamplingSet::GenerateSamplingSets(&m_randomStream, &m_trainingSet, m_cSamplingSets);
       if(UNLIKELY(nullptr == m_apSamplingSets)) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_apSamplingSets");
          return true;
@@ -419,7 +415,7 @@ bool EbmBoostingState::Initialize(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
-               m_pTrainingSet->GetResidualPointer(), 
+               m_trainingSet.GetResidualPointer(), 
                ptrdiff_t { 2 }
             );
             if(bError) {
@@ -437,7 +433,7 @@ bool EbmBoostingState::Initialize(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
-               m_pTrainingSet->GetResidualPointer(), 
+               m_trainingSet.GetResidualPointer(), 
                m_runtimeLearningTypeOrCountTargetClasses
             );
             if(bError) {
@@ -453,7 +449,7 @@ bool EbmBoostingState::Initialize(
             cTrainingInstances, 
             aTrainingTargets, 
             aTrainingPredictorScores, 
-            m_pTrainingSet->GetResidualPointer(), 
+            m_trainingSet.GetResidualPointer(), 
             k_Regression
          );
          if(bError) {
@@ -465,7 +461,7 @@ bool EbmBoostingState::Initialize(
             cValidationInstances, 
             aValidationTargets, 
             aValidationPredictorScores, 
-            m_pValidationSet->GetResidualPointer(), 
+            m_validationSet.GetResidualPointer(), 
             k_Regression
          );
          if(bError) {
@@ -794,9 +790,6 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training instances
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
-   // m_pTrainingSet and m_apSamplingSets should be the same null-ness in that they should either both be null or both be non-null 
-   // (although different non-null values)
-   EBM_ASSERT(!pEbmBoostingState->m_apSamplingSets == !pEbmBoostingState->m_pTrainingSet);
    FloatEbmType totalGain = FloatEbmType { 0 };
    if(nullptr != pEbmBoostingState->m_apSamplingSets) {
       pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDimensions(cDimensions);
@@ -1212,29 +1205,27 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
 
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
 
-   // if the count of training instances is zero, then pEbmBoostingState->m_pTrainingSet will be nullptr
-   if(nullptr != pEbmBoostingState->m_pTrainingSet) {
+   if(0 != pEbmBoostingState->m_trainingSet.GetCountInstances()) {
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_pCachedThreadResources->m_aTempFloatVector;
 
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
          false,
          pFeatureCombination,
-         pEbmBoostingState->m_pTrainingSet,
+         &pEbmBoostingState->m_trainingSet,
          aModelFeatureCombinationUpdateTensor,
          aTempFloatVector
       );
    }
 
    FloatEbmType modelMetric = FloatEbmType { 0 };
-   if(nullptr != pEbmBoostingState->m_pValidationSet) {
+   if(0 != pEbmBoostingState->m_validationSet.GetCountInstances()) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
       // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
       // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
       // us with zero count validation sets
 
-      // if the count of validation set is zero, then pEbmBoostingState->m_pValidationSet will be nullptr
       // if the count of training instances is zero, don't update the best model (it will stay as all zeros), and we don't need to update our 
       // non-existant training set either C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, 
       // but it isn't guaranteed, so let's check for zero instances in the validation set this better way
@@ -1244,7 +1235,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
          false,
          pFeatureCombination,
-         pEbmBoostingState->m_pValidationSet,
+         &pEbmBoostingState->m_validationSet,
          aModelFeatureCombinationUpdateTensor
          );
 

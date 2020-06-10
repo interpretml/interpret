@@ -38,8 +38,8 @@ public:
    FeatureCombination ** const m_apFeatureCombinations;
 
    // TODO : can we internalize these so that they are not pointers and are therefore subsumed into our class
-   DataSetByFeatureCombination * m_pTrainingSet;
-   DataSetByFeatureCombination * m_pValidationSet;
+   DataSetByFeatureCombination m_trainingSet;
+   DataSetByFeatureCombination m_validationSet;
 
    const size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
@@ -69,8 +69,8 @@ public:
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatureCombinations(cFeatureCombinations)
       , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombination::AllocateFeatureCombinations(cFeatureCombinations))
-      , m_pTrainingSet(nullptr)
-      , m_pValidationSet(nullptr)
+      , m_trainingSet()
+      , m_validationSet()
       , m_cSamplingSets(cSamplingSets)
       , m_apSamplingSets(nullptr)
       , m_apCurrentModel(nullptr)
@@ -99,9 +99,6 @@ public:
       }
 
       SamplingSet::FreeSamplingSets(m_cSamplingSets, m_apSamplingSets);
-
-      delete m_pTrainingSet;
-      delete m_pValidationSet;
 
       FeatureCombination::FreeFeatureCombinations(m_cFeatureCombinations, m_apFeatureCombinations);
 

@@ -93,7 +93,7 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
    return aPredictorScoresTo;
 }
 
-EBM_INLINE static const StorageDataType * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
+EBM_INLINE static StorageDataType * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cInstances);
@@ -133,7 +133,7 @@ struct InputDataPointerAndCountBins {
    size_t m_cBins;
 };
 
-EBM_INLINE static const StorageDataType * const * ConstructInputData(
+EBM_INLINE static StorageDataType * * ConstructInputData(
    const size_t cFeatureCombinations, 
    const FeatureCombination * const * const apFeatureCombination, 
    const size_t cInstances, 
@@ -279,7 +279,7 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeatureCombination::DataSetByFeatureCombination(
+bool DataSetByFeatureCombination::Initialize(
    const bool bAllocateResidualErrors, 
    const bool bAllocatePredictorScores, 
    const bool bAllocateTargetData, 
@@ -290,19 +290,60 @@ DataSetByFeatureCombination::DataSetByFeatureCombination(
    const void * const aTargets, 
    const FloatEbmType * const aPredictorScoresFrom, 
    const size_t cVectorLength
-)
-   : m_aResidualErrors(bAllocateResidualErrors ? ConstructResidualErrors(cInstances, cVectorLength) : static_cast<FloatEbmType *>(nullptr))
-   , m_aPredictorScores(
-      bAllocatePredictorScores ? ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom) : static_cast<FloatEbmType *>(nullptr))
-   , m_aTargetData(
-      bAllocateTargetData ? ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets)) : static_cast<const StorageDataType *>(nullptr))
-   , m_aaInputData(0 == cFeatureCombinations ? nullptr : ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom))
-   , m_cInstances(cInstances)
-   , m_cFeatureCombinations(cFeatureCombinations) 
-   , m_bAllocateResidualErrors(bAllocateResidualErrors)
-   , m_bAllocatePredictorScores(bAllocatePredictorScores)
-   , m_bAllocateTargetData(bAllocateTargetData) {
+) {
    EBM_ASSERT(0 < cInstances);
+
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::Initialize");
+
+   FloatEbmType * aResidualErrors = nullptr;
+   if(bAllocateResidualErrors) {
+      aResidualErrors = ConstructResidualErrors(cInstances, cVectorLength);
+      if(nullptr == aResidualErrors) {
+         LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aResidualErrors");
+         return true;
+      }
+   }
+   FloatEbmType * aPredictorScores = nullptr;
+   if(bAllocatePredictorScores) {
+      aPredictorScores = ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom);
+      if(nullptr == aPredictorScores) {
+         free(aResidualErrors);
+         LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aPredictorScores");
+         return true;
+      }
+   }
+   StorageDataType * aTargetData = nullptr;
+   if(bAllocateTargetData) {
+      aTargetData = ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets));
+      if(nullptr == aTargetData) {
+         free(aResidualErrors);
+         free(aPredictorScores);
+         LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aTargetData");
+         return true;
+      }
+   }
+   StorageDataType ** aaInputData = nullptr;
+   if(0 != cFeatureCombinations) {
+      aaInputData = ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom);
+      if(nullptr == aaInputData) {
+         free(aResidualErrors);
+         free(aPredictorScores);
+         free(aTargetData);
+         LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aaInputData");
+         return true;
+      }
+   }
+
+   m_aResidualErrors = aResidualErrors;
+   m_aPredictorScores = aPredictorScores;
+   m_aTargetData = aTargetData;
+   m_aaInputData = aaInputData;
+   m_cInstances = cInstances;
+   m_cFeatureCombinations = cFeatureCombinations;
+
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::Initialize");
+
+   return false;
 }
 
 DataSetByFeatureCombination::~DataSetByFeatureCombination() {
@@ -310,17 +351,17 @@ DataSetByFeatureCombination::~DataSetByFeatureCombination() {
 
    free(m_aResidualErrors);
    free(m_aPredictorScores);
-   free(const_cast<StorageDataType *>(m_aTargetData));
+   free(m_aTargetData);
 
    if(nullptr != m_aaInputData) {
       EBM_ASSERT(0 < m_cFeatureCombinations);
-      const StorageDataType * const * paInputData = m_aaInputData;
+      StorageDataType * * paInputData = m_aaInputData;
       const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureCombinations;
       do {
-         free(const_cast<StorageDataType *>(*paInputData));
+         free(*paInputData);
          ++paInputData;
       } while(paInputDataEnd != paInputData);
-      free(const_cast<StorageDataType **>(m_aaInputData));
+      free(m_aaInputData);
    }
 
    LOG_0(TraceLevelInfo, "Exited ~DataSetByFeatureCombination");

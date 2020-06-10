@@ -47,8 +47,9 @@
 
 ## Exceptions
 
-- We use exceptions very sparingly in this codebase. The only places we use exceptions are when
-  having to interface with STL containers or random number generators for which there aren't good C replacements.
+- Using exceptions in the testing code is perfectly fine.
+- For the core library, we use exceptions very sparingly. The only places we use exceptions are when
+  having to interface with STL classes for which there aren't good C replacements.
   This is for a number of reasons:
     - We tend to use the struct hack a lot in this code for supporting multiclass.  Multiclass requires an array
       of residuals, and there are big performance benefits to co-locating this kind of data in the same region

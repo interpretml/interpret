@@ -18,7 +18,9 @@ struct DataSetByFeature final {
    size_t m_cInstances;
    size_t m_cFeatures;
 
-   DataSetByFeature() {
+   ~DataSetByFeature();
+
+   INLINE_RELEASE DataSetByFeature() {
       // TODO: when we're embedded inside a POD struct we can eliminate this
       memset(this, 0, sizeof(*this));
 
@@ -27,8 +29,6 @@ struct DataSetByFeature final {
       EBM_ASSERT(nullptr == m_aaInputData);
       EBM_ASSERT(0 == m_cInstances); // we use this even if our Initialized function isn't called
    }
-
-   ~DataSetByFeature();
 
    bool Initialize(
       const size_t cFeatures, 
