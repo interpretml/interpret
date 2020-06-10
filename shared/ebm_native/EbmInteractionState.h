@@ -118,12 +118,6 @@ public:
       LOG_0(TraceLevelInfo, "InitializeInteraction done feature processing");
 
       if(0 != cInstances) {
-         // TODO: don't I also need this temporary space for handling multiclass inside pairwise interactions or during interaction detection?
-         FloatEbmType * const aTempFloatVector = new (std::nothrow) FloatEbmType[GetVectorLength(m_runtimeLearningTypeOrCountTargetClasses)];
-         if(nullptr == aTempFloatVector) {
-            LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == aTempFloatVector");
-            return true;
-         }
          const bool bError = m_dataSet.Initialize(
             m_cFeatures, 
             m_aFeatures, 
@@ -131,12 +125,10 @@ public:
             aBinnedData, 
             aTargets, 
             aPredictorScores, 
-            m_runtimeLearningTypeOrCountTargetClasses,
-            aTempFloatVector
+            m_runtimeLearningTypeOrCountTargetClasses
          );
-         delete[] aTempFloatVector;
          if(bError) {
-            LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
+            LOG_0(TraceLevelWarning, "WARNING InitializeInteraction m_dataSet.Initialize");
             return true;
          }
       }

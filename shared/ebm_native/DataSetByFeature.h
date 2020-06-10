@@ -37,8 +37,7 @@ struct DataSetByFeature final {
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargetData, 
       const FloatEbmType * const aPredictorScores, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-      FloatEbmType * const aTempFloatVector
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
    EBM_INLINE const FloatEbmType * GetResidualPointer() const {

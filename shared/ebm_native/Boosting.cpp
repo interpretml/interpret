@@ -412,52 +412,65 @@ bool EbmBoostingState::Initialize(
       }
    }
 
-   FloatEbmType * const aTempFloatVector = m_pCachedThreadResources->m_aTempFloatVector;
    if(bClassification) {
       if(IsBinaryClassification(m_runtimeLearningTypeOrCountTargetClasses)) {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<2>::Func(
+            const bool bError = InitializeResiduals<2>::Func(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
                m_pTrainingSet->GetResidualPointer(), 
-               ptrdiff_t { 2 }, 
-               aTempFloatVector
+               ptrdiff_t { 2 }
             );
+            if(bError) {
+#ifdef EXPAND_BINARY_LOGITS
+               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize InitializeResiduals");
+               return true;
+#else // EXPAND_BINARY_LOGITS
+               EBM_ASSERT(false);
+#endif // EXPAND_BINARY_LOGITS
+            }
          }
       } else {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<k_DynamicClassification>::Func(
+            const bool bError = InitializeResiduals<k_DynamicClassification>::Func(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
                m_pTrainingSet->GetResidualPointer(), 
-               m_runtimeLearningTypeOrCountTargetClasses,
-               aTempFloatVector
+               m_runtimeLearningTypeOrCountTargetClasses
             );
+            if(bError) {
+               LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize InitializeResiduals");
+               return true;
+            }
          }
       }
    } else {
       EBM_ASSERT(IsRegression(m_runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingInstances) {
-         InitializeResiduals<k_Regression>::Func(
+         const bool bError = InitializeResiduals<k_Regression>::Func(
             cTrainingInstances, 
             aTrainingTargets, 
             aTrainingPredictorScores, 
             m_pTrainingSet->GetResidualPointer(), 
-            k_Regression,
-            aTempFloatVector
+            k_Regression
          );
+         if(bError) {
+            EBM_ASSERT(false);
+         }
       }
       if(0 != cValidationInstances) {
-         InitializeResiduals<k_Regression>::Func(
+         const bool bError = InitializeResiduals<k_Regression>::Func(
             cValidationInstances, 
             aValidationTargets, 
             aValidationPredictorScores, 
             m_pValidationSet->GetResidualPointer(), 
-            k_Regression,
-            aTempFloatVector
+            k_Regression
          );
+         if(bError) {
+            EBM_ASSERT(false);
+         }
       }
    }
 

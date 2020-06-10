@@ -17,13 +17,12 @@
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 class InitializeResiduals {
 public:
-   static void Func(
+   static bool Func(
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    ) {
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
@@ -39,16 +38,17 @@ public:
       EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
       EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
 
-      FloatEbmType aLocalExpVector[
-         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
-      ];
-      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
-
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+
+      FloatEbmType * const aExpVector = EbmMalloc<FloatEbmType>(cVectorLength);
+      if(UNLIKELY(nullptr == aExpVector)) {
+         LOG_0(TraceLevelWarning, "Exited InitializeResiduals warning");
+         return true;
+      }
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
@@ -106,7 +106,10 @@ public:
             pResidualError[k_iZeroResidual - static_cast<ptrdiff_t>(cVectorLength)] = 0;
          }
       } while(pResidualErrorEnd != pResidualError);
+
+      free(aExpVector);
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 
@@ -114,16 +117,14 @@ public:
 template<>
 class InitializeResiduals<2> {
 public:
-   static void Func(
+   static bool Func(
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
       // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
@@ -154,6 +155,7 @@ public:
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -161,16 +163,14 @@ public:
 template<>
 class InitializeResiduals<k_Regression> {
 public:
-   static void Func(
+   static bool Func(
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
       // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
@@ -203,6 +203,7 @@ public:
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
       LOG_0(TraceLevelInfo, "Exited InitializeResiduals");
+      return false;
    }
 };
 

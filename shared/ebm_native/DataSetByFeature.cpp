@@ -18,8 +18,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    const size_t cInstances, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   FloatEbmType * const aTempFloatVector
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
@@ -47,27 +46,42 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         InitializeResiduals<2>::Func(
+         const bool bError = InitializeResiduals<2>::Func(
             cInstances, 
             aTargetData, 
             aPredictorScores, 
             aResidualErrors, 
-            ptrdiff_t { 2 }, 
-            aTempFloatVector
+            ptrdiff_t { 2 }
          );
+         if(bError) {
+#ifdef EXPAND_BINARY_LOGITS
+            free(aResidualErrors);
+            LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors InitializeResiduals");
+            return nullptr;
+#else // EXPAND_BINARY_LOGITS
+            EBM_ASSERT(false);
+#endif // EXPAND_BINARY_LOGITS
+         }
       } else {
-         InitializeResiduals<k_DynamicClassification>::Func(
+         const bool bError = InitializeResiduals<k_DynamicClassification>::Func(
             cInstances, 
             aTargetData, 
             aPredictorScores, 
             aResidualErrors, 
-            runtimeLearningTypeOrCountTargetClasses, 
-            aTempFloatVector
+            runtimeLearningTypeOrCountTargetClasses
          );
+         if(bError) {
+            free(aResidualErrors);
+            LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors InitializeResiduals");
+            return nullptr;
+         }
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResiduals<k_Regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression, aTempFloatVector);
+      const bool bError = InitializeResiduals<k_Regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression);
+      if(bError) {
+         EBM_ASSERT(false);
+      }
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
@@ -172,8 +186,7 @@ bool DataSetByFeature::Initialize(
    const IntEbmType * const aBinnedData, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   FloatEbmType * const aTempFloatVector
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    EBM_ASSERT(0 < cInstances);
    
@@ -182,7 +195,7 @@ bool DataSetByFeature::Initialize(
 
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Initialize");
 
-   FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses, aTempFloatVector);
+   FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
    if(nullptr == aResidualErrors) {
       goto exit_error;
    }
