@@ -175,7 +175,7 @@ static IntEbmType GetInteractionScorePerTargetClasses(
    if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(
       pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
       pCachedThreadResources, 
-      pEbmInteractionState->m_pDataSet, 
+      &pEbmInteractionState->m_dataSet, 
       pFeatureCombination, 
       cInstancesRequiredForChildSplitMin, 
       pInteractionScoreReturn
@@ -287,9 +287,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       return 0;
    }
 
-   if(nullptr == pEbmInteractionState->m_pDataSet) {
-      // if pEbmInteractionState->m_pDataSet is null, then we have a dataset with zero instances.  If there are zero data cases, there isn't much basis to
-      // say whether there are interactions, so just return zero
+   if(0 == pEbmInteractionState->m_dataSet.GetCountInstances()) {
+      // if there are zero instances, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero instances");
       if(nullptr != interactionScoreReturn) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 

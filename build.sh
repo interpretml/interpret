@@ -65,7 +65,7 @@ compile_all="$compile_all \"$src_path/Discretization.cpp\""
 compile_all="$compile_all -I\"$src_path\""
 compile_all="$compile_all -I\"$src_path/inc\""
 compile_all="$compile_all -Wall -Wextra -Wno-parentheses -Wold-style-cast -Wdouble-promotion -Wshadow -Wformat=2 -std=c++11"
-compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -O3 -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
+compile_all="$compile_all -fvisibility=hidden -fvisibility-inlines-hidden -ffast-math -fno-finite-math-only -march=core2 -DEBM_NATIVE_EXPORTS -fpic"
 
 if [ "$os_type" = "Darwin" ]; then
    # reference on rpath & install_name: https://www.mikeash.com/pyblog/friday-qa-2009-11-06-linking-and-install-names.html
@@ -93,7 +93,7 @@ if [ "$os_type" = "Darwin" ]; then
    bin_path="$root_path/tmp/clang/bin/release/mac/x64/ebm_native"
    bin_file="lib_ebm_native_mac_x64.dylib"
    log_file="$intermediate_path/ebm_native_release_mac_x64_build_log.txt"
-   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -DNDEBUG -O3 -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -131,7 +131,7 @@ if [ "$os_type" = "Darwin" ]; then
    bin_path="$root_path/tmp/clang/bin/debug/mac/x64/ebm_native"
    bin_file="lib_ebm_native_mac_x64_debug.dylib"
    log_file="$intermediate_path/ebm_native_debug_mac_x64_build_log.txt"
-   compile_command="$clang_pp_bin $compile_mac -m64 -fsanitize=address,undefined -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$clang_pp_bin $compile_mac -m64 -O1 -fsanitize=address,undefined -fno-sanitize-recover=address,undefined -fno-optimize-sibling-calls -fno-omit-frame-pointer -install_name @rpath/$bin_file -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -187,7 +187,7 @@ elif [ "$os_type" = "Linux" ]; then
    bin_path="$root_path/tmp/gcc/bin/release/linux/x64/ebm_native"
    bin_file="lib_ebm_native_linux_x64.so"
    log_file="$intermediate_path/ebm_native_release_linux_x64_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -225,7 +225,7 @@ elif [ "$os_type" = "Linux" ]; then
    bin_path="$root_path/tmp/gcc/bin/debug/linux/x64/ebm_native"
    bin_file="lib_ebm_native_linux_x64_debug.so"
    log_file="$intermediate_path/ebm_native_debug_linux_x64_build_log.txt"
-   compile_command="$g_pp_bin $compile_linux -m64 -o \"$bin_path/$bin_file\" 2>&1"
+   compile_command="$g_pp_bin $compile_linux -m64 -O1 -o \"$bin_path/$bin_file\" 2>&1"
    
    [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
    ret_code=$?
@@ -264,7 +264,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
       log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
       
       if [ ! -d "$intermediate_path" ]; then
          printf "%s\n" "Doing first time installation of x86"
@@ -317,7 +317,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m32 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -m32 -O1 -o \"$bin_path/$bin_file\" 2>&1"
       
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?

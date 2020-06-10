@@ -35,6 +35,8 @@ if [ "$os_type" = "Darwin" ]; then
 
    compile_mac="$compile_all -L\"$staging_path\" -Wl,-rpath,@loader_path"
 
+   ASAN_OPTIONS=detect_leaks=1
+   ASAN_OPTIONS=detect_stack_use_after_return=1
 
    ########################## macOS debug|x64
 
@@ -164,7 +166,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   valgrind --leak-check=yes "$bin_path/$bin_file"
+   valgrind --error-exitcode=99 --leak-check=yes "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
@@ -255,7 +257,7 @@ elif [ "$os_type" = "Linux" ]; then
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code
    fi
-   valgrind --leak-check=yes "$bin_path/$bin_file"
+   valgrind --error-exitcode=99 --leak-check=yes "$bin_path/$bin_file"
    ret_code=$?
    if [ $ret_code -ne 0 ]; then 
       exit $ret_code

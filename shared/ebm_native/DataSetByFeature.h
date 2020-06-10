@@ -12,29 +12,34 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
-class DataSetByFeature final {
-   const FloatEbmType * const m_aResidualErrors;
-   const StorageDataType * const * const m_aaInputData;
-   const size_t m_cInstances;
-   const size_t m_cFeatures;
+struct DataSetByFeature final {
+   FloatEbmType * m_aResidualErrors;
+   StorageDataType * * m_aaInputData;
+   size_t m_cInstances;
+   size_t m_cFeatures;
 
-public:
+   DataSetByFeature() {
+      // TODO: when we're embedded inside a POD struct we can eliminate this
+      memset(this, 0, sizeof(*this));
 
-   DataSetByFeature(
+      // we must be zeroed before being called so that we don't try and free randomized pointers
+      EBM_ASSERT(nullptr == m_aResidualErrors);
+      EBM_ASSERT(nullptr == m_aaInputData);
+      EBM_ASSERT(0 == m_cInstances); // we use this even if our Initialized function isn't called
+   }
+
+   ~DataSetByFeature();
+
+   bool Initialize(
       const size_t cFeatures, 
       const Feature * const aFeatures, 
       const size_t cInstances, 
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargetData, 
       const FloatEbmType * const aPredictorScores, 
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
       FloatEbmType * const aTempFloatVector
    );
-   ~DataSetByFeature();
-
-   EBM_INLINE bool IsError() const {
-      return nullptr == m_aResidualErrors || (0 != m_cFeatures && nullptr == m_aaInputData);
-   }
 
    EBM_INLINE const FloatEbmType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
@@ -54,5 +59,7 @@ public:
       return m_cFeatures;
    }
 };
+static_assert(std::is_standard_layout<DataSetByFeature>::value,
+   "we use memset to zero this, so it needs to be standard layout");
 
 #endif // DATA_SET_BY_FEATURE_H

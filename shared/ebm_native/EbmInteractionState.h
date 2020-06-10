@@ -24,7 +24,8 @@ public:
    const size_t m_cFeatures;
    // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
    Feature * const m_aFeatures;
-   DataSetByFeature * m_pDataSet;
+
+   DataSetByFeature m_dataSet;
 
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
@@ -37,7 +38,7 @@ public:
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
-      , m_pDataSet(nullptr)
+      , m_dataSet()
       , m_cLogEnterMessages(1000)
       , m_cLogExitMessages(1000) 
    {
@@ -49,7 +50,6 @@ public:
    EBM_INLINE ~EbmInteractionState() {
       LOG_0(TraceLevelInfo, "Entered ~EbmInteractionState");
 
-      delete m_pDataSet;
       free(m_aFeatures);
 
       LOG_0(TraceLevelInfo, "Exited ~EbmInteractionState");
@@ -117,8 +117,6 @@ public:
       }
       LOG_0(TraceLevelInfo, "InitializeInteraction done feature processing");
 
-      LOG_0(TraceLevelInfo, "Entered DataSetByFeature");
-      EBM_ASSERT(nullptr == m_pDataSet);
       if(0 != cInstances) {
          // TODO: don't I also need this temporary space for handling multiclass inside pairwise interactions or during interaction detection?
          FloatEbmType * const aTempFloatVector = new (std::nothrow) FloatEbmType[GetVectorLength(m_runtimeLearningTypeOrCountTargetClasses)];
@@ -126,7 +124,7 @@ public:
             LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == aTempFloatVector");
             return true;
          }
-         m_pDataSet = new (std::nothrow) DataSetByFeature(
+         const bool bError = m_dataSet.Initialize(
             m_cFeatures, 
             m_aFeatures, 
             cInstances, 
@@ -137,12 +135,11 @@ public:
             aTempFloatVector
          );
          delete[] aTempFloatVector;
-         if(nullptr == m_pDataSet || m_pDataSet->IsError()) {
+         if(bError) {
             LOG_0(TraceLevelWarning, "WARNING InitializeInteraction nullptr == pDataSet || pDataSet->IsError()");
             return true;
          }
       }
-      LOG_0(TraceLevelInfo, "Exited DataSetByFeature");
 
       LOG_0(TraceLevelInfo, "Exited InitializeInteraction");
       return false;
