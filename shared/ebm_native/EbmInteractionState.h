@@ -117,20 +117,18 @@ public:
       }
       LOG_0(TraceLevelInfo, "InitializeInteraction done feature processing");
 
-      if(0 != cInstances) {
-         const bool bError = m_dataSet.Initialize(
-            m_cFeatures, 
-            m_aFeatures, 
-            cInstances, 
-            aBinnedData, 
-            aTargets, 
-            aPredictorScores, 
-            m_runtimeLearningTypeOrCountTargetClasses
-         );
-         if(bError) {
-            LOG_0(TraceLevelWarning, "WARNING InitializeInteraction m_dataSet.Initialize");
-            return true;
-         }
+      const bool bError = m_dataSet.Initialize(
+         m_cFeatures, 
+         m_aFeatures, 
+         cInstances, 
+         aBinnedData, 
+         aTargets, 
+         aPredictorScores, 
+         m_runtimeLearningTypeOrCountTargetClasses
+      );
+      if(bError) {
+         LOG_0(TraceLevelWarning, "WARNING InitializeInteraction m_dataSet.Initialize");
+         return true;
       }
 
       LOG_0(TraceLevelInfo, "Exited InitializeInteraction");

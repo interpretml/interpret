@@ -188,33 +188,36 @@ bool DataSetByFeature::Initialize(
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   EBM_ASSERT(0 < cInstances);
-   
    EBM_ASSERT(nullptr == m_aResidualErrors); // we expect to start with zeroed values
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
+   EBM_ASSERT(0 == m_cInstances); // we expect to start with zeroed values
 
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Initialize");
 
-   FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
-   if(nullptr == aResidualErrors) {
-      goto exit_error;
-   }
-   if(0 != cFeatures) {
-      StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData);
-      if(nullptr == aaInputData) {
-         free(aResidualErrors);
+   if(0 != cInstances) {
+      // if cInstances is zero, then we don't need to allocate anything since we won't use them anyways
+
+      FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
+      if(nullptr == aResidualErrors) {
          goto exit_error;
       }
-      m_aaInputData = aaInputData;
+      if(0 != cFeatures) {
+         StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData);
+         if(nullptr == aaInputData) {
+            free(aResidualErrors);
+            goto exit_error;
+         }
+         m_aaInputData = aaInputData;
+      }
+      m_aResidualErrors = aResidualErrors;
+      m_cInstances = cInstances;
    }
-   m_aResidualErrors = aResidualErrors;
-   m_cInstances = cInstances;
    m_cFeatures = cFeatures;
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Initialize");
    return false;
 
 exit_error:;
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Initialize with error");
+   LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeature::Initialize");
    return true;
 }
