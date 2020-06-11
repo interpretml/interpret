@@ -49,9 +49,9 @@ public:
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
    EBM_INLINE const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
       EBM_ASSERT(nullptr != pFeature);
-      EBM_ASSERT(pFeature->m_iFeatureData < m_cFeatures);
+      EBM_ASSERT(pFeature->GetIndexFeatureData() < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeature->m_iFeatureData];
+      return m_aaInputData[pFeature->GetIndexFeatureData()];
    }
    EBM_INLINE size_t GetCountInstances() const {
       return m_cInstances;

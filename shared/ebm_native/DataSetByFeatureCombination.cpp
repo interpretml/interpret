@@ -204,8 +204,8 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
          const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
             const Feature * const pFeature = pFeatureCombinationEntry->m_pFeature;
-            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->m_iFeatureData * cInstances];
-            pDimensionInfo->m_cBins = pFeature->m_cBins;
+            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cInstances];
+            pDimensionInfo->m_cBins = pFeature->GetCountBins();
             ++pFeatureCombinationEntry;
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);

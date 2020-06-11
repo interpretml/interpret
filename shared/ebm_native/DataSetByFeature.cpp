@@ -132,13 +132,13 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->m_iFeatureData * cInstances];
+      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cInstances];
       const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cInstances];
       do {
          const IntEbmType data = *pInputDataFrom;
          EBM_ASSERT(0 <= data);
          EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(data))); // data must be lower than cBins and cBins fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < pFeature->m_cBins);
+         EBM_ASSERT(static_cast<size_t>(data) < pFeature->GetCountBins());
          EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(data)));
          *pInputDataTo = static_cast<StorageDataType>(data);
          ++pInputDataTo;

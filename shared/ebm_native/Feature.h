@@ -12,18 +12,41 @@
 enum class FeatureType;
 
 class Feature final {
-public:
-   const size_t m_cBins;
-   const size_t m_iFeatureData;
-   const FeatureType m_featureType;
-   const bool m_bMissing;
+   size_t m_cBins;
+   size_t m_iFeatureData;
+   FeatureType m_featureType;
+   bool m_bMissing;
 
-   EBM_INLINE Feature(const size_t cBins, const size_t iFeatureData, const FeatureType featureType, const bool bMissing)
-      : m_cBins(cBins)
-      , m_iFeatureData(iFeatureData)
-      , m_featureType(featureType)
-      , m_bMissing(bMissing) {
+   EBM_INLINE ~Feature() {
+      // we have nothing to destruct and we get created in an array that doesn't descruct afterwards, so be private
+   }
+
+public:
+
+   EBM_INLINE void Initialize(const size_t cBins, const size_t iFeatureData, const FeatureType featureType, const bool bMissing) {
+      m_cBins = cBins;
+      m_iFeatureData = iFeatureData;
+      m_featureType = featureType;
+      m_bMissing = bMissing;
+   }
+
+   EBM_INLINE size_t GetCountBins() const {
+      return m_cBins;
+   }
+
+   EBM_INLINE size_t GetIndexFeatureData() const {
+      return m_iFeatureData;
+   }
+
+   EBM_INLINE FeatureType GetFeatureType() const {
+      return m_featureType;
+   }
+
+   EBM_INLINE bool GetIsMissing() const {
+      return m_bMissing;
    }
 };
+static_assert(std::is_standard_layout<Feature>::value,
+   "we use malloc to allocate this, so it needs to be standard layout");
 
 #endif // FEATURE_H

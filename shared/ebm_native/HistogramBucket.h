@@ -509,7 +509,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
       size_t iDimension = 0;
       do {
          const Feature * const pInputFeature = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
-         const size_t cBins = pInputFeature->m_cBins;
+         const size_t cBins = pInputFeature->GetCountBins();
          const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
          pInputData += iInstance;
          StorageDataType iBinOriginal = *pInputData;

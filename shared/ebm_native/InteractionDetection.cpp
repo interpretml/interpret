@@ -324,7 +324,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const Feature * const pFeature = &aFeatures[iFeatureForCombination];
-      if(pFeature->m_cBins <= 1) {
+      if(pFeature->GetCountBins() <= 1) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
@@ -357,7 +357,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
       const Feature * const pFeature = &aFeatures[iFeatureForCombination];
-      EBM_ASSERT(2 <= pFeature->m_cBins); // we should have filtered out anything with 1 bin above
+      EBM_ASSERT(2 <= pFeature->GetCountBins()); // we should have filtered out anything with 1 bin above
 
       pFeatureCombinationEntry->m_pFeature = pFeature;
       ++pFeatureCombinationEntry;

@@ -97,7 +97,7 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
          size_t acDivisionIntegersEnd[k_cDimensionsMax];
          size_t iDimension = 0;
          do {
-            acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+            acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
             ++iDimension;
          } while(iDimension < pFeatureCombination->m_cFeatures);
 
@@ -193,7 +193,7 @@ bool EbmBoostingState::Initialize(
 
          // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, 
          // so we don't need the resulting pointer returned
-         new (&m_aFeatures[iFeatureInitialize]) Feature(cBins, iFeatureInitialize, featureType, bMissing);
+         m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
          // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
          EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
@@ -255,7 +255,7 @@ bool EbmBoostingState::Initialize(
                const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                EBM_ASSERT(iFeatureForCombination < m_cFeatures);
                Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-               if(LIKELY(1 < pInputFeature->m_cBins)) {
+               if(LIKELY(1 < pInputFeature->GetCountBins())) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
                   ++cSignificantFeaturesInCombination;
@@ -296,7 +296,7 @@ bool EbmBoostingState::Initialize(
                const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
                EBM_ASSERT(iFeatureForCombination < m_cFeatures);
                const Feature * const pInputFeature = &m_aFeatures[iFeatureForCombination];
-               const size_t cBins = pInputFeature->m_cBins;
+               const size_t cBins = pInputFeature->GetCountBins();
                if(LIKELY(1 < cBins)) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
                   // otherwise indistinquishable from the original data
@@ -917,7 +917,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->m_cBins;
+         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
