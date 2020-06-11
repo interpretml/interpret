@@ -11,7 +11,7 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
-struct DataSetByFeatureCombination;
+class DataSetByFeatureCombination;
 
 class SamplingSet final {
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 

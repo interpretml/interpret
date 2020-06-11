@@ -13,15 +13,15 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureCombination.h"
 
-// TODO: let's take how clean this class is (with almost everything const and the arrays constructed in initialization list) 
-// and apply it to as many other classes as we can
-struct DataSetByFeatureCombination final {
+class DataSetByFeatureCombination final {
    FloatEbmType * m_aResidualErrors;
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cInstances;
    size_t m_cFeatureCombinations;
+
+public:
 
    ~DataSetByFeatureCombination();
 

@@ -12,11 +12,13 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
-struct DataSetByFeature final {
+class DataSetByFeature final {
    FloatEbmType * m_aResidualErrors;
    StorageDataType * * m_aaInputData;
    size_t m_cInstances;
    size_t m_cFeatures;
+
+public:
 
    ~DataSetByFeature();
 
@@ -27,7 +29,7 @@ struct DataSetByFeature final {
       // we must be zeroed before being called so that we don't try and free randomized pointers
       EBM_ASSERT(nullptr == m_aResidualErrors);
       EBM_ASSERT(nullptr == m_aaInputData);
-      EBM_ASSERT(0 == m_cInstances); // we use this even if our Initialized function isn't called
+      EBM_ASSERT(0 == m_cInstances); // we use m_cInstances even if our Initialized function isn't called
    }
 
    bool Initialize(
