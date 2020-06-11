@@ -156,5 +156,7 @@ struct CachedBoostingThreadResources final {
 };
 static_assert(std::is_standard_layout<CachedBoostingThreadResources>::value,
    "we use malloc to allocate this, so it needs to be standard layout");
+static_assert(sizeof(CachedBoostingThreadResourcesPrivate) == sizeof(CachedBoostingThreadResources),
+   "CachedBoostingThreadResources shouldn't contain any data");
 
 #endif // CACHED_BOOSTING_THREAD_RESOURCES_H
