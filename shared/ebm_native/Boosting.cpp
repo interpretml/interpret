@@ -133,11 +133,6 @@ bool EbmBoostingState::Initialize(
 
    const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
 
-   if(UNLIKELY(nullptr == m_pCachedThreadResources)) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pCachedThreadResources");
-      return true;
-   }
-
    if(0 != m_cFeatures && nullptr == m_aFeatures) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatures && nullptr == m_aFeatures");
       return true;
@@ -212,6 +207,8 @@ bool EbmBoostingState::Initialize(
 
    const size_t cVectorLength = GetVectorLength(m_runtimeLearningTypeOrCountTargetClasses);
 
+   size_t cBytesArrayEquivalentSplitMax = 0;
+
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature combination processing");
    if(0 != m_cFeatureCombinations) {
       size_t cBytesPerSweepTreeNode = 0;
@@ -228,7 +225,6 @@ bool EbmBoostingState::Initialize(
          }
          cBytesPerSweepTreeNode = GetSweepTreeNodeSize<false>(cVectorLength);
       }
-      size_t cBytesArrayEquivalentSplitMax = 0;
 
       const IntEbmType * pFeatureCombinationIndex = featureCombinationIndexes;
       size_t iFeatureCombination = 0;
@@ -339,12 +335,18 @@ bool EbmBoostingState::Initialize(
          }
          ++iFeatureCombination;
       } while(iFeatureCombination < m_cFeatureCombinations);
-
-      if(0 != cBytesArrayEquivalentSplitMax) {
-         m_pCachedThreadResources->m_aEquivalentSplits = malloc(cBytesArrayEquivalentSplitMax);
-      }
    }
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize finished feature combination processing");
+
+   m_pCachedThreadResources = CachedBoostingThreadResources::Allocate(
+      m_runtimeLearningTypeOrCountTargetClasses,
+      cBytesArrayEquivalentSplitMax
+   );
+
+   if(UNLIKELY(nullptr == m_pCachedThreadResources)) {
+      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pCachedThreadResources");
+      return true;
+   }
 
    if(0 != cTrainingInstances) {
       const bool bError = m_trainingSet.Initialize(
@@ -1206,7 +1208,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
 
    if(0 != pEbmBoostingState->m_trainingSet.GetCountInstances()) {
-      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_pCachedThreadResources->m_aTempFloatVector;
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_pCachedThreadResources->GetTempFloatVector();
 
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
          pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,

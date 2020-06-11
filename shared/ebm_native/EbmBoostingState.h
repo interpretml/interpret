@@ -54,7 +54,7 @@ public:
 
    // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
    // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
-   CachedBoostingThreadResources * const m_pCachedThreadResources;
+   CachedBoostingThreadResources * m_pCachedThreadResources;
 
    RandomStream m_randomStream;
 
@@ -82,7 +82,7 @@ public:
          SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_cFeatures(cFeatures)
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
-      , m_pCachedThreadResources(CachedBoostingThreadResources::Allocate(runtimeLearningTypeOrCountTargetClasses))
+      , m_pCachedThreadResources(nullptr)
       // we catch any errors in the constructor, so this should not be able to throw
       , m_randomStream(randomSeed)
    {

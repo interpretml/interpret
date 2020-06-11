@@ -13,8 +13,6 @@
 #include "Feature.h"
 
 struct FeatureCombination final {
-public:
-
    struct FeatureCombinationEntry {
       const Feature * m_pFeature;
    };
@@ -26,6 +24,7 @@ public:
    unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
+
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureCombinationEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom

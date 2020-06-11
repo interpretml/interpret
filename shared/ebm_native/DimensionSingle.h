@@ -106,7 +106,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pCachedThreadResources->GetSumHistogramBucketVectorEntry1Array<bClassification>();
    memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
 
-   FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->m_aTempFloatVector;
+   FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->GetTempFloatVector();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       aSumResidualErrorsRight[iVector] = ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError;
    }
@@ -132,7 +132,7 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize<bClassification>(cVectorLength);
 
    SweepTreeNode<bClassification> * pSweepTreeNodeStart =
-      static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->m_aEquivalentSplits);
+      static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->GetEquivalentSplits());
    SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
    size_t cInstancesRight = pTreeNode->GetInstances();
