@@ -344,7 +344,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
 
    // put the pFeatureCombination object on the stack. We want to put it into a FeatureCombination object since we want to share code with boosting, 
    // which calls things like building the tensor totals (which is templated to be compiled many times)
-   char FeatureCombinationBuffer[k_cBytesFeatureCombinationMax];
+   char FeatureCombinationBuffer[FeatureCombination::GetFeatureCombinationCountBytes(k_cDimensionsMax)];
    FeatureCombination * const pFeatureCombination = reinterpret_cast<FeatureCombination *>(&FeatureCombinationBuffer);
    pFeatureCombination->Initialize(cFeaturesInCombination, 0);
 

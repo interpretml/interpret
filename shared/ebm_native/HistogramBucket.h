@@ -76,19 +76,8 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
       reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
-struct HistogramBucketBase {
-   // TODO: is HistogramBucketBase used?  I created it meaning for us to have a common point in classes where bClassification 
-   //       wasn't needed but we needed pointers to these
-
-   // empty base optimization is REQUIRED by the C++11 standard for StandardLayoutType objects, so this struct will use 0 bytes in our derived class
-   // https://en.cppreference.com/w/cpp/language/ebo
-};
-static_assert(std::is_standard_layout<HistogramBucketBase>::value,
-   "HistogramBucket uses the struct hack, so it needs to be standard layout class otherwise we can't depend on the layout!");
-
 template<bool bClassification>
-struct HistogramBucket final : public HistogramBucketBase {
-public:
+struct HistogramBucket final {
 
    size_t m_cInstancesInBucket;
 

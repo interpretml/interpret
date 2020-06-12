@@ -40,6 +40,10 @@ public:
          sizeof(FeatureCombinationEntry) * cFeatures;
    }
 
+   EBM_INLINE void Free() {
+      free(this);
+   }
+
    EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
       m_cFeatures = cFeatures;
       m_iInputData = iFeatureCombination;
@@ -58,10 +62,6 @@ public:
       }
       pFeatureCombination->Initialize(cFeatures, iFeatureCombination);
       return pFeatureCombination;
-   }
-
-   EBM_INLINE void Free() {
-      free(this);
    }
 
    EBM_INLINE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
@@ -135,23 +135,5 @@ static_assert(
    std::is_standard_layout<FeatureCombination>::value, 
    "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout "
    "data is probably undefined as to what the space after gets filled with");
-
-// these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, 
-// and constexpr needs the size before constexpr
-constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {
-   return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) + sizeof(FeatureCombinationEntry) * cFeatures;
-}
-constexpr size_t k_cBytesFeatureCombinationMax = GetFeatureCombinationCountBytesConst(k_cDimensionsMax);
-
-#ifndef NDEBUG
-class FeatureCombinationCheck final {
-public:
-   FeatureCombinationCheck() {
-      // we need two separate functions for determining the maximum size of FeatureCombination, so let's check that they match at runtime
-      EBM_ASSERT(k_cBytesFeatureCombinationMax == FeatureCombination::GetFeatureCombinationCountBytes(k_cDimensionsMax));
-   }
-};
-static FeatureCombinationCheck DEBUG_FeatureCombinationCheck; // yes, this gets duplicated for each include, but it's just for debug..
-#endif // NDEBUG
 
 #endif // FEATURE_COMBINATION_H
