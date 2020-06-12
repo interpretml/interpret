@@ -161,7 +161,7 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -256,7 +256,7 @@ public:
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -337,7 +337,7 @@ public:
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -469,7 +469,7 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
    LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateValidation");
 
    FloatEbmType ret;
-   if(0 == pFeatureCombination->m_cFeatures) {
+   if(0 == pFeatureCombination->GetCountFeatures()) {
       ret = OptimizedApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          pValidationSet,
@@ -494,7 +494,7 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
             k_cItemsPerBitPackedDataUnitMax
          >::MagicCompilerLoopFunction(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->m_cItemsPerBitPackedDataUnit,
+            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
             pFeatureCombination,
             pValidationSet,
             aModelFeatureCombinationUpdateTensor
@@ -507,7 +507,7 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
          ret = OptimizedApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->m_cItemsPerBitPackedDataUnit,
+            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
             pFeatureCombination,
             pValidationSet,
             aModelFeatureCombinationUpdateTensor

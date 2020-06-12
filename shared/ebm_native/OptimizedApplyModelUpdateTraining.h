@@ -194,7 +194,7 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -314,7 +314,7 @@ public:
       UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -396,7 +396,7 @@ public:
       UNUSED(aTempFloatVector);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->m_cFeatures);
+      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -532,7 +532,7 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
 ) {
    LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateTraining");
 
-   if(0 == pFeatureCombination->m_cFeatures) {
+   if(0 == pFeatureCombination->GetCountFeatures()) {
       OptimizedApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
          runtimeLearningTypeOrCountTargetClasses,
          pTrainingSet,
@@ -558,7 +558,7 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
             k_cItemsPerBitPackedDataUnitMax
          >::MagicCompilerLoopFunction(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->m_cItemsPerBitPackedDataUnit,
+            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
             pFeatureCombination,
             pTrainingSet,
             aModelFeatureCombinationUpdateTensor,
@@ -572,7 +572,7 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
          OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->m_cItemsPerBitPackedDataUnit,
+            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
             pFeatureCombination,
             pTrainingSet,
             aModelFeatureCombinationUpdateTensor,

@@ -12,11 +12,12 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 
-struct FeatureCombination final {
-   struct FeatureCombinationEntry {
-      const Feature * m_pFeature;
-   };
+struct FeatureCombinationEntry final {
+   // TODO : we can copy the entire Feature data into this location instead of using a pointer
+   const Feature * m_pFeature;
+};
 
+class FeatureCombination final {
    size_t m_cItemsPerBitPackedDataUnit;
    size_t m_cFeatures;
    size_t m_iInputData;
@@ -32,9 +33,11 @@ struct FeatureCombination final {
    // (either the parent or child) if the class is derrived
    FeatureCombinationEntry m_FeatureCombinationEntry[1];
 
-   EBM_INLINE static size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
-      return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + 
-         sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
+public:
+
+   EBM_INLINE static constexpr size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
+      return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) +
+         sizeof(FeatureCombinationEntry) * cFeatures;
    }
 
    EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
@@ -57,8 +60,8 @@ struct FeatureCombination final {
       return pFeatureCombination;
    }
 
-   EBM_INLINE static void Free(FeatureCombination * const pFeatureCombination) {
-      free(pFeatureCombination);
+   EBM_INLINE void Free() {
+      free(this);
    }
 
    EBM_INLINE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
@@ -81,11 +84,51 @@ struct FeatureCombination final {
       if(nullptr != apFeatureCombinations) {
          EBM_ASSERT(0 < cFeatureCombinations);
          for(size_t i = 0; i < cFeatureCombinations; ++i) {
-            FeatureCombination::Free(apFeatureCombinations[i]);
+            apFeatureCombinations[i]->Free();
          }
          delete[] apFeatureCombinations;
       }
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
+   }
+
+   EBM_INLINE void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
+      m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;
+   }
+
+   EBM_INLINE size_t GetCountItemsPerBitPackedDataUnit() const {
+      return m_cItemsPerBitPackedDataUnit;
+   }
+
+   EBM_INLINE size_t GetIndexInputData() const {
+      return m_iInputData;
+   }
+
+   EBM_INLINE size_t GetCountFeatures() const {
+      return m_cFeatures;
+   }
+
+   FeatureCombinationEntry * GetFeatureCombinationEntries() {
+      return &m_FeatureCombinationEntry[0];
+   }
+
+   const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
+      return &m_FeatureCombinationEntry[0];
+   }
+
+   unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
+      return &m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
+   }
+
+   unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
+      return &m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
+   }
+
+   unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
+      return &m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
+   }
+
+   unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
+      return &m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    }
 };
 static_assert(
@@ -96,7 +139,7 @@ static_assert(
 // these need to be declared AFTER the class above since the size of FeatureCombination isn't set until the class has been completely declared, 
 // and constexpr needs the size before constexpr
 constexpr size_t GetFeatureCombinationCountBytesConst(const size_t cFeatures) {
-   return sizeof(FeatureCombination) - sizeof(FeatureCombination::FeatureCombinationEntry) + sizeof(FeatureCombination::FeatureCombinationEntry) * cFeatures;
+   return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) + sizeof(FeatureCombinationEntry) * cFeatures;
 }
 constexpr size_t k_cBytesFeatureCombinationMax = GetFeatureCombinationCountBytesConst(k_cDimensionsMax);
 

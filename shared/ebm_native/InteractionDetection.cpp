@@ -349,7 +349,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    pFeatureCombination->Initialize(cFeaturesInCombination, 0);
 
    pFeatureCombinationIndex = featureIndexes; // restart from the start
-   FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+   FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
    do {
       const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);

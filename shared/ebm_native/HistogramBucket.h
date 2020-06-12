@@ -243,7 +243,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
 
    LOG_0(TraceLevelVerbose, "Entered BinDataSetTraining");
 
-   EBM_ASSERT(cCompilerDimensions == pFeatureCombination->m_cFeatures);
+   EBM_ASSERT(cCompilerDimensions == pFeatureCombination->GetCountFeatures());
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -251,7 +251,7 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->m_cItemsPerBitPackedDataUnit;
+   const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
    EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
    EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
    const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
@@ -459,7 +459,7 @@ public:
    }
 };
 
-// TODO: make the number of dimensions (pFeatureCombination->m_cFeatures) a template parameter so that we don't have to have the inner loop that is 
+// TODO: make the number of dimensions (pFeatureCombination->GetCountFeatures()) a template parameter so that we don't have to have the inner loop that is 
 //   very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the 
 //   number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
@@ -487,7 +487,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
    const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
 
-   size_t cFeatures = pFeatureCombination->m_cFeatures;
+   size_t cFeatures = pFeatureCombination->GetCountFeatures();
    EBM_ASSERT(1 <= cFeatures); // for interactions, we just return 0 for interactions with zero features
    for(size_t iInstance = 0; pResidualErrorEnd != pResidualError; ++iInstance) {
       // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -508,7 +508,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
       size_t iBucket = 0;
       size_t iDimension = 0;
       do {
-         const Feature * const pInputFeature = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature;
+         const Feature * const pInputFeature = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature;
          const size_t cBins = pInputFeature->GetCountBins();
          const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
          pInputData += iInstance;

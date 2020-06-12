@@ -816,8 +816,8 @@ bool BoostSingleDimensional(
 
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pFeatureCombination->m_cFeatures);
-   size_t cTotalBuckets = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->GetCountBins();
+   EBM_ASSERT(1 == pFeatureCombination->GetCountFeatures());
+   size_t cTotalBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -863,7 +863,7 @@ bool BoostSingleDimensional(
       pCachedThreadResources->GetSumHistogramBucketVectorEntryArray<bClassification>();
    memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
 
-   size_t cHistogramBuckets = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->GetCountBins();
+   size_t cHistogramBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
    // dimensions with 1 bin don't contribute anything since they always have the same value, 
    // so we pre-filter these out and handle them separately
    EBM_ASSERT(2 <= cHistogramBuckets);

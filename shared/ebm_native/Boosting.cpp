@@ -75,14 +75,14 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
       const FeatureCombination * const pFeatureCombination = apFeatureCombinations[iFeatureCombination];
       SegmentedTensor * const pSegmentedTensors = 
-         SegmentedTensor::Allocate(pFeatureCombination->m_cFeatures, cVectorLength);
+         SegmentedTensor::Allocate(pFeatureCombination->GetCountFeatures(), cVectorLength);
       if(UNLIKELY(nullptr == pSegmentedTensors)) {
          LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == pSegmentedTensors");
          DeleteSegmentedTensors(cFeatureCombinations, apSegmentedTensors);
          return nullptr;
       }
 
-      if(0 == pFeatureCombination->m_cFeatures) {
+      if(0 == pFeatureCombination->GetCountFeatures()) {
          // if there are zero dimensions, then we have a tensor with 1 item, and we're already expanded
          pSegmentedTensors->m_bExpanded = true;
       } else {
@@ -97,9 +97,9 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
          size_t acDivisionIntegersEnd[k_cDimensionsMax];
          size_t iDimension = 0;
          do {
-            acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
+            acDivisionIntegersEnd[iDimension] = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
             ++iDimension;
-         } while(iDimension < pFeatureCombination->m_cFeatures);
+         } while(iDimension < pFeatureCombination->GetCountFeatures());
 
          if(pSegmentedTensors->Expand(acDivisionIntegersEnd)) {
             LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors pSegmentedTensors->Expand(acDivisionIntegersEnd)");
@@ -288,7 +288,7 @@ bool EbmBoostingState::Initialize(
             EBM_ASSERT(nullptr != featureCombinationIndexes);
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
-            FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+            FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
             do {
                const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
                EBM_ASSERT(0 <= indexFeatureInterop);
@@ -329,9 +329,9 @@ bool EbmBoostingState::Initialize(
                cBytesArrayEquivalentSplitMax = cBytesArrayEquivalentSplit;
             }
 
-            // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->m_cItemsPerBitPackedDataUnit
+            // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->GetCountItemsPerBitPackedDataUnit()
             const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
-            pFeatureCombination->m_cItemsPerBitPackedDataUnit = GetCountItemsBitPacked(cBitsRequiredMin);
+            pFeatureCombination->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
          }
          ++iFeatureCombination;
       } while(iFeatureCombination < m_cFeatureCombinations);
@@ -784,7 +784,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
-   const size_t cDimensions = pFeatureCombination->m_cFeatures;
+   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
 
    pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
    pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
@@ -798,7 +798,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain = FloatEbmType { 0 };
-         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->m_cFeatures))) {
+         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->GetCountFeatures()))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
                pEbmBoostingState->m_pCachedThreadResources,
                pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
@@ -810,7 +810,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
                }
                return nullptr;
             }
-         } else if(1 == pFeatureCombination->m_cFeatures) {
+         } else if(1 == pFeatureCombination->GetCountFeatures()) {
             if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
                &pEbmBoostingState->m_randomStream, 
                pEbmBoostingState->m_pCachedThreadResources,
@@ -917,7 +917,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
+         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->GetFeatureCombinationEntries())[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
@@ -1071,7 +1071,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    EBM_ASSERT(nullptr != pEbmBoostingState->m_apFeatureCombinations);
 
    LOG_COUNTED_0(
-      &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterGenerateModelFeatureCombinationUpdateMessages, 
+      pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages(),
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "Entered GenerateModelFeatureCombinationUpdate"
@@ -1150,7 +1150,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
       EBM_ASSERT(FloatEbmType { 0 } <= *gainReturn);
       LOG_COUNTED_N(
-         &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, 
+         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited GenerateModelFeatureCombinationUpdate %" FloatEbmTypePrintf, 
@@ -1158,7 +1158,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       );
    } else {
       LOG_COUNTED_0(
-         &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitGenerateModelFeatureCombinationUpdateMessages, 
+         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited GenerateModelFeatureCombinationUpdate no gain"
@@ -1363,7 +1363,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    EBM_ASSERT(nullptr != pEbmBoostingState->m_apFeatureCombinations);
 
    LOG_COUNTED_0(
-      &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogEnterApplyModelFeatureCombinationUpdateMessages, 
+      pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages(),
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "Entered ApplyModelFeatureCombinationUpdate"
@@ -1377,7 +1377,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
          *validationMetricReturn = FloatEbmType { 0 };
       }
       LOG_COUNTED_0(
-         &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, 
+         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate from null modelFeatureCombinationUpdateTensor"
@@ -1395,7 +1395,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
             *validationMetricReturn = 0;
          }
          LOG_COUNTED_0(
-            &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, 
+            pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
             TraceLevelInfo, 
             TraceLevelVerbose, 
             "Exited ApplyModelFeatureCombinationUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
@@ -1427,14 +1427,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricReturn);
       LOG_COUNTED_N(
-         &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, 
+         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate %" FloatEbmTypePrintf, *validationMetricReturn
       );
    } else {
       LOG_COUNTED_0(
-         &pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->m_cLogExitApplyModelFeatureCombinationUpdateMessages, 
+         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer."

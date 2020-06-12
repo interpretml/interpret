@@ -29,7 +29,7 @@ void GetTotalsDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
    HistogramBucket<bClassification> * const pRet
 ) {
-   const size_t cDimensions = pFeatureCombination->m_cFeatures;
+   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
@@ -37,7 +37,7 @@ void GetTotalsDebugSlow(
    size_t valueMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
    do {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionInitialize].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionInitialize].m_pFeature->GetCountBins();
       EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
@@ -70,7 +70,7 @@ void GetTotalsDebugSlow(
          EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop));
          iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
-         const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cBins;
 
@@ -101,8 +101,8 @@ void CompareTotalsDebug(
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
-   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->GetCountBins();
+   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->GetCountFeatures(); ++iDimensionDebug) {
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
       if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
          aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
          aiLast[iDimensionDebug] = cBins - 1;
@@ -142,15 +142,15 @@ void CompareTotalsDebug(
 //void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombination * const pFeatureCombination) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-//      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->GetCountFeatures(); ++iDimensionDebug) {
+//      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -171,7 +171,7 @@ void CompareTotalsDebug(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+//   const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountBinsInitialize->m_iCur = 0;
 //      EBM_ASSERT(2 <= pFeatureCombinationEntry->m_pFeature->m_cBins);
@@ -271,15 +271,15 @@ void CompareTotalsDebug(
 //void BuildFastTotals(HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const FeatureCombination * const pFeatureCombination) {
 //   DO: I THINK THIS HAS ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses));
 //
 //#ifndef NDEBUG
 //   // make a copy of the original binned buckets for debugging purposes
 //   size_t cTotalBucketsDebug = 1;
-//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->m_cFeatures; ++iDimensionDebug) {
-//      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->m_cBins;
+//   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->GetCountFeatures(); ++iDimensionDebug) {
+//      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->m_cBins;
 //      EBM_ASSERT(IsMultiplyError(cTotalBucketsDebug, cBins)); // we're accessing allocated memory, so this should work
 //      cTotalBucketsDebug *= cBins;
 //   }
@@ -300,7 +300,7 @@ void CompareTotalsDebug(
 //
 //   CurrentIndexAndCountBins currentIndexAndCountBins[k_cDimensionsMax];
 //   const CurrentIndexAndCountBins * const pCurrentIndexAndCountBinsEnd = &currentIndexAndCountBins[cDimensions];
-//   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+//   const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   for(CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins; pCurrentIndexAndCountBinsEnd != pCurrentIndexAndCountBinsInitialize; ++pCurrentIndexAndCountBinsInitialize, ++pFeatureCombinationEntry) {
 //      pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -436,7 +436,7 @@ void BuildFastTotals(
 
    LOG_0(TraceLevelVerbose, "Entered BuildFastTotals");
 
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
    EBM_ASSERT(1 <= cDimensions);
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -451,7 +451,7 @@ void BuildFastTotals(
    const FastTotalState<bClassification> * const pFastTotalStateEnd = &fastTotalState[cDimensions];
    {
       FastTotalState<bClassification> * pFastTotalStateInitialize = fastTotalState;
-      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+      const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
       size_t multiply = 1;
       EBM_ASSERT(0 < cDimensions);
       do {
@@ -597,7 +597,7 @@ void BuildFastTotals(
 //
 //   DO: ALREADY BEEN HANDLED IN OUR OPERATIONAL VERSION of BuildFastTotals -> sort our N-dimensional combinations at program startup so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
 //   EBM_ASSERT(1 <= cDimensions);
 //
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
@@ -609,7 +609,7 @@ void BuildFastTotals(
 //   ptrdiff_t multipleTotalInitialize = -1;
 //   {
 //      CurrentIndexAndCountBins * pCurrentIndexAndCountBinsInitialize = currentIndexAndCountBins;
-//      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+//      const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
 //      EBM_ASSERT(1 <= cDimensions);
 //      do {
 //         pCurrentIndexAndCountBinsInitialize->multipliedIndexCur = 0;
@@ -779,7 +779,7 @@ void GetTotals(
    // don't LOG this!  It would create way too much chatter!
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
    EBM_ASSERT(1 <= cDimensions);
    EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 
@@ -793,8 +793,8 @@ void GetTotals(
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
-   const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cDimensions];
+   const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
+   const FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cDimensions];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
@@ -940,8 +940,8 @@ FloatEbmType SweepMultiDiemensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= pFeatureCombination->m_cFeatures);
-   EBM_ASSERT(iDimensionSweep < pFeatureCombination->m_cFeatures);
+   EBM_ASSERT(1 <= pFeatureCombination->GetCountFeatures());
+   EBM_ASSERT(iDimensionSweep < pFeatureCombination->GetCountFeatures());
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -958,7 +958,7 @@ FloatEbmType SweepMultiDiemensional(
    *piBin = 0;
    size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
-   const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionSweep].m_pFeature->GetCountBins();
+   const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionSweep].m_pFeature->GetCountBins();
    EBM_ASSERT(2 <= cBins);
 
    size_t iBestCut = 0;
@@ -1185,13 +1185,13 @@ bool BoostMultiDimensional(
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other 
    // places like for SegmentedRegion and other critical places
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
    EBM_ASSERT(2 <= cDimensions);
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
       // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       EBM_ASSERT(2 <= cBins);
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -1269,7 +1269,7 @@ bool BoostMultiDimensional(
    // make a copy of the original binned buckets for debugging purposes
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
@@ -1379,7 +1379,7 @@ bool BoostMultiDimensional(
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != 
-   //               ArrayToPointer(pFeatureCombinations->m_FeatureCombinationEntry)[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //               pFeatureCombinations->GetFeatureCombinationEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -1402,8 +1402,8 @@ bool BoostMultiDimensional(
    if(2 == cDimensions) {
       FloatEbmType splittingScore;
 
-      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->GetCountBins();
+      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->GetCountBins();
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
@@ -2017,7 +2017,7 @@ WARNING_POP
 //
 //   BuildFastTotals(aHistogramBuckets, pTargetFeature, pFeatureCombination);
 //
-//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
 //   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
 //   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
 //   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
@@ -2029,8 +2029,8 @@ WARNING_POP
 //      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
 //      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket * ));
 //
-//      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->m_cBins;
-//      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->m_cBins;
+//      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->m_cBins;
+//      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->m_cBins;
 //
 //      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
 //
@@ -2304,13 +2304,13 @@ bool CalculateInteractionScore(
 
    // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like 
    // for SegmentedRegion and other critical places
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->m_cFeatures);
+   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(countCompilerDimensions, pFeatureCombination->GetCountFeatures());
    EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
       EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
       // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -2389,7 +2389,7 @@ bool CalculateInteractionScore(
    // make a copy of the original binned buckets for debugging purposes
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[iDimensionDebug].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
@@ -2426,8 +2426,8 @@ bool CalculateInteractionScore(
       HistogramBucket<bClassification> * pTotalsHighHigh =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      const size_t cBinsDimension1 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry)[1].m_pFeature->GetCountBins();
+      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->GetCountBins();
       // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
       // (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension1);

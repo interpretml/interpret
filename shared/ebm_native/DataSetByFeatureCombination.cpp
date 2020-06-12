@@ -164,11 +164,11 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    do {
       const FeatureCombination * const pFeatureCombination = *ppFeatureCombination;
       EBM_ASSERT(nullptr != pFeatureCombination);
-      const size_t cFeatures = pFeatureCombination->m_cFeatures;
+      const size_t cFeatures = pFeatureCombination->GetCountFeatures();
       if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
       } else {
-         const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->m_cItemsPerBitPackedDataUnit;
+         const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
          EBM_ASSERT(cItemsPerBitPackedDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
@@ -197,7 +197,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = ArrayToPointer(pFeatureCombination->m_FeatureCombinationEntry);
+         const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);

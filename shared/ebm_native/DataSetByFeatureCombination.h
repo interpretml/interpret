@@ -65,12 +65,12 @@ public:
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
-   // TODO: we can change this to take the m_iInputData value directly, which we get from a loop index
+   // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
    EBM_INLINE const StorageDataType * GetInputDataPointer(const FeatureCombination * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
-      EBM_ASSERT(pFeatureCombination->m_iInputData < m_cFeatureCombinations);
+      EBM_ASSERT(pFeatureCombination->GetIndexInputData() < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeatureCombination->m_iInputData];
+      return m_aaInputData[pFeatureCombination->GetIndexInputData()];
    }
    EBM_INLINE size_t GetCountInstances() const {
       return m_cInstances;
