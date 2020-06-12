@@ -63,7 +63,6 @@ public:
       const size_t cFeatures, 
       const size_t cFeatureCombinations, 
       const size_t cSamplingSets, 
-      const IntEbmType randomSeed,
       const FloatEbmType * const optionalTempParams
    )
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
@@ -84,7 +83,7 @@ public:
       , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_pCachedThreadResources(nullptr)
       // we catch any errors in the constructor, so this should not be able to throw
-      , m_randomStream(randomSeed)
+      , m_randomStream()
    {
       // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
       // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
@@ -129,7 +128,8 @@ public:
       const size_t cValidationInstances, 
       const void * const aValidationTargets, 
       const IntEbmType * const aValidationBinnedData, 
-      const FloatEbmType * const aValidationPredictorScores
+      const FloatEbmType * const aValidationPredictorScores,
+      const IntEbmType randomSeed
    );
 };
 

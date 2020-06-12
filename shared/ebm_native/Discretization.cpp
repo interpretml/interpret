@@ -1618,113 +1618,104 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   goto exit_error;
                }
 
-               try {
-                  RandomStream randomStream(randomSeed);
-                  if(!randomStream.IsSuccess()) {
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-                     goto exit_error;
-                  }
+               RandomStream randomStream;
+               randomStream.Initialize(randomSeed);
 
-                  // do this just once and reuse the random numbers
-                  FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
+               // do this just once and reuse the random numbers
+               FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
 
-                  const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
-                  if(IsMultiplyError(cSplittingRanges, cBytesCombined)) {
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-                     goto exit_error;
-                  }
-                  // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
-                  SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(malloc(cSplittingRanges * cBytesCombined));
-                  if(nullptr == apSplittingRange) {
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-                     goto exit_error;
-                  }
-                  SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
-
-                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
-                  FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
-
-                  FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
-                  FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
-                  //const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
-                  //size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
-                  //cCutsRemaining = StuffSplitsIntoSplittingRanges(
-                  //   cSplittingRanges,
-                  //   aSplittingRange,
-                  //   cMinimumInstancesPerBin,
-                  //   cCutsRemaining
-                  //);
-
-                  //for(size_t i = 0; i < cSplittingRanges; ++i) {
-                  //   size_t cCENTERSplitsAssigned = aSplittingRange[i].m_cSplitsAssigned;
-                  //   if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMin) {
-                  //      // our first and last SplittingRanges can either have a long range of equal items on their tail ends
-                  //      // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
-                  //      // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
-                  //      // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
-                  //      // side
-
-                  //      ++cCENTERSplitsAssigned;
-                  //      if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMax) {
-                  //         // if there's just one range and there are no long ranges on either end, then one split will create
-                  //         // two ranges, so add 1 more.
-
-                  //         ++cCENTERSplitsAssigned;
-                  //      }
-                  //   }
-                  //   if(3 <= cCENTERSplitsAssigned) {
-                  //      // take our the end splits
-                  //      cCENTERSplitsAssigned -= 2;
-
-                  //      std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
-
-                  //      //TradeSplitSegment(
-                  //      //   &bestSplitPoints,
-                  //      //   cMinimumInstancesPerBin,
-                  //      //   aSplittingRange[i].m_pSplittableValuesStart - singleFeatureValues,
-                  //      //   aSplittingRange[i].m_cSplittableItems,
-                  //      //   singleFeatureValues,
-                  //      //   aNeighbourJumps,
-                  //      //   cCENTERSplitsAssigned,
-                  //      //   // for efficiency we include space for the end point cuts even if they don't exist
-                  //      //   aSplitPoints
-                  //      //);
-                  //   } else {
-                  //      //EBM_ASSERT(false); // the condition of 1 split needs to be handled!
-                  //   }
-                  //}
-
-
-
-
-
-                  //GetInterpretableCutPointFloat(0, 1);
-                  //GetInterpretableCutPointFloat(11, 12);
-                  //GetInterpretableCutPointFloat(345.33545, 3453.3745);
-                  //GetInterpretableCutPointFloat(0.000034533545, 0.0034533545);
-
-
-
-
-
-
-
-
-                  free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
-
-                  // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
-                  // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
-                  // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
-
-                  *countCutPoints = 0;
-               } catch(...) {
+               const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
+               if(IsMultiplyError(cSplittingRanges, cBytesCombined)) {
                   free(aSplitPoints);
                   free(aNeighbourJumps);
                   goto exit_error;
                }
+               // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
+               SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(malloc(cSplittingRanges * cBytesCombined));
+               if(nullptr == apSplittingRange) {
+                  free(aSplitPoints);
+                  free(aNeighbourJumps);
+                  goto exit_error;
+               }
+               SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
+
+               FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
+               FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
+
+               FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
+               FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
+               //const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+               //size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
+               //cCutsRemaining = StuffSplitsIntoSplittingRanges(
+               //   cSplittingRanges,
+               //   aSplittingRange,
+               //   cMinimumInstancesPerBin,
+               //   cCutsRemaining
+               //);
+
+               //for(size_t i = 0; i < cSplittingRanges; ++i) {
+               //   size_t cCENTERSplitsAssigned = aSplittingRange[i].m_cSplitsAssigned;
+               //   if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMin) {
+               //      // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+               //      // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+               //      // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+               //      // like getting a free cut, so increase the number of ranges by one if we don't need one cut at the tail
+               //      // side
+
+               //      ++cCENTERSplitsAssigned;
+               //      if(0 == aSplittingRange[i].m_cUnsplittableEitherSideMax) {
+               //         // if there's just one range and there are no long ranges on either end, then one split will create
+               //         // two ranges, so add 1 more.
+
+               //         ++cCENTERSplitsAssigned;
+               //      }
+               //   }
+               //   if(3 <= cCENTERSplitsAssigned) {
+               //      // take our the end splits
+               //      cCENTERSplitsAssigned -= 2;
+
+               //      std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
+
+               //      //TradeSplitSegment(
+               //      //   &bestSplitPoints,
+               //      //   cMinimumInstancesPerBin,
+               //      //   aSplittingRange[i].m_pSplittableValuesStart - singleFeatureValues,
+               //      //   aSplittingRange[i].m_cSplittableItems,
+               //      //   singleFeatureValues,
+               //      //   aNeighbourJumps,
+               //      //   cCENTERSplitsAssigned,
+               //      //   // for efficiency we include space for the end point cuts even if they don't exist
+               //      //   aSplitPoints
+               //      //);
+               //   } else {
+               //      //EBM_ASSERT(false); // the condition of 1 split needs to be handled!
+               //   }
+               //}
+
+
+
+
+
+               //GetInterpretableCutPointFloat(0, 1);
+               //GetInterpretableCutPointFloat(11, 12);
+               //GetInterpretableCutPointFloat(345.33545, 3453.3745);
+               //GetInterpretableCutPointFloat(0.000034533545, 0.0034533545);
+
+
+
+
+
+
+
+
+               free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
+
+               // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
+               // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
+               // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
+
+               *countCutPoints = 0;
+
                free(aSplitPoints);
                free(aNeighbourJumps);
             }

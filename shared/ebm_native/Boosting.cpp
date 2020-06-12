@@ -127,11 +127,14 @@ bool EbmBoostingState::Initialize(
    const size_t cValidationInstances, 
    const void * const aValidationTargets, 
    const IntEbmType * const aValidationBinnedData, 
-   const FloatEbmType * const aValidationPredictorScores) 
-{
+   const FloatEbmType * const aValidationPredictorScores,
+   const IntEbmType randomSeed
+) {
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
 
    const bool bClassification = IsClassification(m_runtimeLearningTypeOrCountTargetClasses);
+
+   m_randomStream.Initialize(randomSeed);
 
    if(0 != m_cFeatures && nullptr == m_aFeatures) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize 0 != m_cFeatures && nullptr == m_aFeatures");
@@ -150,11 +153,6 @@ bool EbmBoostingState::Initialize(
 
    if(UNLIKELY(nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets)) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == m_pSmallChangeToModelAccumulatedFromSamplingSets");
-      return true;
-   }
-
-   if(UNLIKELY(!m_randomStream.IsSuccess())) {
-      LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_randomStream.IsError()");
       return true;
    }
 
@@ -591,7 +589,6 @@ EbmBoostingState * AllocateBoosting(
       cFeatures, 
       cFeatureCombinations, 
       cInnerBags, 
-      randomSeed,
       optionalTempParams
    );
    LOG_N(TraceLevelInfo, "Exited EbmBoostingState %p", static_cast<void *>(pEbmBoostingState));
@@ -610,7 +607,8 @@ EbmBoostingState * AllocateBoosting(
       cValidationInstances, 
       validationTargets, 
       validationBinnedData, 
-      validationPredictorScores
+      validationPredictorScores,
+      randomSeed
    ))) {
       LOG_0(TraceLevelWarning, "WARNING AllocateBoosting pEbmBoostingState->Initialize");
       delete pEbmBoostingState;
