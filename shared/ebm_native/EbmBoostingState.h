@@ -66,6 +66,8 @@ public:
       const FloatEbmType * const optionalTempParams
    )
       : m_runtimeLearningTypeOrCountTargetClasses(runtimeLearningTypeOrCountTargetClasses)
+      , m_cFeatures(cFeatures)
+      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_cFeatureCombinations(cFeatureCombinations)
       , m_apFeatureCombinations(0 == cFeatureCombinations ? nullptr : FeatureCombination::AllocateFeatureCombinations(cFeatureCombinations))
       , m_trainingSet()
@@ -79,8 +81,6 @@ public:
          SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
       , m_pSmallChangeToModelAccumulatedFromSamplingSets(
          SegmentedTensor::Allocate(k_cDimensionsMax, GetVectorLength(runtimeLearningTypeOrCountTargetClasses)))
-      , m_cFeatures(cFeatures)
-      , m_aFeatures(0 == cFeatures || IsMultiplyError(sizeof(Feature), cFeatures) ? nullptr : static_cast<Feature *>(malloc(sizeof(Feature) * cFeatures)))
       , m_pCachedThreadResources(nullptr)
       // we catch any errors in the constructor, so this should not be able to throw
       , m_randomStream()
