@@ -103,10 +103,7 @@ public:
             EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
             bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
-            // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, so we don't need the 
-            // resulting pointer returned
             m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
-            // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
             EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
             EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert

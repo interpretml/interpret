@@ -68,13 +68,8 @@ public:
       LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
 
       EBM_ASSERT(0 < cFeatureCombinations);
-      FeatureCombination ** const apFeatureCombinations = new (std::nothrow) FeatureCombination * [cFeatureCombinations];
-      if(LIKELY(nullptr != apFeatureCombinations)) {
-         // we need to set this to zero otherwise our destructor will attempt to free garbage memory pointers if we prematurely call the destructor
-         // if we were able to allocate this, then we should be able to calculate how much memory to zero
-         EBM_ASSERT(!IsMultiplyError(sizeof(*apFeatureCombinations), cFeatureCombinations));
-         memset(apFeatureCombinations, 0, sizeof(*apFeatureCombinations) * cFeatureCombinations);
-      }
+      FeatureCombination ** const apFeatureCombinations = EbmMalloc<FeatureCombination *>(cFeatureCombinations);
+
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
       return apFeatureCombinations;
    }
@@ -84,9 +79,11 @@ public:
       if(nullptr != apFeatureCombinations) {
          EBM_ASSERT(0 < cFeatureCombinations);
          for(size_t i = 0; i < cFeatureCombinations; ++i) {
-            apFeatureCombinations[i]->Free();
+            if(nullptr != apFeatureCombinations[i]) {
+               apFeatureCombinations[i]->Free();
+            }
          }
-         delete[] apFeatureCombinations;
+         free(apFeatureCombinations);
       }
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
    }

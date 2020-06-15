@@ -370,15 +370,10 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    return num1 + num2 < num1;
 }
 
-// TODO: use EbmMalloc a lot more
-
 // using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just exits.
 // This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
 // that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free
 // everywhere for arrays.  This helper function makes it a bit nicer than pure malloc.
-//
-// For our own objects, we should probably just define a static CLASS_NAME::Allocate(...) function for allocation
-// and OBJECT::Free() for deallocation and use malloc/free internally.
 //
 // For classes that we don't control, continue to use new and delete with std::nothrow for class objects though, 
 // since the memory allocated that way is modest in size, and to use malloc and free for class objects would 

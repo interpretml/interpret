@@ -46,7 +46,7 @@ void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations,
          SegmentedTensor::Free(*ppSegmentedTensors);
          ++ppSegmentedTensors;
       } while(ppSegmentedTensorsEnd != ppSegmentedTensors);
-      delete[] apSegmentedTensors;
+      free(apSegmentedTensors);
    }
    LOG_0(TraceLevelInfo, "Exited DeleteSegmentedTensors");
 }
@@ -62,14 +62,11 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedTensor ** const apSegmentedTensors = 
-      new (std::nothrow) SegmentedTensor *[cFeatureCombinations];
+   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *>(cFeatureCombinations);
    if(UNLIKELY(nullptr == apSegmentedTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
       return nullptr;
    }
-   // this needs to be done immediately after allocation otherwise we might attempt to free random garbage on an error
-   memset(apSegmentedTensors, 0, sizeof(*apSegmentedTensors) * cFeatureCombinations);
 
    SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
    for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
@@ -189,10 +186,7 @@ bool EbmBoostingState::Initialize(
          EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
          bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
-         // this is an in-place new, so there is no new memory allocated, and we already knew where it was going, 
-         // so we don't need the resulting pointer returned
          m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
-         // we don't allocate memory and our constructor doesn't have errors, so we shouldn't have an error here
 
          EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
          EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
