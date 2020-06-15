@@ -68,7 +68,6 @@ EBM_INLINE size_t CountSweepTreeNode(
 }
 
 
-// ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    RandomStream * const pRandomStream, 
@@ -259,7 +258,6 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
    if(UNLIKELY(1 < cSweepItems)) {
-      // pRandomStream->Next(cSweepItems) can throw exceptions from the random number generator.  We would catch any exceptions in our caller
       const size_t iRandom = pRandomStream->Next(cSweepItems);
       pSweepTreeNodeStart = AddBytesSweepTreeNode(pSweepTreeNodeStart, cBytesPerSweepTreeNode * iRandom);
    }
@@ -434,127 +432,126 @@ retry_with_bigger_tree_node_children_array:
    );
 
    size_t cSplits;
-   try {
-      // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-      if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-         pRandomStream, 
-         aHistogramBucket, 
-         pRootTreeNode, 
-         pCachedThreadResources, 
-         AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
-         cInstancesRequiredForChildSplitMin, 
-         runtimeLearningTypeOrCountTargetClasses
+   if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
+      pRandomStream, 
+      aHistogramBucket, 
+      pRootTreeNode, 
+      pCachedThreadResources, 
+      AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
+      cInstancesRequiredForChildSplitMin, 
+      runtimeLearningTypeOrCountTargetClasses
 #ifndef NDEBUG
-         , aHistogramBucketsEndDebug
+      , aHistogramBucketsEndDebug
 #endif // NDEBUG
-         )) 
-      {
-         // there will be no splits at all
-         if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
-            return true;
-         }
-
-         // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
-         if(bClassification) {
-            FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
-               );
-               aValues[iVector] = smallChangeToModel;
-            }
-         } else {
-            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cInstancesTotal)
-            );
-            FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-            pValues[0] = smallChangeToModel;
-         }
-
-         LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
-         *pTotalGain = FloatEbmType { 0 };
-         return false;
+      )) 
+   {
+      // there will be no splits at all
+      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0))) {
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 0)");
+         return true;
       }
 
-      if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
-         // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
-
-         EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable() && 
-            !GetRightTreeNodeChild<bClassification>(
-               pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
-               cBytesPerTreeNode
-               )->IsSplittable()
-         );
-
-         if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
-            LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
-            return true;
-         }
-
-         ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
-         pDivisions[0] = pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
-
-         // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
-
-         // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
-         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
-            cBytesPerTreeNode
-         );
-         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
-            cBytesPerTreeNode
-         );
-
+      // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
+      if(bClassification) {
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
-         if(bClassification) {
-            for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-               aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError,
-                  ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
-               );
-               aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
-                  ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
-               );
-            }
-         } else {
-            EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
-            aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, 
-               static_cast<FloatEbmType>(pLeftChild->GetInstances())
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, aSumHistogramBucketVectorEntry[iVector].GetSumDenominator()
             );
-            aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, 
-               static_cast<FloatEbmType>(pRightChild->GetInstances())
-            );
+            aValues[iVector] = smallChangeToModel;
          }
-
-         LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
-         const FloatEbmType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
-         EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
-         // don't normalize totalGain here, because we normalize the average outside of this function!
-         *pTotalGain = totalGain;
-         return false;
+      } else {
+         EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+         const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cInstancesTotal)
+         );
+         FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+         pValues[0] = smallChangeToModel;
       }
 
-      // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't 
-      // split below is if both our children nodes don't have enough cases to split, but that should rare
+      LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via not enough data to split");
+      *pTotalGain = FloatEbmType { 0 };
+      return false;
+   }
 
-      // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the 
-      // overhead is too large to benefit, but we also aren't bottlenecked if we only have 2-3 splits, 
-      // so we don't care about performance issues.  On the other hand, we don't want to change this to an 
-      // array scan because in theory the user can specify very deep trees, and we don't want to hang on 
-      // an O(N^2) operation if they do.  So, let's keep the priority queue, and only the priority queue 
-      // since it handles all scenarios without any real cost and is simpler
-      // than implementing an optional array scan PLUS a priority queue for deep trees.
+   if(UNPREDICTABLE(PREDICTABLE(1 == cTreeSplitsMax) || UNPREDICTABLE(2 == cHistogramBuckets))) {
+      // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
+
+      EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
+         pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable() && 
+         !GetRightTreeNodeChild<bClassification>(
+            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
+            cBytesPerTreeNode
+            )->IsSplittable()
+      );
+
+      if(UNLIKELY(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1))) {
+         LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)");
+         return true;
+      }
+
+      ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
+      pDivisions[0] = pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+
+      // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
+
+      // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
+      const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
+         pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
+         cBytesPerTreeNode
+      );
+      const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
+         pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, 
+         cBytesPerTreeNode
+      );
+
+      FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
+      if(bClassification) {
+         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+            aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError,
+               ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+            );
+            aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, 
+               ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+            );
+         }
+      } else {
+         EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+         aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, 
+            static_cast<FloatEbmType>(pLeftChild->GetInstances())
+         );
+         aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+            ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError, 
+            static_cast<FloatEbmType>(pRightChild->GetInstances())
+         );
+      }
+
+      LOG_0(TraceLevelVerbose, "Exited GrowDecisionTree via one tree split");
+      const FloatEbmType totalGain = pRootTreeNode->EXTRACT_GAIN_BEFORE_SPLITTING();
+      EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
+      // don't normalize totalGain here, because we normalize the average outside of this function!
+      *pTotalGain = totalGain;
+      return false;
+   }
+
+   // it's very likely that there will be more than 1 split below this point.  The only case where we wouldn't 
+   // split below is if both our children nodes don't have enough cases to split, but that should rare
+
+   // typically we train on stumps, so often this priority queue is overhead since with 2-3 splits the 
+   // overhead is too large to benefit, but we also aren't bottlenecked if we only have 2-3 splits, 
+   // so we don't care about performance issues.  On the other hand, we don't want to change this to an 
+   // array scan because in theory the user can specify very deep trees, and we don't want to hang on 
+   // an O(N^2) operation if they do.  So, let's keep the priority queue, and only the priority queue 
+   // since it handles all scenarios without any real cost and is simpler
+   // than implementing an optional array scan PLUS a priority queue for deep trees.
       
-      // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
-      //       the TreeNode datastructure
+   // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
+   //       the TreeNode datastructure
 
+   try {
       std::priority_queue<
          TreeNode<bClassification> *, 
          std::vector<TreeNode<bClassification> *>, 
@@ -613,9 +610,8 @@ retry_with_bigger_tree_node_children_array:
                }
                goto retry_with_bigger_tree_node_children_array;
             }
-            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a 
-            // non-illegalGain value ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, 
-            // possibly (it's not documented)
+            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
+            // because splitting sets splitGain to a non-illegalGain value
             if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                pRandomStream, 
                aHistogramBucket, 
@@ -659,9 +655,8 @@ retry_with_bigger_tree_node_children_array:
                }
                goto retry_with_bigger_tree_node_children_array;
             }
-            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED because splitting sets splitGain to a non-NaN value
-            // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly 
-            // (it's not documented)
+            // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
+            // because splitting sets splitGain to a non-NaN value
             if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
                pRandomStream, 
                aHistogramBucket, 
@@ -704,8 +699,7 @@ retry_with_bigger_tree_node_children_array:
          static_cast<size_t>(reinterpret_cast<char *>(pTreeNodeChildrenAvailableStorageSpaceCur) - reinterpret_cast<char *>(pRootTreeNode)) <= cBytesBuffer2
       );
    } catch(...) {
-      // ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint can throw exceptions from the random number generator, possibly (it's not documented)
-      // calling anything inside bestTreeNodeToSplit can throw exceptions, possibly (it's not documented)
+      // calling anything inside bestTreeNodeToSplit can throw exceptions
       LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree exception");
       return true;
    }

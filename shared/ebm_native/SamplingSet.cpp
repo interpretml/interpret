@@ -14,12 +14,6 @@
 #include "DataSetByFeatureCombination.h"
 #include "SamplingSet.h"
 
-SamplingSet::~SamplingSet() {
-   LOG_0(TraceLevelInfo, "Entered ~SamplingSet");
-   free(const_cast<size_t *>(m_aCountOccurrences));
-   LOG_0(TraceLevelInfo, "Exited ~SamplingSet");
-}
-
 size_t SamplingSet::GetTotalCountInstanceOccurrences() const {
    // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
    size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
@@ -51,24 +45,20 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
       return nullptr;
    }
 
-   try {
-      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-         const size_t iCountOccurrences = pRandomStream->Next(cInstances);
-         ++aCountOccurrences[iCountOccurrences];
-      }
-   } catch(...) {
-      // pRandomStream->Next can throw exceptions from the random number generator, possibly (it's not documented)
-      free(aCountOccurrences);
-      LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet random number generator exception");
-      return nullptr;
+   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
+      const size_t iCountOccurrences = pRandomStream->Next(cInstances);
+      ++aCountOccurrences[iCountOccurrences];
    }
 
-   SamplingSet * pRet = new (std::nothrow) SamplingSet(pOriginDataSet, aCountOccurrences);
+   SamplingSet * pRet = EbmMalloc<SamplingSet, false>();
    if(nullptr == pRet) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
       free(aCountOccurrences);
       return nullptr;
    }
+
+   pRet->m_pOriginDataSet = pOriginDataSet;
+   pRet->m_aCountOccurrences = aCountOccurrences;
 
    LOG_0(TraceLevelVerbose, "Exited SamplingSet::GenerateSingleSamplingSet");
    return pRet;
@@ -82,8 +72,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombina
    const size_t cInstances = pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   const size_t cBytesData = sizeof(size_t) * cInstances;
-   size_t * const aCountOccurrences = static_cast<size_t *>(malloc(cBytesData));
+   size_t * const aCountOccurrences = EbmMalloc<size_t, false>(cInstances);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
@@ -93,11 +82,15 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombina
       aCountOccurrences[iInstance] = 1;
    }
 
-   SamplingSet * pRet = new (std::nothrow) SamplingSet(pOriginDataSet, aCountOccurrences);
+   SamplingSet * pRet = EbmMalloc<SamplingSet, false>();
    if(nullptr == pRet) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
       free(aCountOccurrences);
+      return nullptr;
    }
+
+   pRet->m_pOriginDataSet = pOriginDataSet;
+   pRet->m_aCountOccurrences = aCountOccurrences;
 
    LOG_0(TraceLevelInfo, "Exited SamplingSet::GenerateFlatSamplingSet");
    return pRet;
@@ -108,7 +101,10 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
    if(LIKELY(nullptr != apSamplingSets)) {
       const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
-         delete apSamplingSets[iSamplingSet];
+         if(nullptr != apSamplingSets[iSamplingSet]) {
+            free(apSamplingSets[iSamplingSet]->m_aCountOccurrences);
+            free(apSamplingSets[iSamplingSet]);
+         }
       }
       free(apSamplingSets);
    }

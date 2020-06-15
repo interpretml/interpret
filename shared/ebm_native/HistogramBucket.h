@@ -144,11 +144,11 @@ void BinDataSetTrainingZeroDimensions(
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
 
-   const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
+   const size_t cInstances = pTrainingSet->GetDataSetByFeatureCombination()->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
-   const size_t * pCountOccurrences = pTrainingSet->m_aCountOccurrences;
-   const FloatEbmType * pResidualError = pTrainingSet->m_pOriginDataSet->GetResidualPointer();
+   const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
+   const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureCombination()->GetResidualPointer();
    // this shouldn't overflow since we're accessing existing memory
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
@@ -250,12 +250,12 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
-   const size_t cInstances = pTrainingSet->m_pOriginDataSet->GetCountInstances();
+   const size_t cInstances = pTrainingSet->GetDataSetByFeatureCombination()->GetCountInstances();
    EBM_ASSERT(0 < cInstances);
 
-   const size_t * pCountOccurrences = pTrainingSet->m_aCountOccurrences;
-   const StorageDataType * pInputData = pTrainingSet->m_pOriginDataSet->GetInputDataPointer(pFeatureCombination);
-   const FloatEbmType * pResidualError = pTrainingSet->m_pOriginDataSet->GetResidualPointer();
+   const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
+   const StorageDataType * pInputData = pTrainingSet->GetDataSetByFeatureCombination()->GetInputDataPointer(pFeatureCombination);
+   const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureCombination()->GetResidualPointer();
 
    // this shouldn't overflow since we're accessing existing memory
    const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
