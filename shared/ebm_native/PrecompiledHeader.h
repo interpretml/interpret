@@ -8,7 +8,6 @@
 #include <type_traits> // std::is_standard_layout, std::is_integral
 #include <stdlib.h> // malloc, realloc, free
 #include <string.h> // memset
-#include <new> // std::nothrow
 
 #include <vector>
 #include <queue>

@@ -30,17 +30,19 @@ class CachedBoostingThreadResources final {
 
 public:
 
-   INLINE_RELEASE void Free() {
+   INLINE_RELEASE static void Free(CachedBoostingThreadResources * const pCachedResources) {
       LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Free");
 
-      free(m_aThreadByteBuffer1);
-      free(m_aThreadByteBuffer2);
-      free(m_aSumHistogramBucketVectorEntry);
-      free(m_aSumHistogramBucketVectorEntry1);
-      free(m_aTempFloatVector);
-      free(m_aEquivalentSplits);
+      if(nullptr != pCachedResources) {
+         free(pCachedResources->m_aThreadByteBuffer1);
+         free(pCachedResources->m_aThreadByteBuffer2);
+         free(pCachedResources->m_aSumHistogramBucketVectorEntry);
+         free(pCachedResources->m_aSumHistogramBucketVectorEntry1);
+         free(pCachedResources->m_aTempFloatVector);
+         free(pCachedResources->m_aEquivalentSplits);
 
-      free(this);
+         free(pCachedResources);
+      }
 
       LOG_0(TraceLevelInfo, "Exited CachedBoostingThreadResources::Free");
    }
@@ -80,7 +82,7 @@ public:
             }
          }
       exit_error:;
-         pNew->Free();
+         Free(pNew);
       }
       LOG_0(TraceLevelWarning, "WARNING Exited CachedBoostingThreadResources::Allocate with error");
       return nullptr;

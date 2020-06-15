@@ -23,18 +23,7 @@ class DataSetByFeatureCombination final {
 
 public:
 
-   ~DataSetByFeatureCombination();
-
-   INLINE_RELEASE DataSetByFeatureCombination() {
-      // TODO: when we're embedded inside a POD struct we can eliminate this
-      memset(this, 0, sizeof(*this));
-
-      // we must be zeroed before being called so that we don't try and free randomized pointers
-      EBM_ASSERT(nullptr == m_aResidualErrors);
-      EBM_ASSERT(nullptr == m_aPredictorScores);
-      EBM_ASSERT(nullptr == m_aTargetData);
-      EBM_ASSERT(nullptr == m_aaInputData);
-   }
+   void Destruct();
 
    bool Initialize(
       const bool bAllocateResidualErrors, 
