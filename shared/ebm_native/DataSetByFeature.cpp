@@ -160,8 +160,8 @@ free_all:
    return nullptr;
 }
 
-DataSetByFeature::~DataSetByFeature() {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::~DataSetByFeature");
+void DataSetByFeature::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Destruct");
 
    free(m_aResidualErrors);
    if(nullptr != m_aaInputData) {
@@ -176,7 +176,7 @@ DataSetByFeature::~DataSetByFeature() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::~DataSetByFeature");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Destruct");
 }
 
 bool DataSetByFeature::Initialize(

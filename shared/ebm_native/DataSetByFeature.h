@@ -20,17 +20,7 @@ class DataSetByFeature final {
 
 public:
 
-   ~DataSetByFeature();
-
-   INLINE_RELEASE DataSetByFeature() {
-      // TODO: when we're embedded inside a POD struct we can eliminate this
-      memset(this, 0, sizeof(*this));
-
-      // we must be zeroed before being called so that we don't try and free randomized pointers
-      EBM_ASSERT(nullptr == m_aResidualErrors);
-      EBM_ASSERT(nullptr == m_aaInputData);
-      EBM_ASSERT(0 == m_cInstances); // we use m_cInstances even if our Initialized function isn't called
-   }
+   void Destruct();
 
    bool Initialize(
       const size_t cFeatures, 

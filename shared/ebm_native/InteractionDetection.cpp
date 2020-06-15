@@ -22,6 +22,115 @@
 
 #include "EbmInteractionState.h"
 
+void EbmInteractionState::Free(EbmInteractionState * const pInteractionDetection) {
+   LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Free");
+
+   if(nullptr != pInteractionDetection) {
+      pInteractionDetection->m_dataSet.Destruct();
+      free(pInteractionDetection->m_aFeatures);
+      free(pInteractionDetection);
+   }
+
+   LOG_0(TraceLevelInfo, "Exited EbmInteractionState::Free");
+}
+
+EbmInteractionState * EbmInteractionState::Allocate(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t cFeatures,
+   const FloatEbmType * const optionalTempParams,
+   const EbmNativeFeature * const aNativeFeatures,
+   const size_t cInstances,
+   const void * const aTargets,
+   const IntEbmType * const aBinnedData,
+   const FloatEbmType * const aPredictorScores
+) {
+   // optionalTempParams isn't used by default.  It's meant to provide an easy way for python or other higher
+   // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
+   UNUSED(optionalTempParams);
+
+   LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Allocate");
+
+   LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate starting feature processing");
+   Feature * aFeatures = nullptr;
+   if(0 != cFeatures) {
+      aFeatures = EbmMalloc<Feature>(cFeatures);
+      if(nullptr == aFeatures) {
+         LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate nullptr == aFeatures");
+         return nullptr;
+      }
+      const EbmNativeFeature * pFeatureInitialize = aNativeFeatures;
+      const EbmNativeFeature * const pFeatureEnd = &aNativeFeatures[cFeatures];
+      EBM_ASSERT(pFeatureInitialize < pFeatureEnd);
+      size_t iFeatureInitialize = 0;
+      do {
+         static_assert(
+            FeatureType::Ordinal == static_cast<FeatureType>(FeatureTypeOrdinal), "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal"
+            );
+         static_assert(
+            FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
+            );
+         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
+         FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
+
+         IntEbmType countBins = pFeatureInitialize->countBins;
+         // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything 
+         // since they always have the same value)
+         EBM_ASSERT(0 <= countBins);
+         if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
+            LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate !IsNumberConvertable<size_t, IntEbmType>(countBins)");
+            free(aFeatures);
+            return nullptr;
+         }
+         size_t cBins = static_cast<size_t>(countBins);
+         if(cBins <= 1) {
+            EBM_ASSERT(0 != cBins || 0 == cInstances);
+            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 0/1 value");
+         }
+
+         EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
+         bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
+
+         aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
+
+         EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing); // TODO : implement this, then remove this assert
+         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType); // TODO : implement this, then remove this assert
+
+         ++iFeatureInitialize;
+         ++pFeatureInitialize;
+      } while(pFeatureEnd != pFeatureInitialize);
+   }
+   LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate done feature processing");
+
+   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState>();
+   if(nullptr == pRet) {
+      free(aFeatures);
+      return nullptr;
+   }
+
+   pRet->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
+   pRet->m_cFeatures = cFeatures;
+   pRet->m_aFeatures = aFeatures;
+   pRet->m_cLogEnterMessages = 1000;
+   pRet->m_cLogExitMessages = 1000;
+
+   if(pRet->m_dataSet.Initialize(
+      cFeatures,
+      aFeatures,
+      cInstances,
+      aBinnedData,
+      aTargets,
+      aPredictorScores,
+      runtimeLearningTypeOrCountTargetClasses
+   )) {
+      LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate m_dataSet.Initialize");
+      EbmInteractionState::Free(pRet);
+      return nullptr;
+   }
+
+   LOG_0(TraceLevelInfo, "Exited EbmInteractionState::Allocate");
+   return pRet;
+}
+
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -57,20 +166,18 @@ EbmInteractionState * AllocateInteraction(
    size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cInstances = static_cast<size_t>(countInstances);
 
-   LOG_0(TraceLevelInfo, "Entered EbmInteractionState");
-   EbmInteractionState * const pEbmInteractionState = new (std::nothrow) EbmInteractionState(
-      runtimeLearningTypeOrCountTargetClasses, 
-      cFeatures, 
-      optionalTempParams
+   EbmInteractionState * const pEbmInteractionState = EbmInteractionState::Allocate(
+      runtimeLearningTypeOrCountTargetClasses,
+      cFeatures,
+      optionalTempParams,
+      features,
+      cInstances,
+      targets,
+      binnedData,
+      predictorScores
    );
-   LOG_N(TraceLevelInfo, "Exited EbmInteractionState %p", static_cast<void *>(pEbmInteractionState));
    if(UNLIKELY(nullptr == pEbmInteractionState)) {
       LOG_0(TraceLevelWarning, "WARNING AllocateInteraction nullptr == pEbmInteractionState");
-      return nullptr;
-   }
-   if(UNLIKELY(pEbmInteractionState->InitializeInteraction(features, cInstances, targets, binnedData, predictorScores))) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction pEbmInteractionState->InitializeInteraction");
-      delete pEbmInteractionState;
       return nullptr;
    }
    return pEbmInteractionState;
@@ -173,9 +280,9 @@ static IntEbmType GetInteractionScorePerTargetClasses(
    }
 
    if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(
-      pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
+      pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses(),
       pCachedThreadResources, 
-      &pEbmInteractionState->m_dataSet, 
+      pEbmInteractionState->GetDataSetByFeature(),
       pFeatureCombination, 
       cInstancesRequiredForChildSplitMin, 
       pInteractionScoreReturn
@@ -266,7 +373,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    EBM_ASSERT(nullptr != ebmInteraction);
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
 
-   LOG_COUNTED_0(&pEbmInteractionState->m_cLogEnterMessages, TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
+   LOG_COUNTED_0(pEbmInteractionState->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
 
    EBM_ASSERT(0 <= countFeaturesInCombination);
    EBM_ASSERT(0 == countFeaturesInCombination || nullptr != featureIndexes);
@@ -287,7 +394,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       return 0;
    }
 
-   if(0 == pEbmInteractionState->m_dataSet.GetCountInstances()) {
+   if(0 == pEbmInteractionState->GetDataSetByFeature()->GetCountInstances()) {
       // if there are zero instances, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero instances");
       if(nullptr != interactionScoreReturn) {
@@ -310,7 +417,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore countInstancesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
-   const Feature * const aFeatures = pEbmInteractionState->m_aFeatures;
+   const Feature * const aFeatures = pEbmInteractionState->GetFeatures();
    const IntEbmType * pFeatureCombinationIndex = featureIndexes;
    const IntEbmType * const pFeatureCombinationIndexEnd = featureIndexes + cFeaturesInCombination;
 
@@ -322,7 +429,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
          return 1;
       }
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
+      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->GetCountFeatures());
       const Feature * const pFeature = &aFeatures[iFeatureForCombination];
       if(pFeature->GetCountBins() <= 1) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
@@ -355,7 +462,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       EBM_ASSERT(0 <= indexFeatureInterop);
       EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
       size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->m_cFeatures);
+      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->GetCountFeatures());
       const Feature * const pFeature = &aFeatures[iFeatureForCombination];
       EBM_ASSERT(2 <= pFeature->GetCountBins()); // we should have filtered out anything with 1 bin above
 
@@ -365,8 +472,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
    } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
    IntEbmType ret;
-   if(IsClassification(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      if(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
+   if(IsClassification(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses())) {
+      if(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
          LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
          if(nullptr != interactionScoreReturn) {
             // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
@@ -376,14 +483,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
          return 0;
       }
       ret = CompilerRecursiveGetInteractionScore<2>(
-         pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses, 
+         pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses(),
          pEbmInteractionState, 
          pFeatureCombination, 
          cInstancesRequiredForChildSplitMin, 
          interactionScoreReturn
       );
    } else {
-      EBM_ASSERT(IsRegression(pEbmInteractionState->m_runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()));
       ret = GetInteractionScorePerTargetClasses<k_Regression>(
          pEbmInteractionState, 
          pFeatureCombination, 
@@ -398,13 +505,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
       EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn);
       LOG_COUNTED_N(
-         &pEbmInteractionState->m_cLogExitMessages, 
+         pEbmInteractionState->GetPointerCountLogExitMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited GetInteractionScore %" FloatEbmTypePrintf, *interactionScoreReturn
       );
    } else {
-      LOG_COUNTED_0(&pEbmInteractionState->m_cLogExitMessages, TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");
+      LOG_COUNTED_0(pEbmInteractionState->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited GetInteractionScore");
    }
    return ret;
 }
@@ -414,7 +521,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction
 ) {
    LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
-   // pEbmInteractionState == nullptr is legal, just like delete/free
-   delete pEbmInteractionState;
+
+   EbmInteractionState::Free(pEbmInteractionState);
+   
    LOG_0(TraceLevelInfo, "Exited FreeInteraction");
 }
