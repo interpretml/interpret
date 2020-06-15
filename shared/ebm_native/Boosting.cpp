@@ -774,28 +774,28 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
    LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdatePerTargetClasses");
 
-   const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->m_cSamplingSets) ? 1 : pEbmBoostingState->m_cSamplingSets;
-   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
+   const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->GetCountSamplingSets()) ? 1 : pEbmBoostingState->GetCountSamplingSets();
+   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
    const size_t cDimensions = pFeatureCombination->GetCountFeatures();
 
-   pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
-   pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
+   pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+   pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
    // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training instances
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
-   if(nullptr != pEbmBoostingState->m_apSamplingSets) {
-      pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDimensions(cDimensions);
+   if(nullptr != pEbmBoostingState->GetSamplingSets()) {
+      pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()->SetCountDimensions(cDimensions);
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain = FloatEbmType { 0 };
          if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->GetCountFeatures()))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
-               pEbmBoostingState->m_pCachedThreadResources,
-               pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
-               pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
-               pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses
+               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState->GetSamplingSets()[iSamplingSet],
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -804,15 +804,15 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else if(1 == pFeatureCombination->GetCountFeatures()) {
             if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
-               &pEbmBoostingState->m_randomStream, 
-               pEbmBoostingState->m_pCachedThreadResources,
-               pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
+               pEbmBoostingState->GetRandomStream(),
+               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                pFeatureCombination, 
                cTreeSplitsMax, 
                cInstancesRequiredForChildSplitMin, 
-               pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain, 
-               pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses
+               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -821,13 +821,13 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else {
             if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(
-               pEbmBoostingState->m_pCachedThreadResources,
-               pEbmBoostingState->m_apSamplingSets[iSamplingSet], 
+               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                pFeatureCombination, 
-               pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet, 
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                cInstancesRequiredForChildSplitMin, 
                &gain, 
-               pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses
+               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -841,7 +841,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          totalGain += gain;
          // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
          // others are working, so there should be no blocking and our final result won't require adding by the main thread
-         if(pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Add(*pEbmBoostingState->m_pSmallChangeToModelOverwriteSingleSamplingSet)) {
+         if(pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Add(*pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet())) {
             if(LIKELY(nullptr != pGainReturn)) {
                *pGainReturn = FloatEbmType { 0 };
             }
@@ -884,18 +884,18 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
          constexpr bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == compilerLearningTypeOrCountTargetClasses;
          if(bDividing) {
-            bBad = pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
+            bBad = pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
          } else {
-            bBad = pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+            bBad = pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
          }
       } else {
-         bBad = pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
+         bBad = pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero);
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
       if(UNLIKELY(UNLIKELY(bBad) || UNLIKELY(std::isnan(totalGain)) || UNLIKELY(std::isinf(totalGain)))) {
-         pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->SetCountDimensions(cDimensions);
-         pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Reset();
+         pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
+         pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
          totalGain = FloatEbmType { 0 };
       } else if(UNLIKELY(totalGain < FloatEbmType { 0 })) {
@@ -912,7 +912,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->GetFeatureCombinationEntries())[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
-      if(pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Expand(acDivisionIntegersEnd)) {
+      if(pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
          if(LIKELY(nullptr != pGainReturn)) {
             *pGainReturn = FloatEbmType { 0 };
          }
@@ -925,7 +925,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdatePerTargetClasses");
-   return pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->GetValues();
+   return pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValues();
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
@@ -1058,12 +1058,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    // we wouldn't have allowed the creation of an feature set larger than size_t
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
    // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
-   EBM_ASSERT(nullptr != pEbmBoostingState->m_apFeatureCombinations);
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
 
    LOG_COUNTED_0(
-      pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages(),
+      pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages(),
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "Entered GenerateModelFeatureCombinationUpdate"
@@ -1097,8 +1097,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    // validationMetricReturn can be nullptr
 
    FloatEbmType * aModelFeatureCombinationUpdateTensor;
-   if(IsClassification(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      if(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
+   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
+      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1112,7 +1112,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          return nullptr;
       }
       aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(
-         pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, 
+         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
          pEbmBoostingState, 
          iFeatureCombination, 
          learningRate, 
@@ -1123,7 +1123,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
          gainReturn
       );
    } else {
-      EBM_ASSERT(IsRegression(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(
          pEbmBoostingState, 
          iFeatureCombination, 
@@ -1142,7 +1142,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
       EBM_ASSERT(FloatEbmType { 0 } <= *gainReturn);
       LOG_COUNTED_N(
-         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited GenerateModelFeatureCombinationUpdate %" FloatEbmTypePrintf, 
@@ -1150,7 +1150,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       );
    } else {
       LOG_COUNTED_0(
-         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited GenerateModelFeatureCombinationUpdate no gain"
@@ -1176,10 +1176,10 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
 
    // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pEbmBoostingState->m_apCurrentModel);
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetCurrentModel());
    // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
-   EBM_ASSERT(nullptr != pEbmBoostingState->m_apBestModel);
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetBestModel());
    EBM_ASSERT(nullptr != aModelFeatureCombinationUpdateTensor); // aModelFeatureCombinationUpdateTensor is checked for nullptr before calling this function   
 
    // our caller can give us one of these bad types of inputs:
@@ -1195,25 +1195,25 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
    // overlfows and gets converted to the maximum value which will mean the metric won't be changing or improving after that.
    // This is an acceptable compromise.  We protect our models since the user might want to extract them AFTER we overlfow our measurment metric
    // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the model
-   pEbmBoostingState->m_apCurrentModel[iFeatureCombination]->AddExpandedWithBadValueProtection(aModelFeatureCombinationUpdateTensor);
+   pEbmBoostingState->GetCurrentModel()[iFeatureCombination]->AddExpandedWithBadValueProtection(aModelFeatureCombinationUpdateTensor);
 
-   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination];
+   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
 
-   if(0 != pEbmBoostingState->m_trainingSet.GetCountInstances()) {
-      FloatEbmType * const aTempFloatVector = pEbmBoostingState->m_pCachedThreadResources->GetTempFloatVector();
+   if(0 != pEbmBoostingState->GetTrainingSet()->GetCountInstances()) {
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
+         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
          false,
          pFeatureCombination,
-         &pEbmBoostingState->m_trainingSet,
+         pEbmBoostingState->GetTrainingSet(),
          aModelFeatureCombinationUpdateTensor,
          aTempFloatVector
       );
    }
 
    FloatEbmType modelMetric = FloatEbmType { 0 };
-   if(0 != pEbmBoostingState->m_validationSet.GetCountInstances()) {
+   if(0 != pEbmBoostingState->GetValidationSet()->GetCountInstances()) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
       // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
@@ -1226,10 +1226,10 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
       modelMetric = OptimizedApplyModelUpdateValidation<compilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses,
+         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
          false,
          pFeatureCombination,
-         &pEbmBoostingState->m_validationSet,
+         pEbmBoostingState->GetValidationSet(),
          aModelFeatureCombinationUpdateTensor
          );
 
@@ -1240,16 +1240,16 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       EBM_ASSERT(FloatEbmType { 0 } <= modelMetric);
 
       // modelMetric is either logloss (classification) or mean squared error (mse) (regression).  In either case we want to minimize it.
-      if(LIKELY(modelMetric < pEbmBoostingState->m_bestModelMetric)) {
+      if(LIKELY(modelMetric < pEbmBoostingState->GetBestModelMetric())) {
          // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-         pEbmBoostingState->m_bestModelMetric = modelMetric;
+         pEbmBoostingState->SetBestModelMetric(modelMetric);
 
          // TODO : in the future don't copy over all SegmentedTensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
          size_t iModel = 0;
-         size_t iModelEnd = pEbmBoostingState->m_cFeatureCombinations;
+         size_t iModelEnd = pEbmBoostingState->GetCountFeatureCombinations();
          do {
-            if(pEbmBoostingState->m_apBestModel[iModel]->Copy(*pEbmBoostingState->m_apCurrentModel[iModel])) {
+            if(pEbmBoostingState->GetBestModel()[iModel]->Copy(*pEbmBoostingState->GetCurrentModel()[iModel])) {
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = FloatEbmType { 0 }; // on error set it to something instead of random bits
                }
@@ -1350,12 +1350,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    // we wouldn't have allowed the creation of an feature set larger than size_t
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
    // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
-   EBM_ASSERT(nullptr != pEbmBoostingState->m_apFeatureCombinations);
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
 
    LOG_COUNTED_0(
-      pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages(),
+      pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages(),
       TraceLevelInfo, 
       TraceLevelVerbose, 
       "Entered ApplyModelFeatureCombinationUpdate"
@@ -1369,7 +1369,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
          *validationMetricReturn = FloatEbmType { 0 };
       }
       LOG_COUNTED_0(
-         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate from null modelFeatureCombinationUpdateTensor"
@@ -1378,8 +1378,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    }
 
    IntEbmType ret;
-   if(IsClassification(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
-      if(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
+   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
+      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our log loss is 0.
@@ -1387,7 +1387,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
             *validationMetricReturn = 0;
          }
          LOG_COUNTED_0(
-            pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+            pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
             TraceLevelInfo, 
             TraceLevelVerbose, 
             "Exited ApplyModelFeatureCombinationUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
@@ -1395,14 +1395,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
          return 0;
       }
       ret = CompilerRecursiveApplyModelFeatureCombinationUpdate<2>(
-         pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses, 
+         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
          pEbmBoostingState, 
          iFeatureCombination, 
          modelFeatureCombinationUpdateTensor, 
          validationMetricReturn
       );
    } else {
-      EBM_ASSERT(IsRegression(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       ret = ApplyModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(
          pEbmBoostingState, 
          iFeatureCombination, 
@@ -1419,14 +1419,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricReturn);
       LOG_COUNTED_N(
-         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate %" FloatEbmTypePrintf, *validationMetricReturn
       );
    } else {
       LOG_COUNTED_0(
-         pEbmBoostingState->m_apFeatureCombinations[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
          TraceLevelInfo, 
          TraceLevelVerbose, 
          "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer."
@@ -1448,10 +1448,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    EBM_ASSERT(nullptr != pEbmBoostingState);
 
-   if(IsClassification(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses)) {
+   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
       // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) 
       // and we'll return 1 from this function.  We'd like to return 0 (success) here, so we handle it ourselves
-      if(pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }) {
+      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
@@ -1499,9 +1499,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
    // we wouldn't have allowed the creation of an feature set larger than size_t
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
 
-   if(nullptr == pEbmBoostingState->m_apBestModel) {
+   if(nullptr == pEbmBoostingState->GetBestModel()) {
       // if pEbmBoostingState->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
@@ -1517,7 +1517,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
       return nullptr;
    }
 
-   SegmentedTensor * pBestModel = pEbmBoostingState->m_apBestModel[iFeatureCombination];
+   SegmentedTensor * pBestModel = pEbmBoostingState->GetBestModel()[iFeatureCombination];
    EBM_ASSERT(nullptr != pBestModel);
    EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pBestModel->GetValuePointer();
@@ -1544,9 +1544,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
    // we wouldn't have allowed the creation of an feature set larger than size_t
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->m_cFeatureCombinations);
+   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
 
-   if(nullptr == pEbmBoostingState->m_apCurrentModel) {
+   if(nullptr == pEbmBoostingState->GetCurrentModel()) {
       // if pEbmBoostingState->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
       //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
@@ -1562,7 +1562,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
       return nullptr;
    }
 
-   SegmentedTensor * pCurrentModel = pEbmBoostingState->m_apCurrentModel[iFeatureCombination];
+   SegmentedTensor * pCurrentModel = pEbmBoostingState->GetCurrentModel()[iFeatureCombination];
    EBM_ASSERT(nullptr != pCurrentModel);
    EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pCurrentModel->GetValuePointer();

@@ -66,5 +66,7 @@ public:
       const FloatEbmType * const aPredictorScores
    );
 };
+static_assert(std::is_standard_layout<EbmInteractionState>::value,
+   "keep standard layout to conform closely with C");
 
 #endif // EBM_INTERACTION_STATE_H

@@ -27,17 +27,14 @@
 #include "SamplingSet.h"
 
 class EbmBoostingState {
-public:
    const ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
-   // TODO : in the future, we can allocate this inside a function so that even the objects inside are const
    const size_t m_cFeatures;
    Feature * const m_aFeatures;
 
    const size_t m_cFeatureCombinations;
    FeatureCombination ** const m_apFeatureCombinations;
 
-   // TODO : can we internalize these so that they are not pointers and are therefore subsumed into our class
    DataSetByFeatureCombination m_trainingSet;
    DataSetByFeatureCombination m_validationSet;
 
@@ -49,14 +46,76 @@ public:
 
    FloatEbmType m_bestModelMetric;
 
+   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
+   // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
    SegmentedTensor * const m_pSmallChangeToModelOverwriteSingleSamplingSet;
    SegmentedTensor * const m_pSmallChangeToModelAccumulatedFromSamplingSets;
 
-   // m_pSmallChangeToModelOverwriteSingleSamplingSet, m_pSmallChangeToModelAccumulatedFromSamplingSets and m_aEquivalentSplits should eventually move into 
-   // the per-chunk class and we'll need a per-chunk m_randomStream that is initialized with it's own predictable seed 
    CachedBoostingThreadResources * m_pCachedThreadResources;
 
    RandomStream m_randomStream;
+
+public:
+
+   EBM_INLINE ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
+      return m_runtimeLearningTypeOrCountTargetClasses;
+   }
+
+   EBM_INLINE size_t GetCountFeatureCombinations() const {
+      return m_cFeatureCombinations;
+   }
+
+   EBM_INLINE FeatureCombination * const * GetFeatureCombinations() const {
+      return m_apFeatureCombinations;
+   }
+
+   EBM_INLINE DataSetByFeatureCombination * GetTrainingSet() {
+      return &m_trainingSet;
+   }
+
+   EBM_INLINE DataSetByFeatureCombination * GetValidationSet() {
+      return &m_validationSet;
+   }
+
+   EBM_INLINE size_t GetCountSamplingSets() const {
+      return m_cSamplingSets;
+   }
+
+   EBM_INLINE const SamplingSet * const * GetSamplingSets() const {
+      return m_apSamplingSets;
+   }
+
+   EBM_INLINE SegmentedTensor * const * GetCurrentModel() const {
+      return m_apCurrentModel;
+   }
+
+   EBM_INLINE SegmentedTensor * const * GetBestModel() const {
+      return m_apBestModel;
+   }
+
+   EBM_INLINE FloatEbmType GetBestModelMetric() const {
+      return m_bestModelMetric;
+   }
+
+   EBM_INLINE void SetBestModelMetric(const FloatEbmType bestModelMetric) {
+      m_bestModelMetric = bestModelMetric;
+   }
+
+   EBM_INLINE SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
+      return m_pSmallChangeToModelOverwriteSingleSamplingSet;
+   }
+
+   EBM_INLINE SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
+      return m_pSmallChangeToModelAccumulatedFromSamplingSets;
+   }
+
+   EBM_INLINE CachedBoostingThreadResources * GetCachedThreadResources() {
+      return m_pCachedThreadResources;
+   }
+
+   EBM_INLINE RandomStream * GetRandomStream() {
+      return &m_randomStream;
+   }
 
    EBM_INLINE EbmBoostingState(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
