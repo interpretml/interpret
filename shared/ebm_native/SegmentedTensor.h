@@ -96,9 +96,7 @@
 //       our efficient tripple use above!
 
 // TODO : put some of this file into .cpp since some of the functions are repeated and they don't need to all be inline!
-struct SegmentedTensor final {
-private:
-
+class SegmentedTensor final {
    struct DimensionInfoStack {
       const ActiveDataType * m_pDivision1;
       const ActiveDataType * m_pDivision2;
@@ -111,19 +109,17 @@ private:
       size_t m_cNewDivisions;
    };
 
-   // TODO : is this still required after we do tree splitting by pairs??
-   // we always allocate our array because we don't want to Require Add(...) to check for the null pointer
-   // always allocate one so that we never have to check if we have sufficient storage when we call Reset with one division and two values
-   static constexpr size_t k_initialDivisionCapacity = 1;
-   static constexpr size_t k_initialValueCapacity = 2;
-
-public:
-
    struct DimensionInfo {
       size_t m_cDivisions;
       ActiveDataType * m_aDivisions;
       size_t m_cDivisionCapacity;
    };
+
+   // TODO : is this still required after we do tree splitting by pairs??
+   // we always allocate our array because we don't want to Require Add(...) to check for the null pointer
+   // always allocate one so that we never have to check if we have sufficient storage when we call Reset with one division and two values
+   static constexpr size_t k_initialDivisionCapacity = 1;
+   static constexpr size_t k_initialValueCapacity = 2;
 
    size_t m_cValueCapacity;
    size_t m_cVectorLength;
@@ -137,6 +133,20 @@ public:
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
    DimensionInfo m_aDimensions[1];
+
+public:
+
+   EBM_INLINE void SetExpanded() {
+      m_bExpanded = true;
+   }
+
+   EBM_INLINE bool GetExpanded() {
+      return m_bExpanded;
+   }
+
+   EBM_INLINE FloatEbmType * GetValues() {
+      return m_aValues;
+   }
 
    // TODO: In the future we'll be splitting our work into small sets of residuals and logits owned by
    // a node in a distributed system.  After each node calculates it's model update (represented by this

@@ -84,7 +84,7 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
 
       if(0 == pFeatureCombination->GetCountFeatures()) {
          // if there are zero dimensions, then we have a tensor with 1 item, and we're already expanded
-         pSegmentedTensors->m_bExpanded = true;
+         pSegmentedTensors->SetExpanded();
       } else {
          // if our segmented region has no dimensions, then it's already a fully expanded with 1 bin
 
@@ -931,7 +931,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    }
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdatePerTargetClasses");
-   return pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->m_aValues;
+   return pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->GetValues();
 }
 
 template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
@@ -1525,7 +1525,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
 
    SegmentedTensor * pBestModel = pEbmBoostingState->m_apBestModel[iFeatureCombination];
    EBM_ASSERT(nullptr != pBestModel);
-   EBM_ASSERT(pBestModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(pBestModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pBestModel->GetValuePointer();
    EBM_ASSERT(nullptr != pRet);
 
@@ -1570,7 +1570,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
 
    SegmentedTensor * pCurrentModel = pEbmBoostingState->m_apCurrentModel[iFeatureCombination];
    EBM_ASSERT(nullptr != pCurrentModel);
-   EBM_ASSERT(pCurrentModel->m_bExpanded); // the model should have been expanded at startup
+   EBM_ASSERT(pCurrentModel->GetExpanded()); // the model should have been expanded at startup
    FloatEbmType * pRet = pCurrentModel->GetValuePointer();
    EBM_ASSERT(nullptr != pRet);
 
