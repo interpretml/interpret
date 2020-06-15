@@ -53,28 +53,12 @@ class RandomStream final {
 
    static const uint_fast64_t k_oneTimePadRandomSeed[64];
 
-   // TODO: create a RandomStream.cpp file.  We don't need a lot of this init to be inlined everywhere
+   uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
+   void InitializeInternal(const uint64_t seed);
 
-   INLINE_RELEASE uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed) {
-      static_assert(CountBitsRequiredPositiveMax<uint64_t>() == 
-         sizeof(k_oneTimePadRandomSeed) / sizeof(k_oneTimePadRandomSeed[0]), 
-         "the one time pad must have the same length as the number of bits"
-      );
-      EBM_ASSERT(seed == static_cast<uint_fast64_t>(static_cast<uint64_t>(seed)));
-
-      // this number generates a perfectly valid converted seed in a single pass if the user passes us a seed of zero
-      uint_fast64_t result = uint_fast64_t { 0x6b79a38fd52c4e71 };
-      const uint_fast64_t * pRandom = k_oneTimePadRandomSeed;
-      do {
-         if(UNPREDICTABLE(0 != (uint_fast64_t { 1 } & seed))) {
-            result ^= *pRandom;
-         }
-         ++pRandom;
-         seed >>= 1;
-      } while(LIKELY(0 != seed));
-      return result;
-   }
-
+   // TODO: it might be possible to make the 64 bit version a bit faster, either by having 2 independent streams
+   //       so that the multiplication can be done in parallel (although this would consume more registers), or
+   //       if we combine the two 32 bit functions which might eliminate some of the shifting
    EBM_INLINE uint_fast32_t Rand32() {
       // if this gets properly optimized, it gets converted into 4 machine instructions: imulq, iaddq, iaddq, and rorq
       m_state1 *= m_state1;
@@ -96,78 +80,7 @@ class RandomStream final {
 
 public:
 
-   INLINE_RELEASE void Initialize(const uint64_t seed) {
-      constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
-
-      m_state1 = initializeSeed;
-      m_state2 = initializeSeed;
-      m_stateSeedConst = initializeSeed;
-
-      uint_fast64_t originalRandomBits = GetOneTimePadConversion(static_cast<uint_fast64_t>(seed));
-      EBM_ASSERT(originalRandomBits == static_cast<uint_fast64_t>(static_cast<uint64_t>(originalRandomBits)));
-
-      uint_fast64_t randomBits = originalRandomBits;
-      // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
-      uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } & randomBits) | uint_fast64_t { 1 };
-      randomBits >>= 4; // remove the bits that we used
-      // disallow zeros for our hex digits by ORing 1
-      const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
-
-      // disallow zeros for our hex digits by initially setting to 1, which is our "hash" for the zero bit
-      uint_fast16_t disallowMap = uint_fast16_t { 1 };
-      uint_fast8_t bitShiftCur = uint_fast8_t { 60 };
-      while(true) {
-         // we ignore zeros, so use a do loop instead of while
-         do {
-            uint_fast64_t randomHexDigit = uint_fast64_t { 0xF } & randomBits;
-            const uint_fast16_t indexBit = uint_fast16_t { 1 } << randomHexDigit;
-            if(LIKELY(uint_fast16_t { 0 } == (indexBit & disallowMap))) {
-               sanitizedSeed |= randomHexDigit << bitShiftCur;
-               bitShiftCur -= uint_fast8_t { 4 };
-               if(UNLIKELY(uint_fast8_t { 0 } == bitShiftCur)) {
-                  goto exit_loop;
-               }
-               disallowMap |= indexBit;
-               if(UNLIKELY(UNLIKELY(uint_fast8_t { 28 } == bitShiftCur) || 
-                  UNLIKELY(uint_fast8_t { 24 } == bitShiftCur))) 
-               {
-                  // if bitShiftCur is 28 now then we just filled the low 4 bits for the high 32 bit number,
-                  // so for the upper 4 bits of the lower 32 bit number don't allow it to have the same
-                  // value as the lowest 4 bits of the upper 32 bits, and don't allow 0 and don't allow
-                  // the value at the bottom 4 bits
-                  //
-                  // if bitShiftCur is 28 then remove the disallowing of the lowest 4 bits of the upper 32 bit
-                  // number by only disallowing the previous number we just included (the uppre 4 bits of the lower
-                  // 32 bit value, and don't allow the lowest 4 bits, and don't allow 0.
-
-                  disallowMap = indexBit | disallowMapFuture;
-               }
-            }
-            randomBits >>= 4;
-         } while(LIKELY(uint_fast64_t { 0 } != randomBits));
-         // ok, this is sort of a two time pad I guess, but we shouldn't ever use it more than twice in real life
-         originalRandomBits = GetOneTimePadConversion(originalRandomBits ^ Rand64());
-         randomBits = originalRandomBits;
-      }
-   exit_loop:;
-      // is the lowest bit set as it should?
-      EBM_ASSERT(uint_fast64_t { 1 } == sanitizedSeed % uint_fast64_t { 2 });
-
-      m_state1 = sanitizedSeed;
-      m_state2 = sanitizedSeed;
-      m_stateSeedConst = sanitizedSeed;
-
-      m_randomRemainingMax = uint_fast64_t { 0 };
-      m_randomRemaining = uint_fast64_t { 0 };
-   }
-
-   INLINE_RELEASE void Initialize(const IntEbmType seed) {
-      // the C++ standard guarantees that the unsigned result of this 
-      // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed));
-   }
-
-   INLINE_RELEASE void Initialize(const RandomStream & other) {
+   EBM_INLINE void Initialize(const RandomStream & other) {
       m_state1 = other.m_state1;
       m_state2 = other.m_state2;
       m_stateSeedConst = other.m_stateSeedConst;
@@ -175,14 +88,39 @@ public:
       m_randomRemaining = other.m_randomRemaining;
    }
 
-   INLINE_RELEASE bool NextBit() {
+   EBM_INLINE void Initialize(const uint64_t seed) {
+      // this function may seem odd to have given that it doesn't do anything visibly useful over InitializeInternal, 
+      // but it does have a purpose.  Our InitializeInternal function is a non-inlined function so that there's 
+      // only one copy of the code made within the process for space savings, but that creates a problem in 
+      // that the compiler can't reason about the internals of that function since it just knows a pointer 
+      // goes to an opaque function.  This function creates a new copy of RandomStream, initializes it, 
+      // then steals it's internals.  The compiler can then know that our internals haven't leaked 
+      // anywhere through pointers and it is then free to optimize the memory into CPU registers
+      // inside loops and then write out the result back to our class afterwards.
+      RandomStream internalRandom;
+      internalRandom.InitializeInternal(seed);
+
+      m_state1 = internalRandom.m_state1;
+      m_state2 = internalRandom.m_state2;
+      m_stateSeedConst = internalRandom.m_stateSeedConst;
+      m_randomRemainingMax = uint_fast64_t { 0 };
+      m_randomRemaining = uint_fast64_t { 0 };
+   }
+
+   EBM_INLINE void Initialize(const IntEbmType seed) {
+      // the C++ standard guarantees that the unsigned result of this 
+      // conversion is 2^64 + seed if seed is negative
+      Initialize(static_cast<uint64_t>(seed));
+   }
+
+   EBM_INLINE bool NextBit() {
       // TODO : If there is a use case for getting single bits, implement this by directly striping bits off 
       //        randomRemaining and randomRemainingMax
       EBM_ASSERT(false);
       return false;
    }
 
-   INLINE_RELEASE size_t Next(const size_t maxValueExclusive) {
+   EBM_INLINE size_t Next(const size_t maxValueExclusive) {
       static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint64_t>::max(), 
          "we must be able to at least generate a real random size_t value");
 
@@ -202,9 +140,11 @@ public:
       uint_fast64_t randomRemainingTemp = m_randomRemaining;
       while(true) {
          // TODO : given that our random number generator is 4 assembly instructions, and given that division
-         //        is still expensive even for integers, perhaps we should eliminate this code that attepts
+         //        is still very expensive, even for integers, perhaps we should eliminate this code that attepts
          //        to maximize the benefit that we get from random bits.  Perf test generating a new random number
-         //        each time
+         //        each time.  It might even be possible to eliminate both divisions if we were willing to throw
+         //        away some results if we divided by a power of 2 and then multiplied to find where the throw
+         //        away point was for a particular random number
          randomRemainingTempMax /= maxValueExclusiveConverted;
          const uint_fast64_t randomRemainingIllegal = randomRemainingTempMax * maxValueExclusiveConverted;
          if(LIKELY(randomRemainingTemp < randomRemainingIllegal)) {
