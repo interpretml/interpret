@@ -27,8 +27,8 @@
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 // TreeNode depends on almost everything
-#include "BoostSingleDimension.h"
-#include "BoostMultidimensional.h"
+#include "DimensionSingle.h"
+#include "DimensionMultiple.h"
 
 #include "Booster.h"
 

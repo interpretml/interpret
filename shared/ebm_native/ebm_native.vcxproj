@@ -303,7 +303,7 @@ EXIT /B 0
     <ClInclude Include="EbmStatisticUtils.h" />
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="BoostMultidimensional.h" />
+    <ClInclude Include="DimensionMultiple.h" />
     <ClInclude Include="ApplyModelUpdateTraining.h" />
     <ClInclude Include="ApplyModelUpdateValidation.h" />
     <ClInclude Include="PrecompiledHeader.h" />
@@ -311,7 +311,7 @@ EXIT /B 0
     <ClInclude Include="RandomStream.h" />
     <ClInclude Include="SamplingSet.h" />
     <ClInclude Include="SegmentedTensor.h" />
-    <ClInclude Include="BoostSingleDimension.h" />
+    <ClInclude Include="DimensionSingle.h" />
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
   <ItemGroup>

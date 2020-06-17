@@ -18,7 +18,7 @@
 #include "DataSetInteraction.h"
 #include "CachedThreadResourcesInteraction.h"
 // depends on the above
-#include "BoostMultidimensional.h"
+#include "DimensionMultiple.h"
 
 #include "InteractionDetection.h"
 
