@@ -10,7 +10,7 @@
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "EbmStatistics.h"
+#include "EbmStatisticUtils.h"
 #include "HistogramBucket.h"
 
 template<bool bClassification>

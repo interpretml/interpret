@@ -13,11 +13,11 @@
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "HistogramBucketVectorEntry.h"
+#include "HistogramTargetEntry.h"
 #include "Feature.h"
-#include "FeatureCombination.h"
-#include "DataSetByFeatureCombination.h"
-#include "DataSetByFeature.h"
+#include "FeatureGroup.h"
+#include "DataSetBoosting.h"
+#include "DataSetInteraction.h"
 #include "SamplingSet.h"
 
 // we don't need to handle multi-dimensional inputs with more than 64 bits total

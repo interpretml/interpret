@@ -11,11 +11,11 @@
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "EbmStatistics.h"
+#include "EbmStatisticUtils.h"
 // FeatureCombination.h depends on FeatureInternal.h
-#include "FeatureCombination.h"
+#include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetByFeatureCombination.h"
+#include "DataSetBoosting.h"
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 

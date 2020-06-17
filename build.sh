@@ -55,12 +55,12 @@ done
 
 # re-enable these warnings when they are better supported by g++ or clang: -Wduplicated-cond -Wduplicated-branches -Wrestrict
 compile_all=""
-compile_all="$compile_all \"$src_path/DataSetByFeature.cpp\""
-compile_all="$compile_all \"$src_path/DataSetByFeatureCombination.cpp\""
+compile_all="$compile_all \"$src_path/DataSetInteraction.cpp\""
+compile_all="$compile_all \"$src_path/DataSetBoosting.cpp\""
 compile_all="$compile_all \"$src_path/InteractionDetection.cpp\""
 compile_all="$compile_all \"$src_path/Logging.cpp\""
 compile_all="$compile_all \"$src_path/SamplingSet.cpp\""
-compile_all="$compile_all \"$src_path/Boosting.cpp\""
+compile_all="$compile_all \"$src_path/Booster.cpp\""
 compile_all="$compile_all \"$src_path/Discretization.cpp\""
 compile_all="$compile_all \"$src_path/RandomStream.cpp\""
 compile_all="$compile_all -I\"$src_path\""

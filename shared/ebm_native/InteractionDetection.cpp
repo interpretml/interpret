@@ -15,12 +15,12 @@
 // feature includes
 #include "Feature.h"
 // dataset depends on features
-#include "DataSetByFeature.h"
-#include "CachedInteractionThreadResources.h"
+#include "DataSetInteraction.h"
+#include "CachedThreadResourcesInteraction.h"
 // depends on the above
-#include "DimensionMultiple.h"
+#include "BoostMultidimensional.h"
 
-#include "EbmInteractionState.h"
+#include "InteractionDetection.h"
 
 void EbmInteractionState::Free(EbmInteractionState * const pInteractionDetection) {
    LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Free");

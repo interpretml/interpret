@@ -12,8 +12,8 @@
 #include "EbmInternal.h" // FeatureType
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
-#include "FeatureCombination.h"
-#include "DataSetByFeatureCombination.h"
+#include "FeatureGroup.h"
+#include "DataSetBoosting.h"
 
 EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");

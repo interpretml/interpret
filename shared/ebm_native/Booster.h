@@ -16,13 +16,13 @@
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 // this depends on TreeNode pointers, but doesn't require the full definition of TreeNode
-#include "CachedBoostingThreadResources.h"
+#include "CachedThreadResourcesBoosting.h"
 // feature includes
 #include "Feature.h"
 // FeatureCombination.h depends on FeatureInternal.h
-#include "FeatureCombination.h"
+#include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetByFeatureCombination.h"
+#include "DataSetBoosting.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 

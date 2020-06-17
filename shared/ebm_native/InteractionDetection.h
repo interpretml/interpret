@@ -15,7 +15,7 @@
 // feature includes
 #include "Feature.h"
 // dataset depends on features
-#include "DataSetByFeature.h"
+#include "DataSetInteraction.h"
 
 class EbmInteractionState {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;

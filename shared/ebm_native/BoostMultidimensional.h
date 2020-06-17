@@ -11,9 +11,9 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
-#include "EbmStatistics.h"
-#include "CachedBoostingThreadResources.h"
-#include "CachedInteractionThreadResources.h"
+#include "EbmStatisticUtils.h"
+#include "CachedThreadResourcesBoosting.h"
+#include "CachedThreadResourcesInteraction.h"
 #include "Feature.h"
 #include "SamplingSet.h"
 #include "HistogramBucket.h"

@@ -11,7 +11,7 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-#include "HistogramBucketVectorEntry.h"
+#include "HistogramTargetEntry.h"
 
 class CachedBoostingThreadResources final {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs

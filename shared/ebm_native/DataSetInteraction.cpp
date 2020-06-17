@@ -11,7 +11,7 @@
 #include "EbmInternal.h" // FeatureType
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
-#include "DataSetByFeature.h"
+#include "DataSetInteraction.h"
 #include "InitializeResiduals.h"
 
 EBM_INLINE static FloatEbmType * ConstructResidualErrors(

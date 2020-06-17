@@ -17,23 +17,23 @@
 #include "InitializeResiduals.h"
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
-#include "EbmStatistics.h"
+#include "EbmStatisticUtils.h"
 // feature includes
 #include "Feature.h"
 // FeatureCombination.h depends on FeatureInternal.h
-#include "FeatureCombination.h"
+#include "FeatureGroup.h"
 // dataset depends on features
-#include "DataSetByFeatureCombination.h"
+#include "DataSetBoosting.h"
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 // TreeNode depends on almost everything
-#include "DimensionSingle.h"
-#include "DimensionMultiple.h"
+#include "BoostSingleDimension.h"
+#include "BoostMultidimensional.h"
 
-#include "EbmBoostingState.h"
+#include "Booster.h"
 
-#include "OptimizedApplyModelUpdateTraining.h"
-#include "OptimizedApplyModelUpdateValidation.h"
+#include "ApplyModelUpdateTraining.h"
+#include "ApplyModelUpdateValidation.h"
 
 void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");

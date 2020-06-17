@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h"
-#include "EbmStatistics.h"
+#include "EbmStatisticUtils.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // a*PredictorScores = logOdds for binary classification
