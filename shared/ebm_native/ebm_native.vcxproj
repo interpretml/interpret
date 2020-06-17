@@ -289,34 +289,34 @@ EXIT /B 0
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CachedInteractionThreadResources.h" />
-    <ClInclude Include="EbmInteractionState.h" />
-    <ClInclude Include="EbmBoostingState.h" />
+    <ClInclude Include="CachedThreadResourcesInteraction.h" />
+    <ClInclude Include="InteractionDetection.h" />
+    <ClInclude Include="Booster.h" />
     <ClInclude Include="inc\ebm_native.h" />
     <ClInclude Include="Feature.h" />
-    <ClInclude Include="FeatureCombination.h" />
+    <ClInclude Include="FeatureGroup.h" />
     <ClInclude Include="HistogramBucket.h" />
-    <ClInclude Include="CachedBoostingThreadResources.h" />
-    <ClInclude Include="DataSetByFeature.h" />
-    <ClInclude Include="DataSetByFeatureCombination.h" />
+    <ClInclude Include="CachedThreadResourcesBoosting.h" />
+    <ClInclude Include="DataSetInteraction.h" />
+    <ClInclude Include="DataSetBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
-    <ClInclude Include="EbmStatistics.h" />
+    <ClInclude Include="EbmStatisticUtils.h" />
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="DimensionMultiple.h" />
-    <ClInclude Include="OptimizedApplyModelUpdateTraining.h" />
-    <ClInclude Include="OptimizedApplyModelUpdateValidation.h" />
+    <ClInclude Include="BoostMultidimensional.h" />
+    <ClInclude Include="ApplyModelUpdateTraining.h" />
+    <ClInclude Include="ApplyModelUpdateValidation.h" />
     <ClInclude Include="PrecompiledHeader.h" />
-    <ClInclude Include="HistogramBucketVectorEntry.h" />
+    <ClInclude Include="HistogramTargetEntry.h" />
     <ClInclude Include="RandomStream.h" />
     <ClInclude Include="SamplingSet.h" />
     <ClInclude Include="SegmentedTensor.h" />
-    <ClInclude Include="DimensionSingle.h" />
+    <ClInclude Include="BoostSingleDimension.h" />
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DataSetByFeature.cpp" />
-    <ClCompile Include="DataSetByFeatureCombination.cpp" />
+    <ClCompile Include="DataSetInteraction.cpp" />
+    <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretization.cpp" />
     <ClCompile Include="DllMainEbmNative.cpp" />
     <ClCompile Include="InteractionDetection.cpp" />
@@ -329,7 +329,7 @@ EXIT /B 0
     </ClCompile>
     <ClCompile Include="RandomStream.cpp" />
     <ClCompile Include="SamplingSet.cpp" />
-    <ClCompile Include="Boosting.cpp" />
+    <ClCompile Include="Booster.cpp" />
     <ClCompile Include="wrap_func.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
