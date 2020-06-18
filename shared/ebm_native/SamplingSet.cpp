@@ -5,7 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include <string.h> // memset
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE & UNLIKLEY
@@ -39,7 +39,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    const size_t cInstances = pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t, true>(cInstances);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
@@ -123,7 +123,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 
-   SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *>(cSamplingSetsAfterZero);
+   SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *, true>(cSamplingSetsAfterZero);
    if(UNLIKELY(nullptr == apSamplingSets)) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == apSamplingSets");
       return nullptr;

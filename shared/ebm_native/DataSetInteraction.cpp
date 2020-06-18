@@ -4,7 +4,7 @@
 
 #include "PrecompiledHeader.h"
 
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
@@ -35,14 +35,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    }
 
    const size_t cElements = cInstances * cVectorLength;
-
-   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(sizeof(FloatEbmType), cElements)");
-      return nullptr;
-   }
-
-   const size_t cBytes = sizeof(FloatEbmType) * cElements;
-   FloatEbmType * aResidualErrors = static_cast<FloatEbmType *>(malloc(cBytes));
+   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType, false>(cElements);
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
@@ -55,7 +48,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
             nullptr
          );
       } else {
-         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType, false>(cVectorLength);
          if(UNLIKELY(nullptr == aTempFloatVector)) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors nullptr == aTempFloatVector");
             free(aResidualErrors);
@@ -94,19 +87,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aBinnedData);
 
-   if(IsMultiplyError(sizeof(StorageDataType), cInstances)) {
-      // we're checking this early instead of checking it inside our loop
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cInstances)");
-      return nullptr;
-   }
-   const size_t cSubBytesData = sizeof(StorageDataType) * cInstances;
-
-   if(IsMultiplyError(sizeof(void *), cFeatures)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData IsMultiplyError(sizeof(void *), cFeatures)");
-      return nullptr;
-   }
-   const size_t cBytesMemoryArray = sizeof(void *) * cFeatures;
-   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType * *>(malloc(cBytesMemoryArray));
+   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *, false>(cFeatures);
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
@@ -116,7 +97,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    const Feature * pFeature = aFeatures;
    const Feature * const pFeatureEnd = aFeatures + cFeatures;
    do {
-      StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(cSubBytesData));
+      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType, false>(cInstances);
       if(nullptr == pInputDataTo) {
          LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
          goto free_all;

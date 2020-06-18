@@ -5,7 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include <string.h> // memset
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
@@ -27,14 +27,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances
    }
 
    const size_t cElements = cInstances * cVectorLength;
-
-   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructResidualErrors IsMultiplyError(sizeof(FloatEbmType), cElements)");
-      return nullptr;
-   }
-
-   const size_t cBytes = sizeof(FloatEbmType) * cElements;
-   FloatEbmType * aResidualErrors = static_cast<FloatEbmType *>(malloc(cBytes));
+   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType, false>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructResidualErrors");
    return aResidualErrors;
@@ -56,18 +49,12 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
    }
 
    const size_t cElements = cInstances * cVectorLength;
-
-   if(IsMultiplyError(sizeof(FloatEbmType), cElements)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(sizeof(FloatEbmType), cElements)");
-      return nullptr;
-   }
-
-   const size_t cBytes = sizeof(FloatEbmType) * cElements;
-   FloatEbmType * const aPredictorScoresTo = static_cast<FloatEbmType *>(malloc(cBytes));
+   FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType, false>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
+   const size_t cBytes = sizeof(FloatEbmType) * cElements;
 
    if(nullptr == aPredictorScoresFrom) {
       memset(aPredictorScoresTo, 0, cBytes);
@@ -99,12 +86,7 @@ EBM_INLINE static StorageDataType * ConstructTargetData(const size_t cInstances,
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargets);
 
-   if(IsMultiplyError(sizeof(StorageDataType), cInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructTargetData");
-      return nullptr;
-   }
-   const size_t cTargetArrayBytes = sizeof(StorageDataType) * cInstances;
-   StorageDataType * const aTargetData = static_cast<StorageDataType *>(malloc(cTargetArrayBytes));
+   StorageDataType * const aTargetData = EbmMalloc<StorageDataType, false>(cInstances);
    if(nullptr == aTargetData) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
       return nullptr;
@@ -147,12 +129,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cInstances IF the featureCombinations are all empty, 
    // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
-   if(IsMultiplyError(sizeof(void *), cFeatureCombinations)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(void *), cFeatureCombinations)");
-      return nullptr;
-   }
-   const size_t cBytesMemoryArray = sizeof(void *) * cFeatureCombinations;
-   StorageDataType ** const aaInputDataTo = static_cast<StorageDataType * *>(malloc(cBytesMemoryArray));
+   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *, false>(cFeatureCombinations);
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
@@ -178,18 +155,14 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
          EBM_ASSERT(0 < cInstances);
          const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
 
-         if(IsMultiplyError(sizeof(StorageDataType), cDataUnits)) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData IsMultiplyError(sizeof(StorageDataType), cDataUnits)");
-            goto free_all;
-         }
-         const size_t cBytesData = sizeof(StorageDataType) * cDataUnits;
-         StorageDataType * pInputDataTo = static_cast<StorageDataType *>(malloc(cBytesData));
+         StorageDataType * pInputDataTo = EbmMalloc<StorageDataType, false>(cDataUnits);
          if(nullptr == pInputDataTo) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
 
+         const size_t cBytesData = sizeof(StorageDataType) * cDataUnits;
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
          const StorageDataType * const pInputDataToLast = 
             reinterpret_cast<const StorageDataType *>(reinterpret_cast<const char *>(pInputDataTo) + cBytesData) - 1;

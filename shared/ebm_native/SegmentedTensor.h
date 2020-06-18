@@ -170,29 +170,21 @@ public:
          return nullptr;
       }
       const size_t cValueCapacity = cVectorLength * k_initialValueCapacity;
-      if(IsMultiplyError(sizeof(FloatEbmType), cValueCapacity)) {
-         LOG_0(TraceLevelWarning, "WARNING Allocate IsMultiplyError(sizeof(FloatEbmType), cValueCapacity)");
-         return nullptr;
-      }
-      const size_t cBytesValues = sizeof(FloatEbmType) * cValueCapacity;
 
       // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
       const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-      SegmentedTensor * const pSegmentedRegion = static_cast<SegmentedTensor *>(malloc(cBytesSegmentedRegion));
+      SegmentedTensor * const pSegmentedRegion = EbmMalloc<SegmentedTensor, true>(1, cBytesSegmentedRegion);
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
       }
-      // we do this so that if we later fail while allocating arrays inside of this that we can exit easily, otherwise we would need to be careful to 
-      // only free pointers that had non-initialized garbage inside of them
-      memset(pSegmentedRegion, 0, cBytesSegmentedRegion);
 
       pSegmentedRegion->m_cVectorLength = cVectorLength;
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
 
-      FloatEbmType * const aValues = static_cast<FloatEbmType *>(malloc(cBytesValues));
+      FloatEbmType * const aValues = EbmMalloc<FloatEbmType, false>(cValueCapacity);
       if(UNLIKELY(nullptr == aValues)) {
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet
@@ -210,7 +202,7 @@ public:
          do {
             EBM_ASSERT(0 == pDimension->m_cDivisions);
             pDimension->m_cDivisionCapacity = k_initialDivisionCapacity;
-            ActiveDataType * const aDivisions = static_cast<ActiveDataType *>(malloc(sizeof(ActiveDataType) * k_initialDivisionCapacity)); // this multiply can't overflow
+            ActiveDataType * const aDivisions = EbmMalloc<ActiveDataType>(k_initialDivisionCapacity);
             if(UNLIKELY(nullptr == aDivisions)) {
                LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");
                Free(pSegmentedRegion); // free everything!
@@ -977,7 +969,7 @@ public:
 };
 static_assert(
    std::is_standard_layout<SegmentedTensor>::value, 
-   "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use realloc, which isn't compatible with using complex classes.  "
+   "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use malloc, which isn't compatible with using complex classes.  "
    "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
 
 #endif // SEGMENTED_TENSOR_H

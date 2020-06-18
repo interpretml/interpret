@@ -5,7 +5,7 @@
 #ifndef EBM_BOOSTING_STATE_H
 #define EBM_BOOSTING_STATE_H
 
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 

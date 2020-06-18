@@ -113,7 +113,7 @@ void CompareTotalsDebug(
       directionVectorDestroy >>= 1;
    }
 
-   HistogramBucket<bClassification> * const pComparison2 = static_cast<HistogramBucket<bClassification> *>(malloc(cBytesPerHistogramBucket));
+   HistogramBucket<bClassification> * const pComparison2 = EbmMalloc<HistogramBucket<bClassification>, false>(1, cBytesPerHistogramBucket);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
       GetTotalsDebugSlow<bClassification>(
@@ -506,7 +506,7 @@ void BuildFastTotals(
 
 #ifndef NDEBUG
    HistogramBucket<bClassification> * const pDebugBucket =
-      static_cast<HistogramBucket<bClassification> *>(malloc(cBytesPerHistogramBucket));
+      EbmMalloc<HistogramBucket<bClassification>, false>(1, cBytesPerHistogramBucket);
 #endif //NDEBUG
 
    HistogramBucket<bClassification> * pHistogramBucket = aHistogramBuckets;
@@ -1275,11 +1275,11 @@ bool BoostMultiDimensional(
    }
    // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
-   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
    HistogramBucket<bClassification> * const aHistogramBucketsDebugCopy =
-      static_cast<HistogramBucket<bClassification> *>(malloc(cBytesBufferDebug));
+      EbmMalloc<HistogramBucket<bClassification>, false>(cTotalBucketsDebug, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
+      const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG
@@ -2395,11 +2395,11 @@ bool CalculateInteractionScore(
    }
    // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
-   const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
    HistogramBucket<bClassification> * const aHistogramBucketsDebugCopy =
-      static_cast<HistogramBucket<bClassification> *>(malloc(cBytesBufferDebug));
+      EbmMalloc<HistogramBucket<bClassification>, false>(cTotalBucketsDebug, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
+      const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
       memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
    }
 #endif // NDEBUG

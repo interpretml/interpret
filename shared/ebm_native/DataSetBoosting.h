@@ -5,7 +5,7 @@
 #ifndef DATA_SET_BY_FEATURE_COMBINATION_H
 #define DATA_SET_BY_FEATURE_COMBINATION_H
 
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType

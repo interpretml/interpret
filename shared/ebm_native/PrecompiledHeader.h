@@ -6,7 +6,7 @@
 #include <inttypes.h> // any of the fixed size types like int64_t
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_standard_layout, std::is_integral
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // malloc, free
 #include <string.h> // memset
 
 #include <vector>

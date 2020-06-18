@@ -10,7 +10,7 @@
 #include <limits> // numeric_limits
 #include <type_traits> // is_integral
 #include <cmath> // std::exp, std::log
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 
 #include "ebm_native.h"
 
@@ -400,6 +400,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
    bool bOneByte = 1 == cBytesPerItem;
    if(bOneByte) {
       const size_t cBytes = cItems;
+      // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
       T * const a = static_cast<T *>(malloc(cBytes));
       if(bZero) {
          if(LIKELY(nullptr != a)) {
@@ -412,6 +413,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
          return nullptr;
       } else {
          const size_t cBytes = cItems * cBytesPerItem;
+         // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
          T * const a = static_cast<T *>(malloc(cBytes));
          if(bZero) {
             if(LIKELY(nullptr != a)) {
@@ -428,6 +430,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
       return nullptr;
    } else {
       const size_t cBytes = cItems * cBytesPerItem;
+      // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
       T * const a = static_cast<T *>(malloc(cBytes));
       if(bZero) {
          if(LIKELY(nullptr != a)) {

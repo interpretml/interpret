@@ -5,7 +5,7 @@
 #ifndef CACHED_INTERACTION_THREAD_RESOURCES_H
 #define CACHED_INTERACTION_THREAD_RESOURCES_H
 
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE
@@ -30,7 +30,7 @@ public:
    INLINE_RELEASE static CachedInteractionThreadResources * Allocate() {
       LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Allocate");
 
-      CachedInteractionThreadResources * const pNew = EbmMalloc<CachedInteractionThreadResources>();
+      CachedInteractionThreadResources * const pNew = EbmMalloc<CachedInteractionThreadResources, true>();
 
       LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Allocate");
 
@@ -38,20 +38,16 @@ public:
    }
 
    INLINE_RELEASE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+      void * aBuffer = m_aThreadByteBuffer1;
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
-         // TODO : use malloc here instead of realloc.  We don't need to copy the data, and if we free first then we can either slot the new 
-         // memory in the old slot or it can be moved
-         void * const aNewThreadByteBuffer = realloc(m_aThreadByteBuffer1, m_cThreadByteBufferCapacity1);
-         if(UNLIKELY(nullptr == aNewThreadByteBuffer)) {
-            // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old memory is valid.
-            // we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the destructor
-            return nullptr;
-         }
-         m_aThreadByteBuffer1 = aNewThreadByteBuffer;
+
+         free(aBuffer);
+         aBuffer = EbmMalloc<void, false>(m_cThreadByteBufferCapacity1);
+         m_aThreadByteBuffer1 = aBuffer;
       }
-      return m_aThreadByteBuffer1;
+      return aBuffer;
    }
 };
 static_assert(std::is_standard_layout<CachedInteractionThreadResources>::value,

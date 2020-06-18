@@ -5,7 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include <string.h> // memset
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
@@ -62,7 +62,7 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *>(cFeatureCombinations);
+   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *, true>(cFeatureCombinations);
    if(UNLIKELY(nullptr == apSegmentedTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
       return nullptr;
@@ -162,7 +162,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
 
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
 
-   EbmBoostingState * const pBooster = EbmMalloc<EbmBoostingState>();
+   EbmBoostingState * const pBooster = EbmMalloc<EbmBoostingState, true>();
    if(UNLIKELY(nullptr == pBooster)) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster");
       return nullptr;
@@ -189,7 +189,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
    if(0 != cFeatures) {
       pBooster->m_cFeatures = cFeatures;
-      pBooster->m_aFeatures = EbmMalloc<Feature>(cFeatures);
+      pBooster->m_aFeatures = EbmMalloc<Feature, false>(cFeatures);
       if(nullptr == pBooster->m_aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster->m_aFeatures");
          EbmBoostingState::Free(pBooster);

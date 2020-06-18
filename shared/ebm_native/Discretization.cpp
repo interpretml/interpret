@@ -1272,10 +1272,7 @@ INLINE_RELEASE NeighbourJump * ConstructJumps(const size_t cInstances, const Flo
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aValues);
 
-   if(IsMultiplyError(sizeof(NeighbourJump), cInstances)) {
-      return nullptr;
-   }
-   NeighbourJump * const aNeighbourJump = static_cast<NeighbourJump *>(malloc(sizeof(NeighbourJump) * cInstances));
+   NeighbourJump * const aNeighbourJump = EbmMalloc<NeighbourJump, false>(cInstances);
    if(nullptr == aNeighbourJump) {
       return nullptr;
    }
@@ -1606,12 +1603,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                // TODO: review if we still require these extra split point endpoints or not
                const size_t cSplitPointsWithEndpointsMax = cSplitPointsMax + 2; // include storage for the end points
-               if(IsMultiplyError(cSplitPointsWithEndpointsMax, sizeof(SplitPoint))) {
-                  free(aNeighbourJumps);
-                  goto exit_error;
-               }
-               SplitPoint * const aSplitPoints = 
-                  static_cast<SplitPoint *>(malloc(cSplitPointsWithEndpointsMax * sizeof(SplitPoint)));
+               SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint, false>(cSplitPointsWithEndpointsMax);
 
                if(nullptr == aSplitPoints) {
                   free(aNeighbourJumps);
@@ -1631,7 +1623,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   goto exit_error;
                }
                // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
-               SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(malloc(cSplittingRanges * cBytesCombined));
+               SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(EbmMalloc<void, false>(cSplittingRanges * cBytesCombined));
                if(nullptr == apSplittingRange) {
                   free(aSplitPoints);
                   free(aNeighbourJumps);

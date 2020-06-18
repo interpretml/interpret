@@ -5,7 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include <string.h> // memset
-#include <stdlib.h> // malloc, realloc, free
+#include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // numeric_limits
 
@@ -53,7 +53,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate starting feature processing");
    Feature * aFeatures = nullptr;
    if(0 != cFeatures) {
-      aFeatures = EbmMalloc<Feature>(cFeatures);
+      aFeatures = EbmMalloc<Feature, false>(cFeatures);
       if(nullptr == aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate nullptr == aFeatures");
          return nullptr;
@@ -101,7 +101,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    }
    LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate done feature processing");
 
-   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState>();
+   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState, true>();
    if(nullptr == pRet) {
       free(aFeatures);
       return nullptr;
