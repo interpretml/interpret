@@ -396,7 +396,7 @@ EBM_INLINE T * EbmMalloc() {
 }
 template<typename T, bool bZero = true>
 EBM_INLINE T * EbmMalloc(const size_t cItems) {
-   constexpr size_t cBytesPerItem = sizeof(std::conditional<std::is_same<T, void>::value, char, T>::type);
+   constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    bool bOneByte = 1 == cBytesPerItem;
    if(bOneByte) {
       const size_t cBytes = cItems;
