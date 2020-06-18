@@ -370,22 +370,22 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
    return num1 + num2 < num1;
 }
 
-// using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just exits.
-// This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
-// that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free
-// everywhere for arrays.  This helper function makes it a bit nicer than pure malloc.
-//
-// For classes that we don't control, continue to use new and delete with std::nothrow for class objects though, 
-// since the memory allocated that way is modest in size, and to use malloc and free for class objects would 
-// reqiure using the inplace constructors and manually call the destructors instead of delete, and all of that 
-// is pretty confusing to developers, but arrays require a different call to delete[] anyways which is separate 
-// from delete, so using free instead  is maybe even a bit less confusing for keeping object and array 
-// allocations separate.
+// we use the struct hack in a number of places in this code base for putting memory in the optimial location
+// the struct hack isn't valid unless a class/struct is standard layout.  standard layout objects cannot
+// be allocated with new and delete, so we need to use malloc and free for a number of our objects.  It was
+// getting confusing to having some objects free with free and other objects use delete, so we just turned
+// everything into malloc/free to keep to a single convention.
 // 
-// We do also occasionally use malloc to allocate combined memory regions of multiple types, so we do use free
-// in some cases anyways, so keeping just one type of free function (free instead of delete[]) is simpler.
+// Also, using std::nothrow on new apparently doesn't always return nullptr on all compilers.  Sometimes it just 
+// exits. This library sometimes allocates large amounts of memory and we'd like to gracefully handle the case where
+// that large amount of memory is too large.  So, instead of using new[] and delete[] we use malloc and free.
+//
+// There's also a small subset of cases where we allocate a chunk of memory and use it for heterogenious types
+// in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
+// use free though, so it's less likely to create bugs by accident.
 template<typename T, bool bZero = true>
 EBM_INLINE T * EbmMalloc() {
+   static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    if(bZero) {
       if(LIKELY(nullptr != a)) {
@@ -395,7 +395,35 @@ EBM_INLINE T * EbmMalloc() {
    return a;
 }
 template<typename T, bool bZero = true>
-EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem = sizeof(T)) {
+EBM_INLINE T * EbmMalloc(const size_t cItems) {
+   constexpr size_t cBytesPerItem = sizeof(std::conditional<std::is_same<T, void>::value, char, T>::type);
+   bool bOneByte = 1 == cBytesPerItem;
+   if(bOneByte) {
+      const size_t cBytes = cItems;
+      T * const a = static_cast<T *>(malloc(cBytes));
+      if(bZero) {
+         if(LIKELY(nullptr != a)) {
+            memset(a, 0, cBytes);
+         }
+      }
+      return a;
+   } else {
+      if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
+         return nullptr;
+      } else {
+         const size_t cBytes = cItems * cBytesPerItem;
+         T * const a = static_cast<T *>(malloc(cBytes));
+         if(bZero) {
+            if(LIKELY(nullptr != a)) {
+               memset(a, 0, cBytes);
+            }
+         }
+         return a;
+      }
+   }
+}
+template<typename T, bool bZero = true>
+EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
    } else {
