@@ -362,6 +362,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
                }
                ++pFeatureCombinationIndex;
             } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
+            EBM_ASSERT(1 < cTensorBins);
 
             size_t cBytesArrayEquivalentSplit;
             if(1 == cSignificantFeaturesInCombination) {
@@ -382,6 +383,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
 
             // if cSignificantFeaturesInCombination is zero, don't both initializing pFeatureCombination->GetCountItemsPerBitPackedDataUnit()
             const size_t cBitsRequiredMin = CountBitsRequired(cTensorBins - 1);
+            EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
             pFeatureCombination->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
          }
          ++iFeatureCombination;

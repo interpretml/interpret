@@ -55,17 +55,6 @@ class EbmBoostingState {
 
    RandomStream m_randomStream;
 
-
-   EBM_INLINE EbmBoostingState() {
-      // don't allow anyone to create this class with new/delete
-      EBM_ASSERT(false);
-   }
-
-   EBM_INLINE ~EbmBoostingState() {
-      // don't allow anyone to create this class with new/delete
-      EBM_ASSERT(false);
-   }
-
    static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors);
 
    static SegmentedTensor ** InitializeSegmentedTensors(

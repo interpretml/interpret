@@ -1436,7 +1436,7 @@ INLINE_RELEASE size_t PossiblyRemoveBinForMissing(const bool bMissing, const Int
       // have one less bin so that we consume less data.  Our countMaximumBins is just a maximum afterall, so we can choose to have less bins.
       // BUT, if the user requests 8 bins or less, then don't reduce the number of bins since then we'll be changing the bin size significantly
 
-      size_t cBits = ((~size_t { 0 }) >> 1) + size_t { 1 };
+      size_t cBits = (~size_t { 0 }) ^ ((~size_t { 0 }) >> 1);
       do {
          // if cMaximumBins is a power of two equal to or greater than 16, then reduce the number of bins (it's a maximum after all) to one less so that
          // it's more compressible.  If we have 256 bins, we really want 255 bins and 0 to be the missing value, using 256 values and 1 byte of storage

@@ -17,10 +17,6 @@ class Feature final {
    FeatureType m_featureType;
    bool m_bMissing;
 
-   EBM_INLINE ~Feature() {
-      // we have nothing to destruct and we get created in an array that doesn't descruct afterwards, so be private
-   }
-
 public:
 
    EBM_INLINE void Initialize(const size_t cBins, const size_t iFeatureData, const FeatureType featureType, const bool bMissing) {

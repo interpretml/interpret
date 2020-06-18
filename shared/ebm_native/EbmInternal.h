@@ -61,6 +61,10 @@
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
 
+// disable constexpr warning, since GetVectorLength is meant to be ambiguous and it's used everywhere
+#pragma warning(disable : 26498)
+
+
 #else  // compiler type
 #error compiler not recognized
 #endif // compiler type
@@ -315,7 +319,7 @@ constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountT
 template<typename T>
 constexpr size_t CountBitsRequired(const T maxValue) {
    // this is a bit inefficient when called in the runtime, but we don't call it anywhere that's important performance wise.
-   return 0 == maxValue ? 0 : 1 + CountBitsRequired<T>(maxValue / 2);
+   return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
 }
 template<typename T>
 constexpr EBM_INLINE size_t CountBitsRequiredPositiveMax() {
@@ -335,7 +339,8 @@ static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for b
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-constexpr EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+const EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+   assert(size_t { 1 } <= cBits);
    return k_cBitsForStorageType / cBits;
 }
 constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
@@ -396,7 +401,9 @@ EBM_INLINE T * EbmMalloc() {
 }
 template<typename T, bool bZero = true>
 EBM_INLINE T * EbmMalloc(const size_t cItems) {
+   assert(0 < cItems);
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
+   static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
    if(bOneByte) {
       const size_t cBytes = cItems;
