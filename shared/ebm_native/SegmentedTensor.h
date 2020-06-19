@@ -184,7 +184,7 @@ public:
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
 
-      FloatEbmType * const aValues = EbmMalloc<FloatEbmType, false>(cValueCapacity);
+      FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
       if(UNLIKELY(nullptr == aValues)) {
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aValues");
          free(pSegmentedRegion); // don't need to call the full Free(*) yet

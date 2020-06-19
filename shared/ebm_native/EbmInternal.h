@@ -394,7 +394,7 @@ EBM_INLINE T * EbmMalloc() {
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    return a;
 }
-template<typename T, bool bZero = true>
+template<typename T>
 EBM_INLINE T * EbmMalloc(const size_t cItems) {
    assert(0 < cItems);
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
@@ -404,11 +404,6 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
       const size_t cBytes = cItems;
       // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
       T * const a = static_cast<T *>(malloc(cBytes));
-      if(bZero) {
-         if(LIKELY(nullptr != a)) {
-            memset(a, 0, cBytes);
-         }
-      }
       return a;
    } else {
       if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
@@ -417,11 +412,6 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
          const size_t cBytes = cItems * cBytesPerItem;
          // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
          T * const a = static_cast<T *>(malloc(cBytes));
-         if(bZero) {
-            if(LIKELY(nullptr != a)) {
-               memset(a, 0, cBytes);
-            }
-         }
          return a;
       }
    }

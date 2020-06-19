@@ -27,7 +27,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances
    }
 
    const size_t cElements = cInstances * cVectorLength;
-   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType, false>(cElements);
+   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructResidualErrors");
    return aResidualErrors;
@@ -49,7 +49,7 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
    }
 
    const size_t cElements = cInstances * cVectorLength;
-   FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType, false>(cElements);
+   FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
@@ -86,7 +86,7 @@ EBM_INLINE static StorageDataType * ConstructTargetData(const size_t cInstances,
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargets);
 
-   StorageDataType * const aTargetData = EbmMalloc<StorageDataType, false>(cInstances);
+   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cInstances);
    if(nullptr == aTargetData) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
       return nullptr;
@@ -129,7 +129,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cInstances IF the featureCombinations are all empty, 
    // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
-   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *, false>(cFeatureCombinations);
+   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureCombinations);
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
@@ -155,7 +155,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
          EBM_ASSERT(0 < cInstances);
          const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
 
-         StorageDataType * pInputDataTo = EbmMalloc<StorageDataType, false>(cDataUnits);
+         StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == pInputDataTo");
             goto free_all;

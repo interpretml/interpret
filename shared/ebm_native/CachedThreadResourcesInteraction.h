@@ -58,7 +58,7 @@ public:
          LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
          free(aBuffer);
-         aBuffer = EbmMalloc<void, false>(m_cThreadByteBufferCapacity1);
+         aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
          m_aThreadByteBuffer1 = aBuffer;
       }
       return aBuffer;

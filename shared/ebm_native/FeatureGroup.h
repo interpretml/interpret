@@ -56,7 +56,7 @@ public:
    EBM_INLINE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
       const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
       EBM_ASSERT(0 < cBytes);
-      FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(EbmMalloc<void, false>(cBytes));
+      FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(EbmMalloc<void>(cBytes));
       if(UNLIKELY(nullptr == pFeatureCombination)) {
          return nullptr;
       }
@@ -68,7 +68,12 @@ public:
       LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
 
       EBM_ASSERT(0 < cFeatureCombinations);
-      FeatureCombination ** const apFeatureCombinations = EbmMalloc<FeatureCombination *, true>(cFeatureCombinations);
+      FeatureCombination ** const apFeatureCombinations = EbmMalloc<FeatureCombination *>(cFeatureCombinations);
+      if(nullptr != apFeatureCombinations) {
+         for(size_t i = 0; i < cFeatureCombinations; ++i) {
+            apFeatureCombinations[i] = nullptr;
+         }
+      }
 
       LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
       return apFeatureCombinations;

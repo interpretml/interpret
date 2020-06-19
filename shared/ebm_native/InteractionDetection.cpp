@@ -53,7 +53,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate starting feature processing");
    Feature * aFeatures = nullptr;
    if(0 != cFeatures) {
-      aFeatures = EbmMalloc<Feature, false>(cFeatures);
+      aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate nullptr == aFeatures");
          return nullptr;

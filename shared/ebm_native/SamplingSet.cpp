@@ -39,10 +39,13 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    const size_t cInstances = pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t, true>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
+   }
+   for(size_t i = 0; i < cInstances; ++i) {
+      aCountOccurrences[i] = size_t { 0 };
    }
 
    for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
@@ -72,7 +75,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombina
    const size_t cInstances = pOriginDataSet->GetCountInstances();
    EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t, false>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
@@ -123,11 +126,15 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
 
    const size_t cSamplingSetsAfterZero = 0 == cSamplingSets ? 1 : cSamplingSets;
 
-   SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *, true>(cSamplingSetsAfterZero);
+   SamplingSet ** apSamplingSets = EbmMalloc<SamplingSet *>(cSamplingSetsAfterZero);
    if(UNLIKELY(nullptr == apSamplingSets)) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == apSamplingSets");
       return nullptr;
    }
+   for(size_t i = 0; i < cSamplingSetsAfterZero; ++i) {
+      apSamplingSets[i] = nullptr;
+   }
+
    if(0 == cSamplingSets) {
       // zero is a special value that really means allocate one set that contains all instances.
       SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet);

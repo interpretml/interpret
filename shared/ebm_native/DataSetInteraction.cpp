@@ -35,7 +35,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    }
 
    const size_t cElements = cInstances * cVectorLength;
-   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType, false>(cElements);
+   FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
@@ -48,7 +48,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
             nullptr
          );
       } else {
-         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType, false>(cVectorLength);
+         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
          if(UNLIKELY(nullptr == aTempFloatVector)) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors nullptr == aTempFloatVector");
             free(aResidualErrors);
@@ -87,7 +87,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aBinnedData);
 
-   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *, false>(cFeatures);
+   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
    if(nullptr == aaInputDataTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
@@ -97,7 +97,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    const Feature * pFeature = aFeatures;
    const Feature * const pFeatureEnd = aFeatures + cFeatures;
    do {
-      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType, false>(cInstances);
+      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cInstances);
       if(nullptr == pInputDataTo) {
          LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
          goto free_all;

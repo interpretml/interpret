@@ -84,11 +84,11 @@ public:
             void * const aSumHistogramBucketVectorEntry1 = EbmMalloc<void, false>(cVectorLength, cBytesPerItem);
             if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
                pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
-               FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType, false>(cVectorLength);
+               FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
                if(LIKELY(nullptr != aTempFloatVector)) {
                   pNew->m_aTempFloatVector = aTempFloatVector;
                   if(0 != cBytesArrayEquivalentSplitMax) {
-                     void * aEquivalentSplits = EbmMalloc<void, false>(cBytesArrayEquivalentSplitMax);
+                     void * aEquivalentSplits = EbmMalloc<void>(cBytesArrayEquivalentSplitMax);
                      if(UNLIKELY(nullptr == aEquivalentSplits)) {
                         goto exit_error;
                      }
@@ -114,7 +114,7 @@ public:
          LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
          free(aBuffer);
-         aBuffer = EbmMalloc<void, false>(m_cThreadByteBufferCapacity1);
+         aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
          m_aThreadByteBuffer1 = aBuffer;
       }
       return aBuffer;
@@ -134,7 +134,7 @@ public:
 
       void * aBuffer = m_aThreadByteBuffer2;
       free(aBuffer);
-      aBuffer = EbmMalloc<void, false>(m_cThreadByteBufferCapacity2);
+      aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity2);
       m_aThreadByteBuffer2 = aBuffer;
       if(UNLIKELY(nullptr == aBuffer)) {
          return true;

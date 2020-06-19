@@ -62,10 +62,13 @@ SegmentedTensor ** EbmBoostingState::InitializeSegmentedTensors(
    EBM_ASSERT(nullptr != apFeatureCombinations);
    EBM_ASSERT(1 <= cVectorLength);
 
-   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *, true>(cFeatureCombinations);
+   SegmentedTensor ** const apSegmentedTensors = EbmMalloc<SegmentedTensor *>(cFeatureCombinations);
    if(UNLIKELY(nullptr == apSegmentedTensors)) {
       LOG_0(TraceLevelWarning, "WARNING InitializeSegmentedTensors nullptr == apSegmentedTensors");
       return nullptr;
+   }
+   for(size_t i = 0; i < cFeatureCombinations; ++i) {
+      apSegmentedTensors[i] = nullptr;
    }
 
    SegmentedTensor ** ppSegmentedTensors = apSegmentedTensors;
@@ -190,7 +193,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
    if(0 != cFeatures) {
       pBooster->m_cFeatures = cFeatures;
-      pBooster->m_aFeatures = EbmMalloc<Feature, false>(cFeatures);
+      pBooster->m_aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == pBooster->m_aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster->m_aFeatures");
          EbmBoostingState::Free(pBooster);
