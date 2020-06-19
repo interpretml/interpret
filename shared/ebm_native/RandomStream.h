@@ -36,7 +36,7 @@ class RandomStream final {
    // exactly repeat the same sequence. On a 3GHz machine, if we generated a random number every clock cycle 
    // it would take 195 years to do this full cycle, so in practice this isn't a problem for us.  Even with multiple 
    // threads it isn't a problem since we'll give each of those threads their own seed, which means they each have 
-   // their own 2^64 cycle that are different from eachother.  We only get cycling problems if the computation
+   // their own 2^64 cycles that are different from eachother.  We only get cycling problems if the computation
    // happens sequentially.  In some far future when computers are much faster, we might add some detection code 
    // that detects a cycle and increments to the next valid internal seed.  Then we'd have 2^118 unique random 
    // 64 bit numbers, according to the paper.
@@ -54,7 +54,6 @@ class RandomStream final {
    static const uint_fast64_t k_oneTimePadRandomSeed[64];
 
    uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
-   void InitializeInternal(const uint64_t seed);
 
    // TODO: it might be possible to make the 64 bit version a bit faster, either by having 2 independent streams
    //       so that the multiplication can be done in parallel (although this would consume more registers), or
@@ -78,7 +77,25 @@ class RandomStream final {
       return (top << 32) | bottom;
    }
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+   RandomStream(const RandomStream &) = default; // preserve our POD status
+   RandomStream & operator= (const RandomStream &) = default; // preserve our POD status
+   RandomStream(RandomStream &&) = default; // preserve our POD status
+   RandomStream & operator= (RandomStream &&) = default; // preserve our POD status
+
 public:
+
+   RandomStream() = default; // preserve our POD status
+   ~RandomStream() = default; // preserve our POD status
+
+   void Initialize(const uint64_t seed);
+
+   EBM_INLINE void Initialize(const IntEbmType seed) {
+      // the C++ standard guarantees that the unsigned result of this 
+      // conversion is 2^64 + seed if seed is negative
+      Initialize(static_cast<uint64_t>(seed));
+   }
 
    EBM_INLINE void Initialize(const RandomStream & other) {
       m_state1 = other.m_state1;
@@ -86,31 +103,6 @@ public:
       m_stateSeedConst = other.m_stateSeedConst;
       m_randomRemainingMax = other.m_randomRemainingMax;
       m_randomRemaining = other.m_randomRemaining;
-   }
-
-   EBM_INLINE void Initialize(const uint64_t seed) {
-      // this function may seem odd to have given that it doesn't do anything visibly useful over InitializeInternal, 
-      // but it does have a purpose.  Our InitializeInternal function is a non-inlined function so that there's 
-      // only one copy of the code made within the process for space savings, but that creates a problem in 
-      // that the compiler can't reason about the internals of that function since it just knows a pointer 
-      // goes to an opaque function.  This function creates a new copy of RandomStream, initializes it, 
-      // then steals it's internals.  The compiler can then know that our internals haven't leaked 
-      // anywhere through pointers and it is then free to optimize the memory into CPU registers
-      // inside loops and then write out the result back to our class afterwards.
-      RandomStream internalRandom;
-      internalRandom.InitializeInternal(seed);
-
-      m_state1 = internalRandom.m_state1;
-      m_state2 = internalRandom.m_state2;
-      m_stateSeedConst = internalRandom.m_stateSeedConst;
-      m_randomRemainingMax = uint_fast64_t { 0 };
-      m_randomRemaining = uint_fast64_t { 0 };
-   }
-
-   EBM_INLINE void Initialize(const IntEbmType seed) {
-      // the C++ standard guarantees that the unsigned result of this 
-      // conversion is 2^64 + seed if seed is negative
-      Initialize(static_cast<uint64_t>(seed));
    }
 
    EBM_INLINE bool NextBit() {
@@ -163,6 +155,8 @@ public:
    }
 };
 static_assert(std::is_standard_layout<RandomStream>::value,
-   "we might want to copy this internal state cross process in the future");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<RandomStream>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // RANDOM_STREAM_H

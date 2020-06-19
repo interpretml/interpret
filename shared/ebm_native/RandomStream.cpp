@@ -96,7 +96,7 @@ uint_fast64_t RandomStream::GetOneTimePadConversion(uint_fast64_t seed) {
    return result;
 }
 
-void RandomStream::InitializeInternal(const uint64_t seed) {
+void RandomStream::Initialize(const uint64_t seed) {
    constexpr uint_fast64_t initializeSeed = { 0xa75f138b4a162cfd };
 
    m_state1 = initializeSeed;
@@ -108,7 +108,7 @@ void RandomStream::InitializeInternal(const uint64_t seed) {
 
    uint_fast64_t randomBits = originalRandomBits;
    // the lowest bit of our result needs to be 1 to make our number odd (per the paper)
-   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } &randomBits) | uint_fast64_t { 1 };
+   uint_fast64_t sanitizedSeed = (uint_fast64_t { 0xF } & randomBits) | uint_fast64_t { 1 };
    randomBits >>= 4; // remove the bits that we used
    // disallow zeros for our hex digits by ORing 1
    const uint_fast16_t disallowMapFuture = (uint_fast16_t { 1 } << sanitizedSeed) | uint_fast16_t { 1 };
@@ -155,4 +155,6 @@ exit_loop:;
    m_state1 = sanitizedSeed;
    m_state2 = sanitizedSeed;
    m_stateSeedConst = sanitizedSeed;
+   m_randomRemainingMax = uint_fast64_t { 0 };
+   m_randomRemaining = uint_fast64_t { 0 };
 }
