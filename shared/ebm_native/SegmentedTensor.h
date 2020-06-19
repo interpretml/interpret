@@ -5,7 +5,6 @@
 #ifndef SEGMENTED_TENSOR_H
 #define SEGMENTED_TENSOR_H
 
-#include <string.h> // memset
 #include <type_traits> // std::is_standard_layout
 #include <stdlib.h> // malloc, realloc, free
 #include <stddef.h> // size_t, ptrdiff_t
@@ -195,7 +194,9 @@ public:
       // we only need to set the base case to zero, not our entire initial allocation
       // we checked for cVectorLength * k_initialValueCapacity * sizeof(FloatEbmType), and 1 <= k_initialValueCapacity, 
       // so sizeof(FloatEbmType) * cVectorLength can't overflow
-      memset(aValues, 0, sizeof(FloatEbmType) * cVectorLength);
+      for(size_t i = 0; i < cVectorLength; ++i) {
+         aValues[i] = FloatEbmType { 0 };
+      }
 
       if(0 != cDimensionsMax) {
          DimensionInfo * pDimension = ArrayToPointer(pSegmentedRegion->m_aDimensions);
@@ -260,7 +261,9 @@ public:
       }
       // we only need to set the base case to zero
       // this can't overflow since we previously allocated this memory
-      memset(m_aValues, 0, sizeof(FloatEbmType) * m_cVectorLength);
+      for(size_t i = 0; i < m_cVectorLength; ++i) {
+         m_aValues[i] = FloatEbmType { 0 };
+      }
       m_bExpanded = false;
    }
 

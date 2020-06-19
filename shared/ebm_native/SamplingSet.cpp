@@ -4,7 +4,6 @@
 
 #include "PrecompiledHeader.h"
 
-#include <string.h> // memset
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 

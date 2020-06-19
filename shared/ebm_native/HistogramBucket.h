@@ -6,7 +6,6 @@
 #define HISTOGRAM_BUCKET_H
 
 #include <type_traits> // std::is_standard_layout
-#include <string.h> // memset
 #include <stddef.h> // size_t, ptrdiff_t
 #include <cmath> // abs
 
@@ -109,9 +108,16 @@ struct HistogramBucket final {
    }
 
    EBM_INLINE void Zero(const size_t cVectorLength) {
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
-      memset(this, 0, cBytesPerHistogramBucket);
+      m_cInstancesInBucket = size_t { 0 };
+      HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = ArrayToPointer(m_aHistogramBucketVectorEntry);
+      const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
+      EBM_ASSERT(1 <= cVectorLength);
+      do {
+         pHistogramTargetEntry->Zero();
+         ++pHistogramTargetEntry;
+      } while(pHistogramTargetEntryEnd != pHistogramTargetEntry);
+
+      AssertZero(cVectorLength);
    }
 
    EBM_INLINE void AssertZero(const size_t cVectorLength) const {

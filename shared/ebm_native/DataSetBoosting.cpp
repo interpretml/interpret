@@ -4,7 +4,6 @@
 
 #include "PrecompiledHeader.h"
 
-#include <string.h> // memset
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -54,11 +53,13 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
-   const size_t cBytes = sizeof(FloatEbmType) * cElements;
 
    if(nullptr == aPredictorScoresFrom) {
-      memset(aPredictorScoresTo, 0, cBytes);
+      for(size_t i = 0; i < cElements; ++i) {
+         aPredictorScoresTo[i] = FloatEbmType { 0 };
+      }
    } else {
+      const size_t cBytes = sizeof(FloatEbmType) * cElements;
       memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
       constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
       if(bZeroingLogits) {

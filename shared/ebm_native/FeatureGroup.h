@@ -5,7 +5,6 @@
 #ifndef FEATURE_COMBINATION_H
 #define FEATURE_COMBINATION_H
 
-#include <string.h> // memset
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "EbmInternal.h" // EBM_INLINE

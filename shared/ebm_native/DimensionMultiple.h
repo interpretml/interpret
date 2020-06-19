@@ -562,11 +562,15 @@ void BuildFastTotals(
          pFastTotalState->m_iCur = 0;
 
          EBM_ASSERT(pFastTotalState->m_pDimensionalFirst == pFastTotalState->m_pDimensionalCur);
-         memset(
-            pFastTotalState->m_pDimensionalFirst, 
-            0, 
-            reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap) - reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst)
-         );
+         char * pCur = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalFirst);
+         const char * const pEnd = reinterpret_cast<char *>(pFastTotalState->m_pDimensionalWrap);
+         EBM_ASSERT(pCur != pEnd);
+         do {
+            HistogramBucket<bClassification> * pHistogramBucketCur = 
+               reinterpret_cast<HistogramBucket<bClassification> *>(pCur);
+            pHistogramBucketCur->Zero(cVectorLength);
+            pCur += cBytesPerHistogramBucket;
+         } while(pEnd != pCur);
 
          ++pFastTotalState;
 
@@ -1242,7 +1246,12 @@ bool BoostMultiDimensional(
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
    }
-   memset(aHistogramBuckets, 0, cBytesBuffer);
+   for(size_t i = 0; i < cTotalBuckets; ++i) {
+      HistogramBucket<bClassification> * const pHistogramBucket =
+         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
+      pHistogramBucket->Zero(cVectorLength);
+   }
+
    HistogramBucket<bClassification> * pAuxiliaryBucketZone =
       GetHistogramBucketByIndex<bClassification>(
          cBytesPerHistogramBucket, 
@@ -2368,7 +2377,11 @@ bool CalculateInteractionScore(
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aHistogramBuckets");
       return true;
    }
-   memset(aHistogramBuckets, 0, cBytesBuffer);
+   for(size_t i = 0; i < cTotalBuckets; ++i) {
+      HistogramBucket<bClassification> * const pHistogramBucket =
+         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
+      pHistogramBucket->Zero(cVectorLength);
+   }
 
    HistogramBucket<bClassification> * pAuxiliaryBucketZone =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);

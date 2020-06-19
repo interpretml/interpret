@@ -103,7 +103,9 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->GetSumHistogramBucketVectorEntry1Array<bClassification>();
-   memset(aSumHistogramBucketVectorEntryLeft, 0, sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength);
+   for(size_t i = 0; i < cVectorLength; ++i) {
+      aSumHistogramBucketVectorEntryLeft[i].Zero();
+   }
 
    FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->GetTempFloatVector();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -764,7 +766,7 @@ bool BoostZeroDimensional(
       LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
       return true;
    }
-   memset(pHistogramBucket, 0, cBytesPerHistogramBucket);
+   pHistogramBucket->Zero(cVectorLength);
 
    BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
 
@@ -837,7 +839,11 @@ bool BoostSingleDimensional(
       return true;
    }
    // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
-   memset(aHistogramBuckets, 0, cBytesBuffer);
+   for(size_t i = 0; i < cTotalBuckets; ++i) {
+      HistogramBucket<bClassification> * const pHistogramBucket =
+         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
+      pHistogramBucket->Zero(cVectorLength);
+   }
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
@@ -855,7 +861,9 @@ bool BoostSingleDimensional(
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
       pCachedThreadResources->GetSumHistogramBucketVectorEntryArray<bClassification>();
-   memset(aSumHistogramBucketVectorEntry, 0, sizeof(*aSumHistogramBucketVectorEntry) * cVectorLength); // can't overflow, accessing existing memory
+   for(size_t i = 0; i < cVectorLength; ++i) {
+      aSumHistogramBucketVectorEntry[i].Zero();
+   }
 
    size_t cHistogramBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
    // dimensions with 1 bin don't contribute anything since they always have the same value, 

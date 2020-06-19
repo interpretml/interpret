@@ -7,7 +7,6 @@
 #include <limits> // numeric_limits
 #include <type_traits> // std::is_standard_layout, std::is_integral
 #include <stdlib.h> // malloc, free
-#include <string.h> // memset
 
 #include <vector>
 #include <queue>

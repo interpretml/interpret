@@ -48,6 +48,10 @@ struct HistogramBucketVectorEntry<true> final {
       EBM_ASSERT(0 == m_sumResidualError);
       EBM_ASSERT(0 == m_sumDenominator);
    }
+   EBM_INLINE void Zero() {
+      m_sumResidualError = FloatEbmType { 0 };
+      m_sumDenominator = FloatEbmType { 0 };
+   }
 };
 
 template<>
@@ -75,6 +79,9 @@ struct HistogramBucketVectorEntry<false> final {
    }
    EBM_INLINE void AssertZero() const {
       EBM_ASSERT(0 == m_sumResidualError);
+   }
+   EBM_INLINE void Zero() {
+      m_sumResidualError = FloatEbmType { 0 };
    }
 };
 static_assert(
