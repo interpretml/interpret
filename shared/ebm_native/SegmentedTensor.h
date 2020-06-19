@@ -173,7 +173,7 @@ public:
 
       // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
       const size_t cBytesSegmentedRegion = sizeof(SegmentedTensor) - sizeof(DimensionInfo) + sizeof(DimensionInfo) * cDimensionsMax;
-      SegmentedTensor * const pSegmentedRegion = EbmMalloc<SegmentedTensor, true>(1, cBytesSegmentedRegion);
+      SegmentedTensor * const pSegmentedRegion = EbmMalloc<SegmentedTensor>(1, cBytesSegmentedRegion);
       if(UNLIKELY(nullptr == pSegmentedRegion)) {
          LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == pSegmentedRegion");
          return nullptr;
@@ -183,6 +183,7 @@ public:
       pSegmentedRegion->m_cDimensionsMax = cDimensionsMax;
       pSegmentedRegion->m_cDimensions = cDimensionsMax;
       pSegmentedRegion->m_cValueCapacity = cValueCapacity;
+      pSegmentedRegion->m_bExpanded = false;
 
       FloatEbmType * const aValues = EbmMalloc<FloatEbmType>(cValueCapacity);
       if(UNLIKELY(nullptr == aValues)) {
@@ -200,8 +201,16 @@ public:
          DimensionInfo * pDimension = ArrayToPointer(pSegmentedRegion->m_aDimensions);
          size_t iDimension = 0;
          do {
-            EBM_ASSERT(0 == pDimension->m_cDivisions);
+            pDimension->m_cDivisions = 0;
             pDimension->m_cDivisionCapacity = k_initialDivisionCapacity;
+            pDimension->m_aDivisions = nullptr;
+            ++pDimension;
+            ++iDimension;
+         } while(iDimension < cDimensionsMax);
+
+         pDimension = ArrayToPointer(pSegmentedRegion->m_aDimensions);
+         iDimension = 0;
+         do {
             ActiveDataType * const aDivisions = EbmMalloc<ActiveDataType>(k_initialDivisionCapacity);
             if(UNLIKELY(nullptr == aDivisions)) {
                LOG_0(TraceLevelWarning, "WARNING Allocate nullptr == aDivisions");

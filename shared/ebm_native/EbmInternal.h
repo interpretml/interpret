@@ -416,7 +416,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
       }
    }
 }
-template<typename T, bool bZero = true>
+template<typename T>
 EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
@@ -424,11 +424,6 @@ EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
       const size_t cBytes = cItems * cBytesPerItem;
       // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
       T * const a = static_cast<T *>(malloc(cBytes));
-      if(bZero) {
-         if(LIKELY(nullptr != a)) {
-            memset(a, 0, cBytes);
-         }
-      }
       return a;
    }
 }

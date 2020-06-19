@@ -78,10 +78,10 @@ public:
          const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
             sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
 
-         void * const aSumHistogramBucketVectorEntry = EbmMalloc<void, false>(cVectorLength, cBytesPerItem);
+         void * const aSumHistogramBucketVectorEntry = EbmMalloc<void>(cVectorLength, cBytesPerItem);
          if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
             pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-            void * const aSumHistogramBucketVectorEntry1 = EbmMalloc<void, false>(cVectorLength, cBytesPerItem);
+            void * const aSumHistogramBucketVectorEntry1 = EbmMalloc<void>(cVectorLength, cBytesPerItem);
             if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
                pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
                FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
