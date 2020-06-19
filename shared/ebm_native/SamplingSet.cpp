@@ -50,7 +50,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
       ++aCountOccurrences[iCountOccurrences];
    }
 
-   SamplingSet * pRet = EbmMalloc<SamplingSet, false>();
+   SamplingSet * pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == pRet");
       free(aCountOccurrences);
@@ -82,7 +82,7 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombina
       aCountOccurrences[iInstance] = 1;
    }
 
-   SamplingSet * pRet = EbmMalloc<SamplingSet, false>();
+   SamplingSet * pRet = EbmMalloc<SamplingSet>();
    if(nullptr == pRet) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == pRet");
       free(aCountOccurrences);

@@ -79,10 +79,6 @@ class RandomStream final {
 
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
-   RandomStream(const RandomStream &) = default; // preserve our POD status
-   RandomStream & operator= (const RandomStream &) = default; // preserve our POD status
-   RandomStream(RandomStream &&) = default; // preserve our POD status
-   RandomStream & operator= (RandomStream &&) = default; // preserve our POD status
 
 public:
 

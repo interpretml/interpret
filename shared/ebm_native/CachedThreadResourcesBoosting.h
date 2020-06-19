@@ -28,7 +28,24 @@ class CachedBoostingThreadResources final {
    void * m_aSumHistogramBucketVectorEntry;
    void * m_aSumHistogramBucketVectorEntry1;
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
 public:
+
+   CachedBoostingThreadResources() = default; // preserve our POD status
+   ~CachedBoostingThreadResources() = default; // preserve our POD status
+
+   EBM_INLINE void InitializeZero() {
+      m_aThreadByteBuffer1 = nullptr;
+      m_cThreadByteBufferCapacity1 = 0;
+      m_aThreadByteBuffer2 = nullptr;
+      m_cThreadByteBufferCapacity2 = 0;
+      m_aTempFloatVector = nullptr;
+      m_aEquivalentSplits = nullptr;
+      m_aSumHistogramBucketVectorEntry = nullptr;
+      m_aSumHistogramBucketVectorEntry1 = nullptr;
+   }
 
    INLINE_RELEASE static void Free(CachedBoostingThreadResources * const pCachedResources) {
       LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Free");
@@ -53,8 +70,10 @@ public:
    ) {
       LOG_0(TraceLevelInfo, "Entered CachedBoostingThreadResources::Allocate");
 
-      CachedBoostingThreadResources * const pNew = EbmMalloc<CachedBoostingThreadResources, true>();
+      CachedBoostingThreadResources * const pNew = EbmMalloc<CachedBoostingThreadResources>();
       if(LIKELY(nullptr != pNew)) {
+         pNew->InitializeZero();
+
          const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
          const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
             sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
@@ -150,6 +169,8 @@ public:
    }
 };
 static_assert(std::is_standard_layout<CachedBoostingThreadResources>::value,
-   "we use malloc to allocate this, so it needs to be standard layout");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<CachedBoostingThreadResources>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // CACHED_BOOSTING_THREAD_RESOURCES_H

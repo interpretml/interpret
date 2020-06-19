@@ -17,7 +17,7 @@
 // dataset depends on features
 #include "DataSetInteraction.h"
 
-class EbmInteractionState {
+class EbmInteractionState final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
@@ -28,7 +28,25 @@ class EbmInteractionState {
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
 public:
+
+   EbmInteractionState() = default; // preserve our POD status
+   ~EbmInteractionState() = default; // preserve our POD status
+
+   EBM_INLINE void InitializeZero() {
+      m_runtimeLearningTypeOrCountTargetClasses = 0;
+
+      m_cFeatures = 0;
+      m_aFeatures = nullptr;
+
+      m_dataSet.InitializeZero();
+
+      m_cLogEnterMessages = 0;
+      m_cLogExitMessages = 0;
+   }
 
    EBM_INLINE ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
       return m_runtimeLearningTypeOrCountTargetClasses;
@@ -67,6 +85,8 @@ public:
    );
 };
 static_assert(std::is_standard_layout<EbmInteractionState>::value,
-   "keep standard layout to conform closely with C");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<EbmInteractionState>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // EBM_INTERACTION_STATE_H

@@ -26,7 +26,7 @@
 // samples is somewhat independent from datasets, but relies on an indirect coupling with them
 #include "SamplingSet.h"
 
-class EbmBoostingState {
+class EbmBoostingState final {
    ptrdiff_t m_runtimeLearningTypeOrCountTargetClasses;
 
    size_t m_cFeatures;
@@ -63,7 +63,39 @@ class EbmBoostingState {
       const size_t cVectorLength
    );
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
 public:
+
+   EbmBoostingState() = default; // preserve our POD status
+   ~EbmBoostingState() = default; // preserve our POD status
+
+   EBM_INLINE void InitializeZero() {
+      m_runtimeLearningTypeOrCountTargetClasses = 0;
+
+      m_cFeatures = 0;
+      m_aFeatures = nullptr;
+
+      m_cFeatureCombinations = 0;
+      m_apFeatureCombinations = nullptr;
+
+      m_trainingSet.InitializeZero();
+      m_validationSet.InitializeZero();
+
+      m_cSamplingSets = 0;
+      m_apSamplingSets = nullptr;
+
+      m_apCurrentModel = nullptr;
+      m_apBestModel = nullptr;
+
+      m_bestModelMetric = FloatEbmType { 0 };
+
+      m_pSmallChangeToModelOverwriteSingleSamplingSet = nullptr;
+      m_pSmallChangeToModelAccumulatedFromSamplingSets = nullptr;
+
+      m_pCachedThreadResources = nullptr;
+   }
 
    EBM_INLINE ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
       return m_runtimeLearningTypeOrCountTargetClasses;
@@ -148,6 +180,8 @@ public:
    );
 };
 static_assert(std::is_standard_layout<EbmBoostingState>::value,
-   "keep standard layout to conform closely with C");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<EbmBoostingState>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // EBM_BOOSTING_STATE_H

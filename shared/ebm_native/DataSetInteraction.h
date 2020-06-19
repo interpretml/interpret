@@ -18,9 +18,22 @@ class DataSetByFeature final {
    size_t m_cInstances;
    size_t m_cFeatures;
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
 public:
 
+   DataSetByFeature() = default; // preserve our POD status
+   ~DataSetByFeature() = default; // preserve our POD status
+
    void Destruct();
+
+   EBM_INLINE void InitializeZero() {
+      m_aResidualErrors = nullptr;
+      m_aaInputData = nullptr;
+      m_cInstances = 0;
+      m_cFeatures = 0;
+   }
 
    bool Initialize(
       const size_t cFeatures, 
@@ -51,6 +64,8 @@ public:
    }
 };
 static_assert(std::is_standard_layout<DataSetByFeature>::value,
-   "we use memset to zero this, so it needs to be standard layout");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<DataSetByFeature>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // DATA_SET_BY_FEATURE_H

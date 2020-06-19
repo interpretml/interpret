@@ -162,11 +162,12 @@ EbmBoostingState * EbmBoostingState::Allocate(
 
    LOG_0(TraceLevelInfo, "Entered EbmBoostingState::Initialize");
 
-   EbmBoostingState * const pBooster = EbmMalloc<EbmBoostingState, true>();
+   EbmBoostingState * const pBooster = EbmMalloc<EbmBoostingState>();
    if(UNLIKELY(nullptr == pBooster)) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster");
       return nullptr;
    }
+   pBooster->InitializeZero();
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 

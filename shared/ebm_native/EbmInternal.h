@@ -388,15 +388,10 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
 // There's also a small subset of cases where we allocate a chunk of memory and use it for heterogenious types
 // in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
 // use free though, so it's less likely to create bugs by accident.
-template<typename T, bool bZero = true>
+template<typename T>
 EBM_INLINE T * EbmMalloc() {
    static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
-   if(bZero) {
-      if(LIKELY(nullptr != a)) {
-         memset(a, 0, sizeof(T));
-      }
-   }
    return a;
 }
 template<typename T, bool bZero = true>

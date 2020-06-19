@@ -21,7 +21,22 @@ class DataSetByFeatureCombination final {
    size_t m_cInstances;
    size_t m_cFeatureCombinations;
 
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
 public:
+
+   DataSetByFeatureCombination() = default; // preserve our POD status
+   ~DataSetByFeatureCombination() = default; // preserve our POD status
+
+   EBM_INLINE void InitializeZero() {
+      m_aResidualErrors = nullptr;
+      m_aPredictorScores = nullptr;
+      m_aTargetData = nullptr;
+      m_aaInputData = nullptr;
+      m_cInstances = 0;
+      m_cFeatureCombinations = 0;
+   }
 
    void Destruct();
 
@@ -69,6 +84,8 @@ public:
    }
 };
 static_assert(std::is_standard_layout<DataSetByFeatureCombination>::value,
-   "we use memset to zero this, so it needs to be standard layout");
+   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+static_assert(std::is_pod<DataSetByFeatureCombination>::value,
+   "not required, but keep things closer to C by being POD");
 
 #endif // DATA_SET_BY_FEATURE_COMBINATION_H

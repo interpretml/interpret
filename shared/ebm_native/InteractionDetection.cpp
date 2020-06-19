@@ -101,11 +101,12 @@ EbmInteractionState * EbmInteractionState::Allocate(
    }
    LOG_0(TraceLevelInfo, "EbmInteractionState::Allocate done feature processing");
 
-   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState, true>();
+   EbmInteractionState * const pRet = EbmMalloc<EbmInteractionState>();
    if(nullptr == pRet) {
       free(aFeatures);
       return nullptr;
    }
+   pRet->InitializeZero();
 
    pRet->m_runtimeLearningTypeOrCountTargetClasses = runtimeLearningTypeOrCountTargetClasses;
    pRet->m_cFeatures = cFeatures;
