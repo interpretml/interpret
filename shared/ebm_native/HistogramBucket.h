@@ -8,6 +8,7 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 #include <cmath> // abs
+#include <string.h> // memcpy
 
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE

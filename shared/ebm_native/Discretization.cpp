@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <cmath>
 #include <set>
+#include <string.h> // strchr, memmove
 
 #include "ebm_native.h"
 

@@ -339,7 +339,7 @@ static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for b
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-const EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    assert(size_t { 1 } <= cBits);
    return k_cBitsForStorageType / cBits;
 }

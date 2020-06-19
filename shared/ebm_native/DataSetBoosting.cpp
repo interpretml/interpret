@@ -6,6 +6,7 @@
 
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
+#include <string.h> // memcpy
 
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // FeatureType
