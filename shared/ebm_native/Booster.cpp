@@ -191,13 +191,13 @@ EbmBoostingState * EbmBoostingState::Allocate(
 
    LOG_0(TraceLevelInfo, "EbmBoostingState::Initialize starting feature processing");
    if(0 != cFeatures) {
-      pBooster->m_cFeatures = cFeatures;
       pBooster->m_aFeatures = EbmMalloc<Feature>(cFeatures);
       if(nullptr == pBooster->m_aFeatures) {
          LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize nullptr == pBooster->m_aFeatures");
          EbmBoostingState::Free(pBooster);
          return nullptr;
       }
+      pBooster->m_cFeatures = cFeatures;
 
       const EbmNativeFeature * pFeatureInitialize = aFeatures;
       const EbmNativeFeature * const pFeatureEnd = &aFeatures[cFeatures];
@@ -208,26 +208,45 @@ EbmBoostingState * EbmBoostingState::Allocate(
             "FeatureType::Ordinal must have the same value as FeatureTypeOrdinal");
          static_assert(FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), 
             "FeatureType::Nominal must have the same value as FeatureTypeNominal");
-         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
+         if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
+            EbmBoostingState::Free(pBooster);
+            return nullptr;
+         }
          FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
          IntEbmType countBins = pFeatureInitialize->countBins;
-         // we can handle 1 == cBins or 0 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute 
-         // anything since they always have the same value).  0 cases could only occur if there were zero training and zero validation cases since the 
-         // features would require a value, even if it was 0
-         EBM_ASSERT(0 <= countBins);
+         if(countBins < 0) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be negative");
+            EbmBoostingState::Free(pBooster);
+            return nullptr;
+         }
+         if(0 == countBins && (0 != cTrainingInstances || 0 != cValidationInstances)) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be zero if either 0 < cTrainingInstances OR 0 < cValidationInstances");
+            EbmBoostingState::Free(pBooster);
+            return nullptr;
+         }
          if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntEbmType>(countBins)");
+            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize countBins is too high for us to allocate enough memory");
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
          size_t cBins = static_cast<size_t>(countBins);
-         if(cBins <= 1) {
-            EBM_ASSERT(0 != cBins || 0 == cTrainingInstances && 0 == cValidationInstances);
-            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 0/1 values");
+         if(0 == cBins) {
+            // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
+            // can only occur if there were zero training and zero validation cases since the 
+            // features would require a value, even if it was 0.
+            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 0 values");
+         } else if(1 == cBins) {
+            // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
+            // Dimensions with 1 bin don't contribute anything since they always have the same value.
+            LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize feature with 1 value");
          }
-
-         EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
+         if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize hasMissing must either be EBM_TRUE or EBM_FALSE");
+            EbmBoostingState::Free(pBooster);
+            return nullptr;
+         }
          bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
          pBooster->m_aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
@@ -278,32 +297,55 @@ EbmBoostingState * EbmBoostingState::Allocate(
       size_t iFeatureCombination = 0;
       do {
          const EbmNativeFeatureCombination * const pFeatureCombinationInterop = &aFeatureCombinations[iFeatureCombination];
-
-         IntEbmType countFeaturesInCombination = pFeatureCombinationInterop->countFeaturesInCombination;
-         EBM_ASSERT(0 <= countFeaturesInCombination);
+         const IntEbmType countFeaturesInCombination = pFeatureCombinationInterop->countFeaturesInCombination;
+         if(countFeaturesInCombination < 0) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countFeaturesInCombination cannot be negative");
+            EbmBoostingState::Free(pBooster);
+            return nullptr;
+         }
          if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)");
+            // if countFeaturesInCombination exceeds the size of size_t, then we wouldn't be able to find it
+            // in the array passed to us
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countFeaturesInCombination is too high to index");
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
          size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
          size_t cSignificantFeaturesInCombination = 0;
-         const IntEbmType * const pFeatureCombinationIndexEnd = pFeatureCombinationIndex + cFeaturesInCombination;
+         const IntEbmType * pFeatureCombinationIndexEnd = pFeatureCombinationIndex;
          if(UNLIKELY(0 == cFeaturesInCombination)) {
             LOG_0(TraceLevelInfo, "INFO EbmBoostingState::Initialize empty feature combination");
          } else {
-            EBM_ASSERT(nullptr != featureCombinationIndexes);
+            if(nullptr == pFeatureCombinationIndex) {
+               LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureCombinationIndexes is null when there are FeatureCombinations with non-zero numbers of features");
+               EbmBoostingState::Free(pBooster);
+               return nullptr;
+            }
+            pFeatureCombinationIndexEnd += cFeaturesInCombination;
             const IntEbmType * pFeatureCombinationIndexTemp = pFeatureCombinationIndex;
             do {
                const IntEbmType indexFeatureInterop = *pFeatureCombinationIndexTemp;
-               EBM_ASSERT(0 <= indexFeatureInterop);
+               if(indexFeatureInterop < 0) {
+                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureCombinationIndexes value cannot be negative");
+                  EbmBoostingState::Free(pBooster);
+                  return nullptr;
+               }
                if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
-                  LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize !IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)");
+                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureCombinationIndexes value too big to reference memory");
                   EbmBoostingState::Free(pBooster);
                   return nullptr;
                }
                const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-               EBM_ASSERT(iFeatureForCombination < cFeatures);
+
+               if(cFeatures <= iFeatureForCombination) {
+                  LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureCombinationIndexes value must be less than the number of features");
+                  EbmBoostingState::Free(pBooster);
+                  return nullptr;
+               }
+
+               EBM_ASSERT(1 <= cFeatures);
+               EBM_ASSERT(nullptr != pBooster->m_aFeatures);
+
                Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureForCombination];
                if(LIKELY(1 < pInputFeature->GetCountBins())) {
                   // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
@@ -332,11 +374,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
          // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
          pBooster->m_apFeatureCombinations[iFeatureCombination] = pFeatureCombination;
 
-         if(LIKELY(0 == cSignificantFeaturesInCombination)) {
-            // move our index forward to the next feature.  
-            // We won't be executing the loop below that would otherwise increment it by the number of features in this feature combination
-            pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
-         } else {
+         if(UNLIKELY(0 != cSignificantFeaturesInCombination)) {
             EBM_ASSERT(nullptr != featureCombinationIndexes);
             size_t cEquivalentSplits = 1;
             size_t cTensorBins = 1;
@@ -389,6 +427,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
             EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
             pFeatureCombination->SetCountItemsPerBitPackedDataUnit(GetCountItemsBitPacked(cBitsRequiredMin));
          }
+         pFeatureCombinationIndex = pFeatureCombinationIndexEnd;
+
          ++iFeatureCombination;
       } while(iFeatureCombination < cFeatureCombinations);
 
@@ -429,7 +469,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
-      cVectorLength
+      runtimeLearningTypeOrCountTargetClasses
    )) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_trainingSet.Initialize");
       EbmBoostingState::Free(pBooster);
@@ -446,7 +486,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
-      cVectorLength
+      runtimeLearningTypeOrCountTargetClasses
    )) {
       LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize m_validationSet.Initialize");
       EbmBoostingState::Free(pBooster);
@@ -522,28 +562,6 @@ EbmBoostingState * EbmBoostingState::Allocate(
    return pBooster;
 }
 
-#ifndef NDEBUG
-void CheckTargets(const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, const size_t cInstances, const void * const aTargets) {
-   if(0 != cInstances) {
-      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         // we accept NaN and +-infinity values from the caller for regression, although these lead 
-         // to bad outcomes training wise, they are not impossible for the user to pass us, so we can't assert on them
-         const IntEbmType * pTarget = static_cast<const IntEbmType *>(aTargets);
-         const IntEbmType * const pTargetEnd = pTarget + cInstances;
-         do {
-            const IntEbmType target = *pTarget;
-            EBM_ASSERT(0 <= target);
-            // data must be lower than runtimeLearningTypeOrCountTargetClasses and 
-            // runtimeLearningTypeOrCountTargetClasses fits into a ptrdiff_t which we checked earlier
-            EBM_ASSERT((IsNumberConvertable<ptrdiff_t, IntEbmType>(target)));
-            EBM_ASSERT(static_cast<ptrdiff_t>(target) < runtimeLearningTypeOrCountTargetClasses);
-            ++pTarget;
-         } while(pTargetEnd != pTarget);
-      }
-   }
-}
-#endif // NDEBUG
-
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
@@ -567,44 +585,85 @@ EbmBoostingState * AllocateBoosting(
    const FloatEbmType * const optionalTempParams
 ) {
    // TODO : give AllocateBoosting the same calling parameter order as InitializeBoostingClassification
-   // TODO: turn these EBM_ASSERTS into log errors!!  Small checks like this of our wrapper's inputs hardly cost anything, and catch issues faster
 
-   // randomSeed can be any value
-   EBM_ASSERT(0 <= countFeatures);
-   EBM_ASSERT(0 == countFeatures || nullptr != features);
-   EBM_ASSERT(0 <= countFeatureCombinations);
-   EBM_ASSERT(0 == countFeatureCombinations || nullptr != featureCombinations);
+   if(countFeatures < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatures must be positive");
+      return nullptr;
+   }
+   if(0 != countFeatures && nullptr == features) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting features cannot be nullptr if 0 < countFeatures");
+      return nullptr;
+   }
+   if(countFeatureCombinations < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countFeatureCombinations must be positive");
+      return nullptr;
+   }
+   if(0 != countFeatureCombinations && nullptr == featureCombinations) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting featureCombinations cannot be nullptr if 0 < countFeatureCombinations");
+      return nullptr;
+   }
    // featureCombinationIndexes -> it's legal for featureCombinationIndexes to be nullptr if there are no features indexed by our featureCombinations.  
    // FeatureCombinations can have zero features, so it could be legal for this to be null even if there are featureCombinations
-   // countTargetClasses is checked by our caller since it's only valid for classification at this point
-   EBM_ASSERT(0 <= countTrainingInstances);
-   EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingTargets);
-   EBM_ASSERT(0 == countTrainingInstances || 0 == countFeatures || nullptr != trainingBinnedData);
-   EBM_ASSERT(0 == countTrainingInstances || nullptr != trainingPredictorScores);
-   EBM_ASSERT(0 <= countValidationInstances);
-   EBM_ASSERT(0 == countValidationInstances || nullptr != validationTargets);
-   EBM_ASSERT(0 == countValidationInstances || 0 == countFeatures || nullptr != validationBinnedData);
-   EBM_ASSERT(0 == countValidationInstances || nullptr != validationPredictorScores);
-   // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
-   EBM_ASSERT(0 <= countInnerBags);
-
+   if(countTrainingInstances < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countTrainingInstances must be positive");
+      return nullptr;
+   }
+   if(0 != countTrainingInstances && nullptr == trainingTargets) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingTargets cannot be nullptr if 0 < countTrainingInstances");
+      return nullptr;
+   }
+   if(0 != countTrainingInstances && 0 != countFeatures && nullptr == trainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingBinnedData cannot be nullptr if 0 < countTrainingInstances AND 0 < countFeatures");
+      return nullptr;
+   }
+   if(0 != countTrainingInstances && nullptr == trainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingPredictorScores cannot be nullptr if 0 < countTrainingInstances");
+      return nullptr;
+   }
+   if(countValidationInstances < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countValidationInstances must be positive");
+      return nullptr;
+   }
+   if(0 != countValidationInstances && nullptr == validationTargets) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationTargets cannot be nullptr if 0 < countValidationInstances");
+      return nullptr;
+   }
+   if(0 != countValidationInstances && 0 != countFeatures && nullptr == validationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationBinnedData cannot be nullptr if 0 < countValidationInstances AND 0 < countFeatures");
+      return nullptr;
+   }
+   if(0 != countValidationInstances && nullptr == validationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationPredictorScores cannot be nullptr if 0 < countValidationInstances");
+      return nullptr;
+   }
+   if(countInnerBags < 0) {
+      // 0 means use the full set (good value).  1 means make a single bag (this is useless but allowed for comparison purposes).  2+ are good numbers of bag
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countInnerBags must be positive");
+      return nullptr;
+   }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
+      // the caller should not have been able to allocate enough memory in "features" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)");
+      // the caller should not have been able to allocate enough memory in "featureCombinations" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatureCombinations)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)");
+      // the caller should not have been able to allocate enough memory in "trainingTargets" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)");
+      // the caller should not have been able to allocate enough memory in "validationTargets" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countInnerBags)) {
+      // this is just a warning since the caller doesn't pass us anything material, but if it's this high
+      // then our allocation would fail since it can't even in pricipal fit into memory
       LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countInnerBags)");
       return nullptr;
    }
@@ -618,18 +677,15 @@ EbmBoostingState * AllocateBoosting(
    size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(IsMultiplyError(cVectorLength, cTrainingInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting IsMultiplyError(cVectorLength, cTrainingInstances)");
+      // the caller should not have been able to allocate enough memory in "trainingPredictorScores" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cTrainingInstances)");
       return nullptr;
    }
    if(IsMultiplyError(cVectorLength, cValidationInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting IsMultiplyError(cVectorLength, cValidationInstances)");
+      // the caller should not have been able to allocate enough memory in "validationPredictorScores" if this didn't fit in memory
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cValidationInstances)");
       return nullptr;
    }
-
-#ifndef NDEBUG
-   CheckTargets(runtimeLearningTypeOrCountTargetClasses, cTrainingInstances, trainingTargets);
-   CheckTargets(runtimeLearningTypeOrCountTargetClasses, cValidationInstances, validationTargets);
-#endif // NDEBUG
 
    EbmBoostingState * const pEbmBoostingState = EbmBoostingState::Allocate(
       runtimeLearningTypeOrCountTargetClasses,

@@ -33,7 +33,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances
    return aResidualErrors;
 }
 
-EBM_INLINE static FloatEbmType * ConstructPredictorScores(
+INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
    const size_t cInstances, 
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
@@ -42,6 +42,7 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(0 < cVectorLength);
+   EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(cInstances, cVectorLength)");
@@ -55,38 +56,39 @@ EBM_INLINE static FloatEbmType * ConstructPredictorScores(
       return nullptr;
    }
 
-   if(nullptr == aPredictorScoresFrom) {
-      for(size_t i = 0; i < cElements; ++i) {
-         aPredictorScoresTo[i] = FloatEbmType { 0 };
-      }
-   } else {
-      const size_t cBytes = sizeof(FloatEbmType) * cElements;
-      memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
-      constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
-      if(bZeroingLogits) {
-         // TODO : integrate this subtraction into the copy instead of doing it afterwards
-         FloatEbmType * pScore = aPredictorScoresTo;
-         const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
+   const size_t cBytes = sizeof(FloatEbmType) * cElements;
+   // if there are any NaN or +- infinity values we should just propagate them and exit during boosting
+   memcpy(aPredictorScoresTo, aPredictorScoresFrom, cBytes);
+   constexpr bool bZeroingLogits = 0 <= k_iZeroClassificationLogitAtInitialize;
+   if(bZeroingLogits) {
+      // TODO : integrate this subtraction into the copy instead of doing it afterwards
+      FloatEbmType * pScore = aPredictorScoresTo;
+      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
+      do {
+         FloatEbmType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
+         const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
          do {
-            FloatEbmType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
-            const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
-            do {
-               *pScore -= scoreShift;
-               ++pScore;
-            } while(pScoreInteriorEnd != pScore);
-         } while(pScoreExteriorEnd != pScore);
-      }
+            *pScore -= scoreShift;
+            ++pScore;
+         } while(pScoreInteriorEnd != pScore);
+      } while(pScoreExteriorEnd != pScore);
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructPredictorScores");
    return aPredictorScoresTo;
 }
 
-EBM_INLINE static StorageDataType * ConstructTargetData(const size_t cInstances, const IntEbmType * const aTargets) {
+EBM_INLINE static StorageDataType * ConstructTargetData(
+   const size_t cInstances, 
+   const IntEbmType * const aTargets, 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargets);
+   EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses); // this should be classification
+   const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
 
    StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cInstances);
    if(nullptr == aTargetData) {
@@ -99,11 +101,32 @@ EBM_INLINE static StorageDataType * ConstructTargetData(const size_t cInstances,
    StorageDataType * pTargetTo = aTargetData;
    do {
       const IntEbmType data = *pTargetFrom;
-      EBM_ASSERT(0 <= data);
-      EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(data)));
-      // we can't check the upper range of our target here since we don't have that information, so we have a function at the allocation entry point 
-      // that checks it there.  See CheckTargets(..)
-      *pTargetTo = static_cast<StorageDataType>(data);
+      if(data < 0) {
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData target value cannot be negative");
+         free(aTargetData);
+         return nullptr;
+      }
+      if(!IsNumberConvertable<StorageDataType, IntEbmType>(data)) {
+         // this shouldn't be possible since we previously checked that we could convert our target,
+         // so if this is failing then we'll be larger than the maximum number of classes
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData data target too big to reference memory");
+         free(aTargetData);
+         return nullptr;
+      }
+      if(!IsNumberConvertable<size_t, IntEbmType>(data)) {
+         // this shouldn't be possible since we previously checked that we could convert our target,
+         // so if this is failing then we'll be larger than the maximum number of classes
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData data target too big to reference memory");
+         free(aTargetData);
+         return nullptr;
+      }
+      const StorageDataType iData = static_cast<StorageDataType>(data);
+      if(countTargetClasses <= static_cast<size_t>(iData)) {
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData target value larger than number of classes");
+         free(aTargetData);
+         return nullptr;
+      }
+      *pTargetTo = iData;
       ++pTargetTo;
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
@@ -146,6 +169,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
       const size_t cFeatures = pFeatureCombination->GetCountFeatures();
       if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
+         ++paInputDataTo;
       } else {
          const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
@@ -163,6 +187,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
+         ++paInputDataTo;
 
          const size_t cBytesData = sizeof(StorageDataType) * cDataUnits;
          // stop on the last item in our array AND then do one special last loop with less or equal iterations to the normal loop
@@ -205,16 +230,25 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
                   const IntEbmType * pInputData = pDimensionInfo->m_pInputData;
                   const IntEbmType inputData = *pInputData;
                   pDimensionInfo->m_pInputData = pInputData + 1;
+                  if(inputData < 0) {
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData inputData value cannot be negative");
+                     goto free_all;
+                  }
+                  if(!IsNumberConvertable<size_t, IntEbmType>(inputData)) {
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData inputData value too big to reference memory");
+                     goto free_all;
+                  }
+                  const size_t iData = static_cast<size_t>(inputData);
 
-                  EBM_ASSERT(0 <= inputData);
-                  // data must be lower than inputData and inputData fits into a size_t which we checked earlier
-                  EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(inputData)));
-                  EBM_ASSERT(static_cast<size_t>(inputData) < pDimensionInfo->m_cBins);
+                  if(pDimensionInfo->m_cBins <= iData) {
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData iData value must be less than the number of bins");
+                     goto free_all;
+                  }
                   // we check for overflows during FeatureCombination construction, but let's check here again
                   EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
                   // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
-                  tensorIndex += tensorMultiple * static_cast<size_t>(inputData);
+                  tensorIndex += tensorMultiple * iData;
                   tensorMultiple *= pDimensionInfo->m_cBins;
 
                   ++pDimensionInfo;
@@ -238,7 +272,6 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
             goto one_last_loop;
          }
       }
-      ++paInputDataTo;
       ++ppFeatureCombination;
    } while(ppFeatureCombinationEnd != ppFeatureCombination);
 
@@ -264,7 +297,7 @@ bool DataSetByFeatureCombination::Initialize(
    const IntEbmType * const aInputDataFrom, 
    const void * const aTargets, 
    const FloatEbmType * const aPredictorScoresFrom, 
-   const size_t cVectorLength
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    EBM_ASSERT(nullptr == m_aResidualErrors);
    EBM_ASSERT(nullptr == m_aPredictorScores);
@@ -272,6 +305,7 @@ bool DataSetByFeatureCombination::Initialize(
    EBM_ASSERT(nullptr == m_aaInputData);
 
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::Initialize");
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cInstances) {
       FloatEbmType * aResidualErrors = nullptr;
@@ -293,7 +327,7 @@ bool DataSetByFeatureCombination::Initialize(
       }
       StorageDataType * aTargetData = nullptr;
       if(bAllocateTargetData) {
-         aTargetData = ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets));
+         aTargetData = ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
          if(nullptr == aTargetData) {
             free(aResidualErrors);
             free(aPredictorScores);

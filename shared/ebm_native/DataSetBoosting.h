@@ -50,7 +50,7 @@ public:
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargets, 
       const FloatEbmType * const aPredictorScoresFrom, 
-      const size_t cVectorLength
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
    EBM_INLINE FloatEbmType * GetResidualPointer() {

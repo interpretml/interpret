@@ -119,10 +119,10 @@ typedef struct _EbmNativeFeatureCombination {
 } EbmNativeFeatureCombination;
 
 const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
-const signed char TraceLevelError = 1;
-const signed char TraceLevelWarning = 2;
-const signed char TraceLevelInfo = 3;
-const signed char TraceLevelVerbose = 4;
+const signed char TraceLevelError = 1; // invalid inputs to the C library or assert failure before exit
+const signed char TraceLevelWarning = 2; // out of memory or other conditions we can't continue after
+const signed char TraceLevelInfo = 3; // odd inputs like features with 1 value or empty feature groups
+const signed char TraceLevelVerbose = 4; // function calls, logging that helps us trace execution in the library
 
 // all our logging messages are pure ASCII (127 values), and therefore also UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
