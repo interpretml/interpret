@@ -1660,13 +1660,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   EBM_ASSERT(nullptr != pEbmBoostingState);
-   EBM_ASSERT(0 <= indexFeatureCombination);
-   // we wouldn't have allowed the creation of an feature set larger than size_t
-   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
+   if(nullptr == pEbmBoostingState) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination ebmBoosting cannot be nullptr");
+      return nullptr;
+   }
+   if(indexFeatureCombination < 0) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination indexFeatureCombination must be positive");
+      return nullptr;
+   }
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination indexFeatureCombination is too high to index");
+      return nullptr;
+   }
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
-
+   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination indexFeatureCombination above the number of feature groups that we have");
+      return nullptr;
+   }
    if(nullptr == pEbmBoostingState->GetBestModel()) {
       // if pEbmBoostingState->m_apBestModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
@@ -1705,13 +1716,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   EBM_ASSERT(nullptr != pEbmBoostingState);
-   EBM_ASSERT(0 <= indexFeatureCombination);
-   // we wouldn't have allowed the creation of an feature set larger than size_t
-   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
+   if(nullptr == pEbmBoostingState) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination ebmBoosting cannot be nullptr");
+      return nullptr;
+   }
+   if(indexFeatureCombination < 0) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination indexFeatureCombination must be positive");
+      return nullptr;
+   }
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination indexFeatureCombination is too high to index");
+      return nullptr;
+   }
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
-
+   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination indexFeatureCombination above the number of feature groups that we have");
+      return nullptr;
+   }
    if(nullptr == pEbmBoostingState->GetCurrentModel()) {
       // if pEbmBoostingState->m_apCurrentModel is nullptr, then either:
       //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
@@ -1744,6 +1766,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
    LOG_N(TraceLevelInfo, "Entered FreeBoosting: ebmBoosting=%p", static_cast<void *>(ebmBoosting));
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
+
+   // it's legal to call free on nullptr, just like for free().  This is checked inside EbmBoostingState::Free()
    EbmBoostingState::Free(pEbmBoostingState);
 
    LOG_0(TraceLevelInfo, "Exited FreeBoosting");
