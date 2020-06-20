@@ -1154,13 +1154,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   EBM_ASSERT(nullptr != pEbmBoostingState);
-
-   EBM_ASSERT(0 <= indexFeatureCombination);
-   // we wouldn't have allowed the creation of an feature set larger than size_t
-   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
+   if(nullptr == pEbmBoostingState) {
+      if(LIKELY(nullptr != gainReturn)) {
+         *gainReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate ebmBoosting cannot be nullptr");
+      return nullptr;
+   }
+   if(indexFeatureCombination < 0) {
+      if(LIKELY(nullptr != gainReturn)) {
+         *gainReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination must be positive");
+      return nullptr;
+   }
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      if(LIKELY(nullptr != gainReturn)) {
+         *gainReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination is too high to index");
+      return nullptr;
+   }
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
+   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+      if(LIKELY(nullptr != gainReturn)) {
+         *gainReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination above the number of feature groups that we have");
+      return nullptr;
+   }
    // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
    EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
 
@@ -1171,10 +1194,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       "Entered GenerateModelFeatureCombinationUpdate"
    );
 
-   EBM_ASSERT(!std::isnan(learningRate));
-   EBM_ASSERT(!std::isinf(learningRate));
+   if(std::isnan(learningRate)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
+   } else if(std::isinf(learningRate)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
+   } else if(0 == learningRate) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is zero");
+   } else if(learningRate < 0) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is negative");
+   }
 
-   EBM_ASSERT(0 <= countTreeSplitsMax);
+   if(countTreeSplitsMax < 0) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countTreeSplitsMax is negative.  Adjusting to zero.");
+      countTreeSplitsMax = 0;
+   } else if(0 == countTreeSplitsMax) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countTreeSplitsMax is zero.");
+   }
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
    if(!IsNumberConvertable<size_t, IntEbmType>(countTreeSplitsMax)) {
       // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate 
@@ -1446,13 +1481,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   EBM_ASSERT(nullptr != pEbmBoostingState);
-
-   EBM_ASSERT(0 <= indexFeatureCombination);
-   // we wouldn't have allowed the creation of an feature set larger than size_t
-   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)));
+   if(nullptr == pEbmBoostingState) {
+      if(LIKELY(nullptr != validationMetricReturn)) {
+         *validationMetricReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate ebmBoosting cannot be nullptr");
+      return 1;
+   }
+   if(indexFeatureCombination < 0) {
+      if(LIKELY(nullptr != validationMetricReturn)) {
+         *validationMetricReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination must be positive");
+      return 1;
+   }
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+      // we wouldn't have allowed the creation of an feature set larger than size_t
+      if(LIKELY(nullptr != validationMetricReturn)) {
+         *validationMetricReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination is too high to index");
+      return 1;
+   }
    size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   EBM_ASSERT(iFeatureCombination < pEbmBoostingState->GetCountFeatureCombinations());
+   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+      if(LIKELY(nullptr != validationMetricReturn)) {
+         *validationMetricReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination above the number of feature groups that we have");
+      return 1;
+   }
    // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
    EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
 
@@ -1462,11 +1520,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       TraceLevelVerbose, 
       "Entered ApplyModelFeatureCombinationUpdate"
    );
-
-   // modelFeatureCombinationUpdateTensor can be nullptr (then nothing gets updated)
-   // validationMetricReturn can be nullptr
-
    if(nullptr == modelFeatureCombinationUpdateTensor) {
+      // modelFeatureCombinationUpdateTensor can be nullptr (then nothing gets updated).  This could happen for
+      // if there was only 1 class, meaning we would be 100% confident in the outcome and no tensor would be retunred
+      // since we can eliminate one class, and if there's only 1 class then we eliminate all logits
       if(nullptr != validationMetricReturn) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
@@ -1548,7 +1605,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    FloatEbmType * validationMetricReturn
 ) {
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
-   EBM_ASSERT(nullptr != pEbmBoostingState);
+   if(nullptr == pEbmBoostingState) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep ebmBoosting cannot be nullptr");
+      return 1;
+   }
 
    if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
       // we need to special handle this case because if we call GenerateModelUpdate, we'll get back a nullptr for the model (since there is no model) 
@@ -1577,8 +1637,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       &gain
    );
    if(nullptr == pModelFeatureCombinationUpdateTensor) {
-      // rely on GenerateModelUpdate to set the validationMetricReturn to zero on error
-      EBM_ASSERT(nullptr == validationMetricReturn || FloatEbmType { 0 } == *validationMetricReturn);
+      // if we get back a nullptr from GenerateModelFeatureCombinationUpdate it either means that there's only
+      // 1 class in our classification problem, or it means we encountered an error.  We assume here that
+      // it was an error since the caller can check ahead of time if there was only 1 class before calling us
+      if(nullptr != validationMetricReturn) {
+         *validationMetricReturn = FloatEbmType { 0 };
+      }
       return 1;
    }
    return ApplyModelFeatureCombinationUpdate(ebmBoosting, indexFeatureCombination, pModelFeatureCombinationUpdateTensor, validationMetricReturn);
