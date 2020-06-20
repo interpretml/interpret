@@ -406,17 +406,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       static_cast<void *>(interactionScoreReturn)
    );
 
-   EBM_ASSERT(nullptr != ebmInteraction);
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
+   if(nullptr == pEbmInteractionState) {
+      if(LIKELY(nullptr != interactionScoreReturn)) {
+         *interactionScoreReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GetInteractionScore ebmInteraction cannot be nullptr");
+      return 1;
+   }
 
    LOG_COUNTED_0(pEbmInteractionState->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered GetInteractionScore");
 
-   EBM_ASSERT(0 <= countFeaturesInCombination);
-   EBM_ASSERT(0 == countFeaturesInCombination || nullptr != featureIndexes);
-   // interactionScoreReturn can be nullptr
-
+   if(countFeaturesInCombination < 0) {
+      if(LIKELY(nullptr != interactionScoreReturn)) {
+         *interactionScoreReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GetInteractionScore countFeaturesInCombination must be positive");
+      return 1;
+   }
+   if(0 != countFeaturesInCombination && nullptr == featureIndexes) {
+      if(LIKELY(nullptr != interactionScoreReturn)) {
+         *interactionScoreReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GetInteractionScore featureIndexes cannot be nullptr if 0 < countFeaturesInCombination");
+      return 1;
+   }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)");
+      if(LIKELY(nullptr != interactionScoreReturn)) {
+         *interactionScoreReturn = FloatEbmType { 0 };
+      }
+      LOG_0(TraceLevelError, "ERROR GetInteractionScore countFeaturesInCombination too large to index");
       return 1;
    }
    size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
@@ -425,11 +444,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       if(nullptr != interactionScoreReturn) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
          // caler be smarter about this condition
-         *interactionScoreReturn = 0;
+         *interactionScoreReturn = FloatEbmType { 0 };
       }
       return 0;
    }
-
    if(0 == pEbmInteractionState->GetDataSetByFeature()->GetCountInstances()) {
       // if there are zero instances, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero instances");
@@ -459,21 +477,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
 
    do {
       const IntEbmType indexFeatureInterop = *pFeatureCombinationIndex;
-      EBM_ASSERT(0 <= indexFeatureInterop);
-      if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
-         LOG_0(TraceLevelWarning, "WARNING GetInteractionScore !IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)");
+      if(indexFeatureInterop < 0) {
+         if(LIKELY(nullptr != interactionScoreReturn)) {
+            *interactionScoreReturn = FloatEbmType { 0 };
+         }
+         LOG_0(TraceLevelError, "ERROR GetInteractionScore featureIndexes value cannot be negative");
          return 1;
       }
-      size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
-      EBM_ASSERT(iFeatureForCombination < pEbmInteractionState->GetCountFeatures());
+      if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
+         if(LIKELY(nullptr != interactionScoreReturn)) {
+            *interactionScoreReturn = FloatEbmType { 0 };
+         }
+         LOG_0(TraceLevelError, "ERROR GetInteractionScore featureIndexes value too big to reference memory");
+         return 1;
+      }
+      const size_t iFeatureForCombination = static_cast<size_t>(indexFeatureInterop);
+      if(pEbmInteractionState->GetCountFeatures() <= iFeatureForCombination) {
+         if(LIKELY(nullptr != interactionScoreReturn)) {
+            *interactionScoreReturn = FloatEbmType { 0 };
+         }
+         LOG_0(TraceLevelError, "ERROR GetInteractionScore featureIndexes value must be less than the number of features");
+         return 1;
+      }
       const Feature * const pFeature = &aFeatures[iFeatureForCombination];
       if(pFeature->GetCountBins() <= 1) {
-         LOG_0(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          if(nullptr != interactionScoreReturn) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
             *interactionScoreReturn = 0;
          }
+         LOG_0(TraceLevelInfo, "INFO GetInteractionScore feature with 0/1 value");
          return 0;
       }
       ++pFeatureCombinationIndex;

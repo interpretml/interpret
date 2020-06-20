@@ -107,12 +107,25 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
       const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cInstances];
       const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cInstances];
       do {
-         const IntEbmType data = *pInputDataFrom;
-         EBM_ASSERT(0 <= data);
-         EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(data))); // data must be lower than cBins and cBins fits into a size_t which we checked earlier
-         EBM_ASSERT(static_cast<size_t>(data) < pFeature->GetCountBins());
-         EBM_ASSERT((IsNumberConvertable<StorageDataType, IntEbmType>(data)));
-         *pInputDataTo = static_cast<StorageDataType>(data);
+         const IntEbmType inputData = *pInputDataFrom;
+         if(inputData < 0) {
+            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value cannot be negative");
+            goto free_all;
+         }
+         if(!IsNumberConvertable<StorageDataType, IntEbmType>(inputData)) {
+            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
+            goto free_all;
+         }
+         if(!IsNumberConvertable<size_t, IntEbmType>(inputData)) {
+            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
+            goto free_all;
+         }
+         const size_t iData = static_cast<size_t>(inputData);
+         if(pFeature->GetCountBins() <= iData) {
+            LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData iData value must be less than the number of bins");
+            goto free_all;
+         }
+         *pInputDataTo = static_cast<StorageDataType>(inputData);
          ++pInputDataTo;
          ++pInputDataFrom;
       } while(pInputDataFromEnd != pInputDataFrom);
@@ -168,6 +181,34 @@ bool DataSetByFeature::Initialize(
 
    if(0 != cInstances) {
       // if cInstances is zero, then we don't need to allocate anything since we won't use them anyways
+
+      // check our targets since we don't use them other than for initializing residuals
+      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         const IntEbmType * pTargetFrom = static_cast<const IntEbmType *>(aTargetData);
+         const IntEbmType * const pTargetFromEnd = pTargetFrom + cInstances;
+         const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
+         do {
+            const IntEbmType data = *pTargetFrom;
+            if(data < 0) {
+               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize target value cannot be negative");
+               return true;
+            }
+            if(!IsNumberConvertable<StorageDataType, IntEbmType>(data)) {
+               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
+               return true;
+            }
+            if(!IsNumberConvertable<size_t, IntEbmType>(data)) {
+               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
+               return true;
+            }
+            const size_t iData = static_cast<size_t>(data);
+            if(countTargetClasses <= iData) {
+               LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize target value larger than number of classes");
+               return true;
+            }
+            ++pTargetFrom;
+         } while(pTargetFromEnd != pTargetFrom);
+      }
 
       FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
       if(nullptr == aResidualErrors) {
