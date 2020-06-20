@@ -68,25 +68,45 @@ EbmInteractionState * EbmInteractionState::Allocate(
          static_assert(
             FeatureType::Nominal == static_cast<FeatureType>(FeatureTypeNominal), "FeatureType::Nominal must have the same value as FeatureTypeNominal"
             );
-         EBM_ASSERT(FeatureTypeOrdinal == pFeatureInitialize->featureType || FeatureTypeNominal == pFeatureInitialize->featureType);
+         if(FeatureTypeOrdinal != pFeatureInitialize->featureType && FeatureTypeNominal != pFeatureInitialize->featureType) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate featureType must either be FeatureTypeOrdinal or FeatureTypeNominal");
+            free(aFeatures);
+            return nullptr;
+         }
          FeatureType featureType = static_cast<FeatureType>(pFeatureInitialize->featureType);
 
          IntEbmType countBins = pFeatureInitialize->countBins;
-         // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on (dimensions with 1 bin don't contribute anything 
-         // since they always have the same value)
-         EBM_ASSERT(0 <= countBins);
+         if(countBins < 0) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be negative");
+            free(aFeatures);
+            return nullptr;
+         }
+         if(0 == countBins && 0 != cInstances) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cInstances");
+            free(aFeatures);
+            return nullptr;
+         }
          if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate !IsNumberConvertable<size_t, IntEbmType>(countBins)");
+            LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate countBins is too high for us to allocate enough memory");
             free(aFeatures);
             return nullptr;
          }
          size_t cBins = static_cast<size_t>(countBins);
-         if(cBins <= 1) {
-            EBM_ASSERT(0 != cBins || 0 == cInstances);
-            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 0/1 value");
+         if(0 == cBins) {
+            // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
+            // can only occur if there were zero training and zero validation cases since the 
+            // features would require a value, even if it was 0.
+            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 0 values");
+         } else if(1 == cBins) {
+            // we can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on. 
+            // Dimensions with 1 bin don't contribute anything since they always have the same value.
+            LOG_0(TraceLevelInfo, "INFO EbmInteractionState::Allocate feature with 1 value");
          }
-
-         EBM_ASSERT(EBM_FALSE == pFeatureInitialize->hasMissing || EBM_TRUE == pFeatureInitialize->hasMissing);
+         if(EBM_FALSE != pFeatureInitialize->hasMissing && EBM_TRUE != pFeatureInitialize->hasMissing) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate hasMissing must either be EBM_TRUE or EBM_FALSE");
+            free(aFeatures);
+            return nullptr;
+         }
          bool bMissing = EBM_FALSE != pFeatureInitialize->hasMissing;
 
          aFeatures[iFeatureInitialize].Initialize(cBins, iFeatureInitialize, featureType, bMissing);
@@ -146,20 +166,36 @@ EbmInteractionState * AllocateInteraction(
 ) {
    // TODO : give AllocateInteraction the same calling parameter order as InitializeInteractionClassification
 
-   EBM_ASSERT(0 <= countFeatures);
-   EBM_ASSERT(0 == countFeatures || nullptr != features);
-   // countTargetClasses is checked by our caller since it's only valid for classification at this point
-   EBM_ASSERT(0 <= countInstances);
-   EBM_ASSERT(0 == countInstances || nullptr != targets);
-   EBM_ASSERT(0 == countInstances || 0 == countFeatures || nullptr != binnedData);
-   EBM_ASSERT(0 == countInstances || nullptr != predictorScores);
-
+   if(countFeatures < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction countFeatures must be positive");
+      return nullptr;
+   }
+   if(0 != countFeatures && nullptr == features) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction features cannot be nullptr if 0 < countFeatures");
+      return nullptr;
+   }
+   if(countInstances < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction countInstances must be positive");
+      return nullptr;
+   }
+   if(0 != countInstances && nullptr == targets) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction targets cannot be nullptr if 0 < countInstances");
+      return nullptr;
+   }
+   if(0 != countInstances && 0 != countFeatures && nullptr == binnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction binnedData cannot be nullptr if 0 < countInstances AND 0 < countFeatures");
+      return nullptr;
+   }
+   if(0 != countInstances && nullptr == predictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction predictorScores cannot be nullptr if 0 < countInstances");
+      return nullptr;
+   }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
       return nullptr;
    }
 
@@ -522,6 +558,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION FreeInteraction
    LOG_N(TraceLevelInfo, "Entered FreeInteraction: ebmInteraction=%p", static_cast<void *>(ebmInteraction));
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
 
+   // pEbmInteractionState is allowed to be nullptr.  We handle that inside EbmInteractionState::Free
    EbmInteractionState::Free(pEbmInteractionState);
    
    LOG_0(TraceLevelInfo, "Exited FreeInteraction");

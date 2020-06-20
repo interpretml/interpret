@@ -77,8 +77,7 @@ EBM_INLINE static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
    const size_t cInstances, 
-   const IntEbmType * 
-   const aBinnedData
+   const IntEbmType * const aBinnedData
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
