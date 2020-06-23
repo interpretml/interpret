@@ -27,6 +27,7 @@ public:
    }
 
    EBM_INLINE size_t GetCountBins() const {
+      StopClangAnalysis();
       return m_cBins;
    }
 

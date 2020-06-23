@@ -27,6 +27,11 @@
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("clang diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING _Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"")
+#define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+
+#if __has_feature(attribute_analyzer_noreturn)
+#define ANALYZER_NORETURN __attribute__((analyzer_noreturn))
+#endif // __has_feature(attribute_analyzer_noreturn)
 
 #elif defined(__GNUC__) // compiler type
 
@@ -36,6 +41,9 @@
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH _Pragma("GCC diagnostic ignored \"-Wsign-compare\"")
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+#define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+
+#define ANALYZER_NORETURN
 
 #elif defined(__SUNPRO_CC) // compiler type (Oracle Developer Studio)
 
@@ -51,6 +59,9 @@
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+#define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
+
+#define ANALYZER_NORETURN
 
 #elif defined(_MSC_VER) // compiler type
 
@@ -60,10 +71,12 @@
 #define WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH __pragma(warning(disable: 4018))
 #define WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO __pragma(warning(disable: 4723))
 #define WARNING_DISABLE_NON_LITERAL_PRINTF_STRING
+#define WARNING_DISABLE_USING_UNINITIALIZED_MEMORY __pragma(warning(disable: 6001))
+
+#define ANALYZER_NORETURN
 
 // disable constexpr warning, since GetVectorLength is meant to be ambiguous and it's used everywhere
 #pragma warning(disable : 26498)
-
 
 #else  // compiler type
 #error compiler not recognized
@@ -129,6 +142,8 @@
 #define INLINE_RELEASE inline
 #endif //NDEBUG
 
+EBM_INLINE void StopClangAnalysis() ANALYZER_NORETURN {
+}
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
 //   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
@@ -339,10 +354,6 @@ static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for b
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
-   assert(size_t { 1 } <= cBits);
-   return k_cBitsForStorageType / cBits;
-}
 constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
@@ -411,6 +422,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
       } else {
          const size_t cBytes = cItems * cBytesPerItem;
          // TODO: !! BEWARE: we do use realloc in some parts of our program still!!
+         StopClangAnalysis(); // for some reason Clang-analysis thinks cBytes can be zero, despite the assert above.
          T * const a = static_cast<T *>(malloc(cBytes));
          return a;
       }

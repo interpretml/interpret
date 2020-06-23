@@ -98,6 +98,8 @@ SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombina
    return pRet;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::FreeSamplingSets");
    if(LIKELY(nullptr != apSamplingSets)) {
@@ -112,6 +114,7 @@ void SamplingSet::FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** co
    }
    LOG_0(TraceLevelInfo, "Exited SamplingSet::FreeSamplingSets");
 }
+WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
    RandomStream * const pRandomStream, 

@@ -145,6 +145,8 @@ free_all:
    return nullptr;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetByFeature::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Destruct");
 
@@ -163,6 +165,7 @@ void DataSetByFeature::Destruct() {
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::Destruct");
 }
+WARNING_POP
 
 bool DataSetByFeature::Initialize(
    const size_t cFeatures, 

@@ -552,8 +552,7 @@ INLINE_RELEASE size_t SplitSegment(
    aSplitsWithENDPOINTS[0].m_iActual = 0;
    aSplitsWithENDPOINTS[iTop].m_iActual = cSplittableItems;
 
-   const FloatEbmType stepInit =
-      static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(cCENTERSplitsAssigned + 1);
+   const FloatEbmType stepInit = static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(iTop);
    for(size_t i = 1; i < iTop; ++i) {
       aSplitsWithENDPOINTS[i].m_iActual = k_SplitDeleted;
       aSplitsWithENDPOINTS[i].m_iFractionalAspirational = i * stepInit;

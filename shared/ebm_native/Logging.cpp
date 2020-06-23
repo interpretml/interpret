@@ -51,6 +51,7 @@ extern void InteralLogWithArguments(const signed char traceLevel, const char * c
 
    // clang-tidy says va_list is uninitialized, despite the call to va_start above. This is a known bug in clang-tidy.
    // DETAILS: https://stackoverflow.com/questions/58672959/why-does-clang-tidy-say-vsnprintf-has-an-uninitialized-va-list-argument
+   StopClangAnalysis();
    if(vsnprintf(messageSpace, sizeof(messageSpace) / sizeof(messageSpace[0]), pOriginalMessage, args) < 0) {
       (*g_pLogMessageFunc)(traceLevel, g_pLoggingParameterError);
    } else {

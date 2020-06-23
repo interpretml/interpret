@@ -34,6 +34,11 @@
 #include "ApplyModelUpdateTraining.h"
 #include "ApplyModelUpdateValidation.h"
 
+EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+   EBM_ASSERT(size_t { 1 } <= cBits);
+   return k_cBitsForStorageType / cBits;
+}
+
 void EbmBoostingState::DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors) {
    LOG_0(TraceLevelInfo, "Entered DeleteSegmentedTensors");
 

@@ -100,7 +100,7 @@ public:
          // eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
          constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
          if(bZeroingResiduals) {
-            *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
+            *(pResidualError - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroResidual)) = 0;
          }
       } while(pPredictorScoresEnd != pPredictorScores);
    }
@@ -282,7 +282,7 @@ public:
             // cancels eachother out.  We can thus set exp(T2 + I2) to exp(0) and adjust the other terms
             constexpr bool bZeroingResiduals = 0 <= k_iZeroResidual;
             if(bZeroingResiduals) {
-               *(pResidualError - (cVectorLength - static_cast<size_t>(k_iZeroResidual))) = 0;
+               *(pResidualError - (static_cast<ptrdiff_t>(cVectorLength) - k_iZeroResidual)) = 0;
             }
 
             iTensorBinCombined >>= cBitsPerItemMax;

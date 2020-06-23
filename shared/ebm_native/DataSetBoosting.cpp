@@ -360,6 +360,8 @@ bool DataSetByFeatureCombination::Initialize(
    return false;
 }
 
+WARNING_PUSH
+WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
 void DataSetByFeatureCombination::Destruct() {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::Destruct");
 
@@ -380,3 +382,4 @@ void DataSetByFeatureCombination::Destruct() {
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::Destruct");
 }
+WARNING_POP

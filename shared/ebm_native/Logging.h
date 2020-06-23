@@ -138,7 +138,7 @@ constexpr EBM_INLINE bool AlwaysFalse() {
 // of the assert that triggered the failure. Any string will have a non-zero pointer, so negating it will always fail, and we'll get to see the text of 
 // the original failure in the message this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion 
 // failures without using the undocumented function that assert calls internally on each platform
-#define EBM_ASSERT(bCondition) ((void)(LIKELY(bCondition) ? 0 : (LogAssertFailure(static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), 0)))
+#define EBM_ASSERT(bCondition) ((void)(LIKELY(bCondition) || (LogAssertFailure(static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), StopClangAnalysis(), 0)))
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG
