@@ -1342,15 +1342,11 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
 
    if(0 != pEbmBoostingState->GetTrainingSet()->GetCountInstances()) {
-      FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
-
-      OptimizedApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
-         false,
+      ApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
+         pEbmBoostingState,
          pFeatureCombination,
-         pEbmBoostingState->GetTrainingSet(),
          aModelFeatureCombinationUpdateTensor,
-         aTempFloatVector
+         false
       );
    }
 
@@ -1367,13 +1363,12 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // but it isn't guaranteed, so let's check for zero instances in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = OptimizedApplyModelUpdateValidation<compilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
-         false,
+      modelMetric = ApplyModelUpdateValidation<compilerLearningTypeOrCountTargetClasses>(
+         pEbmBoostingState,
          pFeatureCombination,
-         pEbmBoostingState->GetValidationSet(),
-         aModelFeatureCombinationUpdateTensor
-         );
+         aModelFeatureCombinationUpdateTensor,
+         false
+      );
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
       EBM_ASSERT(!std::isinf(modelMetric)); // +infinity can happen, but we should have converted it

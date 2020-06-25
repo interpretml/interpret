@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
-#define OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
+#ifndef APPLY_MODEL_UPDATE_TRAINING_H
+#define APPLY_MODEL_UPDATE_TRAINING_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -20,16 +20,18 @@
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class OptimizedApplyModelUpdateTrainingZeroFeatures {
+class ApplyModelUpdateTrainingZeroFeatures {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      EbmBoostingState * const pEbmBoostingState,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
+      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
@@ -108,16 +110,13 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class OptimizedApplyModelUpdateTrainingZeroFeatures<2> {
+class ApplyModelUpdateTrainingZeroFeatures<2> {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      EbmBoostingState * const pEbmBoostingState,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -142,19 +141,15 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class OptimizedApplyModelUpdateTrainingZeroFeatures<k_Regression> {
+class ApplyModelUpdateTrainingZeroFeatures<k_Regression> {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      EbmBoostingState * const pEbmBoostingState,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
@@ -169,18 +164,20 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateTrainingInternal {
+class ApplyModelUpdateTrainingInternal {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
+      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
          k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
@@ -300,18 +297,16 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateTrainingInternal<2, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateTrainingInternal<2, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
@@ -382,18 +377,16 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateTrainingInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateTrainingInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static void Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
-      UNUSED(aTempFloatVector);
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
@@ -440,8 +433,6 @@ public:
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
 
-
-
             *pResidualError = residualError;
             ++pResidualError;
 
@@ -459,85 +450,68 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class OptimizedApplyModelUpdateTrainingCompiler {
+class ApplyModelUpdateTrainingCompiler {
 public:
    EBM_INLINE static void MagicCompilerLoopFunction(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
-            runtimeCountItemsPerBitPackedDataUnit,
+         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
+            pEbmBoostingState,
             pFeatureCombination,
-            pTrainingSet,
-            aModelFeatureCombinationUpdateTensor,
-            aTempFloatVector
+            aModelFeatureCombinationUpdateTensor
          );
       } else {
-         OptimizedApplyModelUpdateTrainingCompiler<
+         ApplyModelUpdateTrainingCompiler<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::MagicCompilerLoopFunction(
-            runtimeLearningTypeOrCountTargetClasses,
-            runtimeCountItemsPerBitPackedDataUnit,
+            pEbmBoostingState,
             pFeatureCombination,
-            pTrainingSet,
-            aModelFeatureCombinationUpdateTensor,
-            aTempFloatVector
+            aModelFeatureCombinationUpdateTensor
          );
       }
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class OptimizedApplyModelUpdateTrainingCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateTrainingCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static void MagicCompilerLoopFunction(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pTrainingSet,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-      FloatEbmType * const aTempFloatVector
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
-         runtimeCountItemsPerBitPackedDataUnit,
+      EBM_ASSERT(1 <= pFeatureCombination->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureCombination->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         pEbmBoostingState,
          pFeatureCombination,
-         pTrainingSet,
-         aModelFeatureCombinationUpdateTensor,
-         aTempFloatVector
+         aModelFeatureCombinationUpdateTensor
       );
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-EBM_INLINE static void OptimizedApplyModelUpdateTraining(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const bool bUseSIMD,
+EBM_INLINE static void ApplyModelUpdateTraining(
+   EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
-   DataSetByFeatureCombination * const pTrainingSet,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-   FloatEbmType * const aTempFloatVector
+   const bool bUseSIMD
 ) {
-   LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateTraining");
+   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateTraining");
 
    if(0 == pFeatureCombination->GetCountFeatures()) {
-      OptimizedApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
-         pTrainingSet,
-         aModelFeatureCombinationUpdateTensor,
-         aTempFloatVector
+      ApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
+         pEbmBoostingState,
+         aModelFeatureCombinationUpdateTensor
       );
    } else {
       if(bUseSIMD) {
@@ -553,16 +527,13 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
          // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
-         OptimizedApplyModelUpdateTrainingCompiler<
+         ApplyModelUpdateTrainingCompiler<
             compilerLearningTypeOrCountTargetClasses,
             k_cItemsPerBitPackedDataUnitMax
          >::MagicCompilerLoopFunction(
-            runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
+            pEbmBoostingState,
             pFeatureCombination,
-            pTrainingSet,
-            aModelFeatureCombinationUpdateTensor,
-            aTempFloatVector
+            aModelFeatureCombinationUpdateTensor
          );
       } else {
          // there isn't much benefit in eliminating the loop that unpacks a data unit unless we're also unpacking that to SIMD code
@@ -570,18 +541,15 @@ EBM_INLINE static void OptimizedApplyModelUpdateTraining(
          // have more than 8 values per memory fetch.  Eliminating the inner loop for multiclass is valuable since we can have low numbers like 3 class,
          // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
-         OptimizedApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
+         ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            pEbmBoostingState,
             pFeatureCombination,
-            pTrainingSet,
-            aModelFeatureCombinationUpdateTensor,
-            aTempFloatVector
+            aModelFeatureCombinationUpdateTensor
          );
       }
    }
 
-   LOG_0(TraceLevelVerbose, "Exited OptimizedApplyModelUpdateTraining");
+   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateTraining");
 }
 
-#endif // OPTIMIZED_APPLY_MODEL_UPDATE_TRAINING_H
+#endif // APPLY_MODEL_UPDATE_TRAINING_H

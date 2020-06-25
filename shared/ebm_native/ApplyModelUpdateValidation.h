@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef OPTIMIZED_APPLY_MODEL_UPDATE_VALIDATION_H
-#define OPTIMIZED_APPLY_MODEL_UPDATE_VALIDATION_H
+#ifndef APPLY_MODEL_UPDATE_VALIDATION_H
+#define APPLY_MODEL_UPDATE_VALIDATION_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -20,15 +20,17 @@
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class OptimizedApplyModelUpdateValidationZeroFeatures {
+class ApplyModelUpdateValidationZeroFeatures {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pValidationSet,
+      EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
+      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -80,14 +82,13 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class OptimizedApplyModelUpdateValidationZeroFeatures<2> {
+class ApplyModelUpdateValidationZeroFeatures<2> {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pValidationSet,
+      EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -113,14 +114,13 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class OptimizedApplyModelUpdateValidationZeroFeatures<k_Regression> {
+class ApplyModelUpdateValidationZeroFeatures<k_Regression> {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      DataSetByFeatureCombination * const pValidationSet,
+      EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -142,17 +142,19 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateValidationInternal {
+class ApplyModelUpdateValidationInternal {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pValidationSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
+      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -244,16 +246,16 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateValidationInternal<2, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateValidationInternal<2, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pValidationSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
+
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
@@ -325,16 +327,16 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class OptimizedApplyModelUpdateValidationInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateValidationInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static FloatEbmType Func(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pValidationSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      UNUSED(runtimeLearningTypeOrCountTargetClasses);
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureCombination * const pValidationSet = pEbmBoostingState->GetValidationSet();
+
       const size_t cInstances = pValidationSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
       EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
@@ -353,7 +355,6 @@ public:
       FloatEbmType sumSquareError = FloatEbmType { 0 };
       FloatEbmType * pResidualError = pValidationSet->GetResidualPointer();
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureCombination);
-
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cInstances;
@@ -401,35 +402,31 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class OptimizedApplyModelUpdateValidationCompiler {
+class ApplyModelUpdateValidationCompiler {
 public:
    EBM_INLINE static FloatEbmType MagicCompilerLoopFunction(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pValidationSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
       static_assert(compilerCountItemsPerBitPackedDataUnitPossible <= k_cBitsForStorageType, "We can't have this many items in a data pack.");
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
-         return OptimizedApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
-            runtimeCountItemsPerBitPackedDataUnit,
+         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
+            pEbmBoostingState,
             pFeatureCombination,
-            pValidationSet,
             aModelFeatureCombinationUpdateTensor
          );
       } else {
-         return OptimizedApplyModelUpdateValidationCompiler<
+         return ApplyModelUpdateValidationCompiler<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::MagicCompilerLoopFunction(
-            runtimeLearningTypeOrCountTargetClasses,
-            runtimeCountItemsPerBitPackedDataUnit,
+            pEbmBoostingState,
             pFeatureCombination,
-            pValidationSet,
             aModelFeatureCombinationUpdateTensor
          );
       }
@@ -437,42 +434,36 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class OptimizedApplyModelUpdateValidationCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateValidationCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static FloatEbmType MagicCompilerLoopFunction(
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t runtimeCountItemsPerBitPackedDataUnit,
+      EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
-      DataSetByFeatureCombination * const pValidationSet,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
-      EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
-      EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
-      return OptimizedApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
-         runtimeCountItemsPerBitPackedDataUnit,
+      EBM_ASSERT(1 <= pFeatureCombination->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureCombination->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         pEbmBoostingState,
          pFeatureCombination,
-         pValidationSet,
          aModelFeatureCombinationUpdateTensor
       );
    }
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const bool bUseSIMD,
+EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
+   EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
-   DataSetByFeatureCombination * const pValidationSet,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+   const bool bUseSIMD
 ) {
-   LOG_0(TraceLevelVerbose, "Entered OptimizedApplyModelUpdateValidation");
+   LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateValidation");
 
    FloatEbmType ret;
    if(0 == pFeatureCombination->GetCountFeatures()) {
-      ret = OptimizedApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
-         runtimeLearningTypeOrCountTargetClasses,
-         pValidationSet,
+      ret = ApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
+         pEbmBoostingState,
          aModelFeatureCombinationUpdateTensor
       );
    } else {
@@ -489,14 +480,12 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
          // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
-         ret = OptimizedApplyModelUpdateValidationCompiler<
+         ret = ApplyModelUpdateValidationCompiler<
             compilerLearningTypeOrCountTargetClasses,
             k_cItemsPerBitPackedDataUnitMax
          >::MagicCompilerLoopFunction(
-            runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
+            pEbmBoostingState,
             pFeatureCombination,
-            pValidationSet,
             aModelFeatureCombinationUpdateTensor
          );
       } else {
@@ -505,11 +494,9 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
          // have more than 8 values per memory fetch.  Eliminating the inner loop for multiclass is valuable since we can have low numbers like 3 class,
          // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
-         ret = OptimizedApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination->GetCountItemsPerBitPackedDataUnit(),
+         ret = ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            pEbmBoostingState,
             pFeatureCombination,
-            pValidationSet,
             aModelFeatureCombinationUpdateTensor
          );
       }
@@ -543,9 +530,9 @@ EBM_INLINE static FloatEbmType OptimizedApplyModelUpdateValidation(
    EBM_ASSERT(!std::isinf(ret));
    EBM_ASSERT(FloatEbmType { 0 } <= ret);
 
-   LOG_0(TraceLevelVerbose, "Exited OptimizedApplyModelUpdateValidation");
+   LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateValidation");
 
    return ret;
 }
 
-#endif // OPTIMIZED_APPLY_MODEL_UPDATE_VALIDATION_H
+#endif // APPLY_MODEL_UPDATE_VALIDATION_H

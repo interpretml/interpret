@@ -25,6 +25,9 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       FloatEbmType * const aTempFloatVector
    ) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
+      static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
+
       LOG_0(TraceLevelInfo, "Entered InitializeResiduals");
 
       // TODO : review this function to see if iZeroResidual was set to a valid index, does that affect the number of items in pPredictorScores (I assume so), 
@@ -35,9 +38,6 @@ public:
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
       EBM_ASSERT(nullptr != pResidualError);
-
-      EBM_ASSERT(IsClassification(compilerLearningTypeOrCountTargetClasses));
-      EBM_ASSERT(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses));
 
       FloatEbmType aLocalExpVector[
          k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
