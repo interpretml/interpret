@@ -493,7 +493,7 @@ public:
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
 class ApplyModelUpdateTrainingNormalTarget {
 public:
-   EBM_INLINE static FloatEbmType Func(
+   EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -526,7 +526,7 @@ public:
 template<>
 class ApplyModelUpdateTrainingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
 public:
-   EBM_INLINE static FloatEbmType Func(
+   EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -598,7 +598,7 @@ public:
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
 class ApplyModelUpdateTrainingSIMDTarget {
 public:
-   EBM_INLINE static FloatEbmType Func(
+   EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -634,7 +634,7 @@ public:
 template<>
 class ApplyModelUpdateTrainingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
 public:
-   EBM_INLINE static FloatEbmType Func(
+   EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
