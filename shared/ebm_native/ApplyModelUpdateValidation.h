@@ -48,12 +48,13 @@ public:
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-
          const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
          FloatEbmType itemExp = FloatEbmType { 0 };
          FloatEbmType sumExp = FloatEbmType { 0 };
          size_t iVector = 0;
          do {
+            // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the
+            // compiler could reason about their visibility and optimize small arrays into registers
             const FloatEbmType smallChangeToPredictorScores = *pValues;
             ++pValues;
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
@@ -65,8 +66,6 @@ public:
             sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
-         // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and probably 
-         // even more expensive than an unconditional branch
          const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
             sumExp,
             itemExp
@@ -138,6 +137,56 @@ public:
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
       return sumSquareError / cInstances;
+   }
+};
+
+template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+class ApplyModelUpdateValidationZeroFeaturesTarget {
+public:
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
+      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+
+      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
+         return ApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
+            pEbmBoostingState,
+            aModelFeatureCombinationUpdateTensor
+         );
+      } else {
+         return ApplyModelUpdateValidationZeroFeaturesTarget<
+            compilerLearningTypeOrCountTargetClassesPossible + 1
+         >::Func(
+            pEbmBoostingState,
+            aModelFeatureCombinationUpdateTensor
+         );
+      }
+   }
+};
+
+template<>
+class ApplyModelUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+public:
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
+
+      return ApplyModelUpdateValidationZeroFeatures<k_DynamicClassification>::Func(
+         pEbmBoostingState,
+         aModelFeatureCombinationUpdateTensor
+      );
    }
 };
 
@@ -221,8 +270,6 @@ public:
                sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
-            // TODO: store the result of std::exp above for the index that we care about above since exp(..) is going to be expensive and 
-            // probably even more expensive than an unconditional branch
             const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
                sumExp,
                itemExp
@@ -401,10 +448,65 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class ApplyModelUpdateValidationCompiler {
+template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+class ApplyModelUpdateValidationNormalTarget {
 public:
-   EBM_INLINE static FloatEbmType MagicCompilerLoopFunction(
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
+      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+
+      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
+         return ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            pEbmBoostingState,
+            pFeatureCombination,
+            aModelFeatureCombinationUpdateTensor
+         );
+      } else {
+         return ApplyModelUpdateValidationNormalTarget<
+            compilerLearningTypeOrCountTargetClassesPossible + 1
+         >::Func(
+            pEbmBoostingState,
+            pFeatureCombination,
+            aModelFeatureCombinationUpdateTensor
+         );
+      }
+   }
+};
+
+template<>
+class ApplyModelUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+public:
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
+
+      return ApplyModelUpdateValidationInternal<k_DynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+         pEbmBoostingState,
+         pFeatureCombination,
+         aModelFeatureCombinationUpdateTensor
+      );
+   }
+};
+
+template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
+class ApplyModelUpdateValidationPacking {
+public:
+   EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -421,10 +523,10 @@ public:
             aModelFeatureCombinationUpdateTensor
          );
       } else {
-         return ApplyModelUpdateValidationCompiler<
+         return ApplyModelUpdateValidationPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
-         >::MagicCompilerLoopFunction(
+         >::Func(
             pEbmBoostingState,
             pFeatureCombination,
             aModelFeatureCombinationUpdateTensor
@@ -434,9 +536,9 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationCompiler<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateValidationPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
-   EBM_INLINE static FloatEbmType MagicCompilerLoopFunction(
+   EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -451,8 +553,68 @@ public:
    }
 };
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
+template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
+class ApplyModelUpdateValidationSIMDTarget {
+public:
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
+      static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
+
+      if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
+         return ApplyModelUpdateValidationPacking<
+            compilerLearningTypeOrCountTargetClassesPossible,
+            k_cItemsPerBitPackedDataUnitMax
+         >::Func(
+            pEbmBoostingState,
+            pFeatureCombination,
+            aModelFeatureCombinationUpdateTensor
+         );
+      } else {
+         return ApplyModelUpdateValidationSIMDTarget<
+            compilerLearningTypeOrCountTargetClassesPossible + 1
+         >::Func(
+            pEbmBoostingState,
+            pFeatureCombination,
+            aModelFeatureCombinationUpdateTensor
+         );
+      }
+   }
+};
+
+template<>
+class ApplyModelUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+public:
+   EBM_INLINE static FloatEbmType Func(
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
+      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   ) {
+      static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
+
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+      EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
+
+      return ApplyModelUpdateValidationPacking<
+         k_DynamicClassification,
+         k_cItemsPerBitPackedDataUnitMax
+      >::Func(
+         pEbmBoostingState,
+         pFeatureCombination,
+         aModelFeatureCombinationUpdateTensor
+      );
+   }
+};
+
+static FloatEbmType ApplyModelUpdateValidation(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
@@ -460,12 +622,22 @@ EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateValidation");
 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+
    FloatEbmType ret;
    if(0 == pFeatureCombination->GetCountFeatures()) {
-      ret = ApplyModelUpdateValidationZeroFeatures<compilerLearningTypeOrCountTargetClasses>::Func(
-         pEbmBoostingState,
-         aModelFeatureCombinationUpdateTensor
-      );
+      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         ret = ApplyModelUpdateValidationZeroFeaturesTarget<2>::Func(
+            pEbmBoostingState,
+            aModelFeatureCombinationUpdateTensor
+         );
+      } else {
+         EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+         ret = ApplyModelUpdateValidationZeroFeatures<k_Regression>::Func(
+            pEbmBoostingState,
+            aModelFeatureCombinationUpdateTensor
+         );
+      }
    } else {
       if(bUseSIMD) {
          // TODO : enable SIMD(AVX-512) to work
@@ -480,25 +652,44 @@ EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
          // 8 - do all 8 at a time without an inner loop.  This is one of the most common values.  256 binned values
          // 7,6,5,4,3,2,1 - use a mask to exclude the non-used conditions and process them like the 8.  These are rare since they require more than 256 values
 
-         ret = ApplyModelUpdateValidationCompiler<
-            compilerLearningTypeOrCountTargetClasses,
-            k_cItemsPerBitPackedDataUnitMax
-         >::MagicCompilerLoopFunction(
-            pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
-         );
+         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+            ret = ApplyModelUpdateValidationSIMDTarget<2>::Func(
+               pEbmBoostingState,
+               pFeatureCombination,
+               aModelFeatureCombinationUpdateTensor
+            );
+         } else {
+            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            ret = ApplyModelUpdateValidationPacking<
+               k_Regression,
+               k_cItemsPerBitPackedDataUnitMax
+            >::Func(
+               pEbmBoostingState,
+               pFeatureCombination,
+               aModelFeatureCombinationUpdateTensor
+            );
+         }
       } else {
          // there isn't much benefit in eliminating the loop that unpacks a data unit unless we're also unpacking that to SIMD code
          // Our default packing structure is to bin continuous values to 256 values, and we have 64 bit packing structures, so we usually
          // have more than 8 values per memory fetch.  Eliminating the inner loop for multiclass is valuable since we can have low numbers like 3 class,
          // 4 class, etc, but by the time we get to 8 loops with exp inside and a lot of other instructures we should worry that our code expansion
          // will exceed the L1 instruction cache size.  With SIMD we do 8 times the work in the same number of instructions so these are lesser issues
-         ret = ApplyModelUpdateValidationInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
-            pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
-         );
+
+         if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+            ret = ApplyModelUpdateValidationNormalTarget<2>::Func(
+               pEbmBoostingState,
+               pFeatureCombination,
+               aModelFeatureCombinationUpdateTensor
+            );
+         } else {
+            EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+            ret = ApplyModelUpdateValidationInternal<k_Regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+               pEbmBoostingState,
+               pFeatureCombination,
+               aModelFeatureCombinationUpdateTensor
+            );
+         }
       }
    }
 
@@ -508,7 +699,7 @@ EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
       // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
       ret = std::numeric_limits<FloatEbmType>::max();
    } else {
-      if(IsClassification(compilerLearningTypeOrCountTargetClasses)) {
+      if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          if(UNLIKELY(ret < FloatEbmType { 0 })) {
             // regression can't be negative since squares are pretty well insulated from ever doing that
 
@@ -518,7 +709,7 @@ EBM_INLINE static FloatEbmType ApplyModelUpdateValidation(
             // doesn't ever return a negative number for numbers exactly equal to 1 or higher
             // BUT we're going to be using or trying approximate log functions, and those might not
             // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
-            EBM_ASSERT(IsMulticlass(compilerLearningTypeOrCountTargetClasses));
+            EBM_ASSERT(IsMulticlass(runtimeLearningTypeOrCountTargetClasses));
 
             // because of floating point inexact reasons, ComputeSingleInstanceLogLossMulticlass can return a negative number
             // so correct this before we return.  Any negative numbers were really meant to be zero

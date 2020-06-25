@@ -1307,14 +1307,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
+static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
    EbmBoostingState * const pEbmBoostingState, 
    const size_t iFeatureCombination, 
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor, 
    FloatEbmType * const pValidationMetricReturn
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdateInternal");
 
    // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
@@ -1342,7 +1341,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
    const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
 
    if(0 != pEbmBoostingState->GetTrainingSet()->GetCountInstances()) {
-      ApplyModelUpdateTraining<compilerLearningTypeOrCountTargetClasses>(
+      ApplyModelUpdateTraining(
          pEbmBoostingState,
          pFeatureCombination,
          aModelFeatureCombinationUpdateTensor,
@@ -1363,7 +1362,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       // but it isn't guaranteed, so let's check for zero instances in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
-      modelMetric = ApplyModelUpdateValidation<compilerLearningTypeOrCountTargetClasses>(
+      modelMetric = ApplyModelUpdateValidation(
          pEbmBoostingState,
          pFeatureCombination,
          aModelFeatureCombinationUpdateTensor,
@@ -1390,7 +1389,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = FloatEbmType { 0 }; // on error set it to something instead of random bits
                }
-               LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdatePerTargetClasses with memory allocation error in copy");
+               LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdateInternal with memory allocation error in copy");
                return 1;
             }
             ++iModel;
@@ -1401,59 +1400,8 @@ static IntEbmType ApplyModelFeatureCombinationUpdatePerTargetClasses(
       *pValidationMetricReturn = modelMetric;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdateInternal");
    return 0;
-}
-
-template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE IntEbmType CompilerRecursiveApplyModelFeatureCombinationUpdate(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmBoostingState * const pEbmBoostingState, 
-   const size_t iFeatureCombination, 
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor, 
-   FloatEbmType * const pValidationMetricReturn
-) {
-   static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   if(possibleCompilerLearningTypeOrCountTargetClasses == runtimeLearningTypeOrCountTargetClasses) {
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return ApplyModelFeatureCombinationUpdatePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         aModelFeatureCombinationUpdateTensor, 
-         pValidationMetricReturn
-      );
-   } else {
-      return CompilerRecursiveApplyModelFeatureCombinationUpdate<possibleCompilerLearningTypeOrCountTargetClasses + 1>(
-         runtimeLearningTypeOrCountTargetClasses, 
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         aModelFeatureCombinationUpdateTensor, 
-         pValidationMetricReturn
-      );
-   }
-}
-
-template<>
-EBM_INLINE IntEbmType CompilerRecursiveApplyModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmBoostingState * const pEbmBoostingState, 
-   const size_t iFeatureCombination, 
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor, 
-   FloatEbmType * const pValidationMetricReturn
-) {
-   UNUSED(runtimeLearningTypeOrCountTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target class, so let our runtime system handle 
-   // those unlikley and uninteresting cases
-   static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return ApplyModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(
-      pEbmBoostingState, 
-      iFeatureCombination, 
-      aModelFeatureCombinationUpdateTensor, 
-      pValidationMetricReturn
-   );
 }
 
 // we made this a global because if we had put this variable inside the EbmBoostingState object, then we would need to dereference that before 
@@ -1536,42 +1484,32 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       return 0;
    }
 
-   IntEbmType ret;
-   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
-      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
-         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
-         // length array logits, which means for our representation that we have zero items in the array total.
-         // since we can predit the output with 100% accuracy, our log loss is 0.
-         if(nullptr != validationMetricReturn) {
-            *validationMetricReturn = 0;
-         }
-         LOG_COUNTED_0(
-            pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
-            TraceLevelInfo, 
-            TraceLevelVerbose, 
-            "Exited ApplyModelFeatureCombinationUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
-         );
-         return 0;
+   if(ptrdiff_t { 1 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
+      // length array logits, which means for our representation that we have zero items in the array total.
+      // since we can predit the output with 100% accuracy, our log loss is 0.
+      if(nullptr != validationMetricReturn) {
+         *validationMetricReturn = 0;
       }
-      ret = CompilerRecursiveApplyModelFeatureCombinationUpdate<2>(
-         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         modelFeatureCombinationUpdateTensor, 
-         validationMetricReturn
+      LOG_COUNTED_0(
+         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         TraceLevelInfo,
+         TraceLevelVerbose,
+         "Exited ApplyModelFeatureCombinationUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
       );
-   } else {
-      EBM_ASSERT(IsRegression(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      ret = ApplyModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         modelFeatureCombinationUpdateTensor, 
-         validationMetricReturn
-      );
+      return 0;
    }
+
+   IntEbmType ret = ApplyModelFeatureCombinationUpdateInternal(
+      pEbmBoostingState, 
+      iFeatureCombination, 
+      modelFeatureCombinationUpdateTensor, 
+      validationMetricReturn
+   );
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureCombinationUpdate returned %" IntEbmTypePrintf, ret);
    }
+
    if(nullptr != validationMetricReturn) {
       EBM_ASSERT(!std::isnan(*validationMetricReturn)); // NaNs can happen, but we should have edited those before here
       EBM_ASSERT(!std::isinf(*validationMetricReturn)); // infinities can happen, but we should have edited those before here
