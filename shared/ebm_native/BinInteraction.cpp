@@ -53,8 +53,9 @@ public:
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
 
-      size_t cFeatures = pFeatureCombination->GetCountFeatures();
-      EBM_ASSERT(1 <= cFeatures); // for interactions, we just return 0 for interactions with zero features
+      EBM_ASSERT(2 <= pFeatureCombination->GetCountFeatures()); // for interactions, we just return 0 for interactions with zero features
+      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+
       for(size_t iInstance = 0; pResidualErrorEnd != pResidualError; ++iInstance) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -85,7 +86,7 @@ public:
             iBucket += cBuckets * iBin;
             cBuckets *= cBins;
             ++iDimension;
-         } while(iDimension < cFeatures);
+         } while(iDimension < cDimensions);
 
          HistogramBucket<bClassification> * pHistogramBucketEntry =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
