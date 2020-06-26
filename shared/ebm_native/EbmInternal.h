@@ -273,10 +273,10 @@ static_assert(
 typedef size_t StorageDataType;
 typedef UIntEbmType ActiveDataType;
 
-constexpr ptrdiff_t k_Regression = -1;
-constexpr ptrdiff_t k_DynamicClassification = 0;
+constexpr ptrdiff_t k_regression = -1;
+constexpr ptrdiff_t k_dynamicClassification = 0;
 constexpr EBM_INLINE bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) {
-   return k_Regression == learningTypeOrCountTargetClasses;
+   return k_regression == learningTypeOrCountTargetClasses;
 }
 constexpr EBM_INLINE bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
    return 0 <= learningTypeOrCountTargetClasses;
@@ -309,7 +309,7 @@ constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountT
 // having compile time counts of the target count of classes should allow for loop elimination in most cases and the restoration of SIMD instructions in
 // places where you couldn't do so with variable loop iterations
 #define GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(MACRO_compilerLearningTypeOrCountTargetClasses, MACRO_runtimeLearningTypeOrCountTargetClasses) \
-   (k_DynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : \
+   (k_dynamicClassification == (MACRO_compilerLearningTypeOrCountTargetClasses) ? (MACRO_runtimeLearningTypeOrCountTargetClasses) : \
    (MACRO_compilerLearningTypeOrCountTargetClasses))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
@@ -320,7 +320,7 @@ constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountT
 // TODO: use this macro more
 // TODO: do we really need the static_cast to size_t here?
 #define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_compilerCountDimensions, MACRO_runtimeCountDimensions) \
-   (k_DynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
+   (k_dynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
@@ -364,7 +364,7 @@ static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
 static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
    "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
 
-constexpr size_t k_DynamicDimensions = 0;
+constexpr size_t k_dynamicDimensions = 0;
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 

@@ -40,9 +40,9 @@ public:
       EBM_ASSERT(nullptr != pResidualError);
 
       FloatEbmType aLocalExpVector[
-         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
       ];
-      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -160,7 +160,7 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class InitializeResiduals<k_Regression> {
+class InitializeResiduals<k_regression> {
 public:
    static void Func(
       const size_t cInstances,

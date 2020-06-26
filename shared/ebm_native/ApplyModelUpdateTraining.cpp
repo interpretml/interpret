@@ -35,9 +35,9 @@ public:
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
-         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
       ];
-      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -138,7 +138,7 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateTrainingZeroFeatures<k_Regression> {
+class ApplyModelUpdateTrainingZeroFeatures<k_regression> {
 public:
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -202,7 +202,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingZeroFeatures<k_DynamicClassification>::Func(
+      ApplyModelUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(
          pEbmBoostingState,
          aModelFeatureCombinationUpdateTensor
       );
@@ -226,9 +226,9 @@ public:
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
-         k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
+         k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? 1 : GetVectorLength(compilerLearningTypeOrCountTargetClasses)
       ];
-      FloatEbmType * const aExpVector = k_DynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
+      FloatEbmType * const aExpVector = k_dynamicClassification == compilerLearningTypeOrCountTargetClasses ? aTempFloatVector : aLocalExpVector;
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
          compilerLearningTypeOrCountTargetClasses,
@@ -419,7 +419,7 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateTrainingInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -536,7 +536,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingInternal<k_DynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
          pFeatureCombination,
          aModelFeatureCombinationUpdateTensor
@@ -644,7 +644,7 @@ public:
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
       ApplyModelUpdateTrainingPacking<
-         k_DynamicClassification,
+         k_dynamicClassification,
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
          pEbmBoostingState,
@@ -672,7 +672,7 @@ extern void ApplyModelUpdateTraining(
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-         ApplyModelUpdateTrainingZeroFeatures<k_Regression>::Func(
+         ApplyModelUpdateTrainingZeroFeatures<k_regression>::Func(
             pEbmBoostingState,
             aModelFeatureCombinationUpdateTensor
          );
@@ -700,7 +700,7 @@ extern void ApplyModelUpdateTraining(
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyModelUpdateTrainingPacking<
-               k_Regression,
+               k_regression,
                k_cItemsPerBitPackedDataUnitMax
             >::Func(
                pEbmBoostingState,
@@ -723,7 +723,7 @@ extern void ApplyModelUpdateTraining(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingInternal<k_Regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
                pEbmBoostingState,
                pFeatureCombination,
                aModelFeatureCombinationUpdateTensor

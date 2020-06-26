@@ -114,7 +114,7 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateValidationZeroFeatures<k_Regression> {
+class ApplyModelUpdateValidationZeroFeatures<k_regression> {
 public:
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -183,7 +183,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationZeroFeatures<k_DynamicClassification>::Func(
+      return ApplyModelUpdateValidationZeroFeatures<k_dynamicClassification>::Func(
          pEbmBoostingState,
          aModelFeatureCombinationUpdateTensor
       );
@@ -374,7 +374,7 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal<k_Regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateValidationInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> {
 public:
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -494,7 +494,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationInternal<k_DynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+      return ApplyModelUpdateValidationInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
          pFeatureCombination,
          aModelFeatureCombinationUpdateTensor
@@ -602,7 +602,7 @@ public:
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
       return ApplyModelUpdateValidationPacking<
-         k_DynamicClassification,
+         k_dynamicClassification,
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
          pEbmBoostingState,
@@ -631,7 +631,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-         ret = ApplyModelUpdateValidationZeroFeatures<k_Regression>::Func(
+         ret = ApplyModelUpdateValidationZeroFeatures<k_regression>::Func(
             pEbmBoostingState,
             aModelFeatureCombinationUpdateTensor
          );
@@ -659,7 +659,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ret = ApplyModelUpdateValidationPacking<
-               k_Regression,
+               k_regression,
                k_cItemsPerBitPackedDataUnitMax
             >::Func(
                pEbmBoostingState,
@@ -682,7 +682,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationInternal<k_Regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
+            ret = ApplyModelUpdateValidationInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
                pEbmBoostingState,
                pFeatureCombination,
                aModelFeatureCombinationUpdateTensor

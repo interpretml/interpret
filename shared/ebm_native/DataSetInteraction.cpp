@@ -54,7 +54,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
             free(aResidualErrors);
             return nullptr;
          }
-         InitializeResiduals<k_DynamicClassification>::Func(
+         InitializeResiduals<k_dynamicClassification>::Func(
             cInstances, 
             aTargetData, 
             aPredictorScores, 
@@ -66,7 +66,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResiduals<k_Regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_Regression, nullptr);
+      InitializeResiduals<k_regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_regression, nullptr);
    }
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");

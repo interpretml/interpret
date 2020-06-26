@@ -291,7 +291,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    PEbmInteraction pEbmInteraction = reinterpret_cast<PEbmInteraction>(AllocateInteraction(
       countFeatures, 
       features, 
-      k_Regression, 
+      k_regression, 
       countInstances, 
       targets, 
       binnedData, 
@@ -373,7 +373,7 @@ EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedT
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GetInteractionScorePerTargetClasses<k_DynamicClassification>(
+   return GetInteractionScorePerTargetClasses<k_dynamicClassification>(
       pEbmInteractionState, 
       pFeatureCombination, 
       cInstancesRequiredForChildSplitMin, 
@@ -559,7 +559,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       );
    } else {
       EBM_ASSERT(IsRegression(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      ret = GetInteractionScorePerTargetClasses<k_Regression>(
+      ret = GetInteractionScorePerTargetClasses<k_regression>(
          pEbmInteractionState, 
          pFeatureCombination, 
          cInstancesRequiredForChildSplitMin, 

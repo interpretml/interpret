@@ -186,7 +186,7 @@ public:
    ) {
       EBM_ASSERT(2 <= pFeatureCombination->GetCountFeatures());
       EBM_ASSERT(pFeatureCombination->GetCountFeatures() <= k_cDimensionsMax);
-      BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_DynamicDimensions>::Func(
+      BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          pEbmInteractionState,
          pFeatureCombination,
          aHistogramBuckets
@@ -253,7 +253,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      BinInteractionDimensions<k_DynamicClassification, 2>::Func(
+      BinInteractionDimensions<k_dynamicClassification, 2>::Func(
          pEbmInteractionState,
          pFeatureCombination,
          aHistogramBuckets
@@ -285,7 +285,7 @@ extern void BinInteraction(
       );
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      BinInteractionDimensions<k_Regression, 2>::Func(
+      BinInteractionDimensions<k_regression, 2>::Func(
          pEbmInteractionState,
          pFeatureCombination,
          aHistogramBuckets

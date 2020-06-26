@@ -522,7 +522,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
          }
       } else {
          if(0 != cTrainingInstances) {
-            InitializeResiduals<k_DynamicClassification>::Func(
+            InitializeResiduals<k_dynamicClassification>::Func(
                cTrainingInstances, 
                aTrainingTargets, 
                aTrainingPredictorScores, 
@@ -535,22 +535,22 @@ EbmBoostingState * EbmBoostingState::Allocate(
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingInstances) {
-         InitializeResiduals<k_Regression>::Func(
+         InitializeResiduals<k_regression>::Func(
             cTrainingInstances, 
             aTrainingTargets, 
             aTrainingPredictorScores, 
             pBooster->m_trainingSet.GetResidualPointer(),
-            k_Regression,
+            k_regression,
             aTempFloatVector
          );
       }
       if(0 != cValidationInstances) {
-         InitializeResiduals<k_Regression>::Func(
+         InitializeResiduals<k_regression>::Func(
             cValidationInstances, 
             aValidationTargets, 
             aValidationPredictorScores, 
             pBooster->m_validationSet.GetResidualPointer(),
-            k_Regression,
+            k_regression,
             aTempFloatVector
          );
       }
@@ -839,7 +839,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countFeatureCombinations, 
       featureCombinations, 
       featureCombinationIndexes, 
-      k_Regression, 
+      k_regression, 
       countTrainingInstances, 
       trainingTargets, 
       trainingBinnedData, 
@@ -1086,7 +1086,7 @@ EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate
    static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
    EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
    EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_DynamicClassification>(
+   return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_dynamicClassification>(
       pEbmBoostingState, 
       iFeatureCombination, 
       learningRate, 
@@ -1258,7 +1258,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       );
    } else {
       EBM_ASSERT(IsRegression(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_Regression>(
+      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_regression>(
          pEbmBoostingState, 
          iFeatureCombination, 
          learningRate, 
