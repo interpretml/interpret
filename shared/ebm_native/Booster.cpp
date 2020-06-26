@@ -9,7 +9,6 @@
 #include <limits> // numeric_limits
 
 #include "ebm_native.h"
-
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG

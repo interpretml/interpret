@@ -319,8 +319,8 @@ constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountT
 // places where you couldn't do so with variable loop iterations
 // TODO: use this macro more
 // TODO: do we really need the static_cast to size_t here?
-#define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_countCompilerDimensions, MACRO_countRuntimeDimensions) \
-   ((MACRO_countCompilerDimensions) <= 0 ? static_cast<size_t>(MACRO_countRuntimeDimensions) : static_cast<size_t>(MACRO_countCompilerDimensions))
+#define GET_ATTRIBUTE_COMBINATION_DIMENSIONS(MACRO_compilerCountDimensions, MACRO_runtimeCountDimensions) \
+   (k_DynamicDimensions == (MACRO_compilerCountDimensions) ? static_cast<size_t>(MACRO_runtimeCountDimensions) : static_cast<size_t>(MACRO_compilerCountDimensions))
 
 // THIS NEEDS TO BE A MACRO AND NOT AN INLINE FUNCTION -> an inline function will cause all the parameters to get resolved before calling the function
 // We want any arguments to our macro to not get resolved if they are not needed at compile time so that we do less work if it's not needed
@@ -351,6 +351,20 @@ constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
 //   This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
+
+#ifdef EBM_NATIVE_R
+// we get size NOTES if we compile with too many multiclass optimizations in CRAN, so reduce them to the bare minimum
+constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 1;
+#else // EBM_NATIVE_R
+constexpr size_t k_cCompilerOptimizedCountDimensionsMax = 2;
+#endif // EBM_NATIVE_R
+
+static_assert(1 <= k_cCompilerOptimizedCountDimensionsMax,
+   "k_cCompilerOptimizedCountDimensionsMax can be 1 if we want to turn off dimension optimization, but 0 or less is disallowed.");
+static_assert(k_cCompilerOptimizedCountDimensionsMax <= k_cDimensionsMax,
+   "k_cCompilerOptimizedCountDimensionsMax cannot be larger than the maximum number of dimensions.");
+
+constexpr size_t k_DynamicDimensions = 0;
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
