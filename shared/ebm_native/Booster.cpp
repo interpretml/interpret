@@ -896,10 +896,9 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          FloatEbmType gain = FloatEbmType { 0 };
          if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->GetCountFeatures()))) {
             if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
-               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
-               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -908,15 +907,13 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else if(1 == pFeatureCombination->GetCountFeatures()) {
             if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
-               pEbmBoostingState->GetRandomStream(),
-               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState,
+               pFeatureCombination,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               pFeatureCombination, 
                cTreeSplitsMax, 
                cInstancesRequiredForChildSplitMin, 
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
-               &gain, 
-               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
+               &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };
@@ -925,13 +922,12 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
             }
          } else {
             if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(
-               pEbmBoostingState->GetCachedThreadResources(),
+               pEbmBoostingState,
+               pFeatureCombination,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               pFeatureCombination, 
-               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                cInstancesRequiredForChildSplitMin, 
-               &gain, 
-               pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()
+               pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
+               &gain
             )) {
                if(LIKELY(nullptr != pGainReturn)) {
                   *pGainReturn = FloatEbmType { 0 };

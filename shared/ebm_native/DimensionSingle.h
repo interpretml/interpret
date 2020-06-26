@@ -71,13 +71,11 @@ EBM_INLINE size_t CountSweepTreeNode(
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
-   RandomStream * const pRandomStream, 
+   EbmBoostingState * const pEbmBoostingState,
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, 
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode, 
-   CachedBoostingThreadResources * const pCachedThreadResources, 
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur, 
-   const size_t cInstancesRequiredForChildSplitMin, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   const size_t cInstancesRequiredForChildSplitMin
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -86,21 +84,24 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    LOG_N(
       TraceLevelVerbose, 
-      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pRandomStream=%p, aHistogramBucket=%p, pTreeNode=%p, "
-      "pCachedThreadResources=%p, pTreeNodeChildrenAvailableStorageSpaceCur=%p, cInstancesRequiredForChildSplitMin=%zu", 
-      static_cast<void *>(pRandomStream), 
-      static_cast<const void *>(aHistogramBucket), 
+      "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pEbmBoostingState=%p, aHistogramBucket=%p, pTreeNode=%p, "
+      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cInstancesRequiredForChildSplitMin=%zu", 
+      static_cast<const void *>(pEbmBoostingState),
+      static_cast<const void *>(aHistogramBucket),
       static_cast<void *>(pTreeNode), 
-      static_cast<void *>(pCachedThreadResources), 
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur), 
       cInstancesRequiredForChildSplitMin
    );
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+
+   CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
 
    HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntryLeft =
       pCachedThreadResources->GetSumHistogramBucketVectorEntry1Array<bClassification>();
@@ -259,6 +260,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    }
    EBM_ASSERT(FloatEbmType { 0 } <= BEST_nodeSplittingScore);
 
+   RandomStream * const pRandomStream = pEbmBoostingState->GetRandomStream();
+
    const size_t cSweepItems = CountSweepTreeNode(pSweepTreeNodeStart, pSweepTreeNodeCur, cBytesPerSweepTreeNode);
    if(UNLIKELY(1 < cSweepItems)) {
       const size_t iRandom = pRandomStream->Next(cSweepItems);
@@ -359,9 +362,7 @@ public:
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool GrowDecisionTree(
-   RandomStream * const pRandomStream, 
-   CachedBoostingThreadResources * const pCachedThreadResources, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
+   EbmBoostingState * const pEbmBoostingState,
    const size_t cHistogramBuckets, 
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket, 
    const size_t cInstancesTotal, 
@@ -377,6 +378,8 @@ bool GrowDecisionTree(
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered GrowDecisionTree");
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -400,6 +403,9 @@ bool GrowDecisionTree(
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
 retry_with_bigger_tree_node_children_array:
+
+   CachedBoostingThreadResources * pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
+
    size_t cBytesBuffer2 = pCachedThreadResources->GetThreadByteBuffer2Size();
    // we need 1 TreeNode for the root, 1 for the left child of the root and 1 for the right child of the root
    const size_t cBytesInitialNeededAllocation = 3 * cBytesPerTreeNode;
@@ -436,13 +442,11 @@ retry_with_bigger_tree_node_children_array:
 
    size_t cSplits;
    if(ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-      pRandomStream, 
-      aHistogramBucket, 
-      pRootTreeNode, 
-      pCachedThreadResources, 
+      pEbmBoostingState,
+      aHistogramBucket,
+      pRootTreeNode,
       AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
-      cInstancesRequiredForChildSplitMin, 
-      runtimeLearningTypeOrCountTargetClasses
+      cInstancesRequiredForChildSplitMin
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -616,13 +620,11 @@ retry_with_bigger_tree_node_children_array:
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED
             // because splitting sets splitGain to a non-illegalGain value
             if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-               pRandomStream, 
-               aHistogramBucket, 
+               pEbmBoostingState,
+               aHistogramBucket,
                pLeftChild, 
-               pCachedThreadResources, 
                pTreeNodeChildrenAvailableStorageSpaceCur, 
-               cInstancesRequiredForChildSplitMin, 
-               runtimeLearningTypeOrCountTargetClasses
+               cInstancesRequiredForChildSplitMin
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -661,13 +663,11 @@ retry_with_bigger_tree_node_children_array:
             // the act of splitting it implicitly sets INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED 
             // because splitting sets splitGain to a non-NaN value
             if(!ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint<compilerLearningTypeOrCountTargetClasses>(
-               pRandomStream, 
-               aHistogramBucket, 
+               pEbmBoostingState,
+               aHistogramBucket,
                pRightChild, 
-               pCachedThreadResources, 
                pTreeNodeChildrenAvailableStorageSpaceCur, 
-               cInstancesRequiredForChildSplitMin, 
-               runtimeLearningTypeOrCountTargetClasses
+               cInstancesRequiredForChildSplitMin
 #ifndef NDEBUG
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -735,18 +735,17 @@ retry_with_bigger_tree_node_children_array:
    return false;
 }
 
-// TODO : make call parameter ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens before the 
-// training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostZeroDimensional(
-   CachedBoostingThreadResources * const pCachedThreadResources, 
+   EbmBoostingState * const pEbmBoostingState,
    const SamplingSet * const pTrainingSet,
-   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -759,6 +758,9 @@ bool BoostZeroDimensional(
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+
+   CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
+
    HistogramBucket<bClassification> * const pHistogramBucket =
       static_cast<HistogramBucket<bClassification> *>(
          pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket)
@@ -769,7 +771,11 @@ bool BoostZeroDimensional(
    }
    pHistogramBucket->Zero(cVectorLength);
 
-   BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(pHistogramBucket, pTrainingSet, runtimeLearningTypeOrCountTargetClasses);
+   BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(
+      pEbmBoostingState,
+      pTrainingSet,
+      pHistogramBucket
+   );
 
    const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
       ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry);
@@ -795,19 +801,15 @@ bool BoostZeroDimensional(
    return false;
 }
 
-// TODO : make call parameter ordering consistent with BinDataSet call below (put the feature first since that's a definition that happens 
-//   before the training data set)
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 bool BoostSingleDimensional(
-   RandomStream * const pRandomStream, 
-   CachedBoostingThreadResources * const pCachedThreadResources, 
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
-   const FeatureCombination * const pFeatureCombination, 
    const size_t cTreeSplitsMax, 
    const size_t cInstancesRequiredForChildSplitMin, 
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
-   FloatEbmType * const pTotalGain, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   FloatEbmType * const pTotalGain
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
@@ -816,6 +818,8 @@ bool BoostSingleDimensional(
    EBM_ASSERT(1 == pFeatureCombination->GetCountFeatures());
    size_t cTotalBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
@@ -833,6 +837,9 @@ bool BoostSingleDimensional(
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
+
+   CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
+
    HistogramBucket<bClassification> * const aHistogramBuckets =
       static_cast<HistogramBucket<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
@@ -851,10 +858,10 @@ bool BoostSingleDimensional(
 #endif // NDEBUG
 
    BinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 1>(
-      aHistogramBuckets, 
-      pFeatureCombination, 
-      pTrainingSet, 
-      runtimeLearningTypeOrCountTargetClasses
+      pEbmBoostingState,
+      pFeatureCombination,
+      pTrainingSet,
+      aHistogramBuckets
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -870,23 +877,22 @@ bool BoostSingleDimensional(
    // dimensions with 1 bin don't contribute anything since they always have the same value, 
    // so we pre-filter these out and handle them separately
    EBM_ASSERT(2 <= cHistogramBuckets);
-   const size_t cInstancesTotal = SumHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(
-      pTrainingSet, 
-      cHistogramBuckets, 
+   SumHistogramBuckets<compilerLearningTypeOrCountTargetClasses>(
+      pEbmBoostingState,
+      cHistogramBuckets,
       aHistogramBuckets, 
-      aSumHistogramBucketVectorEntry, 
-      runtimeLearningTypeOrCountTargetClasses
+      aSumHistogramBucketVectorEntry
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
+      , pTrainingSet->GetTotalCountInstanceOccurrences()
 #endif // NDEBUG
    );
 
+   const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
    EBM_ASSERT(1 <= cInstancesTotal);
 
    bool bRet = GrowDecisionTree<compilerLearningTypeOrCountTargetClasses>(
-      pRandomStream, 
-      pCachedThreadResources, 
-      runtimeLearningTypeOrCountTargetClasses, 
+      pEbmBoostingState,
       cHistogramBuckets, 
       aHistogramBuckets, 
       cInstancesTotal, 

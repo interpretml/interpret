@@ -316,9 +316,8 @@ static IntEbmType GetInteractionScorePerTargetClasses(
    }
 
    if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(
-      pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses(),
-      pCachedThreadResources, 
-      pEbmInteractionState->GetDataSetByFeature(),
+      pCachedThreadResources,
+      pEbmInteractionState,
       pFeatureCombination, 
       cInstancesRequiredForChildSplitMin, 
       pInteractionScoreReturn

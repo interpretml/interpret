@@ -20,6 +20,9 @@
 #include "DataSetInteraction.h"
 #include "SamplingSet.h"
 
+#include "Booster.h"
+#include "InteractionDetection.h"
+
 // we don't need to handle multi-dimensional inputs with more than 64 bits total
 // the rational is that we need to bin this data, and our binning memory will be N1*N1*...*N(D-1)*N(D)
 // So, even for binary input featuers, we would have 2^64 bins, and that would take more memory than a 64 bit machine can have
@@ -136,13 +139,15 @@ static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 void BinDataSetTrainingZeroDimensions(
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry, 
+   EbmBoostingState * const pEbmBoostingState,
    const SamplingSet * const pTrainingSet,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketEntry
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered BinDataSetTrainingZeroDimensions");
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -226,11 +231,11 @@ void BinDataSetTrainingZeroDimensions(
 
 // TODO : remove cCompilerDimensions since we don't need it anymore, and replace it with a more useful number like the number of cItemsPerBitPackedDataUnit
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t cCompilerDimensions>
-void BinDataSetTraining(HistogramBucket<IsClassification(
-   compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-   const FeatureCombination * const pFeatureCombination, 
+void BinDataSetTraining(
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -241,6 +246,8 @@ void BinDataSetTraining(HistogramBucket<IsClassification(
 
    EBM_ASSERT(cCompilerDimensions == pFeatureCombination->GetCountFeatures());
    static_assert(1 <= cCompilerDimensions, "cCompilerDimensions must be 1 or greater");
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -388,37 +395,37 @@ class RecursiveBinDataSetTraining {
    //   function specialization
 public:
    EBM_INLINE static void Recursive(
-      const size_t cRuntimeDimensions, 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-      const FeatureCombination * const pFeatureCombination, 
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(cRuntimeDimensions < k_cDimensionsMax);
       static_assert(
-         cCompilerDimensions < k_cDimensionsMax, 
+         cCompilerDimensions < k_cDimensionsMax,
          "cCompilerDimensions must be less than or equal to k_cDimensionsMax.  This line only handles the less than part, but we handle the equals "
          "in a partial specialization template.");
+
+      const size_t cRuntimeDimensions = pFeatureCombination->GetCountFeatures();
+      EBM_ASSERT(cRuntimeDimensions < k_cDimensionsMax);
       if(cCompilerDimensions == cRuntimeDimensions) {
          BinDataSetTraining<compilerLearningTypeOrCountTargetClasses, cCompilerDimensions>(
-            aHistogramBuckets, 
-            pFeatureCombination, 
-            pTrainingSet, 
-            runtimeLearningTypeOrCountTargetClasses
+            pEbmBoostingState,
+            pFeatureCombination,
+            pTrainingSet,
+            aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
 #endif // NDEBUG
          );
       } else {
          RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 1 + cCompilerDimensions>::Recursive(
-            cRuntimeDimensions, 
-            aHistogramBuckets, 
-            pFeatureCombination, 
-            pTrainingSet, 
-            runtimeLearningTypeOrCountTargetClasses
+            pEbmBoostingState,
+            pFeatureCombination,
+            pTrainingSet,
+            aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -432,22 +439,20 @@ class RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, k_cD
    // C++ does not allow partial function specialization, so we need to use these cumbersome inline static class functions to do partial function specialization
 public:
    EBM_INLINE static void Recursive(
-      const size_t cRuntimeDimensions, 
-      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-      const FeatureCombination * const pFeatureCombination, 
+      EbmBoostingState * const pEbmBoostingState,
+      const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      UNUSED(cRuntimeDimensions);
-      EBM_ASSERT(k_cDimensionsMax == cRuntimeDimensions);
+      EBM_ASSERT(k_cDimensionsMax == pFeatureCombination->GetCountFeatures());
       BinDataSetTraining<compilerLearningTypeOrCountTargetClasses, k_cDimensionsMax>(
-         aHistogramBuckets, 
-         pFeatureCombination, 
-         pTrainingSet, 
-         runtimeLearningTypeOrCountTargetClasses
+         pEbmBoostingState,
+         pFeatureCombination,
+         pTrainingSet,
+         aHistogramBuckets
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -459,11 +464,10 @@ public:
 //   very bad for performance.  Since the data will be stored contiguously and have the same length in the future, we can just loop based on the 
 //   number of dimensions, so we might as well have a couple of different values
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-void BinDataSetInteraction(HistogramBucket<IsClassification(
-   compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-   const FeatureCombination * const pFeatureCombination, 
-   const DataSetByFeature * const pDataSet, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+void BinDataSetInteraction(
+   EbmInteractionState * const pEbmInteractionState,
+   const FeatureCombination * const pFeatureCombination,
+   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -471,6 +475,8 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered BinDataSetInteraction");
+
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
@@ -480,6 +486,7 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
+   const DataSetByFeature * const pDataSet = pEbmInteractionState->GetDataSetByFeature();
    const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
    const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
 
@@ -561,14 +568,14 @@ void BinDataSetInteraction(HistogramBucket<IsClassification(
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-size_t SumHistogramBuckets(
-   const SamplingSet * const pTrainingSet,
-   const size_t cHistogramBuckets, 
-   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
-   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry, 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
+void SumHistogramBuckets(
+   const EbmBoostingState * const pEbmBoostingState,
+   const size_t cHistogramBuckets,
+   const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets, 
+   HistogramBucketVectorEntry<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aSumHistogramBucketVectorEntry
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
+   , const size_t cInstancesTotal
 #endif // NDEBUG
 ) {
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -581,6 +588,8 @@ size_t SumHistogramBuckets(
    size_t cInstancesTotalDebug = 0;
 #endif // NDEBUG
 
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
       compilerLearningTypeOrCountTargetClasses,
       runtimeLearningTypeOrCountTargetClasses
@@ -589,8 +598,8 @@ size_t SumHistogramBuckets(
    EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
 
-   HistogramBucket<bClassification> * pCopyFrom = aHistogramBuckets;
-   HistogramBucket<bClassification> * pCopyFromEnd =
+   const HistogramBucket<bClassification> * pCopyFrom = aHistogramBuckets;
+   const HistogramBucket<bClassification> * pCopyFromEnd =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cHistogramBuckets);
 
    // we do a lot more work in the GrowDecisionTree function per binned bucket entry, so if we can compress it by any amount, then it will probably be a win
@@ -618,13 +627,11 @@ size_t SumHistogramBuckets(
 
       pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);
    } while(pCopyFromEnd != pCopyFrom);
-   EBM_ASSERT(0 == (reinterpret_cast<char *>(pCopyFrom) - reinterpret_cast<char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
+   EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 
-   const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
    EBM_ASSERT(cInstancesTotal == cInstancesTotalDebug);
 
    LOG_0(TraceLevelVerbose, "Exited SumHistogramBuckets");
-   return cInstancesTotal;
 }
 
 #endif // HISTOGRAM_BUCKET_H

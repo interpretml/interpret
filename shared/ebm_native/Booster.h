@@ -149,7 +149,7 @@ public:
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   EBM_INLINE CachedBoostingThreadResources * GetCachedThreadResources() {
+   EBM_INLINE CachedBoostingThreadResources * GetCachedThreadResources() const {
       return m_pCachedThreadResources;
    }
 
