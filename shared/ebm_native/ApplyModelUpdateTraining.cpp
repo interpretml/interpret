@@ -221,7 +221,6 @@ public:
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
@@ -241,7 +240,7 @@ public:
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
-         runtimeCountItemsPerBitPackedDataUnit
+         pFeatureCombination->GetCountItemsPerBitPackedDataUnit()
       );
       EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
       EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);

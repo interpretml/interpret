@@ -22,6 +22,17 @@
 #include "Booster.h"
 #include "InteractionDetection.h"
 
+void BinBoosting(
+   const bool bUseSIMD,
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
+   const SamplingSet * const pTrainingSet,
+   HistogramBucketBase * const aHistogramBucketBase
+#ifndef NDEBUG
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
+
 #ifndef NDEBUG
 
 template<bool bClassification>
@@ -1270,7 +1281,8 @@ bool BoostMultiDimensional(
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   RecursiveBinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 2>::Recursive(
+   BinBoosting(
+      false,
       pEbmBoostingState,
       pFeatureCombination,
       pTrainingSet,

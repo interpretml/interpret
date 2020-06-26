@@ -20,6 +20,17 @@
 
 #include "TreeNode.h"
 
+void BinBoosting(
+   const bool bUseSIMD,
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
+   const SamplingSet * const pTrainingSet,
+   HistogramBucketBase * const aHistogramBucketBase
+#ifndef NDEBUG
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
+
 // TODO: it would be easy for us to implement a -1 lookback where we make the first cut, find the second cut, elimnate the first cut and try 
 //   again on that side, then re-examine the second cut again.  For mains this would be very quick we have found that 2-3 cuts are optimimum.  
 //   Probably 1 cut isn't very good since with 2 cuts we can localize a region of high gain in the center somewhere
@@ -771,10 +782,15 @@ bool BoostZeroDimensional(
    }
    pHistogramBucket->Zero(cVectorLength);
 
-   BinDataSetTrainingZeroDimensions<compilerLearningTypeOrCountTargetClasses>(
+   BinBoosting(
+      false,
       pEbmBoostingState,
+      nullptr,
       pTrainingSet,
       pHistogramBucket
+#ifndef NDEBUG
+      , nullptr
+#endif // NDEBUG
    );
 
    const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
@@ -857,7 +873,8 @@ bool BoostSingleDimensional(
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
 
-   BinDataSetTraining<compilerLearningTypeOrCountTargetClasses, 1>(
+   BinBoosting(
+      false,
       pEbmBoostingState,
       pFeatureCombination,
       pTrainingSet,
