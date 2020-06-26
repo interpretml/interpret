@@ -33,6 +33,15 @@ void BinBoosting(
 #endif // NDEBUG
 );
 
+void BinInteraction(
+   EbmInteractionState * const pEbmInteractionState,
+   const FeatureCombination * const pFeatureCombination,
+   HistogramBucketBase * const aHistogramBuckets
+#ifndef NDEBUG
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
+
 #ifndef NDEBUG
 
 template<bool bClassification>
