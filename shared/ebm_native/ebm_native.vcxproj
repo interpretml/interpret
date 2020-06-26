@@ -304,8 +304,6 @@ EXIT /B 0
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="DimensionMultiple.h" />
-    <ClInclude Include="ApplyModelUpdateTraining.cpp" />
-    <ClInclude Include="ApplyModelUpdateValidation.cpp" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />
     <ClInclude Include="RandomStream.h" />
@@ -315,6 +313,8 @@ EXIT /B 0
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ApplyModelUpdateTraining.cpp" />
+    <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
     <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretization.cpp" />

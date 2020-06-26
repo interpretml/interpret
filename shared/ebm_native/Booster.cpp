@@ -31,8 +31,19 @@
 
 #include "Booster.h"
 
-#include "ApplyModelUpdateTraining.h"
-#include "ApplyModelUpdateValidation.h"
+void ApplyModelUpdateTraining(
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+   const bool bUseSIMD
+);
+
+FloatEbmType ApplyModelUpdateValidation(
+   EbmBoostingState * const pEbmBoostingState,
+   const FeatureCombination * const pFeatureCombination,
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+   const bool bUseSIMD
+);
 
 EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    EBM_ASSERT(size_t { 1 } <= cBits);

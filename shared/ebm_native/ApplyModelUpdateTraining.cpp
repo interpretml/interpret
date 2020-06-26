@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <ebm@koch.ninja>
 
-#ifndef APPLY_MODEL_UPDATE_TRAINING_H
-#define APPLY_MODEL_UPDATE_TRAINING_H
+#include "PrecompiledHeader.h"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -16,6 +15,8 @@
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetBoosting.h"
+
+#include "Booster.h"
 
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
@@ -656,7 +657,7 @@ public:
    }
 };
 
-static void ApplyModelUpdateTraining(
+extern void ApplyModelUpdateTraining(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
@@ -736,5 +737,3 @@ static void ApplyModelUpdateTraining(
 
    LOG_0(TraceLevelVerbose, "Exited ApplyModelUpdateTraining");
 }
-
-#endif // APPLY_MODEL_UPDATE_TRAINING_H
