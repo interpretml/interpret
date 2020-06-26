@@ -313,6 +313,7 @@ EXIT /B 0
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ApplyModelUpdate.cpp" />
     <ClCompile Include="ApplyModelUpdateTraining.cpp" />
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
