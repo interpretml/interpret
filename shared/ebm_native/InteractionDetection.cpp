@@ -302,8 +302,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    return pEbmInteraction;
 }
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static IntEbmType GetInteractionScorePerTargetClasses(
+static IntEbmType GetInteractionScorePreCache(
    EbmInteractionState * const pEbmInteractionState, 
    const FeatureCombination * const pFeatureCombination, 
    const size_t cInstancesRequiredForChildSplitMin, 
@@ -315,7 +314,7 @@ static IntEbmType GetInteractionScorePerTargetClasses(
       return 1;
    }
 
-   if(CalculateInteractionScore<compilerLearningTypeOrCountTargetClasses, 0>(
+   if(CalculateInteractionScore(
       pCachedThreadResources,
       pEbmInteractionState,
       pFeatureCombination, 
@@ -327,58 +326,6 @@ static IntEbmType GetInteractionScorePerTargetClasses(
    }
    pCachedThreadResources->Free();
    return 0;
-}
-
-template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmInteractionState * const pEbmInteractionState, 
-   const FeatureCombination * const pFeatureCombination, 
-   const size_t cInstancesRequiredForChildSplitMin, 
-   FloatEbmType * const pInteractionScoreReturn
-) {
-   static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), 
-      "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   if(runtimeLearningTypeOrCountTargetClasses == possibleCompilerLearningTypeOrCountTargetClasses) {
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return GetInteractionScorePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(
-         pEbmInteractionState, 
-         pFeatureCombination, 
-         cInstancesRequiredForChildSplitMin, 
-         pInteractionScoreReturn
-      );
-   } else {
-      return CompilerRecursiveGetInteractionScore<possibleCompilerLearningTypeOrCountTargetClasses + 1>(
-         runtimeLearningTypeOrCountTargetClasses, 
-         pEbmInteractionState, 
-         pFeatureCombination, 
-         cInstancesRequiredForChildSplitMin, 
-         pInteractionScoreReturn
-      );
-   }
-}
-
-template<>
-EBM_INLINE IntEbmType CompilerRecursiveGetInteractionScore<k_cCompilerOptimizedTargetClassesMax + 1>(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmInteractionState * const pEbmInteractionState, 
-   const FeatureCombination * const pFeatureCombination, 
-   const size_t cInstancesRequiredForChildSplitMin, 
-   FloatEbmType * const pInteractionScoreReturn
-) {
-   UNUSED(runtimeLearningTypeOrCountTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target class, 
-   // so let our runtime system handle those unlikley and uninteresting cases
-   static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GetInteractionScorePerTargetClasses<k_dynamicClassification>(
-      pEbmInteractionState, 
-      pFeatureCombination, 
-      cInstancesRequiredForChildSplitMin, 
-      pInteractionScoreReturn
-   );
 }
 
 // we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting 
@@ -539,33 +486,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       ++pFeatureCombinationIndex;
    } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
-   IntEbmType ret;
-   if(IsClassification(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses())) {
-      if(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
-         LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
-         if(nullptr != interactionScoreReturn) {
-            // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
-            // interactions or anything else.  We return 0 since interactions have no benefit
-            *interactionScoreReturn = FloatEbmType { 0 };
-         }
-         return 0;
+   // TODO: check if GetRuntimeLearningTypeOrCountTargetClasses can be zero?
+   if(ptrdiff_t { 0 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
+      if(nullptr != interactionScoreReturn) {
+         // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
+         // interactions or anything else.  We return 0 since interactions have no benefit
+         *interactionScoreReturn = FloatEbmType { 0 };
       }
-      ret = CompilerRecursiveGetInteractionScore<2>(
-         pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses(),
-         pEbmInteractionState, 
-         pFeatureCombination, 
-         cInstancesRequiredForChildSplitMin, 
-         interactionScoreReturn
-      );
-   } else {
-      EBM_ASSERT(IsRegression(pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      ret = GetInteractionScorePerTargetClasses<k_regression>(
-         pEbmInteractionState, 
-         pFeatureCombination, 
-         cInstancesRequiredForChildSplitMin, 
-         interactionScoreReturn
-      );
+      return 0;
    }
+
+   IntEbmType ret = GetInteractionScorePreCache(
+      pEbmInteractionState,
+      pFeatureCombination,
+      cInstancesRequiredForChildSplitMin,
+      interactionScoreReturn
+   );
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntEbmTypePrintf, ret);
    }

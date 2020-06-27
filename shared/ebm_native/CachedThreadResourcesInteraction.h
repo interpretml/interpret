@@ -11,6 +11,8 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
+struct HistogramBucketBase;
+
 class CachedInteractionThreadResources final {
    void * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
@@ -51,7 +53,7 @@ public:
       return pNew;
    }
 
-   INLINE_RELEASE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+   INLINE_RELEASE HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired) {
       void * aBuffer = m_aThreadByteBuffer1;
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
@@ -61,7 +63,7 @@ public:
          aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
          m_aThreadByteBuffer1 = aBuffer;
       }
-      return aBuffer;
+      return reinterpret_cast<HistogramBucketBase *>(aBuffer);
    }
 };
 static_assert(std::is_standard_layout<CachedInteractionThreadResources>::value,

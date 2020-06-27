@@ -211,7 +211,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       return 0;
    }
 
-   if(ptrdiff_t { 1 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()) {
+   // TODO: check if GetRuntimeLearningTypeOrCountTargetClasses can be zero?
+   if(ptrdiff_t { 0 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our log loss is 0.

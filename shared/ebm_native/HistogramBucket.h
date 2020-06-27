@@ -51,6 +51,7 @@ struct HistogramBucketBase {
 
 template<bool bClassification>
 EBM_INLINE bool GetHistogramBucketSizeOverflow(const size_t cVectorLength) {
+   // TODO: Get rid of this function in favor of the non-templated version
    return IsMultiplyError(
       sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? 
       true : 
@@ -59,10 +60,17 @@ EBM_INLINE bool GetHistogramBucketSizeOverflow(const size_t cVectorLength) {
          sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength
       ) ? true : false;
 }
+EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+   return bClassification ? GetHistogramBucketSizeOverflow<true>(cVectorLength) : GetHistogramBucketSizeOverflow<false>(cVectorLength);
+}
 template<bool bClassification>
 EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
+   // TODO: Get rid of this function in favor of the non-templated version
    return sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + 
       sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
+}
+EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
+   return bClassification ? GetHistogramBucketSize<true>(cVectorLength) : GetHistogramBucketSize<false>(cVectorLength);
 }
 template<bool bClassification>
 EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
@@ -83,6 +91,24 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
    //   therefore eliminating the need to do the multiplication at the end when finding the index
    return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+EBM_INLINE HistogramBucketBase * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   HistogramBucketBase * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   //   therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<HistogramBucketBase *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+EBM_INLINE const HistogramBucketBase * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   const HistogramBucketBase * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   //   therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<const HistogramBucketBase *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
 // keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds

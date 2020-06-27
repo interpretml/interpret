@@ -1345,8 +1345,7 @@ WARNING_POP
 
 
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
-bool CalculateInteractionScore(
+EBM_INLINE static bool CalculateInteractionScore(
    CachedInteractionThreadResources * const pCachedThreadResources,
    EbmInteractionState * const pEbmInteractionState,
    const FeatureCombination * const pFeatureCombination,
@@ -1357,13 +1356,12 @@ bool CalculateInteractionScore(
    // it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can 
    // use the denominator as part of the gain function!!!
 
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
 
-   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other places like 
-   // for SegmentedRegion and other critical places
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
    EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
@@ -1400,22 +1398,16 @@ bool CalculateInteractionScore(
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
 
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses, 
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-
-   if(GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)) {
+   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning, 
          "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return true;
    }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
       return true;
@@ -1423,25 +1415,34 @@ bool CalculateInteractionScore(
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
 
    // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
-   HistogramBucket<bClassification> * const aHistogramBuckets =
-      static_cast<HistogramBucket<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aHistogramBuckets");
       return true;
    }
-   for(size_t i = 0; i < cTotalBuckets; ++i) {
-      HistogramBucket<bClassification> * const pHistogramBucket =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
-      pHistogramBucket->Zero(cVectorLength);
+
+   if(bClassification) {
+      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<true> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+   } else {
+      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<false> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
    }
 
-   HistogramBucket<bClassification> * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
+   HistogramBucketBase * pAuxiliaryBucketZone =
+      GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
 #endif // NDEBUG
-
    
    BinInteraction(
       pEbmInteractionState,
@@ -1462,8 +1463,8 @@ bool CalculateInteractionScore(
    }
    // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
-   HistogramBucket<bClassification> * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucket<bClassification>>(cTotalBucketsDebug, cBytesPerHistogramBucket);
+   HistogramBucketBase * const aHistogramBucketsDebugCopy =
+      EbmMalloc<HistogramBucketBase>(cTotalBucketsDebug, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
       const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
