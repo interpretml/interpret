@@ -310,6 +310,7 @@ EXIT /B 0
     <ClInclude Include="SamplingSet.h" />
     <ClInclude Include="SegmentedTensor.h" />
     <ClInclude Include="DimensionSingle.h" />
+    <ClInclude Include="TensorTotalsSum.h" />
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
   <ItemGroup>
