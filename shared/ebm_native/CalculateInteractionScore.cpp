@@ -236,6 +236,8 @@ static IntEbmType GetInteractionScorePreCache(
    const size_t cInstancesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
 ) {
+   // TODO: eliminate this function.  It's no longer needed. Collapse it into GetInteractionScore below
+
    // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
    CachedInteractionThreadResources * const pCachedThreadResources = CachedInteractionThreadResources::Allocate();
    if(nullptr == pCachedThreadResources) {

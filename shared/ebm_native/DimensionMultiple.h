@@ -637,7 +637,7 @@ bool BoostMultiDimensional(
                , aHistogramBucketsDebugCopy
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
-               );
+            );
             // if we get a NaN result, we'd like to propagate it by making bestSplit NaN.  The rules for NaN values say that non equality comparisons are 
             // all false so, let's flip this comparison such that it should be true for NaN values.  If the compiler violates NaN comparions rules, 
             // no big deal.  NaN values will get us soon and shut down boosting.

@@ -20,9 +20,6 @@
 
 #include "InteractionDetection.h"
 
-// depends on the above
-#include "DimensionMultiple.h"
-
 void EbmInteractionState::Free(EbmInteractionState * const pInteractionDetection) {
    LOG_0(TraceLevelInfo, "Entered EbmInteractionState::Free");
 
