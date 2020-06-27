@@ -318,6 +318,7 @@ EXIT /B 0
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="BuildTensorTotals.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
     <ClCompile Include="DataSetBoosting.cpp" />
     <ClCompile Include="Discretization.cpp" />
