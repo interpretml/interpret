@@ -410,7 +410,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class BinBoostingPacking {
+class BinBoostingSIMDPacking {
 public:
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -437,7 +437,7 @@ public:
 #endif // NDEBUG
          );
       } else {
-         BinBoostingPacking<
+         BinBoostingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
@@ -454,7 +454,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinBoostingPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -499,7 +499,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         BinBoostingPacking<
+         BinBoostingSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
@@ -542,7 +542,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      BinBoostingPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
+      BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
          pEbmBoostingState,
          pFeatureCombination,
          pTrainingSet,
@@ -610,7 +610,7 @@ extern void BinBoosting(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            BinBoostingPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
+            BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
                pEbmBoostingState,
                pFeatureCombination,
                pTrainingSet,

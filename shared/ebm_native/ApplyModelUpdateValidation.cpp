@@ -503,7 +503,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class ApplyModelUpdateValidationPacking {
+class ApplyModelUpdateValidationSIMDPacking {
 public:
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -522,7 +522,7 @@ public:
             aModelFeatureCombinationUpdateTensor
          );
       } else {
-         return ApplyModelUpdateValidationPacking<
+         return ApplyModelUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
@@ -535,7 +535,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -568,7 +568,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         return ApplyModelUpdateValidationPacking<
+         return ApplyModelUpdateValidationSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
@@ -601,7 +601,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      return ApplyModelUpdateValidationPacking<
+      return ApplyModelUpdateValidationSIMDPacking<
          k_dynamicClassification,
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
@@ -658,7 +658,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ret = ApplyModelUpdateValidationPacking<
+            ret = ApplyModelUpdateValidationSIMDPacking<
                k_regression,
                k_cItemsPerBitPackedDataUnitMax
             >::Func(

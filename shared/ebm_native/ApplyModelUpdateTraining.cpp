@@ -544,7 +544,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class ApplyModelUpdateTrainingPacking {
+class ApplyModelUpdateTrainingSIMDPacking {
 public:
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -563,7 +563,7 @@ public:
             aModelFeatureCombinationUpdateTensor
          );
       } else {
-         ApplyModelUpdateTrainingPacking<
+         ApplyModelUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClasses,
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
@@ -576,7 +576,7 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
 public:
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
@@ -609,7 +609,7 @@ public:
       EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
 
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
-         ApplyModelUpdateTrainingPacking<
+         ApplyModelUpdateTrainingSIMDPacking<
             compilerLearningTypeOrCountTargetClassesPossible,
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
@@ -642,7 +642,7 @@ public:
       EBM_ASSERT(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
       EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses());
 
-      ApplyModelUpdateTrainingPacking<
+      ApplyModelUpdateTrainingSIMDPacking<
          k_dynamicClassification,
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
@@ -698,7 +698,7 @@ extern void ApplyModelUpdateTraining(
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-            ApplyModelUpdateTrainingPacking<
+            ApplyModelUpdateTrainingSIMDPacking<
                k_regression,
                k_cItemsPerBitPackedDataUnitMax
             >::Func(
