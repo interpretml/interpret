@@ -342,13 +342,19 @@ constexpr EBM_INLINE size_t CountBitsRequiredPositiveMax() {
 }
 
 constexpr size_t k_cBitsForSizeT = CountBitsRequiredPositiveMax<size_t>();
-// it's impossible for us to have more than k_cDimensionsMax dimensions.  Even if we had the minimum number of bin per variable (two), then we would have 
-// 2^N memory spaces at our binning step, and that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 
-// 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that the rest of our program takes some memory, denying 
-// the full 64 bits of memory available.  This extra bit is very helpful since we can then set the 64th bit without overflowing it inside loops and 
-// other places
-// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see how many would fit into memory.  
-//   This isn't a big deal, but it could be nice if we generate static code to handle every possible valid dimension value
+
+// It's impossible for us to have tensors with more than k_cDimensionsMax dimensions.  Even if we had the minimum 
+// number of bins per feature (two), then we would have 2^N memory spaces at our binning step, and 
+// that would exceed our memory size if it's greater than the number of bits allowed in a size_t, so on a 
+// 64 bit machine, 64 dimensions is a hard maximum.  We can subtract one bit safely, since we know that 
+// the rest of our program takes some memory, denying the full 64 bits of memory available.  This extra 
+// bit is very helpful since we can then set the 64th bit without overflowing it inside loops and other places
+//
+// We strip out features with only 1 value since they provide no learning value and they break this nice property
+// of having a maximum number of dimensions.
+//
+// TODO : we can restrict the dimensionatlity even more because HistogramBuckets aren't 1 byte, so we can see 
+//        how many would fit into memory.
 constexpr size_t k_cDimensionsMax = k_cBitsForSizeT - 1;
 static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
 

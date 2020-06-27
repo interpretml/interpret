@@ -23,18 +23,6 @@
 #include "Booster.h"
 #include "InteractionDetection.h"
 
-// we don't need to handle multi-dimensional inputs with more than 64 bits total
-// the rational is that we need to bin this data, and our binning memory will be N1*N1*...*N(D-1)*N(D)
-// So, even for binary input featuers, we would have 2^64 bins, and that would take more memory than a 64 bit machine can have
-// Similarily, we need a huge amount of memory in order to bin any data with a combined total of more than 64 bits.
-// The worst case I can think of is where we have 3 bins, requiring 2 bit each, and we overflowed at 33 dimensions
-// in that bad case, we would have 3^33 bins * 8 bytes minimum per bin = 44472484532444184 bytes, which would take 56 bits to express
-// Nobody is every going to build a machine with more than 64 bits, since you need a non-trivial volume of material assuming bits require
-// more than several atoms to store.
-// we can just return an out of memory error if someone requests a set of features that would sum to more than 64 bits
-// we DO need to check for this error condition though, since it's not impossible for someone to request this kind of thing.
-// any dimensions with only 1 bin don't count since you would just be multiplying by 1 for each such dimension
-
 template<bool bClassification>
 struct HistogramBucket;
 
@@ -48,50 +36,6 @@ struct HistogramBucketBase {
       return static_cast<const HistogramBucket<bClassification> *>(this);
    }
 };
-
-template<bool bClassification>
-EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket, 
-   HistogramBucket<bClassification> * const aHistogramBuckets, 
-   const size_t iBin
-) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
-   // therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
-}
-template<bool bClassification>
-EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket, 
-   const HistogramBucket<bClassification> * const aHistogramBuckets, 
-   const size_t iBin
-) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
-}
-EBM_INLINE HistogramBucketBase * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   HistogramBucketBase * const aHistogramBuckets,
-   const size_t iBin
-) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<HistogramBucketBase *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
-}
-EBM_INLINE const HistogramBucketBase * GetHistogramBucketByIndex(
-   const size_t cBytesPerHistogramBucket,
-   const HistogramBucketBase * const aHistogramBuckets,
-   const size_t iBin
-) {
-   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
-   //   therefore eliminating the need to do the multiplication at the end when finding the index
-   return reinterpret_cast<const HistogramBucketBase *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
-}
-
-// keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
-#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) \
-   (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
-      reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
 template<bool bClassification>
 struct HistogramBucket final : HistogramBucketBase {
@@ -184,5 +128,52 @@ EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_
 
    return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
 }
+
+template<bool bClassification>
+EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   HistogramBucket<bClassification> * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   // therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<HistogramBucket<bClassification> *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+
+template<bool bClassification>
+EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   const HistogramBucket<bClassification> * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   //   therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+
+EBM_INLINE HistogramBucketBase * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   HistogramBucketBase * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   //   therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<HistogramBucketBase *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+
+EBM_INLINE const HistogramBucketBase * GetHistogramBucketByIndex(
+   const size_t cBytesPerHistogramBucket,
+   const HistogramBucketBase * const aHistogramBuckets,
+   const size_t iBin
+) {
+   // TODO : remove the use of this function anywhere performant by making the tensor calculation start with the # of bytes per histogram bucket, 
+   //   therefore eliminating the need to do the multiplication at the end when finding the index
+   return reinterpret_cast<const HistogramBucketBase *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
+}
+
+// keep this as a MACRO so that we don't materialize any of the parameters on non-debug builds
+#define ASSERT_BINNED_BUCKET_OK(MACRO_cBytesPerHistogramBucket, MACRO_pHistogramBucket, MACRO_aHistogramBucketsEnd) \
+   (EBM_ASSERT(reinterpret_cast<const char *>(MACRO_pHistogramBucket) + static_cast<size_t>(MACRO_cBytesPerHistogramBucket) <= \
+      reinterpret_cast<const char *>(MACRO_aHistogramBucketsEnd)))
 
 #endif // HISTOGRAM_BUCKET_H
