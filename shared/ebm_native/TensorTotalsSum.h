@@ -21,7 +21,7 @@
 #ifndef NDEBUG
 
 template<bool bClassification>
-void GetTotalsDebugSlow(
+void TensorTotalsSumDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureCombination * const pFeatureCombination,
    const HistogramBucket<bClassification> * const aHistogramBuckets,
@@ -86,7 +86,7 @@ void GetTotalsDebugSlow(
 }
 
 template<bool bClassification>
-void CompareTotalsDebug(
+void TensorTotalsCompareDebug(
    const HistogramBucket<bClassification> * const aHistogramBuckets,
    const FeatureCombination * const pFeatureCombination,
    const size_t * const aiPoint,
@@ -116,7 +116,7 @@ void CompareTotalsDebug(
    HistogramBucket<bClassification> * const pComparison2 = EbmMalloc<HistogramBucket<bClassification>>(1, cBytesPerHistogramBucket);
    if(nullptr != pComparison2) {
       // if we can't obtain the memory, then don't do the comparison and exit
-      GetTotalsDebugSlow<bClassification>(
+      TensorTotalsSumDebugSlow<bClassification>(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureCombination,
          aHistogramBuckets,
@@ -131,13 +131,8 @@ void CompareTotalsDebug(
 
 #endif // NDEBUG
 
-struct TotalsDimension {
-   size_t m_cIncrement;
-   size_t m_cLast;
-};
-
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
-void GetTotals(
+void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureCombination * const pFeatureCombination,
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
@@ -149,6 +144,11 @@ void GetTotals(
    const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
+   struct TotalsDimension {
+      size_t m_cIncrement;
+      size_t m_cLast;
+   };
+
    constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
 
    // don't LOG this!  It would create way too much chatter!
@@ -281,7 +281,7 @@ void GetTotals(
 
 #ifndef NDEBUG
    if(nullptr != aHistogramBucketsDebugCopy) {
-      CompareTotalsDebug<bClassification>(
+      TensorTotalsCompareDebug<bClassification>(
          aHistogramBucketsDebugCopy,
          pFeatureCombination,
          aiPoint,

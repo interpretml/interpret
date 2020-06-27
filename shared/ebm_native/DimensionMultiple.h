@@ -26,7 +26,7 @@
 
 #include "TensorTotalsSum.h"
 
-void BuildTensorTotals(
+void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureCombination * const pFeatureCombination,
    HistogramBucketBase * pBucketAuxiliaryBuildZone,
@@ -117,7 +117,7 @@ FloatEbmType SweepMultiDiemensional(
    do {
       *piBin = iBin;
 
-      GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
          runtimeLearningTypeOrCountTargetClasses,
          pFeatureCombination,
          aHistogramBuckets,
@@ -129,7 +129,7 @@ FloatEbmType SweepMultiDiemensional(
 #endif // NDEBUG
       );
       if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->m_cInstancesInBucket)) {
-         GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+         TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
             runtimeLearningTypeOrCountTargetClasses,
             pFeatureCombination,
             aHistogramBuckets,
@@ -328,7 +328,7 @@ bool BoostMultiDimensional(
    }
 #endif // NDEBUG
 
-   BuildTensorTotals(
+   TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
       pFeatureCombination,
       pAuxiliaryBucketZone,
@@ -1115,25 +1115,25 @@ WARNING_POP
 //            aiStart[1] = 0;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = iBin2;
-//            GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowLow);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowLow);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = 0;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = iBin2;
-//            GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighLow);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighLow);
 //
 //            aiStart[0] = 0;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = iBin1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowHigh);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowHigh);
 //
 //            aiStart[0] = iBin1 + 1;
 //            aiStart[1] = iBin2 + 1;
 //            aiLast[0] = cBinsDimension1 - 1;
 //            aiLast[1] = cBinsDimension2 - 1;
-//            GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighHigh);
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighHigh);
 //
 //            // LOW LOW
 //            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
@@ -1454,7 +1454,7 @@ bool CalculateInteractionScore(
    }
 #endif // NDEBUG
 
-   BuildTensorTotals(
+   TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
       pFeatureCombination,
       pAuxiliaryBucketZone,
@@ -1501,7 +1501,7 @@ bool CalculateInteractionScore(
          do {
             aiStart[1] = iBin2;
 
-            GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
                runtimeLearningTypeOrCountTargetClasses,
                pFeatureCombination,
                aHistogramBuckets,
@@ -1514,7 +1514,7 @@ bool CalculateInteractionScore(
 #endif // NDEBUG
             );
             if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket)) {
-               GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+               TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
                   runtimeLearningTypeOrCountTargetClasses,
                   pFeatureCombination,
                   aHistogramBuckets,
@@ -1527,7 +1527,7 @@ bool CalculateInteractionScore(
 #endif // NDEBUG
                );
                if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket)) {
-                  GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+                  TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
                      runtimeLearningTypeOrCountTargetClasses,
                      pFeatureCombination,
                      aHistogramBuckets,
@@ -1539,7 +1539,7 @@ bool CalculateInteractionScore(
 #endif // NDEBUG
                   );
                   if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket)) {
-                     GetTotals<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
+                     TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(
                         runtimeLearningTypeOrCountTargetClasses,
                         pFeatureCombination,
                         aHistogramBuckets,
