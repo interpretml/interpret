@@ -9,12 +9,12 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
+#include "ebm_native.h" // EBM_INLINE
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatisticUtils.h"
 #include "CachedThreadResourcesBoosting.h"
-#include "CachedThreadResourcesInteraction.h"
 #include "Feature.h"
 #include "FeatureGroup.h"
 #include "SamplingSet.h"
@@ -22,20 +22,8 @@
 #include "HistogramBucket.h"
 
 #include "Booster.h"
-#include "InteractionDetection.h"
 
 #include "TensorTotalsSum.h"
-
-void TensorTotalsBuild(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureCombination * const pFeatureCombination,
-   HistogramBucketBase * pBucketAuxiliaryBuildZone,
-   HistogramBucketBase * const aHistogramBuckets
-#ifndef NDEBUG
-   , HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
-);
 
 void BinBoosting(
    const bool bUseSIMD,
@@ -47,28 +35,6 @@ void BinBoosting(
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 );
-
-void BinInteraction(
-   EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
-   HistogramBucketBase * const aHistogramBuckets
-#ifndef NDEBUG
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
-);
-
-FloatEbmType FindBestInteractionGainPairs(
-   EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
-   const size_t cInstancesRequiredForChildSplitMin,
-   HistogramBucketBase * pAuxiliaryBucketZone,
-   HistogramBucketBase * const aHistogramBuckets
-#ifndef NDEBUG
-   , const HistogramBucketBase * const aHistogramBucketsDebugCopy
-   , const unsigned char * const aHistogramBucketsEndDebug
-#endif // NDEBUG
-);
-
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
 FloatEbmType SweepMultiDiemensional(
@@ -1344,193 +1310,5 @@ WARNING_POP
 
 
 
-
-EBM_INLINE static bool CalculateInteractionScore(
-   CachedInteractionThreadResources * const pCachedThreadResources,
-   EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
-   const size_t cInstancesRequiredForChildSplitMin,
-   FloatEbmType * const pInteractionScoreReturn
-) {
-   // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating 
-   // it, and it's taking up precious memory.  We should eliminate the denominator term HERE in our datastructures OR we should think whether we can 
-   // use the denominator as part of the gain function!!!
-
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
-   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
-
-   LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
-
-   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
-   EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
-
-   size_t cAuxillaryBucketsForBuildFastTotals = 0;
-   size_t cTotalBucketsMainSpace = 1;
-   for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
-      EBM_ASSERT(2 <= cBins); // situations with 1 bin should have been filtered out before this function was called (but still inside the C++)
-      // if cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-      // since cBins must be 2 or more, cAuxillaryBucketsForBuildFastTotals must grow slower than cTotalBucketsMainSpace, and we checked at allocation 
-      // that cTotalBucketsMainSpace would not overflow
-      EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
-      // this can overflow, but if it does then we're guaranteed to catch the overflow via the multiplication check below
-      cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      if(IsMultiplyError(cTotalBucketsMainSpace, cBins)) {
-         // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
-         // we don't know what combination of features our caller will give us for calculating the interaction scores,
-         // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBucketsMainSpace, cBins)");
-         return true;
-      }
-      cTotalBucketsMainSpace *= cBins;
-      // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
-      EBM_ASSERT(cAuxillaryBucketsForBuildFastTotals < cTotalBucketsMainSpace);
-   }
-
-   const size_t cAuxillaryBucketsForSplitting = 4;
-   const size_t cAuxillaryBuckets = 
-      cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
-   if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
-      return true;
-   }
-   const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
-
-   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-
-   if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
-      LOG_0(
-         TraceLevelWarning, 
-         "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
-      );
-      return true;
-   }
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
-      return true;
-   }
-   const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
-
-   // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
-   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
-   if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aHistogramBuckets");
-      return true;
-   }
-
-   if(bClassification) {
-      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<true> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   } else {
-      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
-      for(size_t i = 0; i < cTotalBuckets; ++i) {
-         HistogramBucket<false> * const pHistogramBucket =
-            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
-         pHistogramBucket->Zero(cVectorLength);
-      }
-   }
-
-   HistogramBucketBase * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBuckets, cTotalBucketsMainSpace);
-
-#ifndef NDEBUG
-   const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
-#endif // NDEBUG
-   
-   BinInteraction(
-      pEbmInteractionState,
-      pFeatureCombination,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
-   );
-
-#ifndef NDEBUG
-   // make a copy of the original binned buckets for debugging purposes
-   size_t cTotalBucketsDebug = 1;
-   for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
-      EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
-      cTotalBucketsDebug *= cBins;
-   }
-   // we wouldn't have been able to allocate our main buffer above if this wasn't ok
-   EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
-   HistogramBucketBase * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucketBase>(cTotalBucketsDebug, cBytesPerHistogramBucket);
-   if(nullptr != aHistogramBucketsDebugCopy) {
-      // if we can't allocate, don't fail.. just stop checking
-      const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
-      memcpy(aHistogramBucketsDebugCopy, aHistogramBuckets, cBytesBufferDebug);
-   }
-#endif // NDEBUG
-
-   TensorTotalsBuild(
-      runtimeLearningTypeOrCountTargetClasses,
-      pFeatureCombination,
-      pAuxiliaryBucketZone,
-      aHistogramBuckets
-#ifndef NDEBUG
-      , aHistogramBucketsDebugCopy
-      , aHistogramBucketsEndDebug
-#endif // NDEBUG
-   );
-
-   if(2 == cDimensions) {
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
-
-      FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
-         pEbmInteractionState,
-         pFeatureCombination,
-         cInstancesRequiredForChildSplitMin,
-         pAuxiliaryBucketZone,
-         aHistogramBuckets
-#ifndef NDEBUG
-         , aHistogramBucketsDebugCopy
-         , aHistogramBucketsEndDebug
-#endif // NDEBUG
-         );
-      
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScore Done bin sweep loop");
-
-      if(nullptr != pInteractionScoreReturn) {
-         // we started our score at zero, and didn't replace with anything lower, so it can't be below zero
-         // if we collected a NaN value, then we kept it
-         EBM_ASSERT(std::isnan(bestSplittingScore) || FloatEbmType { 0 } <= bestSplittingScore);
-         EBM_ASSERT((!bClassification) || !std::isinf(bestSplittingScore));
-
-         // if bestSplittingScore was NaN we make it zero so that it's not included.  If infinity, also don't include it since we overloaded something
-         // even though bestSplittingScore shouldn't be +-infinity for classification, we check it for +-infinity 
-         // here since it's most efficient to check that the exponential is all ones, which is the case only for +-infinity and NaN, but not others
-         if(UNLIKELY(UNLIKELY(std::isnan(bestSplittingScore)) || UNLIKELY(std::isinf(bestSplittingScore)))) {
-            bestSplittingScore = FloatEbmType { 0 };
-         }
-         *pInteractionScoreReturn = bestSplittingScore;
-      }
-   } else {
-      EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore 2 != cDimensions");
-
-      // TODO: handle this better
-      if(nullptr != pInteractionScoreReturn) {
-         // for now, just return any interactions that have other than 2 dimensions as zero, which means they won't be considered
-         *pInteractionScoreReturn = FloatEbmType { 0 };
-      }
-   }
-
-#ifndef NDEBUG
-   free(aHistogramBucketsDebugCopy);
-#endif // NDEBUG
-
-   LOG_0(TraceLevelVerbose, "Exited CalculateInteractionScore");
-   return false;
-}
 
 #endif // DIMENSION_MULTIPLE_H

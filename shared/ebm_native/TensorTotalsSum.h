@@ -18,6 +18,17 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
+void TensorTotalsBuild(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const FeatureCombination * const pFeatureCombination,
+   HistogramBucketBase * pBucketAuxiliaryBuildZone,
+   HistogramBucketBase * const aHistogramBuckets
+#ifndef NDEBUG
+   , HistogramBucketBase * const aHistogramBucketsDebugCopy
+   , const unsigned char * const aHistogramBucketsEndDebug
+#endif // NDEBUG
+);
+
 #ifndef NDEBUG
 
 template<bool bClassification>
