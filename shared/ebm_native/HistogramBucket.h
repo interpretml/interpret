@@ -50,29 +50,6 @@ struct HistogramBucketBase {
 };
 
 template<bool bClassification>
-EBM_INLINE bool GetHistogramBucketSizeOverflow(const size_t cVectorLength) {
-   // TODO: Get rid of this function in favor of the non-templated version
-   return IsMultiplyError(
-      sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? 
-      true : 
-      IsAddError(
-         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>), 
-         sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength
-      ) ? true : false;
-}
-EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
-   return bClassification ? GetHistogramBucketSizeOverflow<true>(cVectorLength) : GetHistogramBucketSizeOverflow<false>(cVectorLength);
-}
-template<bool bClassification>
-EBM_INLINE size_t GetHistogramBucketSize(const size_t cVectorLength) {
-   // TODO: Get rid of this function in favor of the non-templated version
-   return sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + 
-      sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
-}
-EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
-   return bClassification ? GetHistogramBucketSize<true>(cVectorLength) : GetHistogramBucketSize<false>(cVectorLength);
-}
-template<bool bClassification>
 EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket, 
    HistogramBucket<bClassification> * const aHistogramBuckets, 
@@ -143,8 +120,10 @@ struct HistogramBucket final : HistogramBucketBase {
    }
 
    EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+      const size_t cBytesPerHistogramBucket = 
+         sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) +
+         sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
+
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
 
@@ -173,5 +152,37 @@ struct HistogramBucket final : HistogramBucketBase {
 };
 static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_standard_layout<HistogramBucket<true>>::value, 
    "HistogramBucket uses the struct hack, so it needs to be standard layout class otherwise we can't depend on the layout!");
+
+EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
+      return true;
+   }
+
+   const size_t cBytesHistogramBucketComponent = bClassification ?
+      (sizeof(HistogramBucket<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
+      (sizeof(HistogramBucket<false>) - sizeof(HistogramBucketVectorEntry<false>));
+
+   if(UNLIKELY(IsAddError(cBytesHistogramBucketComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+      return true;
+   }
+
+   return false;
+}
+
+EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramBucketComponent = bClassification ?
+      sizeof(HistogramBucket<true>) - sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucket<false>) - sizeof(HistogramBucketVectorEntry<false>);
+
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   return cBytesHistogramBucketComponent + cBytesHistogramTargetEntry * cVectorLength;
+}
 
 #endif // HISTOGRAM_BUCKET_H

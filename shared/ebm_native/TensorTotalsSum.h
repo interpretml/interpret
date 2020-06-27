@@ -52,8 +52,8 @@ void TensorTotalsSumDebugSlow(
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    // we've allocated this, so it should fit
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength));
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength));
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    pRet->Zero(cVectorLength);
 
    while(true) {
@@ -95,8 +95,8 @@ void TensorTotalsCompareDebug(
    const HistogramBucket<bClassification> * const pComparison
 ) {
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
@@ -163,8 +163,8 @@ void TensorTotalsSum(
       runtimeLearningTypeOrCountTargetClasses
    );
    const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-   EBM_ASSERT(!GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;

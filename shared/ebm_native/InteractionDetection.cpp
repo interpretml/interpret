@@ -486,7 +486,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       ++pFeatureCombinationIndex;
    } while(pFeatureCombinationIndexEnd != pFeatureCombinationIndex);
 
-   // TODO: check if GetRuntimeLearningTypeOrCountTargetClasses can be zero?
    if(ptrdiff_t { 0 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO GetInteractionScore target with 0/1 classes");
       if(nullptr != interactionScoreReturn) {

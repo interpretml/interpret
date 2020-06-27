@@ -25,6 +25,8 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != aPredictorScores);
+   // runtimeLearningTypeOrCountTargetClasses can only be zero if there are zero instances and we shouldn't get here
+   EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
@@ -183,6 +185,10 @@ bool DataSetByFeature::Initialize(
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Initialize");
 
    if(0 != cInstances) {
+      // runtimeLearningTypeOrCountTargetClasses can only be zero if 
+      // there are zero instances and we shouldn't get past this point
+      EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
+
       // if cInstances is zero, then we don't need to allocate anything since we won't use them anyways
 
       // check our targets since we don't use them other than for initializing residuals
