@@ -421,7 +421,6 @@ EBM_INLINE T * EbmMalloc() {
 }
 template<typename T>
 EBM_INLINE T * EbmMalloc(const size_t cItems) {
-   assert(0 < cItems);
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;

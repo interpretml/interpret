@@ -8,6 +8,8 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
+#include <vector>
+#include <queue>
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
