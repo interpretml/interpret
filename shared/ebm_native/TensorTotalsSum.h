@@ -140,8 +140,8 @@ void TensorTotalsSum(
    const size_t directionVector,
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pRet
 #ifndef NDEBUG
-   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy,
-   const unsigned char * const aHistogramBucketsEndDebug
+   , const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucketsDebugCopy
+   , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
 ) {
    struct TotalsDimension {
