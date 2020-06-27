@@ -16,6 +16,9 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
+#include "TensorTotalsSum.h"
+
+
 // TODO: Implement a far more efficient boosting algorithm for higher dimensional interactions.  The algorithm works as follows:
 //   - instead of first calculating the sums at each point for the hyper-dimensional region from the origin to each point, and then later
 //     looking for cuts, we can do both at the same time.  We know the total sums for the entire hyper-dimensional region, and as we're doing our summing

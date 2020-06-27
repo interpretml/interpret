@@ -17,6 +17,8 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
+#include "InteractionDetection.h"
+
 #include "TensorTotalsSum.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>

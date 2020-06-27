@@ -320,6 +320,7 @@ EXIT /B 0
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
