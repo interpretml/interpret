@@ -1230,21 +1230,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
    // validationMetricReturn can be nullptr
 
+   if(ptrdiff_t { 0 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()) {
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
+      // length array logits, which means for our representation that we have zero items in the array total.
+      // since we can predit the output with 100% accuracy, our gain will be 0.
+      if(LIKELY(nullptr != gainReturn)) {
+         *gainReturn = FloatEbmType { 0 };
+      }
+      LOG_0(
+         TraceLevelWarning,
+         "WARNING GenerateModelFeatureCombinationUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
+      );
+      return nullptr;
+   }
+
    FloatEbmType * aModelFeatureCombinationUpdateTensor;
    if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
-      if(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() <= ptrdiff_t { 1 }) {
-         // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
-         // length array logits, which means for our representation that we have zero items in the array total.
-         // since we can predit the output with 100% accuracy, our gain will be 0.
-         if(LIKELY(nullptr != gainReturn)) {
-            *gainReturn = FloatEbmType { 0 };
-         }
-         LOG_0(
-            TraceLevelWarning, 
-            "WARNING GenerateModelFeatureCombinationUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
-         );
-         return nullptr;
-      }
       aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(
          pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
          pEbmBoostingState, 
