@@ -303,13 +303,11 @@ EXIT /B 0
     <ClInclude Include="EbmStatisticUtils.h" />
     <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="DimensionMultiple.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />
     <ClInclude Include="RandomStream.h" />
     <ClInclude Include="SamplingSet.h" />
     <ClInclude Include="SegmentedTensor.h" />
-    <ClInclude Include="DimensionSingle.h" />
     <ClInclude Include="TensorTotalsSum.h" />
     <ClInclude Include="TreeNode.h" />
   </ItemGroup>
@@ -322,6 +320,7 @@ EXIT /B 0
     <ClCompile Include="CalculateInteractionScore.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
+    <ClCompile Include="GenerateModelFeatureGroupUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />

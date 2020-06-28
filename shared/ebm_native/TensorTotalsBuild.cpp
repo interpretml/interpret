@@ -952,3 +952,284 @@ extern void TensorTotalsBuild(
 //   LOG_0(TraceLevelVerbose, "Exited BuildFastTotalsZeroMemoryIncrease");
 //}
 
+
+
+
+//template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
+//bool BoostMultiDimensionalPaulAlgorithm(CachedThreadResources<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pCachedThreadResources, const FeatureInternal * const pTargetFeature, SamplingSet const * const pTrainingSet, const FeatureCombination * const pFeatureCombination, SegmentedRegion<ActiveDataType, FloatEbmType> * const pSmallChangeToModelOverwriteSingleSamplingSet) {
+//   HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets = BinDataSet<compilerLearningTypeOrCountTargetClasses>(pCachedThreadResources, pFeatureCombination, pTrainingSet, pTargetFeature);
+//   if(UNLIKELY(nullptr == aHistogramBuckets)) {
+//      return true;
+//   }
+//
+//   BuildFastTotals(pTargetFeature, pFeatureCombination, aHistogramBuckets);
+//
+//   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+//   const size_t cVectorLength = GET_VECTOR_LENGTH(compilerLearningTypeOrCountTargetClasses, runtimeLearningTypeOrCountTargetClasses);
+//   EBM_ASSERT(!GetHistogramBucketSizeOverflow<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength)); // we're accessing allocated memory
+//   const size_t cBytesPerHistogramBucket = GetHistogramBucketSize<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cVectorLength);
+//
+//   size_t aiStart[k_cDimensionsMax];
+//   size_t aiLast[k_cDimensionsMax];
+//
+//   if(2 == cDimensions) {
+//      DO: somehow avoid having a malloc here, either by allocating these when we allocate our big chunck of memory, or as part of pCachedThreadResources
+//      HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * aDynamicHistogramBuckets = static_cast<HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> *>(malloc(cBytesPerHistogramBucket * ));
+//
+//      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->m_cBins;
+//      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->m_cBins;
+//
+//      FloatEbmType bestSplittingScore = FloatEbmType { -std::numeric_limits<FloatEbmType>::infinity() };
+//
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(0, 1)) {
+//         free(aDynamicHistogramBuckets);
+//#ifndef NDEBUG
+//         free(aHistogramBucketsDebugCopy);
+//#endif // NDEBUG
+//         return true;
+//      }
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->SetCountDivisions(1, 1)) {
+//         free(aDynamicHistogramBuckets);
+//#ifndef NDEBUG
+//         free(aHistogramBucketsDebugCopy);
+//#endif // NDEBUG
+//         return true;
+//      }
+//      if(pSmallChangeToModelOverwriteSingleSamplingSet->EnsureValueCapacity(cVectorLength * 4)) {
+//         free(aDynamicHistogramBuckets);
+//#ifndef NDEBUG
+//         free(aHistogramBucketsDebugCopy);
+//#endif // NDEBUG
+//         return true;
+//      }
+//
+//      for(size_t iBin1 = 0; iBin1 < cBinsDimension1 - 1; ++iBin1) {
+//         for(size_t iBin2 = 0; iBin2 < cBinsDimension2 - 1; ++iBin2) {
+//            FloatEbmType splittingScore;
+//
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 0);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighLow = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 1);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsLowHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 2);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsHighHigh = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 3);
+//
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsTarget = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 4);
+//            HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTotalsOther = GetHistogramBucketByIndex<IsClassification(compilerLearningTypeOrCountTargetClasses)>(cBytesPerHistogramBucket, aDynamicHistogramBuckets, 5);
+//
+//            aiStart[0] = 0;
+//            aiStart[1] = 0;
+//            aiLast[0] = iBin1;
+//            aiLast[1] = iBin2;
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowLow);
+//
+//            aiStart[0] = iBin1 + 1;
+//            aiStart[1] = 0;
+//            aiLast[0] = cBinsDimension1 - 1;
+//            aiLast[1] = iBin2;
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighLow);
+//
+//            aiStart[0] = 0;
+//            aiStart[1] = iBin2 + 1;
+//            aiLast[0] = iBin1;
+//            aiLast[1] = cBinsDimension2 - 1;
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsLowHigh);
+//
+//            aiStart[0] = iBin1 + 1;
+//            aiStart[1] = iBin2 + 1;
+//            aiLast[0] = cBinsDimension1 - 1;
+//            aiLast[1] = cBinsDimension2 - 1;
+//            TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureCombination, aHistogramBuckets, aiStart, aiLast, pTotalsHighHigh);
+//
+//            // LOW LOW
+//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//
+//            // MODIFY HERE
+//            pTotalsTarget->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//            
+//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            if(bestSplittingScore < splittingScore) {
+//               bestSplittingScore = splittingScore;
+//
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//
+//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
+//
+//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                     // regression
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                  } else {
+//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     // classification
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                  }
+//
+//                  // MODIFY HERE
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//               }
+//            }
+//
+//
+//
+//
+//            // HIGH LOW
+//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//
+//            // MODIFY HERE
+//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//
+//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            if(bestSplittingScore < splittingScore) {
+//               bestSplittingScore = splittingScore;
+//
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//
+//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
+//
+//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                     // regression
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                  } else {
+//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     // classification
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                  }
+//
+//                  // MODIFY HERE
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//               }
+//            }
+//
+//
+//
+//
+//            // LOW HIGH
+//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//
+//            // MODIFY HERE
+//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//
+//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            if(bestSplittingScore < splittingScore) {
+//               bestSplittingScore = splittingScore;
+//
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//
+//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
+//
+//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                     // regression
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                  } else {
+//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     // classification
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                  }
+//
+//                  // MODIFY HERE
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionTarget;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionOther;
+//               }
+//            }
+//
+//
+//
+//            // HIGH HIGH
+//            pTotalsTarget->Zero(runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Zero(runtimeLearningTypeOrCountTargetClasses);
+//
+//            // MODIFY HERE
+//            pTotalsOther->Add(*pTotalsLowLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsHighLow, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsOther->Add(*pTotalsLowHigh, runtimeLearningTypeOrCountTargetClasses);
+//            pTotalsTarget->Add(*pTotalsHighHigh, runtimeLearningTypeOrCountTargetClasses);
+//
+//            splittingScore = CalculateRegionSplittingScore<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(pTotalsTarget, pTotalsOther, runtimeLearningTypeOrCountTargetClasses);
+//            if(bestSplittingScore < splittingScore) {
+//               bestSplittingScore = splittingScore;
+//
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0)[0] = iBin1;
+//               pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(1)[0] = iBin2;
+//
+//               for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
+//                  FloatEbmType predictionTarget;
+//                  FloatEbmType predictionOther;
+//
+//                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
+//                     // regression
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsTarget->m_cInstancesInBucket);
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, pTotalsOther->m_cInstancesInBucket);
+//                  } else {
+//                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
+//                     // classification
+//                     predictionTarget = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsTarget->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                     predictionOther = ComputeSmallChangeForOneSegmentClassificationLogOdds(ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, ArrayToPointer(pTotalsOther->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator());
+//                  }
+//
+//                  // MODIFY HERE
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[0 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[1 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[2 * cVectorLength + iVector] = predictionOther;
+//                  pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[3 * cVectorLength + iVector] = predictionTarget;
+//               }
+//            }
+//
+//
+//
+//
+//
+//
+//         }
+//      }
+//
+//      free(aDynamicHistogramBuckets);
+//   } else {
+//      DO: handle this better
+//#ifndef NDEBUG
+//      EBM_ASSERT(false); // we only support pairs currently
+//      free(aHistogramBucketsDebugCopy);
+//#endif // NDEBUG
+//      return true;
+//   }
+//#ifndef NDEBUG
+//   free(aHistogramBucketsDebugCopy);
+//#endif // NDEBUG
+//   return false;
+//}
+
+
+
+
