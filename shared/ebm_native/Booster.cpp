@@ -860,8 +860,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
+static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
    EbmBoostingState * const pEbmBoostingState, 
    const size_t iFeatureCombination, 
    const FloatEbmType learningRate, 
@@ -871,7 +870,8 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
    const FloatEbmType * const aValidationWeights, 
    FloatEbmType * const pGainReturn
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
    // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetClasses function
    UNUSED(aTrainingWeights);
@@ -907,7 +907,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
                return nullptr;
             }
          } else if(1 == pFeatureCombination->GetCountFeatures()) {
-            if(BoostSingleDimensional<compilerLearningTypeOrCountTargetClasses>(
+            if(BoostSingleDimensional(
                pEbmBoostingState,
                pFeatureCombination,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
@@ -983,7 +983,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
          //   pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets->Multiply(learningRate / cSamplingSetsAfterZero);
          //}
 
-         constexpr bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == compilerLearningTypeOrCountTargetClasses;
+         const bool bDividing = bExpandBinaryLogits && ptrdiff_t { 2 } == runtimeLearningTypeOrCountTargetClasses;
          if(bDividing) {
             bBad = pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->MultiplyAndCheckForIssues(learningRate / cSamplingSetsAfterZero / 2);
          } else {
@@ -1027,77 +1027,6 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
 
    LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdatePerTargetClasses");
    return pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValues();
-}
-
-template<ptrdiff_t possibleCompilerLearningTypeOrCountTargetClasses>
-EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmBoostingState * const pEbmBoostingState, 
-   const size_t iFeatureCombination, 
-   const FloatEbmType learningRate, 
-   const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForChildSplitMin, 
-   const FloatEbmType * const aTrainingWeights, 
-   const FloatEbmType * const aValidationWeights, 
-   FloatEbmType * const pGainReturn
-) {
-   static_assert(IsClassification(possibleCompilerLearningTypeOrCountTargetClasses), "possibleCompilerLearningTypeOrCountTargetClasses needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   if(possibleCompilerLearningTypeOrCountTargetClasses == runtimeLearningTypeOrCountTargetClasses) {
-      EBM_ASSERT(runtimeLearningTypeOrCountTargetClasses <= k_cCompilerOptimizedTargetClassesMax);
-      return GenerateModelFeatureCombinationUpdatePerTargetClasses<possibleCompilerLearningTypeOrCountTargetClasses>(
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         learningRate, 
-         cTreeSplitsMax, 
-         cInstancesRequiredForChildSplitMin, 
-         aTrainingWeights, 
-         aValidationWeights, 
-         pGainReturn
-      );
-   } else {
-      return CompilerRecursiveGenerateModelFeatureCombinationUpdate<possibleCompilerLearningTypeOrCountTargetClasses + 1>(
-         runtimeLearningTypeOrCountTargetClasses, 
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         learningRate, 
-         cTreeSplitsMax, 
-         cInstancesRequiredForChildSplitMin, 
-         aTrainingWeights, 
-         aValidationWeights, 
-         pGainReturn
-      );
-   }
-}
-
-template<>
-EBM_INLINE FloatEbmType * CompilerRecursiveGenerateModelFeatureCombinationUpdate<k_cCompilerOptimizedTargetClassesMax + 1>(
-   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   EbmBoostingState * const pEbmBoostingState, 
-   const size_t iFeatureCombination, 
-   const FloatEbmType learningRate, 
-   const size_t cTreeSplitsMax, 
-   const size_t cInstancesRequiredForChildSplitMin, 
-   const FloatEbmType * const aTrainingWeights, 
-   const FloatEbmType * const aValidationWeights, 
-   FloatEbmType * const pGainReturn
-) {
-   UNUSED(runtimeLearningTypeOrCountTargetClasses);
-   // it is logically possible, but uninteresting to have a classification with 1 target class, 
-   // so let our runtime system handle those unlikley and uninteresting cases
-   static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
-   EBM_ASSERT(IsClassification(runtimeLearningTypeOrCountTargetClasses));
-   EBM_ASSERT(k_cCompilerOptimizedTargetClassesMax < runtimeLearningTypeOrCountTargetClasses);
-   return GenerateModelFeatureCombinationUpdatePerTargetClasses<k_dynamicClassification>(
-      pEbmBoostingState, 
-      iFeatureCombination, 
-      learningRate, 
-      cTreeSplitsMax, 
-      cInstancesRequiredForChildSplitMin, 
-      aTrainingWeights, 
-      aValidationWeights, 
-      pGainReturn
-   );
 }
 
 // we made this a global because if we had put this variable inside the EbmBoostingState object, then we would need to dereference that before getting 
@@ -1246,32 +1175,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       return nullptr;
    }
 
-   FloatEbmType * aModelFeatureCombinationUpdateTensor;
-   if(IsClassification(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses())) {
-      aModelFeatureCombinationUpdateTensor = CompilerRecursiveGenerateModelFeatureCombinationUpdate<2>(
-         pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses(),
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         learningRate, 
-         cTreeSplitsMax, 
-         cInstancesRequiredForChildSplitMin, 
-         trainingWeights, 
-         validationWeights, 
-         gainReturn
-      );
-   } else {
-      EBM_ASSERT(IsRegression(pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()));
-      aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdatePerTargetClasses<k_regression>(
-         pEbmBoostingState, 
-         iFeatureCombination, 
-         learningRate, 
-         cTreeSplitsMax, 
-         cInstancesRequiredForChildSplitMin, 
-         trainingWeights, 
-         validationWeights, 
-         gainReturn
-      );
-   }
+   FloatEbmType * aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdateInternal(
+      pEbmBoostingState, 
+      iFeatureCombination, 
+      learningRate, 
+      cTreeSplitsMax, 
+      cInstancesRequiredForChildSplitMin, 
+      trainingWeights, 
+      validationWeights, 
+      gainReturn
+   );
 
    if(nullptr != gainReturn) {
       EBM_ASSERT(!std::isnan(*gainReturn)); // NaNs can happen, but we should have edited those before here

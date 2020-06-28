@@ -132,8 +132,7 @@ EBM_INLINE bool BoostZeroDimensional(
    return false;
 }
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool BoostSingleDimensional(
+EBM_INLINE bool BoostSingleDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
@@ -142,20 +141,14 @@ bool BoostSingleDimensional(
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet, 
    FloatEbmType * const pTotalGain
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
-
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
    EBM_ASSERT(1 == pFeatureCombination->GetCountFeatures());
    size_t cTotalBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
-   
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "WARNING GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
@@ -171,17 +164,39 @@ bool BoostSingleDimensional(
 
    CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
 
-   HistogramBucket<bClassification> * const aHistogramBuckets =
-      static_cast<HistogramBucket<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostSingleDimensional nullptr == aHistogramBuckets");
       return true;
    }
-   // !!! VERY IMPORTANT: zero our one extra bucket for BuildFastTotals to use for multi-dimensional !!!!
-   for(size_t i = 0; i < cTotalBuckets; ++i) {
-      HistogramBucket<bClassification> * const pHistogramBucket =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
-      pHistogramBucket->Zero(cVectorLength);
+
+   HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry =
+      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray();
+
+   if(bClassification) {
+      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<true> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+
+      HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntryLocal = aSumHistogramBucketVectorEntry->GetHistogramBucketVectorEntry<true>();
+      for(size_t i = 0; i < cVectorLength; ++i) {
+         aSumHistogramBucketVectorEntryLocal[i].Zero();
+      }
+   } else {
+      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<false> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+
+      HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntryLocal = aSumHistogramBucketVectorEntry->GetHistogramBucketVectorEntry<false>();
+      for(size_t i = 0; i < cVectorLength; ++i) {
+         aSumHistogramBucketVectorEntryLocal[i].Zero();
+      }
    }
 
 #ifndef NDEBUG
@@ -199,18 +214,12 @@ bool BoostSingleDimensional(
 #endif // NDEBUG
    );
 
-   HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
-      pCachedThreadResources->GetSumHistogramBucketVectorEntryArray<bClassification>();
-   for(size_t i = 0; i < cVectorLength; ++i) {
-      aSumHistogramBucketVectorEntry[i].Zero();
-   }
-
    size_t cHistogramBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
    // dimensions with 1 bin don't contribute anything since they always have the same value, 
    // so we pre-filter these out and handle them separately
    EBM_ASSERT(2 <= cHistogramBuckets);
    SumHistogramBuckets(
-      learningTypeOrCountTargetClasses,
+      runtimeLearningTypeOrCountTargetClasses,
       cHistogramBuckets,
       aHistogramBuckets, 
       aSumHistogramBucketVectorEntry

@@ -162,9 +162,8 @@ public:
       return m_aEquivalentSplits;
    }
 
-   template<bool bClassification>
-   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntryArray() {
-      return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry);
+   EBM_INLINE HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
+      return m_aSumHistogramBucketVectorEntry;
    }
 
    template<bool bClassification>
