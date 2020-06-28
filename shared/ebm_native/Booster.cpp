@@ -28,6 +28,8 @@
 #include "DimensionSingle.h"
 #include "DimensionMultiple.h"
 
+#include "TreeNode.h"
+
 #include "Booster.h"
 
 EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
