@@ -14,7 +14,7 @@
 struct HistogramBucketBase;
 
 class CachedInteractionThreadResources final {
-   void * m_aThreadByteBuffer1;
+   HistogramBucketBase * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
 
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
@@ -54,16 +54,16 @@ public:
    }
 
    INLINE_RELEASE HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired) {
-      void * aBuffer = m_aThreadByteBuffer1;
+      HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
          free(aBuffer);
-         aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
+         aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));
          m_aThreadByteBuffer1 = aBuffer;
       }
-      return reinterpret_cast<HistogramBucketBase *>(aBuffer);
+      return aBuffer;
    }
 };
 static_assert(std::is_standard_layout<CachedInteractionThreadResources>::value,

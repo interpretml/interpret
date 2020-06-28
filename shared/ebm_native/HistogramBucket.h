@@ -118,6 +118,10 @@ EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const
 }
 
 EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
+   // TODO: someday try out bucket sizes that are a power of two.  This would allow us to use a shift when bucketing into histograms
+   //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
+   //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
+
    const size_t cBytesHistogramBucketComponent = bClassification ?
       sizeof(HistogramBucket<true>) - sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(HistogramBucket<false>) - sizeof(HistogramBucketVectorEntry<false>);

@@ -14,8 +14,19 @@
 template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
+struct HistogramBucketVectorEntryBase {
+   template<bool bClassification>
+   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
+      return static_cast<HistogramBucketVectorEntry<bClassification> *>(this);
+   }
+   template<bool bClassification>
+   EBM_INLINE const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
+      return static_cast<const HistogramBucketVectorEntry<bClassification> *>(this);
+   }
+};
+
 template<>
-struct HistogramBucketVectorEntry<true> final {
+struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
    // classification version of the HistogramBucketVectorEntry class
 
    FloatEbmType m_sumResidualError;
@@ -55,7 +66,7 @@ struct HistogramBucketVectorEntry<true> final {
 };
 
 template<>
-struct HistogramBucketVectorEntry<false> final {
+struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase {
    // regression version of the HistogramBucketVectorEntry class
 
    FloatEbmType m_sumResidualError;

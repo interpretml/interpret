@@ -322,6 +322,7 @@ EXIT /B 0
     <ClCompile Include="CalculateInteractionScore.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
+    <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
     <ClCompile Include="DataSetBoosting.cpp" />

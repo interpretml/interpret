@@ -18,7 +18,7 @@ struct HistogramBucketBase;
 class CachedBoostingThreadResources final {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
-   void * m_aThreadByteBuffer1;
+   HistogramBucketBase * m_aThreadByteBuffer1;
    size_t m_cThreadByteBufferCapacity1;
 
    void * m_aThreadByteBuffer2;
@@ -27,8 +27,8 @@ class CachedBoostingThreadResources final {
    FloatEbmType * m_aTempFloatVector;
    void * m_aEquivalentSplits; // we use different structures for mains and multidimension and between classification and regression
 
-   void * m_aSumHistogramBucketVectorEntry;
-   void * m_aSumHistogramBucketVectorEntry1;
+   HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry;
+   HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry1;
 
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
@@ -80,10 +80,12 @@ public:
          const size_t cBytesPerItem = IsClassification(runtimeLearningTypeOrCountTargetClasses) ?
             sizeof(HistogramBucketVectorEntry<true>) : sizeof(HistogramBucketVectorEntry<false>);
 
-         void * const aSumHistogramBucketVectorEntry = EbmMalloc<void>(cVectorLength, cBytesPerItem);
+         HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry = 
+            EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
          if(LIKELY(nullptr != aSumHistogramBucketVectorEntry)) {
             pNew->m_aSumHistogramBucketVectorEntry = aSumHistogramBucketVectorEntry;
-            void * const aSumHistogramBucketVectorEntry1 = EbmMalloc<void>(cVectorLength, cBytesPerItem);
+            HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntry1 = 
+               EbmMalloc<HistogramBucketVectorEntryBase>(cVectorLength, cBytesPerItem);
             if(LIKELY(nullptr != aSumHistogramBucketVectorEntry1)) {
                pNew->m_aSumHistogramBucketVectorEntry1 = aSumHistogramBucketVectorEntry1;
                FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
@@ -110,16 +112,16 @@ public:
    }
 
    INLINE_RELEASE HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired) {
-      void * aBuffer = m_aThreadByteBuffer1;
+      HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
          LOG_N(TraceLevelInfo, "Growing CachedBoostingThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
 
          free(aBuffer);
-         aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
+         aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));
          m_aThreadByteBuffer1 = aBuffer;
       }
-      return reinterpret_cast<HistogramBucketBase *>(aBuffer);
+      return aBuffer;
    }
 
    INLINE_RELEASE bool GrowThreadByteBuffer2(const size_t cByteBoundaries) {
