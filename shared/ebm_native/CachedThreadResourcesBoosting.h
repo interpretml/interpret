@@ -13,6 +13,8 @@
 
 #include "HistogramTargetEntry.h"
 
+struct HistogramBucketBase;
+
 class CachedBoostingThreadResources final {
    // TODO: can I preallocate m_aThreadByteBuffer1 and m_aThreadByteBuffer2 without resorting to grow them if I examine my inputs
 
@@ -107,7 +109,7 @@ public:
       return nullptr;
    }
 
-   INLINE_RELEASE void * GetThreadByteBuffer1(const size_t cBytesRequired) {
+   INLINE_RELEASE HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired) {
       void * aBuffer = m_aThreadByteBuffer1;
       if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
          m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
@@ -117,7 +119,7 @@ public:
          aBuffer = EbmMalloc<void>(m_cThreadByteBufferCapacity1);
          m_aThreadByteBuffer1 = aBuffer;
       }
-      return aBuffer;
+      return reinterpret_cast<HistogramBucketBase *>(aBuffer);
    }
 
    INLINE_RELEASE bool GrowThreadByteBuffer2(const size_t cByteBoundaries) {

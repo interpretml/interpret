@@ -54,10 +54,7 @@ bool FindBestBoostingSplitPairs(
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then 
 //    go back to our original tensor after splits to determine the denominator
-// TODO: do we really require compilerCountDimensions here?  Does it make any of the code below faster... or alternatively, should we puth the 
-//    distinction down into a sub-function
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
-bool BoostMultiDimensional(
+EBM_INLINE bool BoostMultiDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination, 
    const SamplingSet * const pTrainingSet,
@@ -65,13 +62,9 @@ bool BoostMultiDimensional(
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
-
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   // TODO: we can just re-generate this code 63 times and eliminate the dynamic cDimensions value.  We can also do this in several other 
-   // places like for SegmentedRegion and other critical places
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
    EBM_ASSERT(2 <= cDimensions);
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
@@ -103,12 +96,8 @@ bool BoostMultiDimensional(
    const size_t cTotalBuckets =  cTotalBucketsMainSpace + cAuxillaryBuckets;
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
-
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning, 
@@ -126,24 +115,34 @@ bool BoostMultiDimensional(
    CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
 
    // we don't need to free this!  It's tracked and reused by pCachedThreadResources
-   HistogramBucket<bClassification> * const aHistogramBuckets =
-      static_cast<HistogramBucket<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer));
+   HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
       LOG_0(TraceLevelWarning, "WARNING BoostMultiDimensional nullptr == aHistogramBuckets");
       return true;
    }
-   for(size_t i = 0; i < cTotalBuckets; ++i) {
-      HistogramBucket<bClassification> * const pHistogramBucket =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, i);
-      pHistogramBucket->Zero(cVectorLength);
+
+
+   if(bClassification) {
+      HistogramBucket<true> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<true>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<true> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
+   } else {
+      HistogramBucket<false> * const aHistogramBucketsLocal = aHistogramBuckets->GetHistogramBucket<false>();
+      for(size_t i = 0; i < cTotalBuckets; ++i) {
+         HistogramBucket<false> * const pHistogramBucket =
+            GetHistogramBucketByIndex(cBytesPerHistogramBucket, aHistogramBucketsLocal, i);
+         pHistogramBucket->Zero(cVectorLength);
+      }
    }
 
-   HistogramBucket<bClassification> * pAuxiliaryBucketZone =
-      GetHistogramBucketByIndex<bClassification>(
-         cBytesPerHistogramBucket, 
-         aHistogramBuckets, 
-         cTotalBucketsMainSpace
-      );
+   HistogramBucketBase * pAuxiliaryBucketZone = GetHistogramBucketByIndex(
+      cBytesPerHistogramBucket, 
+      aHistogramBuckets, 
+      cTotalBucketsMainSpace
+   );
 
 #ifndef NDEBUG
    const unsigned char * const aHistogramBucketsEndDebug = reinterpret_cast<unsigned char *>(aHistogramBuckets) + cBytesBuffer;
@@ -170,8 +169,8 @@ bool BoostMultiDimensional(
    }
    // we wouldn't have been able to allocate our main buffer above if this wasn't ok
    EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBytesPerHistogramBucket));
-   HistogramBucket<bClassification> * const aHistogramBucketsDebugCopy =
-      EbmMalloc<HistogramBucket<bClassification>>(cTotalBucketsDebug, cBytesPerHistogramBucket);
+   HistogramBucketBase * const aHistogramBucketsDebugCopy =
+      EbmMalloc<HistogramBucketBase>(cTotalBucketsDebug, cBytesPerHistogramBucket);
    if(nullptr != aHistogramBucketsDebugCopy) {
       // if we can't allocate, don't fail.. just stop checking
       const size_t cBytesBufferDebug = cTotalBucketsDebug * cBytesPerHistogramBucket;
@@ -292,11 +291,11 @@ bool BoostMultiDimensional(
 
 
    if(2 == cDimensions) {
-      HistogramBucket<bClassification> * const pTotal = GetHistogramBucketByIndex<bClassification>(
+      HistogramBucketBase * const pTotal = GetHistogramBucketByIndex(
          cBytesPerHistogramBucket,
          aHistogramBuckets,
          cTotalBucketsMainSpace - 1
-         );
+      );
 
       bool bError = FindBestBoostingSplitPairs(
          pEbmBoostingState,

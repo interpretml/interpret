@@ -920,7 +920,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
                return nullptr;
             }
          } else {
-            if(BoostMultiDimensional<compilerLearningTypeOrCountTargetClasses, 0>(
+            if(BoostMultiDimensional(
                pEbmBoostingState,
                pFeatureCombination,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
