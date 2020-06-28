@@ -758,23 +758,17 @@ retry_with_bigger_tree_node_children_array:
    return false;
 }
 
-template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool BoostZeroDimensional(
+EBM_INLINE bool BoostZeroDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const SamplingSet * const pTrainingSet,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
 ) {
-   constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
-
    LOG_0(TraceLevelVerbose, "Entered BoostZeroDimensional");
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
+   const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
-      compilerLearningTypeOrCountTargetClasses,
-      runtimeLearningTypeOrCountTargetClasses
-   );
-   const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
+   const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       // TODO : move this to initialization where we execute it only once
       LOG_0(TraceLevelWarning, "GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)");
@@ -784,15 +778,19 @@ bool BoostZeroDimensional(
 
    CachedBoostingThreadResources * const pCachedThreadResources = pEbmBoostingState->GetCachedThreadResources();
 
-   HistogramBucket<bClassification> * const pHistogramBucket =
-      static_cast<HistogramBucket<bClassification> *>(
-         pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket)
-   );
+   HistogramBucketBase * const pHistogramBucket = 
+      pCachedThreadResources->GetThreadByteBuffer1(cBytesPerHistogramBucket);
+   
    if(UNLIKELY(nullptr == pHistogramBucket)) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == pHistogramBucket");
       return true;
    }
-   pHistogramBucket->Zero(cVectorLength);
+
+   if(bClassification) {
+      pHistogramBucket->GetHistogramBucket<true>()->Zero(cVectorLength);
+   } else {
+      pHistogramBucket->GetHistogramBucket<false>()->Zero(cVectorLength);
+   }
 
    BinBoosting(
       false,
@@ -805,10 +803,10 @@ bool BoostZeroDimensional(
 #endif // NDEBUG
    );
 
-   const HistogramBucketVectorEntry<bClassification> * const aSumHistogramBucketVectorEntry =
-      ArrayToPointer(pHistogramBucket->m_aHistogramBucketVectorEntry);
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
+      const HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntry =
+         ArrayToPointer(pHistogramBucket->GetHistogramBucket<true>()->m_aHistogramBucketVectorEntry);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
             aSumHistogramBucketVectorEntry[iVector].m_sumResidualError, 
@@ -817,10 +815,12 @@ bool BoostZeroDimensional(
          aValues[iVector] = smallChangeToModel;
       }
    } else {
-      EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
+      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      const HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntry =
+         ArrayToPointer(pHistogramBucket->GetHistogramBucket<false>()->m_aHistogramBucketVectorEntry);
       const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
          aSumHistogramBucketVectorEntry[0].m_sumResidualError, 
-         static_cast<FloatEbmType>(pHistogramBucket->m_cInstancesInBucket)
+         static_cast<FloatEbmType>(pHistogramBucket->GetHistogramBucket<false>()->m_cInstancesInBucket)
       );
       aValues[0] = smallChangeToModel;
    }

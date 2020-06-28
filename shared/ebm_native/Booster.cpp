@@ -894,7 +894,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdatePerTargetClasses(
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain = FloatEbmType { 0 };
          if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->GetCountFeatures()))) {
-            if(BoostZeroDimensional<compilerLearningTypeOrCountTargetClasses>(
+            if(BoostZeroDimensional(
                pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet()
