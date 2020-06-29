@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef FEATURE_H
-#define FEATURE_H
+#ifndef FEATURE_ATOMIC_H
+#define FEATURE_ATOMIC_H
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -46,4 +46,4 @@ public:
 static_assert(std::is_standard_layout<Feature>::value,
    "we use malloc to allocate this, so it needs to be standard layout");
 
-#endif // FEATURE_H
+#endif // FEATURE_ATOMIC_H
