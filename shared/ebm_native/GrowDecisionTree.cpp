@@ -37,8 +37,8 @@ void Flatten(
 ) {
    // don't log this since we call it recursively.  Log where the root is called
    if(UNPREDICTABLE(pTreeNode->WAS_THIS_NODE_SPLIT())) {
-      EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-      const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
+      EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
          pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
       Flatten<bClassification>(pLeftChild, ppDivisions, ppValues, cVectorLength);
@@ -124,8 +124,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const HistogramBucket<bClassification> * const pHistogramBucketEntryLast =
       pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
 
-   EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
 
    TreeNode<bClassification> * const pLeftChildInit =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
@@ -405,11 +405,11 @@ public:
 
       // there will be at least one split
 
-      if(GetTreeNodeSizeOverflow<bClassification>(cVectorLength)) {
+      if(GetTreeNodeSizeOverflow(bClassification, cVectorLength)) {
          LOG_0(TraceLevelWarning, "WARNING GrowDecisionTree GetTreeNodeSizeOverflow<bClassification>(cVectorLength)");
          return true; // we haven't accessed this TreeNode memory yet, so we don't know if it overflows yet
       }
-      const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
+      const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 

@@ -17,30 +17,6 @@ template<bool bClassification>
 struct TreeNode;
 
 template<bool bClassification>
-EBM_INLINE size_t GetTreeNodeSizeOverflow(const size_t cVectorLength) {
-   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ? true : IsAddError(sizeof(TreeNode<bClassification>) - 
-      sizeof(HistogramBucketVectorEntry<bClassification>), sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength) ? true : false;
-}
-template<bool bClassification>
-EBM_INLINE size_t GetTreeNodeSize(const size_t cVectorLength) {
-   return sizeof(TreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) + 
-      sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
-}
-template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
-   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + cBytesAdd);
-}
-template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   UNUSED(cBytesTreeNode);
-   return pTreeNodeChildren;
-}
-template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
-   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
-}
-
-template<bool bClassification>
 struct TreeNodeData;
 
 template<>
@@ -187,5 +163,53 @@ public:
 };
 static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, 
    "TreeNode uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
+
+EBM_INLINE size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
+      return true;
+   }
+
+   const size_t cBytesTreeNodeComponent = bClassification ?
+      (sizeof(TreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
+      (sizeof(TreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>));
+
+   if(UNLIKELY(IsAddError(cBytesTreeNodeComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+      return true;
+   }
+
+   return false;
+}
+
+EBM_INLINE size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesTreeNodeComponent = bClassification ?
+      sizeof(TreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(TreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
+
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   return cBytesTreeNodeComponent + cBytesHistogramTargetEntry * cVectorLength;
+}
+
+template<bool bClassification>
+EBM_INLINE TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
+   return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + cBytesAdd);
+}
+
+template<bool bClassification>
+EBM_INLINE TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+   UNUSED(cBytesTreeNode);
+   return pTreeNodeChildren;
+}
+
+template<bool bClassification>
+EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+   return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
+}
 
 #endif // TREE_NODE_H
