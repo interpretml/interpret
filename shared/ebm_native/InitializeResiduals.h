@@ -15,15 +15,15 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class InitializeResiduals {
+class InitializeResidualsInternal {
 public:
    static void Func(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      FloatEbmType * const aTempFloatVector,
+      FloatEbmType * pResidualError
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
@@ -113,15 +113,15 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class InitializeResiduals<2> {
+class InitializeResidualsInternal<2> {
 public:
    static void Func(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      FloatEbmType * const aTempFloatVector,
+      FloatEbmType * pResidualError
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       UNUSED(aTempFloatVector);
@@ -160,15 +160,15 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class InitializeResiduals<k_regression> {
+class InitializeResidualsInternal<k_regression> {
 public:
    static void Func(
+      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
-      FloatEbmType * pResidualError,
-      const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      FloatEbmType * const aTempFloatVector
+      FloatEbmType * const aTempFloatVector,
+      FloatEbmType * pResidualError
    ) {
       UNUSED(runtimeLearningTypeOrCountTargetClasses);
       UNUSED(aTempFloatVector);
@@ -207,4 +207,45 @@ public:
    }
 };
 
-#endif // INITIALIZE_RESIDUALS_H
+EBM_INLINE void InitializeResiduals(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t cInstances,
+   const void * const aTargetData,
+   const FloatEbmType * const aPredictorScores,
+   FloatEbmType * const aTempFloatVector,
+   FloatEbmType * pResidualError
+) {
+   if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
+      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         InitializeResidualsInternal<2>::Func(
+            runtimeLearningTypeOrCountTargetClasses,
+            cInstances,
+            aTargetData,
+            aPredictorScores,
+            aTempFloatVector,
+            pResidualError
+         );
+      } else {
+         InitializeResidualsInternal<k_dynamicClassification>::Func(
+            runtimeLearningTypeOrCountTargetClasses,
+            cInstances,
+            aTargetData,
+            aPredictorScores,
+            aTempFloatVector,
+            pResidualError
+         );
+      }
+   } else {
+      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      InitializeResidualsInternal<k_regression>::Func(
+         runtimeLearningTypeOrCountTargetClasses,
+         cInstances,
+         aTargetData,
+         aPredictorScores,
+         aTempFloatVector,
+         pResidualError
+      );
+   }
+}
+
+#endif

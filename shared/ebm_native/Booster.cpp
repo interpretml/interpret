@@ -495,51 +495,37 @@ EbmBoostingState * EbmBoostingState::Allocate(
       }
    }
 
-   FloatEbmType * const aTempFloatVector = pBooster->GetCachedThreadResources()->GetTempFloatVector();
    if(bClassification) {
-      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         if(0 != cTrainingInstances) {
-            InitializeResiduals<2>::Func(
-               cTrainingInstances, 
-               aTrainingTargets, 
-               aTrainingPredictorScores, 
-               pBooster->m_trainingSet.GetResidualPointer(),
-               ptrdiff_t { 2 },
-               aTempFloatVector
-            );
-         }
-      } else {
-         if(0 != cTrainingInstances) {
-            InitializeResiduals<k_dynamicClassification>::Func(
-               cTrainingInstances, 
-               aTrainingTargets, 
-               aTrainingPredictorScores, 
-               pBooster->m_trainingSet.GetResidualPointer(),
-               runtimeLearningTypeOrCountTargetClasses,
-               aTempFloatVector
-            );
-         }
+      if(0 != cTrainingInstances) {
+         InitializeResiduals(
+            runtimeLearningTypeOrCountTargetClasses,
+            cTrainingInstances,
+            aTrainingTargets,
+            aTrainingPredictorScores,
+            pBooster->GetCachedThreadResources()->GetTempFloatVector(),
+            pBooster->m_trainingSet.GetResidualPointer()
+         );
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       if(0 != cTrainingInstances) {
-         InitializeResiduals<k_regression>::Func(
-            cTrainingInstances, 
-            aTrainingTargets, 
-            aTrainingPredictorScores, 
-            pBooster->m_trainingSet.GetResidualPointer(),
+         InitializeResiduals(
             k_regression,
-            aTempFloatVector
+            cTrainingInstances,
+            aTrainingTargets,
+            aTrainingPredictorScores,
+            nullptr,
+            pBooster->m_trainingSet.GetResidualPointer()
          );
       }
       if(0 != cValidationInstances) {
-         InitializeResiduals<k_regression>::Func(
-            cValidationInstances, 
-            aValidationTargets, 
-            aValidationPredictorScores, 
-            pBooster->m_validationSet.GetResidualPointer(),
+         InitializeResiduals(
             k_regression,
-            aTempFloatVector
+            cValidationInstances,
+            aValidationTargets,
+            aValidationPredictorScores,
+            nullptr,
+            pBooster->m_validationSet.GetResidualPointer()
          );
       }
    }

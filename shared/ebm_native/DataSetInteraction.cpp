@@ -39,37 +39,28 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    const size_t cElements = cInstances * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
+   FloatEbmType * aTempFloatVector = nullptr;
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
-      if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
-         InitializeResiduals<2>::Func(
-            cInstances, 
-            aTargetData, 
-            aPredictorScores, 
-            aResidualErrors, 
-            ptrdiff_t { 2 },
-            nullptr
-         );
-      } else {
-         FloatEbmType * const aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
+      if(!IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
+         aTempFloatVector = EbmMalloc<FloatEbmType>(cVectorLength);
          if(UNLIKELY(nullptr == aTempFloatVector)) {
             LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors nullptr == aTempFloatVector");
             free(aResidualErrors);
             return nullptr;
          }
-         InitializeResiduals<k_dynamicClassification>::Func(
-            cInstances, 
-            aTargetData, 
-            aPredictorScores, 
-            aResidualErrors, 
-            runtimeLearningTypeOrCountTargetClasses,
-            aTempFloatVector
-         );
-         free(aTempFloatVector);
       }
-   } else {
-      EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      InitializeResiduals<k_regression>::Func(cInstances, aTargetData, aPredictorScores, aResidualErrors, k_regression, nullptr);
    }
+   if(0 != cInstances) {
+      InitializeResiduals(
+         runtimeLearningTypeOrCountTargetClasses,
+         cInstances,
+         aTargetData,
+         aPredictorScores,
+         aTempFloatVector,
+         aResidualErrors
+      );
+   }
+   free(aTempFloatVector);
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeature::ConstructResidualErrors");
    return aResidualErrors;
