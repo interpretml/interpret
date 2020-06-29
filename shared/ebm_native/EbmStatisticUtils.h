@@ -434,6 +434,9 @@ public:
       return ret;
    }
 
+   WARNING_PUSH
+   WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
+
    EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(
       const FloatEbmType sumResidualError, 
       const FloatEbmType sumDenominator
@@ -501,6 +504,8 @@ public:
       //   the residualError was near +-1
       // return can be any other positive or negative number
    }
+
+   WARNING_POP
 
    EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_combination boost

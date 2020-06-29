@@ -323,6 +323,7 @@ EXIT /B 0
     <ClCompile Include="GenerateModelFeatureGroupUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
     <ClCompile Include="InitializeResiduals.cpp" />
+    <ClCompile Include="SegmentedTensor.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
