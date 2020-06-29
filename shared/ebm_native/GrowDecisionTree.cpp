@@ -24,6 +24,7 @@
 #include "HistogramBucket.h"
 
 #include "TreeNode.h"
+#include "TreeSweep.h"
 
 // TODO: it would be easy for us to implement a -1 lookback where we make the first cut, find the second cut, elimnate the first cut and try 
 //   again on that side, then re-examine the second cut again.  For mains this would be very quick we have found that 2-3 cuts are optimimum.  

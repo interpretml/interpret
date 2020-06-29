@@ -310,6 +310,7 @@ EXIT /B 0
     <ClInclude Include="SegmentedTensor.h" />
     <ClInclude Include="TensorTotalsSum.h" />
     <ClInclude Include="TreeNode.h" />
+    <ClInclude Include="TreeSweep.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyModelUpdate.cpp" />
