@@ -1,7 +1,7 @@
 @ECHO OFF
 SETLOCAL
 
-SET root_path=%~dp0..\..\
+SET root_path=%~dp0..\..\..\
 
 SET build_ebm_native=1
 for %%x in (%*) do (
@@ -17,22 +17,22 @@ IF %build_ebm_native% EQU 1 (
    ECHO ebm_native library NOT being built
 )
 
-MSBuild.exe "%root_path%tests\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Debug /p:Platform=x64
+MSBuild.exe "%root_path%shared\ebm_native\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Debug /p:Platform=x64
 IF %ERRORLEVEL% NEQ 0 (
    ECHO MSBuild for Debug x64 returned error code %ERRORLEVEL%
    EXIT /B %ERRORLEVEL%
 )
-MSBuild.exe "%root_path%tests\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Debug /p:Platform=Win32
+MSBuild.exe "%root_path%shared\ebm_native\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Debug /p:Platform=Win32
 IF %ERRORLEVEL% NEQ 0 (
    ECHO MSBuild for Debug x86 returned error code %ERRORLEVEL%
    EXIT /B %ERRORLEVEL%
 )
-MSBuild.exe "%root_path%tests\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Release /p:Platform=x64
+MSBuild.exe "%root_path%shared\ebm_native\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Release /p:Platform=x64
 IF %ERRORLEVEL% NEQ 0 (
    ECHO MSBuild for Release x64 returned error code %ERRORLEVEL%
    EXIT /B %ERRORLEVEL%
 )
-MSBuild.exe "%root_path%tests\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Release /p:Platform=Win32
+MSBuild.exe "%root_path%shared\ebm_native\ebm_native_test\ebm_native_test.vcxproj" /p:Configuration=Release /p:Platform=Win32
 IF %ERRORLEVEL% NEQ 0 (
    ECHO MSBuild for Release x86 returned error code %ERRORLEVEL%
    EXIT /B %ERRORLEVEL%
