@@ -31,22 +31,43 @@ static_assert(
    std::is_standard_layout<SweepTreeNode<false>>::value && std::is_standard_layout<SweepTreeNode<true>>::value,
    "using the struct hack requires that our class have guaranteed member positions, hense it needs to be standard layout");
 
-template<bool bClassification>
-EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const size_t cVectorLength) {
-   return IsMultiplyError(sizeof(HistogramBucketVectorEntry<bClassification>), cVectorLength) ?
-      true :
-      IsAddError(sizeof(SweepTreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>),
-         sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength) ? true : false;
+EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   if(UNLIKELY(IsMultiplyError(cBytesHistogramTargetEntry, cVectorLength))) {
+      return true;
+   }
+
+   const size_t cBytesTreeSweepComponent = bClassification ?
+      (sizeof(SweepTreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>)) :
+      (sizeof(SweepTreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>));
+
+   if(UNLIKELY(IsAddError(cBytesTreeSweepComponent, cBytesHistogramTargetEntry * cVectorLength))) {
+      return true;
+   }
+
+   return false;
 }
-template<bool bClassification>
-EBM_INLINE size_t GetSweepTreeNodeSize(const size_t cVectorLength) {
-   return sizeof(SweepTreeNode<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) +
-      sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
+
+EBM_INLINE size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVectorLength) {
+   const size_t cBytesTreeSweepComponent = bClassification ?
+      sizeof(SweepTreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(SweepTreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
+
+   const size_t cBytesHistogramTargetEntry = bClassification ?
+      sizeof(HistogramBucketVectorEntry<true>) :
+      sizeof(HistogramBucketVectorEntry<false>);
+
+   return cBytesTreeSweepComponent + cBytesHistogramTargetEntry * cVectorLength;
 }
+
 template<bool bClassification>
 EBM_INLINE SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<bClassification> * const pSweepTreeNode, const size_t cBytesAdd) {
    return reinterpret_cast<SweepTreeNode<bClassification> *>(reinterpret_cast<char *>(pSweepTreeNode) + cBytesAdd);
 }
+
 template<bool bClassification>
 EBM_INLINE size_t CountSweepTreeNode(
    const SweepTreeNode<bClassification> * const pSweepTreeNodeStart,

@@ -92,8 +92,8 @@ bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
-   EBM_ASSERT(!GetSweepTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-   const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize<bClassification>(cVectorLength);
+   EBM_ASSERT(!GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
+   const size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
 
    SweepTreeNode<bClassification> * pSweepTreeNodeStart =
       static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->GetEquivalentSplits());

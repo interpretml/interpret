@@ -275,22 +275,12 @@ EbmBoostingState * EbmBoostingState::Allocate(
          return nullptr;
       }
 
-      size_t cBytesPerSweepTreeNode = 0;
-      if(bClassification) {
-         if(GetSweepTreeNodeSizeOverflow<true>(cVectorLength)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow<true>(cVectorLength)");
-            EbmBoostingState::Free(pBooster);
-            return nullptr;
-         }
-         cBytesPerSweepTreeNode = GetSweepTreeNodeSize<true>(cVectorLength);
-      } else {
-         if(GetSweepTreeNodeSizeOverflow<false>(cVectorLength)) {
-            LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow<false>(cVectorLength)");
-            EbmBoostingState::Free(pBooster);
-            return nullptr;
-         }
-         cBytesPerSweepTreeNode = GetSweepTreeNodeSize<false>(cVectorLength);
+      if(GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)) {
+         LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize GetSweepTreeNodeSizeOverflow(bClassification, cVectorLength)");
+         EbmBoostingState::Free(pBooster);
+         return nullptr;
       }
+      size_t cBytesPerSweepTreeNode = GetSweepTreeNodeSize(bClassification, cVectorLength);
 
       const IntEbmType * pFeatureCombinationIndex = featureCombinationIndexes;
       size_t iFeatureCombination = 0;
