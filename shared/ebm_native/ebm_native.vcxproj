@@ -301,7 +301,6 @@ EXIT /B 0
     <ClInclude Include="DataSetBoosting.h" />
     <ClInclude Include="EbmInternal.h" />
     <ClInclude Include="EbmStatisticUtils.h" />
-    <ClInclude Include="InitializeResiduals.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="PrecompiledHeader.h" />
     <ClInclude Include="HistogramTargetEntry.h" />
@@ -323,6 +322,7 @@ EXIT /B 0
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
     <ClCompile Include="GenerateModelFeatureGroupUpdate.cpp" />
     <ClCompile Include="GrowDecisionTree.cpp" />
+    <ClCompile Include="InitializeResiduals.cpp" />
     <ClCompile Include="SumHistogramBuckets.cpp" />
     <ClCompile Include="TensorTotalsBuild.cpp" />
     <ClCompile Include="DataSetInteraction.cpp" />
