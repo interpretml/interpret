@@ -17,7 +17,7 @@
 #include "EbmStatisticUtils.h"
 #include "CachedThreadResourcesBoosting.h"
 
-#include "Feature.h"
+#include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 
 #include "HistogramTargetEntry.h"

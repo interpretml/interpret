@@ -10,7 +10,7 @@
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // FeatureType
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureAtomic.h"
 #include "DataSetInteraction.h"
 
 void InitializeResiduals(

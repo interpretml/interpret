@@ -293,7 +293,7 @@ EXIT /B 0
     <ClInclude Include="InteractionDetection.h" />
     <ClInclude Include="Booster.h" />
     <ClInclude Include="inc\ebm_native.h" />
-    <ClInclude Include="Feature.h" />
+    <ClInclude Include="FeatureAtomic.h" />
     <ClInclude Include="FeatureGroup.h" />
     <ClInclude Include="HistogramBucket.h" />
     <ClInclude Include="CachedThreadResourcesBoosting.h" />

@@ -10,7 +10,7 @@
 #include "ebm_native.h" // FloatEbmType
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureAtomic.h"
 
 class DataSetByFeature final {
    FloatEbmType * m_aResidualErrors;

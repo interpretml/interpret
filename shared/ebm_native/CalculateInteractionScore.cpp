@@ -11,7 +11,7 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 // feature includes
-#include "Feature.h"
+#include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetInteraction.h"

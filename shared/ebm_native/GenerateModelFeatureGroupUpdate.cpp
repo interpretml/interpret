@@ -15,7 +15,7 @@
 #include "SegmentedTensor.h"
 #include "EbmStatisticUtils.h"
 // feature includes
-#include "Feature.h"
+#include "FeatureAtomic.h"
 // FeatureCombination.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features

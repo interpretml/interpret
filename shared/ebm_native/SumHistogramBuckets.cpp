@@ -10,7 +10,7 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 
-#include "Feature.h"
+#include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 
 #include "HistogramTargetEntry.h"

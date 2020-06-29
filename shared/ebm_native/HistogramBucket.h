@@ -14,7 +14,7 @@
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramTargetEntry.h"
-#include "Feature.h"
+#include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 #include "DataSetBoosting.h"
 #include "DataSetInteraction.h"

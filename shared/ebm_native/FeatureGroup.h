@@ -9,7 +9,7 @@
 
 #include "EbmInternal.h" // EBM_INLINE
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "Feature.h"
+#include "FeatureAtomic.h"
 
 struct FeatureCombinationEntry final {
    // TODO : we can copy the entire Feature data into this location instead of using a pointer
