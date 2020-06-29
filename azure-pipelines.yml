@@ -121,16 +121,16 @@ jobs:
       flattenFolders: true
     displayName: 'Move binary to staging directory'
   - script: |
-      /bin/sh ./tests/ebm_native_test/ebm_native_test.sh -nobuildebmnative
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -nobuildebmnative
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'Testing ebm_native code (Linux)'
   - script: |
-      /bin/sh ./tests/ebm_native_test/ebm_native_test.sh -nobuildebmnative
+      /bin/sh ./shared/ebm_native/ebm_native_test/ebm_native_test.sh -nobuildebmnative
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'Testing ebm_native code (Mac)'
   - script: |
       set PATH=%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
-      .\tests\ebm_native_test\ebm_native_test.bat -nobuildebmnative
+      .\shared\ebm_native\ebm_native_test\ebm_native_test.bat -nobuildebmnative
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Testing ebm_native code (Windows)'
 
