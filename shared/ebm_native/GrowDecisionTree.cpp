@@ -26,6 +26,50 @@
 #include "TreeNode.h"
 #include "TreeSweep.h"
 
+// TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
+//   recursive function to handle that
+template<bool bClassification>
+void Flatten(
+   const TreeNode<bClassification> * const pTreeNode,
+   ActiveDataType ** const ppDivisions, 
+   FloatEbmType ** const ppValues, 
+   const size_t cVectorLength
+) {
+   // don't log this since we call it recursively.  Log where the root is called
+   if(UNPREDICTABLE(pTreeNode->WAS_THIS_NODE_SPLIT())) {
+      EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
+      const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
+      const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
+         pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
+      Flatten<bClassification>(pLeftChild, ppDivisions, ppValues, cVectorLength);
+      **ppDivisions = pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+      ++(*ppDivisions);
+      const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
+         pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
+      Flatten<bClassification>(pRightChild, ppDivisions, ppValues, cVectorLength);
+   } else {
+      FloatEbmType * pValuesCur = *ppValues;
+      FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
+      *ppValues = pValuesNext;
+
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
+      do {
+         FloatEbmType smallChangeToModel;
+         if(bClassification) {
+            smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
+               pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
+         } else {
+            smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
+               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->GetInstances()));
+         }
+         *pValuesCur = smallChangeToModel;
+
+         ++pHistogramBucketVectorEntry;
+         ++pValuesCur;
+      } while(pValuesNext != pValuesCur);
+   }
+}
+
 // TODO: it would be easy for us to implement a -1 lookback where we make the first cut, find the second cut, elimnate the first cut and try 
 //   again on that side, then re-examine the second cut again.  For mains this would be very quick we have found that 2-3 cuts are optimimum.  
 //   Probably 1 cut isn't very good since with 2 cuts we can localize a region of high gain in the center somewhere
@@ -685,7 +729,7 @@ public:
       FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
 
       LOG_0(TraceLevelVerbose, "Entered Flatten");
-      pRootTreeNode->Flatten(&pDivisions, &pValues, cVectorLength);
+      Flatten<bClassification>(pRootTreeNode, &pDivisions, &pValues, cVectorLength);
       LOG_0(TraceLevelVerbose, "Exited Flatten");
 
       EBM_ASSERT(pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0) <= pDivisions);

@@ -184,44 +184,6 @@ public:
    EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
       return k_illegalGain == this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
-
-   // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
-   //   recursive function to handle that
-   void Flatten(ActiveDataType ** const ppDivisions, FloatEbmType ** const ppValues, const size_t cVectorLength) const {
-      // don't log this since we call it recursively.  Log where the root is called
-      if(UNPREDICTABLE(WAS_THIS_NODE_SPLIT())) {
-         EBM_ASSERT(!GetTreeNodeSizeOverflow<bClassification>(cVectorLength)); // we're accessing allocated memory
-         const size_t cBytesPerTreeNode = GetTreeNodeSize<bClassification>(cVectorLength);
-         const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-            this->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
-         pLeftChild->Flatten(ppDivisions, ppValues, cVectorLength);
-         **ppDivisions = this->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
-         ++(*ppDivisions);
-         const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-            this->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
-         pRightChild->Flatten(ppDivisions, ppValues, cVectorLength);
-      } else {
-         FloatEbmType * pValuesCur = *ppValues;
-         FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
-         *ppValues = pValuesNext;
-
-         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(this->m_aHistogramBucketVectorEntry);
-         do {
-            FloatEbmType smallChangeToModel;
-            if(bClassification) {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
-            } else {
-               smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-                  pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(this->GetInstances()));
-            }
-            *pValuesCur = smallChangeToModel;
-
-            ++pHistogramBucketVectorEntry;
-            ++pValuesCur;
-         } while(pValuesNext != pValuesCur);
-      }
-   }
 };
 static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, 
    "TreeNode uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
