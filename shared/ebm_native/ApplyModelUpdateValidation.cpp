@@ -615,8 +615,7 @@ public:
 extern FloatEbmType ApplyModelUpdateValidation(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-   const bool bUseSIMD
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateValidation");
 
@@ -637,7 +636,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
          );
       }
    } else {
-      if(bUseSIMD) {
+      if(k_bUseSIMD) {
          // TODO : enable SIMD(AVX-512) to work
 
          // 64 - do 8 at a time and unroll the loop 8 times.  These are bool features and are common.  Put the unrolled inner loop into a function

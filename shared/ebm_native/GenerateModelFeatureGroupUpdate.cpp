@@ -30,7 +30,6 @@
 #include "TensorTotalsSum.h"
 
 void BinBoosting(
-   const bool bUseSIMD,
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
@@ -117,7 +116,6 @@ EBM_INLINE bool BoostZeroDimensional(
    }
 
    BinBoosting(
-      false,
       pEbmBoostingState,
       nullptr,
       pTrainingSet,
@@ -225,7 +223,6 @@ EBM_INLINE bool BoostSingleDimensional(
 #endif // NDEBUG
 
    BinBoosting(
-      false,
       pEbmBoostingState,
       pFeatureCombination,
       pTrainingSet,
@@ -370,7 +367,6 @@ EBM_INLINE bool BoostMultiDimensional(
 #endif // NDEBUG
 
    BinBoosting(
-      false,
       pEbmBoostingState,
       pFeatureCombination,
       pTrainingSet,

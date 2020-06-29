@@ -20,15 +20,13 @@
 void ApplyModelUpdateTraining(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-   const bool bUseSIMD
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 );
 
 FloatEbmType ApplyModelUpdateValidation(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
-   const bool bUseSIMD
+   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 );
 
 // a*PredictorScores = logOdds for binary classification
@@ -71,8 +69,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
       ApplyModelUpdateTraining(
          pEbmBoostingState,
          pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor,
-         false
+         aModelFeatureCombinationUpdateTensor
       );
    }
 
@@ -92,8 +89,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
       modelMetric = ApplyModelUpdateValidation(
          pEbmBoostingState,
          pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor,
-         false
+         aModelFeatureCombinationUpdateTensor
       );
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them

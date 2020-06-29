@@ -459,6 +459,14 @@ EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
    }
 }
 
+// TODO: figure out if we really want/need to template the handling of different bit packing sizes.  It might
+//       be the case that for specific bit sizes, like 8x8, we want to keep our memory stride as small as possible
+//       but we might also find that we can apply SIMD at the outer loop level in the places where we use bit
+//       packing, so we'd load eight 64-bit numbers at a time and then keep all the interior loops.  In this case
+//       the only penalty would be one branch mispredict, but we'd be able to loop over 8 bit extractions at a time
+//       We might also pay a penalty if our stride length for the outputs is too long, but we'll have to test that
+constexpr bool k_bUseSIMD = false;
+
 // TODO eventually, eliminate these variables, and make eliminating logits a part of our regular framework
 static constexpr ptrdiff_t k_iZeroResidual = -1;
 static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
