@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef INITIALIZE_RESIDUALS_H
-#define INITIALIZE_RESIDUALS_H
+#include "PrecompiledHeader.h"
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -207,7 +206,7 @@ public:
    }
 };
 
-EBM_INLINE void InitializeResiduals(
+extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cInstances,
    const void * const aTargetData,
@@ -247,5 +246,3 @@ EBM_INLINE void InitializeResiduals(
       );
    }
 }
-
-#endif

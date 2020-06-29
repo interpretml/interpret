@@ -12,7 +12,15 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "Feature.h"
 #include "DataSetInteraction.h"
-#include "InitializeResiduals.h"
+
+void InitializeResiduals(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t cInstances,
+   const void * const aTargetData,
+   const FloatEbmType * const aPredictorScores,
+   FloatEbmType * const aTempFloatVector,
+   FloatEbmType * pResidualError
+);
 
 EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    const size_t cInstances, 

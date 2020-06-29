@@ -12,7 +12,6 @@
 #include "EbmInternal.h"
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
-#include "InitializeResiduals.h"
 #include "RandomStream.h"
 #include "SegmentedTensor.h"
 #include "EbmStatisticUtils.h"
@@ -27,6 +26,15 @@
 #include "TreeSweep.h"
 
 #include "Booster.h"
+
+void InitializeResiduals(
+   const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
+   const size_t cInstances,
+   const void * const aTargetData,
+   const FloatEbmType * const aPredictorScores,
+   FloatEbmType * const aTempFloatVector,
+   FloatEbmType * pResidualError
+);
 
 EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
    EBM_ASSERT(size_t { 1 } <= cBits);
