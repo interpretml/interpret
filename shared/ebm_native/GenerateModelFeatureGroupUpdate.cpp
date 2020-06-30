@@ -29,7 +29,7 @@
 
 #include "TensorTotalsSum.h"
 
-void BinBoosting(
+extern void BinBoosting(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
@@ -39,7 +39,7 @@ void BinBoosting(
 #endif // NDEBUG
 );
 
-void SumHistogramBuckets(
+extern void SumHistogramBuckets(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketsBase,
@@ -50,7 +50,7 @@ void SumHistogramBuckets(
 #endif // NDEBUG
 );
 
-bool GrowDecisionTree(
+extern bool GrowDecisionTree(
    EbmBoostingState * const pEbmBoostingState,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
@@ -65,7 +65,7 @@ bool GrowDecisionTree(
 #endif // NDEBUG
 );
 
-bool FindBestBoostingSplitPairs(
+extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const size_t cInstancesRequiredForChildSplitMin,
@@ -81,7 +81,7 @@ bool FindBestBoostingSplitPairs(
 );
 
 
-EBM_INLINE bool BoostZeroDimensional(
+static bool BoostZeroDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const SamplingSet * const pTrainingSet,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet
@@ -151,7 +151,7 @@ EBM_INLINE bool BoostZeroDimensional(
    return false;
 }
 
-EBM_INLINE bool BoostSingleDimensional(
+static bool BoostSingleDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,
@@ -272,7 +272,7 @@ EBM_INLINE bool BoostSingleDimensional(
 // TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the denominator isn't required in order to make decisions about
 //   where to cut.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the residuals and then 
 //    go back to our original tensor after splits to determine the denominator
-EBM_INLINE bool BoostMultiDimensional(
+static bool BoostMultiDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const SamplingSet * const pTrainingSet,

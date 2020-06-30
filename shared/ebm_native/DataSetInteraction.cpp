@@ -13,7 +13,7 @@
 #include "FeatureAtomic.h"
 #include "DataSetInteraction.h"
 
-void InitializeResiduals(
+extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cInstances,
    const void * const aTargetData,
@@ -22,7 +22,7 @@ void InitializeResiduals(
    FloatEbmType * pResidualError
 );
 
-EBM_INLINE static FloatEbmType * ConstructResidualErrors(
+INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
    const size_t cInstances, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
@@ -74,7 +74,7 @@ EBM_INLINE static FloatEbmType * ConstructResidualErrors(
    return aResidualErrors;
 }
 
-EBM_INLINE static StorageDataType * * ConstructInputData(
+INLINE_RELEASE static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
    const size_t cInstances, 

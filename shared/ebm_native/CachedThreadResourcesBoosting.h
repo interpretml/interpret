@@ -30,13 +30,12 @@ class CachedBoostingThreadResources final {
    HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry;
    HistogramBucketVectorEntryBase * m_aSumHistogramBucketVectorEntry1;
 
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
 public:
 
    CachedBoostingThreadResources() = default; // preserve our POD status
    ~CachedBoostingThreadResources() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    EBM_INLINE void InitializeZero() {
       m_aThreadByteBuffer1 = nullptr;
@@ -172,8 +171,10 @@ public:
    }
 };
 static_assert(std::is_standard_layout<CachedBoostingThreadResources>::value,
-   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<CachedBoostingThreadResources>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<CachedBoostingThreadResources>::value,
-   "not required, but keep things closer to C by being POD");
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // CACHED_BOOSTING_THREAD_RESOURCES_H

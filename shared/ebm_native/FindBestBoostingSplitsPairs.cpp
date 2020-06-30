@@ -23,7 +23,7 @@
 #include "TensorTotalsSum.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-FloatEbmType SweepMultiDiemensional(
+static FloatEbmType SweepMultiDiemensional(
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const FeatureCombination * const pFeatureCombination,
    size_t * const aiPoint,
@@ -165,8 +165,11 @@ FloatEbmType SweepMultiDiemensional(
 }
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class FindBestBoostingSplitPairsInternal {
+class FindBestBoostingSplitPairsInternal final {
 public:
+
+   FindBestBoostingSplitPairsInternal() = delete; // this is a static class.  Do not construct
+
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 
@@ -744,8 +747,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class FindBestBoostingSplitPairsTarget {
+class FindBestBoostingSplitPairsTarget final {
 public:
+
+   FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -802,8 +808,11 @@ public:
 };
 
 template<>
-class FindBestBoostingSplitPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class FindBestBoostingSplitPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -840,7 +849,7 @@ public:
    }
 };
 
-bool FindBestBoostingSplitPairs(
+extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const size_t cInstancesRequiredForChildSplitMin,

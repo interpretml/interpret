@@ -29,7 +29,7 @@
 // TODO: in theory, a malicious caller could overflow our stack if they pass us data that will grow a sufficiently deep tree.  Consider changing this 
 //   recursive function to handle that
 template<bool bClassification>
-void Flatten(
+static void Flatten(
    const TreeNode<bClassification> * const pTreeNode,
    ActiveDataType ** const ppDivisions, 
    FloatEbmType ** const ppValues, 
@@ -75,7 +75,7 @@ void Flatten(
 //   Probably 1 cut isn't very good since with 2 cuts we can localize a region of high gain in the center somewhere
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
+static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EbmBoostingState * const pEbmBoostingState,
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
@@ -364,11 +364,12 @@ public:
    }
 };
 
-
-
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class GrowDecisionTreeInternal {
+class GrowDecisionTreeInternal final {
 public:
+
+   GrowDecisionTreeInternal() = delete; // this is a static class.  Do not construct
+
    static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const size_t cHistogramBuckets,

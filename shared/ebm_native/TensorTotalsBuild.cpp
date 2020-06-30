@@ -140,8 +140,11 @@
 // TODO: after we build pair and triple specific versions of this function, we don't need to have a compiler compilerCountDimensions, since the compiler won't really be able to simpify the loops that are exploding in dimensionality
 // TODO: sort our N-dimensional combinations at initialization so that the longest dimension is first!  That way we can more efficiently walk through contiguous memory better in this function!  After we determine the cuts, we can undo the re-ordering for cutting the tensor, which has just a few cells, so will be efficient
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
-class TensorTotalsBuildInternal {
+class TensorTotalsBuildInternal final {
 public:
+
+   TensorTotalsBuildInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
@@ -327,8 +330,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensionsPossible>
-class TensorTotalsBuildDimensions {
+class TensorTotalsBuildDimensions final {
 public:
+
+   TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
@@ -373,8 +379,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> {
+class TensorTotalsBuildDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
+
+   TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
@@ -401,8 +410,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class TensorTotalsBuildTarget {
+class TensorTotalsBuildTarget final {
 public:
+
+   TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
@@ -446,8 +458,11 @@ public:
 };
 
 template<>
-class TensorTotalsBuildTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class TensorTotalsBuildTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,

@@ -51,9 +51,7 @@ class RandomStream final {
    uint_fast64_t m_randomRemainingMax;
    uint_fast64_t m_randomRemaining;
 
-   static const uint_fast64_t k_oneTimePadRandomSeed[64];
-
-   uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
+   static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
 
    // TODO: it might be possible to make the 64 bit version a bit faster, either by having 2 independent streams
    //       so that the multiplication can be done in parallel (although this would consume more registers), or
@@ -77,13 +75,12 @@ class RandomStream final {
       return (top << 32) | bottom;
    }
 
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
 public:
 
    RandomStream() = default; // preserve our POD status
    ~RandomStream() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    void Initialize(const uint64_t seed);
 
@@ -151,8 +148,10 @@ public:
    }
 };
 static_assert(std::is_standard_layout<RandomStream>::value,
-   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<RandomStream>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<RandomStream>::value,
-   "not required, but keep things closer to C by being POD");
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // RANDOM_STREAM_H

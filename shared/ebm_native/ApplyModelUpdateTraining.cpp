@@ -21,8 +21,11 @@
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingZeroFeatures {
+class ApplyModelUpdateTrainingZeroFeatures final {
 public:
+
+   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -107,8 +110,11 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class ApplyModelUpdateTrainingZeroFeatures<2> {
+class ApplyModelUpdateTrainingZeroFeatures<2> final {
 public:
+
+   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -138,8 +144,11 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateTrainingZeroFeatures<k_regression> {
+class ApplyModelUpdateTrainingZeroFeatures<k_regression> final {
 public:
+
+   ApplyModelUpdateTrainingZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -161,8 +170,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingZeroFeaturesTarget {
+class ApplyModelUpdateTrainingZeroFeaturesTarget final {
 public:
+
+   ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -191,8 +203,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateTrainingZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -210,8 +225,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal {
+class ApplyModelUpdateTrainingInternal final {
 public:
+
+   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -338,8 +356,11 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal<2, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateTrainingInternal<2, compilerCountItemsPerBitPackedDataUnit> final {
 public:
+
+   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -418,8 +439,11 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateTrainingInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateTrainingInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> final {
 public:
+
+   ApplyModelUpdateTrainingInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -490,8 +514,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingNormalTarget {
+class ApplyModelUpdateTrainingNormalTarget final {
 public:
+
+   ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -523,8 +550,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateTrainingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -544,8 +574,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class ApplyModelUpdateTrainingSIMDPacking {
+class ApplyModelUpdateTrainingSIMDPacking final {
 public:
+
+   ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -576,8 +609,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateTrainingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
 public:
+
+   ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -594,8 +630,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateTrainingSIMDTarget {
+class ApplyModelUpdateTrainingSIMDTarget final {
 public:
+
+   ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -630,8 +669,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateTrainingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateTrainingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,

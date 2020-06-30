@@ -22,8 +22,11 @@
 #include "HistogramBucket.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinBoostingZeroDimensions {
+class BinBoostingZeroDimensions final {
 public:
+
+   BinBoostingZeroDimensions() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const SamplingSet * const pTrainingSet,
@@ -120,8 +123,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class BinBoostingZeroDimensionsTarget {
+class BinBoostingZeroDimensionsTarget final {
 public:
+
+   BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const SamplingSet * const pTrainingSet,
@@ -151,8 +157,11 @@ public:
 };
 
 template<>
-class BinBoostingZeroDimensionsTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class BinBoostingZeroDimensionsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const SamplingSet * const pTrainingSet,
@@ -172,8 +181,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-class BinBoostingInternal {
+class BinBoostingInternal final {
 public:
+
+   BinBoostingInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -338,8 +350,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class BinBoostingNormalTarget {
+class BinBoostingNormalTarget final {
 public:
+
+   BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -381,8 +396,11 @@ public:
 };
 
 template<>
-class BinBoostingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class BinBoostingNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -410,8 +428,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class BinBoostingSIMDPacking {
+class BinBoostingSIMDPacking final {
 public:
+
+   BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -454,8 +475,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class BinBoostingSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
 public:
+
+   BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -480,8 +504,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class BinBoostingSIMDTarget {
+class BinBoostingSIMDTarget final {
 public:
+
+   BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -526,8 +553,11 @@ public:
 };
 
 template<>
-class BinBoostingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class BinBoostingSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,

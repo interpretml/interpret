@@ -9,7 +9,7 @@
 #include "RandomStream.h"
 
 // I generated these as purely random numbers from 0 to 2^64-1
-const uint_fast64_t RandomStream::k_oneTimePadRandomSeed[64] {
+static constexpr uint_fast64_t k_oneTimePadRandomSeed[64] {
    uint_fast64_t { 12108613678499979739U },
    uint_fast64_t { 8329435972752283296U },
    uint_fast64_t { 17571318292481228596U },

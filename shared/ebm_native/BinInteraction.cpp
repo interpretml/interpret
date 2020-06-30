@@ -22,8 +22,11 @@
 #include "HistogramBucket.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
-class BinInteractionInternal {
+class BinInteractionInternal final {
 public:
+
+   BinInteractionInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -135,8 +138,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensionsPossible>
-class BinInteractionDimensions {
+class BinInteractionDimensions final {
 public:
+
+   BinInteractionDimensions() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -175,8 +181,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> {
+class BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, k_cCompilerOptimizedCountDimensionsMax + 1> final {
 public:
+
+   BinInteractionDimensions() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -199,8 +208,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class BinInteractionTarget {
+class BinInteractionTarget final {
 public:
+
+   BinInteractionTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -239,8 +251,11 @@ public:
 };
 
 template<>
-class BinInteractionTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class BinInteractionTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   BinInteractionTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,

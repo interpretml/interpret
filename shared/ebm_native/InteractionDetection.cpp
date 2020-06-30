@@ -153,7 +153,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmInteractionState * AllocateInteraction(
+static EbmInteractionState * AllocateInteraction(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 

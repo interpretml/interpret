@@ -15,8 +15,8 @@
 constexpr static char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 
-signed char g_traceLevel = TraceLevelOff;
-LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
+extern signed char g_traceLevel = TraceLevelOff;
+static LOG_MESSAGE_FUNCTION g_pLogMessageFunc = nullptr;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction) {
    assert(nullptr != logMessageFunction);
@@ -72,7 +72,7 @@ extern void LogAssertFailure(
    const char * const fileName, 
    const char * const functionName, 
    const char * const assertText
-) {
+) ANALYZER_NORETURN {
    if(UNLIKELY(TraceLevelError <= g_traceLevel)) {
       InteralLogWithArguments(TraceLevelError, g_assertLogMessage, lineNumber, fileName, functionName, assertText);
    }

@@ -15,6 +15,11 @@ template<bool bClassification>
 struct HistogramBucketVectorEntry;
 
 struct HistogramBucketVectorEntryBase {
+   HistogramBucketVectorEntryBase() = default; // preserve our POD status
+   ~HistogramBucketVectorEntryBase() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    template<bool bClassification>
    EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
       return static_cast<HistogramBucketVectorEntry<bClassification> *>(this);
@@ -24,9 +29,21 @@ struct HistogramBucketVectorEntryBase {
       return static_cast<const HistogramBucketVectorEntry<bClassification> *>(this);
    }
 };
+static_assert(std::is_standard_layout<HistogramBucketVectorEntryBase>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucketVectorEntryBase>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucketVectorEntryBase>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<>
 struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
+
+   HistogramBucketVectorEntry() = default; // preserve our POD status
+   ~HistogramBucketVectorEntry() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    // classification version of the HistogramBucketVectorEntry class
 
    FloatEbmType m_sumResidualError;
@@ -64,10 +81,21 @@ struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
       m_sumDenominator = FloatEbmType { 0 };
    }
 };
+static_assert(std::is_standard_layout<HistogramBucketVectorEntry<true>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucketVectorEntry<true>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucketVectorEntry<true>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<>
 struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase {
    // regression version of the HistogramBucketVectorEntry class
+
+   HistogramBucketVectorEntry() = default; // preserve our POD status
+   ~HistogramBucketVectorEntry() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    FloatEbmType m_sumResidualError;
 
@@ -95,8 +123,12 @@ struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase 
       m_sumResidualError = FloatEbmType { 0 };
    }
 };
-static_assert(
-   std::is_standard_layout<HistogramBucketVectorEntry<false>>::value && std::is_standard_layout<HistogramBucketVectorEntry<true>>::value, 
-   "HistogramBucketVectorEntry is used to constuct HistogramBucket, which uses the struct hack, so this class needs to be standard layout!");
+static_assert(std::is_standard_layout<HistogramBucketVectorEntry<false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucketVectorEntry<false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucketVectorEntry<false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
 
 #endif // HISTOGRAM_BUCKET_VECTOR_ENTRY_H

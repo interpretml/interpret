@@ -22,8 +22,11 @@
 #include "TensorTotalsSum.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class FindBestInteractionGainPairsInternal {
+class FindBestInteractionGainPairsInternal final {
 public:
+
+   FindBestInteractionGainPairsInternal() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -197,8 +200,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class FindBestInteractionGainPairsTarget {
+class FindBestInteractionGainPairsTarget final {
 public:
+
+   FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
@@ -246,8 +252,11 @@ public:
 };
 
 template<>
-class FindBestInteractionGainPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class FindBestInteractionGainPairsTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,

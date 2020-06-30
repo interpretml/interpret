@@ -28,13 +28,12 @@ class EbmInteractionState final {
    unsigned int m_cLogEnterMessages;
    unsigned int m_cLogExitMessages;
 
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
 public:
 
    EbmInteractionState() = default; // preserve our POD status
    ~EbmInteractionState() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    EBM_INLINE void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
@@ -85,8 +84,10 @@ public:
    );
 };
 static_assert(std::is_standard_layout<EbmInteractionState>::value,
-   "not required, but keep everything standard_layout since some of our classes use the struct hack");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<EbmInteractionState>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<EbmInteractionState>::value,
-   "not required, but keep things closer to C by being POD");
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // EBM_INTERACTION_STATE_H

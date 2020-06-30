@@ -15,7 +15,7 @@
 #include "FeatureGroup.h"
 #include "DataSetBoosting.h"
 
-EBM_INLINE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
+INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
@@ -78,7 +78,7 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
    return aPredictorScoresTo;
 }
 
-EBM_INLINE static StorageDataType * ConstructTargetData(
+INLINE_RELEASE static StorageDataType * ConstructTargetData(
    const size_t cInstances, 
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
@@ -136,11 +136,23 @@ EBM_INLINE static StorageDataType * ConstructTargetData(
 }
 
 struct InputDataPointerAndCountBins {
+
+   InputDataPointerAndCountBins() = default; // preserve our POD status
+   ~InputDataPointerAndCountBins() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    const IntEbmType * m_pInputData;
    size_t m_cBins;
 };
+static_assert(std::is_standard_layout<InputDataPointerAndCountBins>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<InputDataPointerAndCountBins>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
-EBM_INLINE static StorageDataType * * ConstructInputData(
+INLINE_RELEASE static StorageDataType * * ConstructInputData(
    const size_t cFeatureCombinations, 
    const FeatureCombination * const * const apFeatureCombination, 
    const size_t cInstances, 

@@ -17,13 +17,13 @@
 
 #include "Booster.h"
 
-void ApplyModelUpdateTraining(
+extern void ApplyModelUpdateTraining(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor
 );
 
-FloatEbmType ApplyModelUpdateValidation(
+extern FloatEbmType ApplyModelUpdateValidation(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureCombination * const pFeatureCombination,
    const FloatEbmType * const aModelFeatureCombinationUpdateTensor

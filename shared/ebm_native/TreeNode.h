@@ -25,32 +25,63 @@ struct TreeNodeData<true> {
 
 public:
 
-   struct BeforeExaminationForPossibleSplitting {
+   TreeNodeData() = default; // preserve our POD status
+   ~TreeNodeData() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   struct BeforeExaminationForPossibleSplitting final {
+      BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
+      ~BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       const HistogramBucket<true> * m_pHistogramBucketEntryFirst;
       const HistogramBucket<true> * m_pHistogramBucketEntryLast;
       size_t m_cInstances;
    };
+   static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<BeforeExaminationForPossibleSplitting>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   struct AfterExaminationForPossibleSplitting {
+   struct AfterExaminationForPossibleSplitting final {
+      AfterExaminationForPossibleSplitting() = default; // preserve our POD status
+      ~AfterExaminationForPossibleSplitting() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       TreeNode<true> * m_pTreeNodeChildren;
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatEbmType m_splitGain;
       ActiveDataType m_divisionValue;
    };
+   static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<AfterExaminationForPossibleSplitting>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   union TreeNodeDataUnion {
+   union TreeNodeDataUnion final {
+      TreeNodeDataUnion() = default; // preserve our POD status
+      ~TreeNodeDataUnion() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       // we can save precious L1 cache space by keeping only what we need
       BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
       AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
-
-      static_assert(
-         std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value, 
-         "BeforeSplit must be standard layout classes if we are going to use it in a union!");
-      static_assert(
-         std::is_standard_layout<AfterExaminationForPossibleSplitting>::value, 
-         "AfterSplit must be standard layout classes if we are going to use it in a union!");
    };
+   static_assert(std::is_standard_layout<TreeNodeDataUnion>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<TreeNodeDataUnion>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<TreeNodeDataUnion>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
    TreeNodeDataUnion m_UNION;
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -68,40 +99,73 @@ public:
    }
 };
 static_assert(std::is_standard_layout<TreeNodeData<true>>::value,
-   "TreeNodeData uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<TreeNodeData<true>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<TreeNodeData<true>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<>
 struct TreeNodeData<false> {
    // regression version of the TreeNodeData
 public:
 
-   struct BeforeExaminationForPossibleSplitting {
+   TreeNodeData() = default; // preserve our POD status
+   ~TreeNodeData() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   struct BeforeExaminationForPossibleSplitting final {
+      BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
+      ~BeforeExaminationForPossibleSplitting() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       const HistogramBucket<false> * m_pHistogramBucketEntryFirst;
       const HistogramBucket<false> * m_pHistogramBucketEntryLast;
    };
+   static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<BeforeExaminationForPossibleSplitting>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<BeforeExaminationForPossibleSplitting>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   struct AfterExaminationForPossibleSplitting {
+   struct AfterExaminationForPossibleSplitting final {
+      AfterExaminationForPossibleSplitting() = default; // preserve our POD status
+      ~AfterExaminationForPossibleSplitting() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       TreeNode<false> * m_pTreeNodeChildren;
       // put this at the top so that our priority queue can access it directly without adding anything to the pointer 
       // (this is slightly more efficient on intel systems at least)
       FloatEbmType m_splitGain;
       ActiveDataType m_divisionValue;
    };
+   static_assert(std::is_standard_layout<AfterExaminationForPossibleSplitting>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<AfterExaminationForPossibleSplitting>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<AfterExaminationForPossibleSplitting>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   union TreeNodeDataUnion {
+   union TreeNodeDataUnion final {
+      TreeNodeDataUnion() = default; // preserve our POD status
+      ~TreeNodeDataUnion() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       // we can save precious L1 cache space by keeping only what we need
       BeforeExaminationForPossibleSplitting m_beforeExaminationForPossibleSplitting;
       AfterExaminationForPossibleSplitting m_afterExaminationForPossibleSplitting;
-
-      static_assert(
-         std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value, 
-         "BeforeSplit must be a standard layout class if we are going to use it in a union!"
-      );
-      static_assert(
-         std::is_standard_layout<AfterExaminationForPossibleSplitting>::value, 
-         "AfterSplit must be a standard layout class if we are going to use it in a union!"
-      );
    };
+   static_assert(std::is_standard_layout<TreeNodeDataUnion>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<TreeNodeDataUnion>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<TreeNodeDataUnion>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
    TreeNodeDataUnion m_UNION;
 
@@ -121,7 +185,11 @@ public:
    }
 };
 static_assert(std::is_standard_layout<TreeNodeData<false>>::value,
-   "TreeNodeData uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<TreeNodeData<false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<TreeNodeData<false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<bool bClassification>
 struct TreeNode final : public TreeNodeData<bClassification> {
@@ -129,6 +197,11 @@ struct TreeNode final : public TreeNodeData<bClassification> {
    // variable sized data array at the end that would overwrite any data that we put here
 
 public:
+
+   TreeNode() = default; // preserve our POD status
+   ~TreeNode() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    EBM_INLINE bool IsSplittable() const {
       return this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast != 
@@ -161,8 +234,12 @@ public:
       return k_illegalGain == this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 };
-static_assert(std::is_standard_layout<TreeNode<false>>::value && std::is_standard_layout<TreeNode<true>>::value, 
-   "TreeNode uses the struct hack, so it needs to be standard layout so that we can depend on the placement of member data items");
+static_assert(std::is_standard_layout<TreeNode<true>>::value && std::is_standard_layout<TreeNode<false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<TreeNode<true>>::value && std::is_trivial<TreeNode<false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 EBM_INLINE size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?

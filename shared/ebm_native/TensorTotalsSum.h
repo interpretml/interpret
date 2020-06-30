@@ -18,7 +18,7 @@
 #include "HistogramTargetEntry.h"
 #include "HistogramBucket.h"
 
-void TensorTotalsBuild(
+extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const FeatureCombination * const pFeatureCombination,
    HistogramBucketBase * pBucketAuxiliaryBuildZone,

@@ -27,6 +27,11 @@ template<bool bClassification>
 struct HistogramBucket;
 
 struct HistogramBucketBase {
+   HistogramBucketBase() = default; // preserve our POD status
+   ~HistogramBucketBase() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    template<bool bClassification>
    EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucket() {
       return static_cast<HistogramBucket<bClassification> *>(this);
@@ -36,9 +41,19 @@ struct HistogramBucketBase {
       return static_cast<const HistogramBucket<bClassification> *>(this);
    }
 };
+static_assert(std::is_standard_layout<HistogramBucketBase>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucketBase>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucketBase>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 template<bool bClassification>
 struct HistogramBucket final : HistogramBucketBase {
+   HistogramBucket() = default; // preserve our POD status
+   ~HistogramBucket() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    size_t m_cInstancesInBucket;
 
@@ -94,8 +109,12 @@ struct HistogramBucket final : HistogramBucketBase {
 #endif // NDEBUG
    }
 };
-static_assert(std::is_standard_layout<HistogramBucket<false>>::value && std::is_standard_layout<HistogramBucket<true>>::value, 
-   "HistogramBucket uses the struct hack, so it needs to be standard layout class otherwise we can't depend on the layout!");
+static_assert(std::is_standard_layout<HistogramBucket<true>>::value && std::is_standard_layout<HistogramBucket<false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<HistogramBucket<true>>::value && std::is_trivial<HistogramBucket<false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<HistogramBucket<true>>::value && std::is_pod<HistogramBucket<false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?

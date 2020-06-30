@@ -34,7 +34,24 @@ class SamplingSet final {
    static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);
 
 public:
-   size_t GetTotalCountInstanceOccurrences() const;
+
+   SamplingSet() = default; // preserve our POD status
+   ~SamplingSet() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   size_t GetTotalCountInstanceOccurrences() const {
+      // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
+      size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
+#ifndef NDEBUG
+      size_t cTotalCountInstanceOccurrencesDebug = 0;
+      for(size_t i = 0; i < m_pOriginDataSet->GetCountInstances(); ++i) {
+         cTotalCountInstanceOccurrencesDebug += m_aCountOccurrences[i];
+      }
+      EBM_ASSERT(cTotalCountInstanceOccurrencesDebug == cTotalCountInstanceOccurrences);
+#endif // NDEBUG
+      return cTotalCountInstanceOccurrences;
+   }
 
    const DataSetByFeatureCombination * GetDataSetByFeatureCombination() const {
       return m_pOriginDataSet;
@@ -52,6 +69,10 @@ public:
    );
 };
 static_assert(std::is_standard_layout<SamplingSet>::value,
-   "SamplingSet is allocated via malloc!");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<SamplingSet>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<SamplingSet>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // SAMPLING_SET_H

@@ -21,7 +21,7 @@
 
 #include "TensorTotalsSum.h"
 
-void BinInteraction(
+extern void BinInteraction(
    EbmInteractionState * const pEbmInteractionState,
    const FeatureCombination * const pFeatureCombination,
    HistogramBucketBase * const aHistogramBuckets
@@ -30,7 +30,7 @@ void BinInteraction(
 #endif // NDEBUG
 );
 
-FloatEbmType FindBestInteractionGainPairs(
+extern FloatEbmType FindBestInteractionGainPairs(
    EbmInteractionState * const pEbmInteractionState,
    const FeatureCombination * const pFeatureCombination,
    const size_t cInstancesRequiredForChildSplitMin,
@@ -42,7 +42,7 @@ FloatEbmType FindBestInteractionGainPairs(
 #endif // NDEBUG
 );
 
-bool CalculateInteractionScore(
+static bool CalculateInteractionScore(
    CachedInteractionThreadResources * const pCachedThreadResources,
    EbmInteractionState * const pEbmInteractionState,
    const FeatureCombination * const pFeatureCombination,

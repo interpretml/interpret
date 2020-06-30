@@ -33,12 +33,30 @@ constexpr unsigned int k_MiddleSplittingRange = 0x0;
 constexpr unsigned int k_FirstSplittingRange = 0x1;
 constexpr unsigned int k_LastSplittingRange = 0x2;
 
-struct NeighbourJump {
+struct NeighbourJump final {
+
+   NeighbourJump() = default; // preserve our POD status
+   ~NeighbourJump() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    size_t      m_iStartCur;
    size_t      m_iStartNext;
 };
+static_assert(std::is_standard_layout<NeighbourJump>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<NeighbourJump>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<NeighbourJump>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
-struct SplittingRange {
+struct SplittingRange final {
+
+   SplittingRange() = default; // preserve our POD status
+   ~SplittingRange() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    // we divide the space into long segments of unsplittable equal values separated by spaces where we can put
    // splits, which we call SplittingRanges.  SplittingRanges can have zero or more items.  If they have zero
    // splittable items, than the SplittingRange is just there to separate two unsplittable ranges on both sides.
@@ -70,8 +88,19 @@ struct SplittingRange {
 
    unsigned int   m_flags;
 };
+static_assert(std::is_standard_layout<SplittingRange>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<SplittingRange>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<SplittingRange>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
-struct SplitPoint {
+struct SplitPoint final {
+   SplitPoint() = default; // preserve our POD status
+   ~SplitPoint() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    // TODO wrap this into a union so that we can overlay pre-set and post-seting of the actual index
    FloatEbmType   m_worstRangeAvg;
    size_t         m_uniqueRandom;
@@ -80,6 +109,12 @@ struct SplitPoint {
    ptrdiff_t      m_iActual;
    FloatEbmType   m_iFractionalAspirational;
 };
+static_assert(std::is_standard_layout<SplitPoint>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<SplitPoint>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<SplitPoint>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 class CompareSplitPoint final {
 public:
@@ -95,7 +130,7 @@ public:
 
 constexpr static char g_pPrintfForRoundTrip[] = "%+.*" FloatEbmTypePrintf;
 constexpr static char g_pPrintfLongInt[] = "%ld";
-FloatEbmType FindClean1eFloat(
+static FloatEbmType FindClean1eFloat(
    const int cCharsFloatPrint,
    char * const pStr,
    const FloatEbmType low, 
@@ -141,7 +176,7 @@ FloatEbmType FindClean1eFloat(
    return high;
 }
 // checked
-INLINE_RELEASE FloatEbmType GeometricMeanSameSign(const FloatEbmType val1, const FloatEbmType val2) {
+INLINE_RELEASE static FloatEbmType GeometricMeanSameSign(const FloatEbmType val1, const FloatEbmType val2) {
    EBM_ASSERT(val1 < 0 && val2 < 0 || 0 <= val1 && 0 <= val2);
    FloatEbmType result = val1 * val2;
    if(UNLIKELY(std::isinf(result))) {
@@ -160,17 +195,17 @@ INLINE_RELEASE FloatEbmType GeometricMeanSameSign(const FloatEbmType val1, const
 }
 
 // checked
-EBM_INLINE constexpr int CountBase10CharactersAbs(int n) {
+EBM_INLINE constexpr static int CountBase10CharactersAbs(int n) {
    // this works for negative numbers too
    return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
 }
 
 // checked
-EBM_INLINE constexpr long MaxReprsentation(int cDigits) {
+EBM_INLINE constexpr static long MaxReprsentation(int cDigits) {
    return int { 1 } == cDigits ? long { 9 } : long { 10 } * MaxReprsentation(cDigits - int { 1 }) + long { 9 };
 }
 
-INLINE_RELEASE FloatEbmType GetInterpretableCutPointFloat(const FloatEbmType low, const FloatEbmType high) {
+INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(const FloatEbmType low, const FloatEbmType high) {
    EBM_ASSERT(low < high);
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isinf(low));
@@ -499,7 +534,7 @@ INLINE_RELEASE FloatEbmType GetInterpretableCutPointFloat(const FloatEbmType low
    return high;
 }
 
-INLINE_RELEASE void IronSplits() {
+INLINE_RELEASE static void IronSplits() {
    // - TODO: POST-HEALING
    //   - after fitting these, we might want to jigger the final results.  We would do this by finding the smallest 
    //     section and trying to expand it either way.  Each side we'd push it only enough to make things better.
@@ -511,7 +546,7 @@ INLINE_RELEASE void IronSplits() {
    //       that we can address by pushing our existing cuts arround by small amounts
 }
 
-INLINE_RELEASE size_t SplitSegment(
+INLINE_RELEASE static size_t SplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
    const size_t cMinimumInstancesPerBin,
@@ -877,7 +912,7 @@ INLINE_RELEASE size_t SplitSegment(
    return 0;
 }
 
-INLINE_RELEASE size_t TreeSearchSplitSegment(
+INLINE_RELEASE static size_t TreeSearchSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
    const size_t cMinimumInstancesPerBin,
@@ -912,7 +947,7 @@ INLINE_RELEASE size_t TreeSearchSplitSegment(
       cCENTERSplitsAssigned, aSplitsWithENDPOINTS);
 }
 
-INLINE_RELEASE size_t TradeSplitSegment(
+INLINE_RELEASE static size_t TradeSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
    const size_t cMinimumInstancesPerBin,
@@ -943,6 +978,7 @@ INLINE_RELEASE size_t TradeSplitSegment(
       cCENTERSplitsAssigned, aSplitsWithENDPOINTS);
 }
 
+// TODO: make this "INLINE_RELEASE static"
 size_t StuffSplitsIntoSplittingRanges(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange,
@@ -1054,7 +1090,7 @@ size_t StuffSplitsIntoSplittingRanges(
    return cRemainingSplits;
 }
 
-INLINE_RELEASE size_t FillSplittingRangeRemaining(
+INLINE_RELEASE static size_t FillSplittingRangeRemaining(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) {
@@ -1098,7 +1134,7 @@ INLINE_RELEASE size_t FillSplittingRangeRemaining(
    return cConsumedSplittingRanges;
 }
 
-INLINE_RELEASE void FillSplittingRangeNeighbours(
+INLINE_RELEASE static void FillSplittingRangeNeighbours(
    const size_t cInstances,
    FloatEbmType * const aSingleFeatureValues,
    const size_t cSplittingRanges,
@@ -1132,7 +1168,7 @@ INLINE_RELEASE void FillSplittingRangeNeighbours(
    pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
 }
 
-INLINE_RELEASE void FillSplittingRangeBasics(
+INLINE_RELEASE static void FillSplittingRangeBasics(
    const size_t cInstances,
    FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
@@ -1185,7 +1221,7 @@ INLINE_RELEASE void FillSplittingRangeBasics(
 }
 
 // verified
-INLINE_RELEASE void FillSplittingRangeRandom(
+INLINE_RELEASE static void FillSplittingRangeRandom(
    RandomStream * const pRandomStream,
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
@@ -1216,7 +1252,7 @@ INLINE_RELEASE void FillSplittingRangeRandom(
    }
 }
 
-INLINE_RELEASE void FillSplittingRangePointers(
+INLINE_RELEASE static void FillSplittingRangePointers(
    const size_t cSplittingRanges,
    SplittingRange ** const apSplittingRange,
    SplittingRange * const aSplittingRange
@@ -1236,7 +1272,7 @@ INLINE_RELEASE void FillSplittingRangePointers(
 }
 
 // verified
-INLINE_RELEASE void FillSplitPointRandom(
+INLINE_RELEASE static void FillSplitPointRandom(
    RandomStream * const pRandomStream,
    const size_t cSplitPoints,
    SplitPoint * const aSplitPoints
@@ -1268,7 +1304,7 @@ INLINE_RELEASE void FillSplitPointRandom(
 }
 
 // verified
-INLINE_RELEASE NeighbourJump * ConstructJumps(const size_t cInstances, const FloatEbmType * const aValues) {
+INLINE_RELEASE static NeighbourJump * ConstructJumps(const size_t cInstances, const FloatEbmType * const aValues) {
    // TODO test this
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aValues);
@@ -1310,7 +1346,7 @@ INLINE_RELEASE NeighbourJump * ConstructJumps(const size_t cInstances, const Flo
    return aNeighbourJump;
 }
 
-INLINE_RELEASE size_t CountSplittingRanges(
+INLINE_RELEASE static size_t CountSplittingRanges(
    const size_t cInstances,
    const FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
@@ -1375,7 +1411,7 @@ INLINE_RELEASE size_t CountSplittingRanges(
    }
 }
 
-INLINE_RELEASE size_t GetAvgLength(const size_t cInstances, const size_t cMaximumBins, const size_t cMinimumInstancesPerBin) {
+INLINE_RELEASE static size_t GetAvgLength(const size_t cInstances, const size_t cMaximumBins, const size_t cMinimumInstancesPerBin) {
    EBM_ASSERT(size_t { 1 } <= cInstances);
    EBM_ASSERT(size_t { 2 } <= cMaximumBins); // if there is just one bin, then you can't have splits, so we exit earlier
    EBM_ASSERT(size_t { 1 } <= cMinimumInstancesPerBin);
@@ -1427,7 +1463,7 @@ INLINE_RELEASE size_t GetAvgLength(const size_t cInstances, const size_t cMaximu
    return avgLength;
 }
 
-INLINE_RELEASE size_t PossiblyRemoveBinForMissing(const bool bMissing, const IntEbmType countMaximumBins) {
+INLINE_RELEASE static size_t PossiblyRemoveBinForMissing(const bool bMissing, const IntEbmType countMaximumBins) {
    EBM_ASSERT(IntEbmType { 2 } <= countMaximumBins);
    size_t cMaximumBins = static_cast<size_t>(countMaximumBins);
    if(PREDICTABLE(bMissing)) {
@@ -1456,7 +1492,7 @@ INLINE_RELEASE size_t PossiblyRemoveBinForMissing(const bool bMissing, const Int
    return cMaximumBins;
 }
 
-INLINE_RELEASE size_t RemoveMissingValues(const size_t cInstances, FloatEbmType * const aValues) {
+INLINE_RELEASE static size_t RemoveMissingValues(const size_t cInstances, FloatEbmType * const aValues) {
    FloatEbmType * pCopyFrom = aValues;
    const FloatEbmType * const pValuesEnd = aValues + cInstances;
    do {

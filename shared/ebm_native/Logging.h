@@ -18,7 +18,7 @@ extern void LogAssertFailure(
    const char * const fileName,
    const char * const functionName,
    const char * const assertText
-);
+) ANALYZER_NORETURN ;
 
 constexpr EBM_INLINE bool AlwaysFalse() {
    return false;
@@ -92,13 +92,11 @@ constexpr EBM_INLINE bool AlwaysFalse() {
          constexpr static char LOG__originalMessage[] = (pLogMessage); \
          unsigned int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
          const unsigned int LOG__logCount = *LOG__pLogCountDecrement; \
-         if(0 < LOG__logCount) { \
+         if(UNLIKELY(0 < LOG__logCount)) { \
             *LOG__pLogCountDecrement = LOG__logCount - 1; \
             InteralLogWithoutArguments(LOG__traceLevelBefore, LOG__originalMessage); \
-         } else { \
-            if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
-               InteralLogWithoutArguments(LOG__traceLevelAfter, LOG__originalMessage); \
-            } \
+         } else if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
+            InteralLogWithoutArguments(LOG__traceLevelAfter, LOG__originalMessage); \
          } \
       } \
    } while(AlwaysFalse())
@@ -125,10 +123,8 @@ constexpr EBM_INLINE bool AlwaysFalse() {
          if(UNLIKELY(0 < LOG__logCount)) { \
             *LOG__pLogCountDecrement = LOG__logCount - 1; \
             InteralLogWithArguments(LOG__traceLevelBefore, LOG__originalMessage, __VA_ARGS__); \
-         } else { \
-            if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
-               InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, __VA_ARGS__); \
-            } \
+         } else if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
+            InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, __VA_ARGS__); \
          } \
       } \
    } while(AlwaysFalse())
@@ -138,7 +134,7 @@ constexpr EBM_INLINE bool AlwaysFalse() {
 // of the assert that triggered the failure. Any string will have a non-zero pointer, so negating it will always fail, and we'll get to see the text of 
 // the original failure in the message this allows us to use whatever behavior has been chosen by the C runtime library implementor for assertion 
 // failures without using the undocumented function that assert calls internally on each platform
-#define EBM_ASSERT(bCondition) ((void)(LIKELY(bCondition) || (LogAssertFailure(static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), StopClangAnalysis(), 0)))
+#define EBM_ASSERT(bCondition) ((void)(LIKELY(bCondition) || (LogAssertFailure(static_cast<unsigned long long>(__LINE__), __FILE__, __func__, #bCondition), assert(!  #bCondition), 0)))
 #else // NDEBUG
 #define EBM_ASSERT(bCondition) ((void)0)
 #endif // NDEBUG

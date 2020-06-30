@@ -27,7 +27,7 @@
 
 #include "Booster.h"
 
-void InitializeResiduals(
+extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    const size_t cInstances,
    const void * const aTargetData,
@@ -36,7 +36,7 @@ void InitializeResiduals(
    FloatEbmType * pResidualError
 );
 
-EBM_INLINE size_t GetCountItemsBitPacked(const size_t cBits) {
+EBM_INLINE static size_t GetCountItemsBitPacked(const size_t cBits) {
    EBM_ASSERT(size_t { 1 } <= cBits);
    return k_cBitsForStorageType / cBits;
 }
@@ -548,7 +548,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-EbmBoostingState * AllocateBoosting(
+static EbmBoostingState * AllocateBoosting(
    const IntEbmType randomSeed, 
    const IntEbmType countFeatures, 
    const EbmNativeFeature * const features, 

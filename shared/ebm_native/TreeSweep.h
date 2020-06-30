@@ -16,7 +16,13 @@ template<bool bClassification>
 struct HistogramBucket;
 
 template<bool bClassification>
-struct SweepTreeNode {
+struct SweepTreeNode final {
+
+   SweepTreeNode() = default; // preserve our POD status
+   ~SweepTreeNode() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    size_t m_cBestInstancesLeft;
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
 
@@ -27,9 +33,12 @@ struct SweepTreeNode {
    // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<bClassification> m_aBestHistogramBucketVectorEntry[1];
 };
-static_assert(
-   std::is_standard_layout<SweepTreeNode<false>>::value && std::is_standard_layout<SweepTreeNode<true>>::value,
-   "using the struct hack requires that our class have guaranteed member positions, hense it needs to be standard layout");
+static_assert(std::is_standard_layout<SweepTreeNode<true>>::value && std::is_standard_layout<SweepTreeNode<false>>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<SweepTreeNode<true>>::value && std::is_trivial<SweepTreeNode<false>>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<SweepTreeNode<true>>::value && std::is_pod<SweepTreeNode<false>>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?

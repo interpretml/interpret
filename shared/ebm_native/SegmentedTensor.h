@@ -97,23 +97,56 @@
 
 // TODO : put some of this file into .cpp since some of the functions are repeated and they don't need to all be inline!
 class SegmentedTensor final {
-   struct DimensionInfoStack {
+   struct DimensionInfoStack final {
+      DimensionInfoStack() = default; // preserve our POD status
+      ~DimensionInfoStack() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       const ActiveDataType * m_pDivision1;
       const ActiveDataType * m_pDivision2;
       size_t m_cNewDivisions;
    };
+   static_assert(std::is_standard_layout<DimensionInfoStack>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<DimensionInfoStack>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<DimensionInfoStack>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   struct DimensionInfoStackExpand {
+   struct DimensionInfoStackExpand final {
+      DimensionInfoStackExpand() = default; // preserve our POD status
+      ~DimensionInfoStackExpand() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       const ActiveDataType * m_pDivision1;
       size_t m_iDivision2;
       size_t m_cNewDivisions;
    };
+   static_assert(std::is_standard_layout<DimensionInfoStackExpand>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<DimensionInfoStackExpand>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<DimensionInfoStackExpand>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
-   struct DimensionInfo {
+   struct DimensionInfo final {
+      DimensionInfo() = default; // preserve our POD status
+      ~DimensionInfo() = default; // preserve our POD status
+      void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+      void operator delete (void *) = delete; // we only use malloc/free in this library
+
       size_t m_cDivisions;
       ActiveDataType * m_aDivisions;
       size_t m_cDivisionCapacity;
    };
+   static_assert(std::is_standard_layout<DimensionInfo>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+   static_assert(std::is_trivial<DimensionInfo>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+   static_assert(std::is_pod<DimensionInfo>::value,
+      "We use a lot of C constructs, so disallow non-POD types in general");
 
    // TODO : is this still required after we do tree splitting by pairs??
    // we always allocate our array because we don't want to Require Add(...) to check for the null pointer
@@ -135,6 +168,11 @@ class SegmentedTensor final {
    DimensionInfo m_aDimensions[1];
 
 public:
+
+   SegmentedTensor() = default; // preserve our POD status
+   ~SegmentedTensor() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO: In the future we'll be splitting our work into small sets of residuals and logits owned by
    // a node in a distributed system.  After each node calculates it's model update (represented by this
@@ -190,9 +228,11 @@ public:
       return &m_aValues[0];
    }
 };
-static_assert(
-   std::is_standard_layout<SegmentedTensor>::value, 
-   "SegmentedRegion uses the struct hack, so it must be a standard layout class.  We use malloc, which isn't compatible with using complex classes.  "
-   "Interop data must also be standard layout classes.  Lastly, we put this class into a union, so the destructor needs to be called manually anyways");
+static_assert(std::is_standard_layout<SegmentedTensor>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<SegmentedTensor>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<SegmentedTensor>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // SEGMENTED_TENSOR_H

@@ -17,8 +17,11 @@
 #include "HistogramBucket.h"
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class SumHistogramBucketsInternal {
+class SumHistogramBucketsInternal final {
 public:
+
+   SumHistogramBucketsInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cHistogramBuckets,

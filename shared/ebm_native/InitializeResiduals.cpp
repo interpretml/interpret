@@ -14,8 +14,11 @@
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class InitializeResidualsInternal {
+class InitializeResidualsInternal final {
 public:
+
+   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,
@@ -112,8 +115,11 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class InitializeResidualsInternal<2> {
+class InitializeResidualsInternal<2> final {
 public:
+
+   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,
@@ -159,8 +165,11 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class InitializeResidualsInternal<k_regression> {
+class InitializeResidualsInternal<k_regression> final {
 public:
+
+   InitializeResidualsInternal() = delete; // this is a static class.  Do not construct
+
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cInstances,

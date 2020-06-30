@@ -19,6 +19,11 @@ class Feature final {
 
 public:
 
+   Feature() = default; // preserve our POD status
+   ~Feature() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    EBM_INLINE void Initialize(const size_t cBins, const size_t iFeatureData, const FeatureType featureType, const bool bMissing) {
       m_cBins = cBins;
       m_iFeatureData = iFeatureData;
@@ -44,6 +49,10 @@ public:
    }
 };
 static_assert(std::is_standard_layout<Feature>::value,
-   "we use malloc to allocate this, so it needs to be standard layout");
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<Feature>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<Feature>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // FEATURE_ATOMIC_H

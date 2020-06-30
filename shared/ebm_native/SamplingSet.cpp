@@ -13,19 +13,6 @@
 #include "DataSetBoosting.h"
 #include "SamplingSet.h"
 
-size_t SamplingSet::GetTotalCountInstanceOccurrences() const {
-   // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
-   size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
-#ifndef NDEBUG
-   size_t cTotalCountInstanceOccurrencesDebug = 0;
-   for(size_t i = 0; i < m_pOriginDataSet->GetCountInstances(); ++i) {
-      cTotalCountInstanceOccurrencesDebug += m_aCountOccurrences[i];
-   }
-   EBM_ASSERT(cTotalCountInstanceOccurrencesDebug == cTotalCountInstanceOccurrences);
-#endif // NDEBUG
-   return cTotalCountInstanceOccurrences;
-}
-
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    RandomStream * const pRandomStream, 
    const DataSetByFeatureCombination * const pOriginDataSet

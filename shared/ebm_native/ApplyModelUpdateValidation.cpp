@@ -21,8 +21,11 @@
 // C++ does not allow partial function specialization, so we need to use these cumbersome static class functions to do partial function specialization
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationZeroFeatures {
+class ApplyModelUpdateValidationZeroFeatures final {
 public:
+
+   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -82,8 +85,11 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<>
-class ApplyModelUpdateValidationZeroFeatures<2> {
+class ApplyModelUpdateValidationZeroFeatures<2> final {
 public:
+
+   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -114,8 +120,11 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<>
-class ApplyModelUpdateValidationZeroFeatures<k_regression> {
+class ApplyModelUpdateValidationZeroFeatures<k_regression> final {
 public:
+
+   ApplyModelUpdateValidationZeroFeatures() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -142,8 +151,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationZeroFeaturesTarget {
+class ApplyModelUpdateValidationZeroFeaturesTarget final {
 public:
+
+   ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -172,8 +184,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateValidationZeroFeaturesTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -191,8 +206,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal {
+class ApplyModelUpdateValidationInternal final {
 public:
+
+   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -293,8 +311,11 @@ public:
 
 #ifndef EXPAND_BINARY_LOGITS
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal<2, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateValidationInternal<2, compilerCountItemsPerBitPackedDataUnit> final {
 public:
+
+   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -374,8 +395,11 @@ public:
 #endif // EXPAND_BINARY_LOGITS
 
 template<size_t compilerCountItemsPerBitPackedDataUnit>
-class ApplyModelUpdateValidationInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> {
+class ApplyModelUpdateValidationInternal<k_regression, compilerCountItemsPerBitPackedDataUnit> final {
 public:
+
+   ApplyModelUpdateValidationInternal() = delete; // this is a static class.  Do not construct
+
    static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -449,8 +473,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationNormalTarget {
+class ApplyModelUpdateValidationNormalTarget final {
 public:
+
+   ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -482,8 +509,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateValidationNormalTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -503,8 +533,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountItemsPerBitPackedDataUnitPossible>
-class ApplyModelUpdateValidationSIMDPacking {
+class ApplyModelUpdateValidationSIMDPacking final {
 public:
+
+   ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -535,8 +568,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
-class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> {
+class ApplyModelUpdateValidationSIMDPacking<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic> final {
 public:
+
+   ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -553,8 +589,11 @@ public:
 };
 
 template<ptrdiff_t compilerLearningTypeOrCountTargetClassesPossible>
-class ApplyModelUpdateValidationSIMDTarget {
+class ApplyModelUpdateValidationSIMDTarget final {
 public:
+
+   ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
@@ -589,8 +628,11 @@ public:
 };
 
 template<>
-class ApplyModelUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> {
+class ApplyModelUpdateValidationSIMDTarget<k_cCompilerOptimizedTargetClassesMax + 1> final {
 public:
+
+   ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
+
    EBM_INLINE static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,

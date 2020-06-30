@@ -259,11 +259,9 @@ static_assert(
 //   - things that are guaranteed and not -> https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 
 class EbmStatistics final {
-   EBM_INLINE EbmStatistics() {
-      // DON'T allow anyone to make this static class
-   }
-
 public:
+
+   EbmStatistics() = delete; // this is a static class.  Do not construct
 
    EBM_INLINE static FloatEbmType ComputeNewtonRaphsonStep(const FloatEbmType residualError) {
       // this function IS performance critical as it's called on every instance

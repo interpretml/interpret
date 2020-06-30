@@ -12,9 +12,20 @@
 #include "FeatureAtomic.h"
 
 struct FeatureCombinationEntry final {
+   FeatureCombinationEntry() = default; // preserve our POD status
+   ~FeatureCombinationEntry() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    // TODO : we can copy the entire Feature data into this location instead of using a pointer
    const Feature * m_pFeature;
 };
+static_assert(std::is_standard_layout<FeatureCombinationEntry>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<FeatureCombinationEntry>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<FeatureCombinationEntry>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
 
 class FeatureCombination final {
    size_t m_cItemsPerBitPackedDataUnit;
@@ -34,6 +45,11 @@ class FeatureCombination final {
 
 public:
 
+   FeatureCombination() = default; // preserve our POD status
+   ~FeatureCombination() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
    EBM_INLINE static constexpr size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
       return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) +
          sizeof(FeatureCombinationEntry) * cFeatures;
@@ -52,7 +68,7 @@ public:
       m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
    }
 
-   EBM_INLINE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
+   INLINE_RELEASE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
       const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
       EBM_ASSERT(0 < cBytes);
       FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(EbmMalloc<void>(cBytes));
@@ -63,7 +79,7 @@ public:
       return pFeatureCombination;
    }
 
-   EBM_INLINE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
+   INLINE_RELEASE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
       LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
 
       EBM_ASSERT(0 < cFeatureCombinations);
@@ -78,7 +94,7 @@ public:
       return apFeatureCombinations;
    }
 
-   EBM_INLINE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
+   INLINE_RELEASE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
       LOG_0(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
       if(nullptr != apFeatureCombinations) {
          EBM_ASSERT(0 < cFeatureCombinations);
@@ -108,33 +124,36 @@ public:
       return m_cFeatures;
    }
 
-   FeatureCombinationEntry * GetFeatureCombinationEntries() {
+   EBM_INLINE FeatureCombinationEntry * GetFeatureCombinationEntries() {
       return &m_FeatureCombinationEntry[0];
    }
 
-   const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
+   EBM_INLINE const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
       return &m_FeatureCombinationEntry[0];
    }
 
-   unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
+   EBM_INLINE unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
       return &m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
    }
 
-   unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
+   EBM_INLINE unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
       return &m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    }
 
-   unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
+   EBM_INLINE unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
       return &m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    }
 
-   unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
+   EBM_INLINE unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
       return &m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    }
 };
-static_assert(
-   std::is_standard_layout<FeatureCombination>::value, 
-   "We have an array at the end of this stucture, so we don't want anyone else derriving something and putting data there, and non-standard layout "
-   "data is probably undefined as to what the space after gets filled with");
+static_assert(std::is_standard_layout<FeatureCombination>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<FeatureCombination>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<FeatureCombination>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
 
 #endif // FEATURE_COMBINATION_H
