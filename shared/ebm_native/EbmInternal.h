@@ -97,7 +97,7 @@
 #define UNPREDICTABLE(b) (b)
 #endif // __has_builtin(__builtin_unpredictable)
 
-#define EBM_INLINE inline __attribute__((always_inline))
+#define INLINE_ALWAYS inline __attribute__((always_inline))
 
 // TODO : use EBM_RESTRICT_FUNCTION_RETURN EBM_RESTRICT_PARAM_VARIABLE and EBM_NOALIAS.  This helps performance by telling the compiler that pointers are 
 //   not aliased
@@ -116,9 +116,7 @@
 #define UNLIKELY(b) (b)
 #define PREDICTABLE(b) (b)
 #define UNPREDICTABLE(b) (b)
-// TODO: change EBM_INLINE to INLINE_ALWAYS
-// TODO: review all our existing EBM_INLINE values to see if we should change them to INLINE_RELEASE
-#define EBM_INLINE __forceinline
+#define INLINE_ALWAYS __forceinline
 
 #else // compiler type
 #error compiler not recognized
@@ -133,16 +131,17 @@
 // definition in a header but combines them afterwards. Lastly, using the non-forced inline works in most cases since the compiler will not inline 
 // complicated functions by default.
 #ifdef NDEBUG
-#define INLINE_RELEASE EBM_INLINE
+#define INLINE_RELEASE INLINE_ALWAYS
 #else //NDEBUG
 // these alternates kind of suck, but keep them around incase the non-force inline stops working well later
 //#define INLINE_RELEASE_UNTEMPLATED template<bool bUnusedInline = false>
 //#define INLINE_RELEASE_TEMPLATED
 //#define INLINE_RELEASE static
+//#define INLINE_RELEASE (this works if every call is from a static function already)
 #define INLINE_RELEASE inline
 #endif //NDEBUG
 
-EBM_INLINE void StopClangAnalysis() ANALYZER_NORETURN {
+INLINE_ALWAYS void StopClangAnalysis() ANALYZER_NORETURN {
 }
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the FloatEbmType data type 
@@ -170,18 +169,18 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 // even if declared as classes, so accessing that memory is legal. ArrayToPointer turns an array reference 
 // into a pointer to the same type of object, which resolves the UBSAN and static checker warnings.
 template<typename T>
-EBM_INLINE T * ArrayToPointer(T * a) {
+INLINE_ALWAYS T * ArrayToPointer(T * a) {
    return reinterpret_cast<T *>(reinterpret_cast<void *>(a));
 }
 template<typename T>
-EBM_INLINE const T * ArrayToPointer(const T * a) {
+INLINE_ALWAYS const T * ArrayToPointer(const T * a) {
    return reinterpret_cast<const T *>(reinterpret_cast<const void *>(a));
 }
 
 WARNING_PUSH
 WARNING_DISABLE_SIGNED_UNSIGNED_MISMATCH
 template<typename TTo, typename TFrom>
-constexpr EBM_INLINE bool IsNumberConvertable(const TFrom number) {
+constexpr INLINE_ALWAYS bool IsNumberConvertable(const TFrom number) {
    // the general rules of conversion are as follows:
    // calling std::numeric_limits<?>::max() returns an item of that type
    // casting and comparing will never give us undefined behavior.  It can give us implementation defined behavior or unspecified behavior, which is legal.
@@ -275,24 +274,24 @@ typedef UIntEbmType ActiveDataType;
 
 constexpr ptrdiff_t k_regression = -1;
 constexpr ptrdiff_t k_dynamicClassification = 0;
-constexpr EBM_INLINE bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsRegression(const ptrdiff_t learningTypeOrCountTargetClasses) {
    return k_regression == learningTypeOrCountTargetClasses;
 }
-constexpr EBM_INLINE bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
    return 0 <= learningTypeOrCountTargetClasses;
 }
-constexpr EBM_INLINE bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsBinaryClassification(const ptrdiff_t learningTypeOrCountTargetClasses) {
 #ifdef EXPAND_BINARY_LOGITS
    return UNUSED(learningTypeOrCountTargetClasses), false;
 #else // EXPAND_BINARY_LOGITS
    return 2 == learningTypeOrCountTargetClasses;
 #endif // EXPAND_BINARY_LOGITS
 }
-constexpr EBM_INLINE bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS bool IsMulticlass(const ptrdiff_t learningTypeOrCountTargetClasses) {
    return IsClassification(learningTypeOrCountTargetClasses) && !IsBinaryClassification(learningTypeOrCountTargetClasses);
 }
 
-constexpr EBM_INLINE size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
+constexpr INLINE_ALWAYS size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasses) {
    // this will work for anything except if learningTypeOrCountTargetClasses is set to DYNAMIC_CLASSIFICATION which means we should have passed in the 
    // dynamic value since DYNAMIC_CLASSIFICATION is a constant that doesn't tell us anything about the real value
 #ifdef EXPAND_BINARY_LOGITS
@@ -337,7 +336,7 @@ constexpr size_t CountBitsRequired(const T maxValue) {
    return T { 0 } == maxValue ? size_t { 0 } : size_t { 1 } + CountBitsRequired<T>(maxValue / T { 2 });
 }
 template<typename T>
-constexpr EBM_INLINE size_t CountBitsRequiredPositiveMax() {
+constexpr INLINE_ALWAYS size_t CountBitsRequiredPositiveMax() {
    return CountBitsRequired(std::numeric_limits<T>::max());
 }
 
@@ -374,13 +373,13 @@ constexpr size_t k_dynamicDimensions = 0;
 
 constexpr size_t k_cBitsForStorageType = CountBitsRequiredPositiveMax<StorageDataType>();
 
-constexpr EBM_INLINE size_t GetCountBits(const size_t cItemsBitPacked) {
+constexpr INLINE_ALWAYS size_t GetCountBits(const size_t cItemsBitPacked) {
    return k_cBitsForStorageType / cItemsBitPacked;
 }
 constexpr size_t k_cItemsPerBitPackedDataUnitDynamic = 0;
 constexpr size_t k_cItemsPerBitPackedDataUnitMax = 0; // if there are more than 16 (4 bits), then we should just use a loop since the code will be pretty big
 constexpr size_t k_cItemsPerBitPackedDataUnitMin = 0; // our default binning leads us to 256 values, which is 8 units per 64-bit data pack
-constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
+constexpr INLINE_ALWAYS size_t GetNextCountItemsBitPacked(const size_t cItemsBitPackedPrev) {
    // for 64 bits, the progression is: 64,32,21,16, 12,10,9,8,7,6,5,4,3,2,1 [there are 15 of these]
    // for 32 bits, the progression is: 32,16,10,8,6,5,4,3,2,1 [which are all included in 64 bits]
    return k_cItemsPerBitPackedDataUnitMin == cItemsBitPackedPrev ? 
@@ -389,7 +388,7 @@ constexpr EBM_INLINE size_t GetNextCountItemsBitPacked(const size_t cItemsBitPac
 
 WARNING_PUSH
 WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
-constexpr EBM_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) {
+constexpr INLINE_ALWAYS bool IsMultiplyError(const size_t num1, const size_t num2) {
    // algebraically, we want to know if this is true: std::numeric_limits<size_t>::max() + 1 <= num1 * num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 + 1 <= num2
    // which can be turned into: (std::numeric_limits<size_t>::max() + 1 - num1) / num1 < num2
@@ -401,7 +400,7 @@ constexpr EBM_INLINE bool IsMultiplyError(const size_t num1, const size_t num2) 
 }
 WARNING_POP
 
-constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
+constexpr INLINE_ALWAYS bool IsAddError(const size_t num1, const size_t num2) {
    // overflow for unsigned values is defined behavior in C++ and it causes a wrap arround
    return num1 + num2 < num1;
 }
@@ -420,13 +419,13 @@ constexpr EBM_INLINE bool IsAddError(const size_t num1, const size_t num2) {
 // in which case we use pure malloc and then free instead of these helper functions.  In both cases we still
 // use free though, so it's less likely to create bugs by accident.
 template<typename T>
-EBM_INLINE T * EbmMalloc() {
+INLINE_ALWAYS T * EbmMalloc() {
    static_assert(!std::is_same<T, void>::value, "don't try allocating a single void item with EbmMalloc");
    T * const a = static_cast<T *>(malloc(sizeof(T)));
    return a;
 }
 template<typename T>
-EBM_INLINE T * EbmMalloc(const size_t cItems) {
+INLINE_ALWAYS T * EbmMalloc(const size_t cItems) {
    constexpr size_t cBytesPerItem = sizeof(typename std::conditional<std::is_same<T, void>::value, char, T>::type);
    static_assert(0 < cBytesPerItem, "can't have a zero sized item");
    bool bOneByte = 1 == cBytesPerItem;
@@ -448,7 +447,7 @@ EBM_INLINE T * EbmMalloc(const size_t cItems) {
    }
 }
 template<typename T>
-EBM_INLINE T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
+INLINE_ALWAYS T * EbmMalloc(const size_t cItems, const size_t cBytesPerItem) {
    if(UNLIKELY(IsMultiplyError(cItems, cBytesPerItem))) {
       return nullptr;
    } else {
@@ -476,7 +475,7 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitAtInitialize = -1;
 //#define FAST_LOG
 
 #ifdef FAST_EXP
-EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
    // we use EbmExp to calculate the residual error, but we calculate the residual error with inputs only from the target and our logits
    // so if we introduce some noise in the residual error from approximations to exp, it will be seen and corrected by later boosting steps
    // so it's largely self correcting
@@ -507,7 +506,7 @@ EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
    return val;
 }
 #else // FAST_EXP
-EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
    return std::exp(val);
 }
 #endif // FAST_EXP
@@ -529,13 +528,13 @@ EBM_INLINE FloatEbmType EbmExp(FloatEbmType val) {
 #pragma intrinsic(_BitScanReverse64)
 
 template<typename T>
-EBM_INLINE unsigned int MostSignificantBit(T val) {
+INLINE_ALWAYS unsigned int MostSignificantBit(T val) {
    // TODO this only works in MS compiler.  This also doesn't work for numbers larger than uint64_t.  This has many problems, so review it.
    unsigned long index;
    return _BitScanReverse64(&index, static_cast<unsigned __int64>(val)) ? static_cast<unsigned int>(index) : static_cast<unsigned int>(0);
 }
 
-EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {
    // TODO: also look into whehter std::log1p has a good approximation directly
 
    // the log function is only used to calculate the log loss on the valididation set only
@@ -561,7 +560,7 @@ EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
    return val;
 }
 #else // FAST_LOG
-EBM_INLINE FloatEbmType EbmLog(FloatEbmType val) {
+INLINE_ALWAYS FloatEbmType EbmLog(FloatEbmType val) {
    return std::log(val);
    // TODO: also look into whehter std::log1p is a good function for this (mostly in terms of speed).  For the most part we don't care about accuracy 
    //   in the low

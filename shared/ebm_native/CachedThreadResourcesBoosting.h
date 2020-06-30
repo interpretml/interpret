@@ -8,7 +8,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 #include "HistogramTargetEntry.h"
@@ -37,7 +37,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_aThreadByteBuffer1 = nullptr;
       m_cThreadByteBufferCapacity1 = 0;
       m_aThreadByteBuffer2 = nullptr;
@@ -56,28 +56,28 @@ public:
    HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
    bool GrowThreadByteBuffer2(const size_t cByteBoundaries);
 
-   EBM_INLINE void * GetThreadByteBuffer2() {
+   INLINE_ALWAYS void * GetThreadByteBuffer2() {
       return m_aThreadByteBuffer2;
    }
 
-   EBM_INLINE size_t GetThreadByteBuffer2Size() const {
+   INLINE_ALWAYS size_t GetThreadByteBuffer2Size() const {
       return m_cThreadByteBufferCapacity2;
    }
 
-   EBM_INLINE FloatEbmType * GetTempFloatVector() {
+   INLINE_ALWAYS FloatEbmType * GetTempFloatVector() {
       return m_aTempFloatVector;
    }
 
-   EBM_INLINE void * GetEquivalentSplits() {
+   INLINE_ALWAYS void * GetEquivalentSplits() {
       return m_aEquivalentSplits;
    }
 
-   EBM_INLINE HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
+   INLINE_ALWAYS HistogramBucketVectorEntryBase * GetSumHistogramBucketVectorEntryArray() {
       return m_aSumHistogramBucketVectorEntry;
    }
 
    template<bool bClassification>
-   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntry1Array() {
+   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetSumHistogramBucketVectorEntry1Array() {
       return static_cast<HistogramBucketVectorEntry<bClassification> *>(m_aSumHistogramBucketVectorEntry1);
    }
 };

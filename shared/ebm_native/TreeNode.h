@@ -8,7 +8,7 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "EbmStatisticUtils.h"
 #include "HistogramBucket.h"
@@ -91,10 +91,10 @@ public:
    // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<true> m_aHistogramBucketVectorEntry[1];
 
-   EBM_INLINE size_t GetInstances() const {
+   INLINE_ALWAYS size_t GetInstances() const {
       return m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances;
    }
-   EBM_INLINE void SetInstances(size_t cInstances) {
+   INLINE_ALWAYS void SetInstances(size_t cInstances) {
       m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances = cInstances;
    }
 };
@@ -177,10 +177,10 @@ public:
    // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<false> m_aHistogramBucketVectorEntry[1];
 
-   EBM_INLINE size_t GetInstances() const {
+   INLINE_ALWAYS size_t GetInstances() const {
       return m_cInstances;
    }
-   EBM_INLINE void SetInstances(size_t cInstances) {
+   INLINE_ALWAYS void SetInstances(size_t cInstances) {
       m_cInstances = cInstances;
    }
 };
@@ -203,12 +203,12 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE bool IsSplittable() const {
+   INLINE_ALWAYS bool IsSplittable() const {
       return this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast != 
          this->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
    }
 
-   EBM_INLINE FloatEbmType EXTRACT_GAIN_BEFORE_SPLITTING() {
+   INLINE_ALWAYS FloatEbmType EXTRACT_GAIN_BEFORE_SPLITTING() {
       // m_splitGain is the result of a subtraction between a memory location and a calculation
       // if there is a difference in the number of bits between these two (some floating point processors store more bits)
       // then we could get a negative number, even if mathematically it can't be less than zero
@@ -218,11 +218,11 @@ public:
       return splitGain;
    }
 
-   EBM_INLINE void SPLIT_THIS_NODE() {
+   INLINE_ALWAYS void SPLIT_THIS_NODE() {
       this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = k_illegalGain;
    }
 
-   EBM_INLINE void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
+   INLINE_ALWAYS void INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED() {
       // we aren't going to split this TreeNode because we can't.  We need to set the splitGain value here because otherwise it is filled with garbage 
       // that could be NaN (meaning the node was a branch) we can't call INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED before calling SplitTreeNode 
       // because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the 
@@ -230,7 +230,7 @@ public:
       this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = FloatEbmType { 0 };
    }
 
-   EBM_INLINE bool WAS_THIS_NODE_SPLIT() const {
+   INLINE_ALWAYS bool WAS_THIS_NODE_SPLIT() const {
       return k_illegalGain == this->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
    }
 };
@@ -241,7 +241,7 @@ static_assert(std::is_trivial<TreeNode<true>>::value && std::is_trivial<TreeNode
 static_assert(std::is_pod<TreeNode<true>>::value && std::is_pod<TreeNode<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-EBM_INLINE size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
       sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(HistogramBucketVectorEntry<false>);
@@ -261,7 +261,7 @@ EBM_INLINE size_t GetTreeNodeSizeOverflow(const bool bClassification, const size
    return false;
 }
 
-EBM_INLINE size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetTreeNodeSize(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeNodeComponent = bClassification ?
       sizeof(TreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(TreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
@@ -274,18 +274,18 @@ EBM_INLINE size_t GetTreeNodeSize(const bool bClassification, const size_t cVect
 }
 
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
+INLINE_ALWAYS TreeNode<bClassification> * AddBytesTreeNode(TreeNode<bClassification> * const pTreeNode, const size_t cBytesAdd) {
    return reinterpret_cast<TreeNode<bClassification> *>(reinterpret_cast<char *>(pTreeNode) + cBytesAdd);
 }
 
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+INLINE_ALWAYS TreeNode<bClassification> * GetLeftTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
    UNUSED(cBytesTreeNode);
    return pTreeNodeChildren;
 }
 
 template<bool bClassification>
-EBM_INLINE TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
+INLINE_ALWAYS TreeNode<bClassification> * GetRightTreeNodeChild(TreeNode<bClassification> * const pTreeNodeChildren, const size_t cBytesTreeNode) {
    return AddBytesTreeNode<bClassification>(pTreeNodeChildren, cBytesTreeNode);
 }
 

@@ -8,7 +8,7 @@
 #include <cmath> // log, exp, etc.  Use cmath instead of math.h so that we get type overloading for these functions for seemless float/double useage
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO: surprisingly, neither ComputeResidualErrorMulticlass, nor ComputeResidualErrorBinaryClassification seems to be able to generate an infinity, 
@@ -263,7 +263,7 @@ public:
 
    EbmStatistics() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType ComputeNewtonRaphsonStep(const FloatEbmType residualError) {
+   INLINE_ALWAYS static FloatEbmType ComputeNewtonRaphsonStep(const FloatEbmType residualError) {
       // this function IS performance critical as it's called on every instance
 
       // residualError can be NaN -> We can get a NaN result inside ComputeSmallChangeForOneSegmentClassificationLogOdds
@@ -369,7 +369,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeNodeSplittingScore(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
+   INLINE_ALWAYS static FloatEbmType ComputeNodeSplittingScore(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this function can SOMETIMES be performance critical as it's called on every histogram bin
       // it will only be performance critical for truely continous numerical features that we're not binning, or for interactions where dimensionality
       // creates many bins
@@ -435,7 +435,7 @@ public:
    WARNING_PUSH
    WARNING_DISABLE_POTENTIAL_DIVIDE_BY_ZERO
 
-   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(
+   INLINE_ALWAYS static FloatEbmType ComputeSmallChangeForOneSegmentClassificationLogOdds(
       const FloatEbmType sumResidualError, 
       const FloatEbmType sumDenominator
    ) {
@@ -505,7 +505,7 @@ public:
 
    WARNING_POP
 
-   EBM_INLINE static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
+   INLINE_ALWAYS static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
       // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_combination boost
 
       // sumResidualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
@@ -538,7 +538,7 @@ public:
       // since the sumResidualError inputs can be anything, we can return can be anything, including NaN, or +-infinity
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorRegressionInit(const FloatEbmType predictionScore, const FloatEbmType actualValue) {
+   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorRegressionInit(const FloatEbmType predictionScore, const FloatEbmType actualValue) {
       // this function is NOT performance critical as it's called on every instance, but only during initialization.
 
       // it's possible to reach NaN or +-infinity within this module, so predictionScore can be those values
@@ -553,7 +553,7 @@ public:
       return result;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorRegression(const FloatEbmType value) {
+   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorRegression(const FloatEbmType value) {
       // this function IS performance critical as it's called on every instance
 
       // value can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression
@@ -563,7 +563,7 @@ public:
       return value;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorBinaryClassification(
+   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorBinaryClassification(
       const FloatEbmType trainingLogOddsPrediction, 
       const size_t binnedActualValue
    ) {
@@ -620,7 +620,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeResidualErrorMulticlass(
+   INLINE_ALWAYS static FloatEbmType ComputeResidualErrorMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType itemExp, 
       const size_t binnedActualValue, 
@@ -703,7 +703,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(
+   INLINE_ALWAYS static FloatEbmType ComputeSingleInstanceLogLossBinaryClassification(
       const FloatEbmType validationLogOddsPrediction, 
       const size_t binnedActualValue
    ) {
@@ -754,7 +754,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceLogLossMulticlass(
+   INLINE_ALWAYS static FloatEbmType ComputeSingleInstanceLogLossMulticlass(
       const FloatEbmType sumExp, 
       const FloatEbmType itemExp
    ) {
@@ -831,7 +831,7 @@ public:
       return ret;
    }
 
-   EBM_INLINE static FloatEbmType ComputeSingleInstanceSquaredErrorRegression(const FloatEbmType residualError) {
+   INLINE_ALWAYS static FloatEbmType ComputeSingleInstanceSquaredErrorRegression(const FloatEbmType residualError) {
       // this IS a performance critical function.  It gets called per validation instance!
 
       // residualError can be +-infinity, or NaN.  See note in ComputeSmallChangeForOneSegmentRegression

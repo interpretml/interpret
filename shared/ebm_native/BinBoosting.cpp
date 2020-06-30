@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 #include "EbmStatisticUtils.h"
@@ -128,7 +128,7 @@ public:
 
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const pHistogramBucketEntryBase
@@ -162,7 +162,7 @@ public:
 
    BinBoostingZeroDimensionsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const pHistogramBucketEntryBase
@@ -355,7 +355,7 @@ public:
 
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
@@ -401,7 +401,7 @@ public:
 
    BinBoostingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
@@ -433,7 +433,7 @@ public:
 
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
@@ -480,7 +480,7 @@ public:
 
    BinBoostingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
@@ -509,7 +509,7 @@ public:
 
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,
@@ -558,7 +558,7 @@ public:
 
    BinBoostingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const SamplingSet * const pTrainingSet,

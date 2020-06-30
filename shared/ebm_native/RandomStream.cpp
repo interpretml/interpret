@@ -5,7 +5,7 @@
 #include "PrecompiledHeader.h"
 
 #include "ebm_native.h" // IntEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "RandomStream.h"
 
 // I generated these as purely random numbers from 0 to 2^64-1

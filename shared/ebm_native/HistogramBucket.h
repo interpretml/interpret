@@ -11,7 +11,7 @@
 #include <string.h> // memcpy
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramTargetEntry.h"
 #include "FeatureAtomic.h"
@@ -33,11 +33,11 @@ struct HistogramBucketBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<bool bClassification>
-   EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucket() {
+   INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucket() {
       return static_cast<HistogramBucket<bClassification> *>(this);
    }
    template<bool bClassification>
-   EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucket() const {
+   INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucket() const {
       return static_cast<const HistogramBucket<bClassification> *>(this);
    }
 };
@@ -64,21 +64,21 @@ struct HistogramBucket final : HistogramBucketBase {
    // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
 
-   EBM_INLINE void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket += other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Add(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
-   EBM_INLINE void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket -= other.m_cInstancesInBucket;
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Subtract(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
       }
    }
 
-   EBM_INLINE void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
+   INLINE_ALWAYS void Copy(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       const size_t cBytesPerHistogramBucket = 
          sizeof(HistogramBucket<bClassification>) - sizeof(HistogramBucketVectorEntry<bClassification>) +
          sizeof(HistogramBucketVectorEntry<bClassification>) * cVectorLength;
@@ -86,7 +86,7 @@ struct HistogramBucket final : HistogramBucketBase {
       memcpy(this, &other, cBytesPerHistogramBucket);
    }
 
-   EBM_INLINE void Zero(const size_t cVectorLength) {
+   INLINE_ALWAYS void Zero(const size_t cVectorLength) {
       m_cInstancesInBucket = size_t { 0 };
       HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = ArrayToPointer(m_aHistogramBucketVectorEntry);
       const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
@@ -99,7 +99,7 @@ struct HistogramBucket final : HistogramBucketBase {
       AssertZero(cVectorLength);
    }
 
-   EBM_INLINE void AssertZero(const size_t cVectorLength) const {
+   INLINE_ALWAYS void AssertZero(const size_t cVectorLength) const {
       UNUSED(cVectorLength);
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cInstancesInBucket);
@@ -116,7 +116,7 @@ static_assert(std::is_trivial<HistogramBucket<true>>::value && std::is_trivial<H
 static_assert(std::is_pod<HistogramBucket<true>>::value && std::is_pod<HistogramBucket<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS bool GetHistogramBucketSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
       sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(HistogramBucketVectorEntry<false>);
@@ -136,7 +136,7 @@ EBM_INLINE bool GetHistogramBucketSizeOverflow(const bool bClassification, const
    return false;
 }
 
-EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetHistogramBucketSize(const bool bClassification, const size_t cVectorLength) {
    // TODO: someday try out bucket sizes that are a power of two.  This would allow us to use a shift when bucketing into histograms
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
@@ -153,7 +153,7 @@ EBM_INLINE size_t GetHistogramBucketSize(const bool bClassification, const size_
 }
 
 template<bool bClassification>
-EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+INLINE_ALWAYS HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
    HistogramBucket<bClassification> * const aHistogramBuckets,
    const size_t iBin
@@ -164,7 +164,7 @@ EBM_INLINE HistogramBucket<bClassification> * GetHistogramBucketByIndex(
 }
 
 template<bool bClassification>
-EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
+INLINE_ALWAYS const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
    const HistogramBucket<bClassification> * const aHistogramBuckets,
    const size_t iBin
@@ -174,7 +174,7 @@ EBM_INLINE const HistogramBucket<bClassification> * GetHistogramBucketByIndex(
    return reinterpret_cast<const HistogramBucket<bClassification> *>(reinterpret_cast<const char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
-EBM_INLINE HistogramBucketBase * GetHistogramBucketByIndex(
+INLINE_ALWAYS HistogramBucketBase * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
    HistogramBucketBase * const aHistogramBuckets,
    const size_t iBin
@@ -184,7 +184,7 @@ EBM_INLINE HistogramBucketBase * GetHistogramBucketByIndex(
    return reinterpret_cast<HistogramBucketBase *>(reinterpret_cast<char *>(aHistogramBuckets) + iBin * cBytesPerHistogramBucket);
 }
 
-EBM_INLINE const HistogramBucketBase * GetHistogramBucketByIndex(
+INLINE_ALWAYS const HistogramBucketBase * GetHistogramBucketByIndex(
    const size_t cBytesPerHistogramBucket,
    const HistogramBucketBase * const aHistogramBuckets,
    const size_t iBin

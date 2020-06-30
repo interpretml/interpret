@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "EbmStatisticUtils.h"
 
@@ -205,7 +205,7 @@ public:
 
    FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       const size_t cInstancesRequiredForChildSplitMin,
@@ -257,7 +257,7 @@ public:
 
    FindBestInteractionGainPairsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       const size_t cInstancesRequiredForChildSplitMin,

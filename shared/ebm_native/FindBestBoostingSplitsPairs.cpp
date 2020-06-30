@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "SegmentedTensor.h"
 #include "EbmStatisticUtils.h"
@@ -752,7 +752,7 @@ public:
 
    FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static bool Func(
+   INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const size_t cInstancesRequiredForChildSplitMin,
@@ -813,7 +813,7 @@ public:
 
    FindBestBoostingSplitPairsTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static bool Func(
+   INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const size_t cInstancesRequiredForChildSplitMin,

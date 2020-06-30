@@ -119,7 +119,7 @@ static_assert(std::is_pod<SplitPoint>::value,
 class CompareSplitPoint final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
-   EBM_INLINE bool operator() (const SplitPoint * const & lhs, const SplitPoint * const & rhs) const {
+   INLINE_ALWAYS bool operator() (const SplitPoint * const & lhs, const SplitPoint * const & rhs) const {
       if(UNLIKELY(lhs->m_worstRangeAvg == rhs->m_worstRangeAvg)) {
          return UNPREDICTABLE(lhs->m_uniqueRandom <= rhs->m_uniqueRandom);
       } else {
@@ -195,13 +195,13 @@ INLINE_RELEASE static FloatEbmType GeometricMeanSameSign(const FloatEbmType val1
 }
 
 // checked
-EBM_INLINE constexpr static int CountBase10CharactersAbs(int n) {
+INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) {
    // this works for negative numbers too
    return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
 }
 
 // checked
-EBM_INLINE constexpr static long MaxReprsentation(int cDigits) {
+INLINE_ALWAYS constexpr static long MaxReprsentation(int cDigits) {
    return int { 1 } == cDigits ? long { 9 } : long { 10 } * MaxReprsentation(cDigits - int { 1 }) + long { 9 };
 }
 
@@ -996,7 +996,7 @@ size_t StuffSplitsIntoSplittingRanges(
 
    class CompareSplittingRange final {
    public:
-      EBM_INLINE bool operator() (
+      INLINE_ALWAYS bool operator() (
          const SplittingRange * const & lhs,
          const SplittingRange * const & rhs
          ) const {

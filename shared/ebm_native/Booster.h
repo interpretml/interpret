@@ -70,7 +70,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
 
       m_cFeatures = 0;
@@ -96,63 +96,63 @@ public:
       m_pCachedThreadResources = nullptr;
    }
 
-   EBM_INLINE ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
+   INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() const {
       return m_runtimeLearningTypeOrCountTargetClasses;
    }
 
-   EBM_INLINE size_t GetCountFeatureCombinations() const {
+   INLINE_ALWAYS size_t GetCountFeatureCombinations() const {
       return m_cFeatureCombinations;
    }
 
-   EBM_INLINE FeatureCombination * const * GetFeatureCombinations() const {
+   INLINE_ALWAYS FeatureCombination * const * GetFeatureCombinations() const {
       return m_apFeatureCombinations;
    }
 
-   EBM_INLINE DataSetByFeatureCombination * GetTrainingSet() {
+   INLINE_ALWAYS DataSetByFeatureCombination * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   EBM_INLINE DataSetByFeatureCombination * GetValidationSet() {
+   INLINE_ALWAYS DataSetByFeatureCombination * GetValidationSet() {
       return &m_validationSet;
    }
 
-   EBM_INLINE size_t GetCountSamplingSets() const {
+   INLINE_ALWAYS size_t GetCountSamplingSets() const {
       return m_cSamplingSets;
    }
 
-   EBM_INLINE const SamplingSet * const * GetSamplingSets() const {
+   INLINE_ALWAYS const SamplingSet * const * GetSamplingSets() const {
       return m_apSamplingSets;
    }
 
-   EBM_INLINE SegmentedTensor * const * GetCurrentModel() const {
+   INLINE_ALWAYS SegmentedTensor * const * GetCurrentModel() const {
       return m_apCurrentModel;
    }
 
-   EBM_INLINE SegmentedTensor * const * GetBestModel() const {
+   INLINE_ALWAYS SegmentedTensor * const * GetBestModel() const {
       return m_apBestModel;
    }
 
-   EBM_INLINE FloatEbmType GetBestModelMetric() const {
+   INLINE_ALWAYS FloatEbmType GetBestModelMetric() const {
       return m_bestModelMetric;
    }
 
-   EBM_INLINE void SetBestModelMetric(const FloatEbmType bestModelMetric) {
+   INLINE_ALWAYS void SetBestModelMetric(const FloatEbmType bestModelMetric) {
       m_bestModelMetric = bestModelMetric;
    }
 
-   EBM_INLINE SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
+   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelOverwriteSingleSamplingSet() {
       return m_pSmallChangeToModelOverwriteSingleSamplingSet;
    }
 
-   EBM_INLINE SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
+   INLINE_ALWAYS SegmentedTensor * GetSmallChangeToModelAccumulatedFromSamplingSets() {
       return m_pSmallChangeToModelAccumulatedFromSamplingSets;
    }
 
-   EBM_INLINE CachedBoostingThreadResources * GetCachedThreadResources() const {
+   INLINE_ALWAYS CachedBoostingThreadResources * GetCachedThreadResources() const {
       return m_pCachedThreadResources;
    }
 
-   EBM_INLINE RandomStream * GetRandomStream() {
+   INLINE_ALWAYS RandomStream * GetRandomStream() {
       return &m_randomStream;
    }
 

@@ -10,7 +10,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 // TODO: we need to radically change this data structure so that we can efficiently pass it between machines in a cluster AND within/between a GPU/CPU
@@ -202,29 +202,29 @@ public:
    bool IsEqual(const SegmentedTensor & rhs) const;
 #endif // NDEBUG
 
-   EBM_INLINE void SetExpanded() {
+   INLINE_ALWAYS void SetExpanded() {
       m_bExpanded = true;
    }
 
-   EBM_INLINE bool GetExpanded() {
+   INLINE_ALWAYS bool GetExpanded() {
       return m_bExpanded;
    }
 
-   EBM_INLINE FloatEbmType * GetValues() {
+   INLINE_ALWAYS FloatEbmType * GetValues() {
       return m_aValues;
    }
 
-   EBM_INLINE void SetCountDimensions(const size_t cDimensions) {
+   INLINE_ALWAYS void SetCountDimensions(const size_t cDimensions) {
       EBM_ASSERT(cDimensions <= m_cDimensionsMax);
       m_cDimensions = cDimensions;
    }
 
-   EBM_INLINE ActiveDataType * GetDivisionPointer(const size_t iDimension) {
+   INLINE_ALWAYS ActiveDataType * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
       return &ArrayToPointer(m_aDimensions)[iDimension].m_aDivisions[0];
    }
 
-   EBM_INLINE FloatEbmType * GetValuePointer() {
+   INLINE_ALWAYS FloatEbmType * GetValuePointer() {
       return &m_aValues[0];
    }
 };

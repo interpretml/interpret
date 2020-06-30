@@ -7,7 +7,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 
@@ -50,16 +50,16 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE static constexpr size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
+   INLINE_ALWAYS static constexpr size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
       return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) +
          sizeof(FeatureCombinationEntry) * cFeatures;
    }
 
-   EBM_INLINE static void Free(FeatureCombination * const pFeatureCombination) {
+   INLINE_ALWAYS static void Free(FeatureCombination * const pFeatureCombination) {
       free(pFeatureCombination);
    }
 
-   EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
+   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
       m_cFeatures = cFeatures;
       m_iInputData = iFeatureCombination;
       m_cLogEnterGenerateModelFeatureCombinationUpdateMessages = 2;
@@ -72,43 +72,43 @@ public:
    static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations);
    static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations);
 
-   EBM_INLINE void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
+   INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
       m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;
    }
 
-   EBM_INLINE size_t GetCountItemsPerBitPackedDataUnit() const {
+   INLINE_ALWAYS size_t GetCountItemsPerBitPackedDataUnit() const {
       return m_cItemsPerBitPackedDataUnit;
    }
 
-   EBM_INLINE size_t GetIndexInputData() const {
+   INLINE_ALWAYS size_t GetIndexInputData() const {
       return m_iInputData;
    }
 
-   EBM_INLINE size_t GetCountFeatures() const {
+   INLINE_ALWAYS size_t GetCountFeatures() const {
       return m_cFeatures;
    }
 
-   EBM_INLINE FeatureCombinationEntry * GetFeatureCombinationEntries() {
+   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
       return &m_FeatureCombinationEntry[0];
    }
 
-   EBM_INLINE const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
+   INLINE_ALWAYS const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
       return &m_FeatureCombinationEntry[0];
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
       return &m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
       return &m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
       return &m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
       return &m_cLogExitApplyModelFeatureCombinationUpdateMessages;
    }
 };

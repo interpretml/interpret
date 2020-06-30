@@ -8,7 +8,7 @@
 #include <type_traits> // std::is_standard_layout
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 template<bool bClassification>
@@ -21,11 +21,11 @@ struct HistogramBucketVectorEntryBase {
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    template<bool bClassification>
-   EBM_INLINE HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
+   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
       return static_cast<HistogramBucketVectorEntry<bClassification> *>(this);
    }
    template<bool bClassification>
-   EBM_INLINE const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
+   INLINE_ALWAYS const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
       return static_cast<const HistogramBucketVectorEntry<bClassification> *>(this);
    }
 };
@@ -54,29 +54,29 @@ struct HistogramBucketVectorEntry<true> final : HistogramBucketVectorEntryBase {
    //   why it might be better there.  Test these theories out on large datasets
    FloatEbmType m_sumDenominator;
 
-   EBM_INLINE FloatEbmType GetSumDenominator() const {
+   INLINE_ALWAYS FloatEbmType GetSumDenominator() const {
       return m_sumDenominator;
    }
-   EBM_INLINE void SetSumDenominator(FloatEbmType sumDenominatorSet) {
+   INLINE_ALWAYS void SetSumDenominator(FloatEbmType sumDenominatorSet) {
       m_sumDenominator = sumDenominatorSet;
    }
-   EBM_INLINE void Add(const HistogramBucketVectorEntry<true> & other) {
+   INLINE_ALWAYS void Add(const HistogramBucketVectorEntry<true> & other) {
       m_sumResidualError += other.m_sumResidualError;
       m_sumDenominator += other.m_sumDenominator;
    }
-   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<true> & other) {
+   INLINE_ALWAYS void Subtract(const HistogramBucketVectorEntry<true> & other) {
       m_sumResidualError -= other.m_sumResidualError;
       m_sumDenominator -= other.m_sumDenominator;
    }
-   EBM_INLINE void Copy(const HistogramBucketVectorEntry<true> & other) {
+   INLINE_ALWAYS void Copy(const HistogramBucketVectorEntry<true> & other) {
       m_sumResidualError = other.m_sumResidualError;
       m_sumDenominator = other.m_sumDenominator;
    }
-   EBM_INLINE void AssertZero() const {
+   INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumResidualError);
       EBM_ASSERT(0 == m_sumDenominator);
    }
-   EBM_INLINE void Zero() {
+   INLINE_ALWAYS void Zero() {
       m_sumResidualError = FloatEbmType { 0 };
       m_sumDenominator = FloatEbmType { 0 };
    }
@@ -99,27 +99,27 @@ struct HistogramBucketVectorEntry<false> final : HistogramBucketVectorEntryBase 
 
    FloatEbmType m_sumResidualError;
 
-   EBM_INLINE FloatEbmType GetSumDenominator() const {
+   INLINE_ALWAYS FloatEbmType GetSumDenominator() const {
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
       return FloatEbmType { 0 };
    }
-   EBM_INLINE void SetSumDenominator(FloatEbmType sumDenominator) {
+   INLINE_ALWAYS void SetSumDenominator(FloatEbmType sumDenominator) {
       UNUSED(sumDenominator);
       EBM_ASSERT(false); // this should never be called, but the compiler seems to want it to exist
    }
-   EBM_INLINE void Add(const HistogramBucketVectorEntry<false> & other) {
+   INLINE_ALWAYS void Add(const HistogramBucketVectorEntry<false> & other) {
       m_sumResidualError += other.m_sumResidualError;
    }
-   EBM_INLINE void Subtract(const HistogramBucketVectorEntry<false> & other) {
+   INLINE_ALWAYS void Subtract(const HistogramBucketVectorEntry<false> & other) {
       m_sumResidualError -= other.m_sumResidualError;
    }
-   EBM_INLINE void Copy(const HistogramBucketVectorEntry<false> & other) {
+   INLINE_ALWAYS void Copy(const HistogramBucketVectorEntry<false> & other) {
       m_sumResidualError = other.m_sumResidualError;
    }
-   EBM_INLINE void AssertZero() const {
+   INLINE_ALWAYS void AssertZero() const {
       EBM_ASSERT(0 == m_sumResidualError);
    }
-   EBM_INLINE void Zero() {
+   INLINE_ALWAYS void Zero() {
       m_sumResidualError = FloatEbmType { 0 };
    }
 };

@@ -20,7 +20,7 @@ extern void LogAssertFailure(
    const char * const assertText
 ) ANALYZER_NORETURN ;
 
-constexpr EBM_INLINE bool AlwaysFalse() {
+constexpr INLINE_ALWAYS bool AlwaysFalse() {
    return false;
 }
 

@@ -156,7 +156,7 @@ public:
 
    ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
@@ -189,7 +189,7 @@ public:
 
    ApplyModelUpdateValidationZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
@@ -478,7 +478,7 @@ public:
 
    ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -514,7 +514,7 @@ public:
 
    ApplyModelUpdateValidationNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -538,7 +538,7 @@ public:
 
    ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -573,7 +573,7 @@ public:
 
    ApplyModelUpdateValidationSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -594,7 +594,7 @@ public:
 
    ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -633,7 +633,7 @@ public:
 
    ApplyModelUpdateValidationSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static FloatEbmType Func(
+   INLINE_ALWAYS static FloatEbmType Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor

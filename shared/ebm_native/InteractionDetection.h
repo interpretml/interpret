@@ -35,7 +35,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_runtimeLearningTypeOrCountTargetClasses = 0;
 
       m_cFeatures = 0;
@@ -47,27 +47,27 @@ public:
       m_cLogExitMessages = 0;
    }
 
-   EBM_INLINE ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
+   INLINE_ALWAYS ptrdiff_t GetRuntimeLearningTypeOrCountTargetClasses() {
       return m_runtimeLearningTypeOrCountTargetClasses;
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogEnterMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterMessages() {
       return &m_cLogEnterMessages;
    }
 
-   EBM_INLINE unsigned int * GetPointerCountLogExitMessages() {
+   INLINE_ALWAYS unsigned int * GetPointerCountLogExitMessages() {
       return &m_cLogExitMessages;
    }
 
-   EBM_INLINE const DataSetByFeature * GetDataSetByFeature() const {
+   INLINE_ALWAYS const DataSetByFeature * GetDataSetByFeature() const {
       return &m_dataSet;
    }
 
-   EBM_INLINE const Feature * GetFeatures() const {
+   INLINE_ALWAYS const Feature * GetFeatures() const {
       return m_aFeatures;
    }
 
-   EBM_INLINE size_t GetCountFeatures() const {
+   INLINE_ALWAYS size_t GetCountFeatures() const {
       return m_cFeatures;
    }
 

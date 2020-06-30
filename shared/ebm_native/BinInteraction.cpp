@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 #include "EbmStatisticUtils.h"
@@ -143,7 +143,7 @@ public:
 
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * const aHistogramBuckets
@@ -186,7 +186,7 @@ public:
 
    BinInteractionDimensions() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * const aHistogramBuckets
@@ -213,7 +213,7 @@ public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * const aHistogramBuckets
@@ -256,7 +256,7 @@ public:
 
    BinInteractionTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * const aHistogramBuckets

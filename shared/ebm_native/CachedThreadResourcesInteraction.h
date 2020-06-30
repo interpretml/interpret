@@ -8,7 +8,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 struct HistogramBucketBase;
@@ -24,7 +24,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_aThreadByteBuffer1 = nullptr;
       m_cThreadByteBufferCapacity1 = 0;
    }

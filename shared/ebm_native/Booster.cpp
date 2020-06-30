@@ -36,7 +36,7 @@ extern void InitializeResiduals(
    FloatEbmType * pResidualError
 );
 
-EBM_INLINE static size_t GetCountItemsBitPacked(const size_t cBits) {
+INLINE_ALWAYS static size_t GetCountItemsBitPacked(const size_t cBits) {
    EBM_ASSERT(size_t { 1 } <= cBits);
    return k_cBitsForStorageType / cBits;
 }

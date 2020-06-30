@@ -8,7 +8,7 @@
 #include <type_traits> // std::is_standard_layout
 #include <stddef.h> // size_t, ptrdiff_t
 
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "HistogramTargetEntry.h"
 
@@ -40,7 +40,7 @@ static_assert(std::is_trivial<SweepTreeNode<true>>::value && std::is_trivial<Swe
 static_assert(std::is_pod<SweepTreeNode<true>>::value && std::is_pod<SweepTreeNode<false>>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const size_t cVectorLength) {
    const size_t cBytesHistogramTargetEntry = bClassification ?
       sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(HistogramBucketVectorEntry<false>);
@@ -60,7 +60,7 @@ EBM_INLINE bool GetSweepTreeNodeSizeOverflow(const bool bClassification, const s
    return false;
 }
 
-EBM_INLINE size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVectorLength) {
+INLINE_ALWAYS size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVectorLength) {
    const size_t cBytesTreeSweepComponent = bClassification ?
       sizeof(SweepTreeNode<true>) - sizeof(HistogramBucketVectorEntry<true>) :
       sizeof(SweepTreeNode<false>) - sizeof(HistogramBucketVectorEntry<false>);
@@ -73,12 +73,12 @@ EBM_INLINE size_t GetSweepTreeNodeSize(bool bClassification, const size_t cVecto
 }
 
 template<bool bClassification>
-EBM_INLINE SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<bClassification> * const pSweepTreeNode, const size_t cBytesAdd) {
+INLINE_ALWAYS SweepTreeNode<bClassification> * AddBytesSweepTreeNode(SweepTreeNode<bClassification> * const pSweepTreeNode, const size_t cBytesAdd) {
    return reinterpret_cast<SweepTreeNode<bClassification> *>(reinterpret_cast<char *>(pSweepTreeNode) + cBytesAdd);
 }
 
 template<bool bClassification>
-EBM_INLINE size_t CountSweepTreeNode(
+INLINE_ALWAYS size_t CountSweepTreeNode(
    const SweepTreeNode<bClassification> * const pSweepTreeNodeStart,
    const SweepTreeNode<bClassification> * const pSweepTreeNodeCur,
    const size_t cBytesPerSweepTreeNode

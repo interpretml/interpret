@@ -7,7 +7,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 
 #include "FeatureAtomic.h"
@@ -335,7 +335,7 @@ public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
@@ -384,7 +384,7 @@ public:
 
    TensorTotalsBuildDimensions() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
@@ -415,7 +415,7 @@ public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,
@@ -463,7 +463,7 @@ public:
 
    TensorTotalsBuildTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const FeatureCombination * const pFeatureCombination,
       HistogramBucketBase * pBucketAuxiliaryBuildZone,

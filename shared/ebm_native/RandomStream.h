@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // IntEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h"
 
 class RandomStream final {
@@ -56,7 +56,7 @@ class RandomStream final {
    // TODO: it might be possible to make the 64 bit version a bit faster, either by having 2 independent streams
    //       so that the multiplication can be done in parallel (although this would consume more registers), or
    //       if we combine the two 32 bit functions which might eliminate some of the shifting
-   EBM_INLINE uint_fast32_t Rand32() {
+   INLINE_ALWAYS uint_fast32_t Rand32() {
       // if this gets properly optimized, it gets converted into 4 machine instructions: imulq, iaddq, iaddq, and rorq
       m_state1 *= m_state1;
       m_state2 += m_stateSeedConst;
@@ -69,7 +69,7 @@ class RandomStream final {
       return static_cast<uint_fast32_t>(static_cast<uint32_t>(result));
    }
 
-   EBM_INLINE uint_fast64_t Rand64() {
+   INLINE_ALWAYS uint_fast64_t Rand64() {
       const uint_fast64_t top = static_cast<uint_fast64_t>(Rand32());
       const uint_fast64_t bottom = static_cast<uint_fast64_t>(Rand32());
       return (top << 32) | bottom;
@@ -84,13 +84,13 @@ public:
 
    void Initialize(const uint64_t seed);
 
-   EBM_INLINE void Initialize(const IntEbmType seed) {
+   INLINE_ALWAYS void Initialize(const IntEbmType seed) {
       // the C++ standard guarantees that the unsigned result of this 
       // conversion is 2^64 + seed if seed is negative
       Initialize(static_cast<uint64_t>(seed));
    }
 
-   EBM_INLINE void Initialize(const RandomStream & other) {
+   INLINE_ALWAYS void Initialize(const RandomStream & other) {
       m_state1 = other.m_state1;
       m_state2 = other.m_state2;
       m_stateSeedConst = other.m_stateSeedConst;
@@ -98,14 +98,14 @@ public:
       m_randomRemaining = other.m_randomRemaining;
    }
 
-   EBM_INLINE bool NextBit() {
+   INLINE_ALWAYS bool NextBit() {
       // TODO : If there is a use case for getting single bits, implement this by directly striping bits off 
       //        randomRemaining and randomRemainingMax
       EBM_ASSERT(false);
       return false;
    }
 
-   EBM_INLINE size_t Next(const size_t maxValueExclusive) {
+   INLINE_ALWAYS size_t Next(const size_t maxValueExclusive) {
       static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint64_t>::max(), 
          "we must be able to at least generate a real random size_t value");
 

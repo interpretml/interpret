@@ -8,7 +8,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 
@@ -27,7 +27,7 @@ public:
 
    void Destruct();
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_aResidualErrors = nullptr;
       m_aaInputData = nullptr;
       m_cInstances = 0;
@@ -44,21 +44,21 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   EBM_INLINE const FloatEbmType * GetResidualPointer() const {
+   INLINE_ALWAYS const FloatEbmType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
    // TODO: we can change this to take the m_iFeatureData value directly, which we get from a loop index
-   EBM_INLINE const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const Feature * const pFeature) const {
       EBM_ASSERT(nullptr != pFeature);
       EBM_ASSERT(pFeature->GetIndexFeatureData() < m_cFeatures);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeature->GetIndexFeatureData()];
    }
-   EBM_INLINE size_t GetCountInstances() const {
+   INLINE_ALWAYS size_t GetCountInstances() const {
       return m_cInstances;
    }
-   EBM_INLINE size_t GetCountFeatures() const {
+   INLINE_ALWAYS size_t GetCountFeatures() const {
       return m_cFeatures;
    }
 };

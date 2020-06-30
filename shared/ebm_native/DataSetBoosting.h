@@ -9,7 +9,7 @@
 #include <stddef.h> // size_t, ptrdiff_t
 
 #include "ebm_native.h" // FloatEbmType
-#include "EbmInternal.h" // EBM_INLINE
+#include "EbmInternal.h" // INLINE_ALWAYS
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureGroup.h"
 
@@ -28,7 +28,7 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   EBM_INLINE void InitializeZero() {
+   INLINE_ALWAYS void InitializeZero() {
       m_aResidualErrors = nullptr;
       m_aPredictorScores = nullptr;
       m_aTargetData = nullptr;
@@ -52,33 +52,33 @@ public:
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
    );
 
-   EBM_INLINE FloatEbmType * GetResidualPointer() {
+   INLINE_ALWAYS FloatEbmType * GetResidualPointer() {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   EBM_INLINE const FloatEbmType * GetResidualPointer() const {
+   INLINE_ALWAYS const FloatEbmType * GetResidualPointer() const {
       EBM_ASSERT(nullptr != m_aResidualErrors);
       return m_aResidualErrors;
    }
-   EBM_INLINE FloatEbmType * GetPredictorScores() {
+   INLINE_ALWAYS FloatEbmType * GetPredictorScores() {
       EBM_ASSERT(nullptr != m_aPredictorScores);
       return m_aPredictorScores;
    }
-   EBM_INLINE const StorageDataType * GetTargetDataPointer() const {
+   INLINE_ALWAYS const StorageDataType * GetTargetDataPointer() const {
       EBM_ASSERT(nullptr != m_aTargetData);
       return m_aTargetData;
    }
    // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
-   EBM_INLINE const StorageDataType * GetInputDataPointer(const FeatureCombination * const pFeatureCombination) const {
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureCombination * const pFeatureCombination) const {
       EBM_ASSERT(nullptr != pFeatureCombination);
       EBM_ASSERT(pFeatureCombination->GetIndexInputData() < m_cFeatureCombinations);
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeatureCombination->GetIndexInputData()];
    }
-   EBM_INLINE size_t GetCountInstances() const {
+   INLINE_ALWAYS size_t GetCountInstances() const {
       return m_cInstances;
    }
-   EBM_INLINE size_t GetCountFeatureCombinations() const {
+   INLINE_ALWAYS size_t GetCountFeatureCombinations() const {
       return m_cFeatureCombinations;
    }
 };

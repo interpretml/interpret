@@ -175,7 +175,7 @@ public:
 
    ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
@@ -208,7 +208,7 @@ public:
 
    ApplyModelUpdateTrainingZeroFeaturesTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
    ) {
@@ -519,7 +519,7 @@ public:
 
    ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -555,7 +555,7 @@ public:
 
    ApplyModelUpdateTrainingNormalTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -579,7 +579,7 @@ public:
 
    ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -614,7 +614,7 @@ public:
 
    ApplyModelUpdateTrainingSIMDPacking() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -635,7 +635,7 @@ public:
 
    ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
@@ -674,7 +674,7 @@ public:
 
    ApplyModelUpdateTrainingSIMDTarget() = delete; // this is a static class.  Do not construct
 
-   EBM_INLINE static void Func(
+   INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureCombination * const pFeatureCombination,
       const FloatEbmType * const aModelFeatureCombinationUpdateTensor
