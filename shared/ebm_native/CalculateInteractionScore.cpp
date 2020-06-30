@@ -412,7 +412,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       interactionScoreReturn
    );
 
-   pCachedThreadResources->Free();
+   CachedInteractionThreadResources::Free(pCachedThreadResources);
 
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntEbmTypePrintf, ret);

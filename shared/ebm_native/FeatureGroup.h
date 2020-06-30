@@ -55,8 +55,8 @@ public:
          sizeof(FeatureCombinationEntry) * cFeatures;
    }
 
-   EBM_INLINE void Free() {
-      free(this);
+   EBM_INLINE static void Free(FeatureCombination * const pFeatureCombination) {
+      free(pFeatureCombination);
    }
 
    EBM_INLINE void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {

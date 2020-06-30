@@ -12,12 +12,12 @@
 
 #include "CachedThreadResourcesInteraction.h"
 
-void CachedInteractionThreadResources::Free() {
+void CachedInteractionThreadResources::Free(CachedInteractionThreadResources * const pCachedResources) {
    LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Free");
 
-   free(m_aThreadByteBuffer1);
+   free(pCachedResources->m_aThreadByteBuffer1);
 
-   free(this);
+   free(pCachedResources);
 
    LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Free");
 }

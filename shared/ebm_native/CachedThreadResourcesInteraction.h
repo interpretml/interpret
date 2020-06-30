@@ -29,7 +29,7 @@ public:
       m_cThreadByteBufferCapacity1 = 0;
    }
 
-   void Free();
+   static void Free(CachedInteractionThreadResources * const pCachedResources);
    static CachedInteractionThreadResources * Allocate();
    HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
 

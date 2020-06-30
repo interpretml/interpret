@@ -43,7 +43,7 @@ void FeatureCombination::FreeFeatureCombinations(const size_t cFeatureCombinatio
       EBM_ASSERT(0 < cFeatureCombinations);
       for(size_t i = 0; i < cFeatureCombinations; ++i) {
          if(nullptr != apFeatureCombinations[i]) {
-            apFeatureCombinations[i]->Free();
+            FeatureCombination::Free(apFeatureCombinations[i]);
          }
       }
       free(apFeatureCombinations);
