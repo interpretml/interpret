@@ -68,45 +68,9 @@ public:
       m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
    }
 
-   INLINE_RELEASE static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
-      const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
-      EBM_ASSERT(0 < cBytes);
-      FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(EbmMalloc<void>(cBytes));
-      if(UNLIKELY(nullptr == pFeatureCombination)) {
-         return nullptr;
-      }
-      pFeatureCombination->Initialize(cFeatures, iFeatureCombination);
-      return pFeatureCombination;
-   }
-
-   INLINE_RELEASE static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations) {
-      LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
-
-      EBM_ASSERT(0 < cFeatureCombinations);
-      FeatureCombination ** const apFeatureCombinations = EbmMalloc<FeatureCombination *>(cFeatureCombinations);
-      if(nullptr != apFeatureCombinations) {
-         for(size_t i = 0; i < cFeatureCombinations; ++i) {
-            apFeatureCombinations[i] = nullptr;
-         }
-      }
-
-      LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
-      return apFeatureCombinations;
-   }
-
-   INLINE_RELEASE static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
-      LOG_0(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
-      if(nullptr != apFeatureCombinations) {
-         EBM_ASSERT(0 < cFeatureCombinations);
-         for(size_t i = 0; i < cFeatureCombinations; ++i) {
-            if(nullptr != apFeatureCombinations[i]) {
-               apFeatureCombinations[i]->Free();
-            }
-         }
-         free(apFeatureCombinations);
-      }
-      LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
-   }
+   static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination);
+   static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations);
+   static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations);
 
    EBM_INLINE void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
       m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;

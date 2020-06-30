@@ -42,7 +42,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
 #endif // NDEBUG
 );
 
-static bool CalculateInteractionScore(
+static bool CalculateInteractionScoreInternal(
    CachedInteractionThreadResources * const pCachedThreadResources,
    EbmInteractionState * const pEbmInteractionState,
    const FeatureCombination * const pFeatureCombination,
@@ -56,7 +56,7 @@ static bool CalculateInteractionScore(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScore");
+   LOG_0(TraceLevelVerbose, "Entered CalculateInteractionScoreInternal");
 
    const size_t cDimensions = pFeatureCombination->GetCountFeatures();
    EBM_ASSERT(1 <= cDimensions); // situations with 0 dimensions should have been filtered out before this function was called (but still inside the C++)
@@ -78,7 +78,7 @@ static bool CalculateInteractionScore(
          // unlike in the boosting code where we check at allocation time if the tensor created overflows on multiplication
          // we don't know what combination of features our caller will give us for calculating the interaction scores,
          // so we need to check if our caller gave us a tensor that overflows multiplication
-         LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBucketsMainSpace, cBins)");
+         LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBucketsMainSpace, cBins)");
          return true;
       }
       cTotalBucketsMainSpace *= cBins;
@@ -90,7 +90,7 @@ static bool CalculateInteractionScore(
    const size_t cAuxillaryBuckets =
       cAuxillaryBucketsForBuildFastTotals < cAuxillaryBucketsForSplitting ? cAuxillaryBucketsForSplitting : cAuxillaryBucketsForBuildFastTotals;
    if(IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsAddError(cTotalBucketsMainSpace, cAuxillaryBuckets)");
       return true;
    }
    const size_t cTotalBuckets = cTotalBucketsMainSpace + cAuxillaryBuckets;
@@ -100,13 +100,13 @@ static bool CalculateInteractionScore(
    if(GetHistogramBucketSizeOverflow(bClassification, cVectorLength)) {
       LOG_0(
          TraceLevelWarning,
-         "WARNING CalculateInteractionScore GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
+         "WARNING CalculateInteractionScoreInternal GetHistogramBucketSizeOverflow<bClassification>(cVectorLength)"
       );
       return true;
    }
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
    if(IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal IsMultiplyError(cTotalBuckets, cBytesPerHistogramBucket)");
       return true;
    }
    const size_t cBytesBuffer = cTotalBuckets * cBytesPerHistogramBucket;
@@ -114,7 +114,7 @@ static bool CalculateInteractionScore(
    // this doesn't need to be freed since it's tracked and re-used by the class CachedInteractionThreadResources
    HistogramBucketBase * const aHistogramBuckets = pCachedThreadResources->GetThreadByteBuffer1(cBytesBuffer);
    if(UNLIKELY(nullptr == aHistogramBuckets)) {
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore nullptr == aHistogramBuckets");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal nullptr == aHistogramBuckets");
       return true;
    }
 
@@ -181,7 +181,7 @@ static bool CalculateInteractionScore(
    );
 
    if(2 == cDimensions) {
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScore Starting bin sweep loop");
+      LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Starting bin sweep loop");
 
       FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
          pEbmInteractionState,
@@ -195,7 +195,7 @@ static bool CalculateInteractionScore(
 #endif // NDEBUG
       );
 
-      LOG_0(TraceLevelVerbose, "CalculateInteractionScore Done bin sweep loop");
+      LOG_0(TraceLevelVerbose, "CalculateInteractionScoreInternal Done bin sweep loop");
 
       if(nullptr != pInteractionScoreReturn) {
          // we started our score at zero, and didn't replace with anything lower, so it can't be below zero
@@ -213,7 +213,7 @@ static bool CalculateInteractionScore(
       }
    } else {
       EBM_ASSERT(false); // we only support pairs currently
-      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore 2 != cDimensions");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScoreInternal 2 != cDimensions");
 
       // TODO: handle this better
       if(nullptr != pInteractionScoreReturn) {
@@ -226,36 +226,8 @@ static bool CalculateInteractionScore(
    free(aHistogramBucketsDebugCopy);
 #endif // NDEBUG
 
-   LOG_0(TraceLevelVerbose, "Exited CalculateInteractionScore");
+   LOG_0(TraceLevelVerbose, "Exited CalculateInteractionScoreInternal");
    return false;
-}
-
-static IntEbmType GetInteractionScorePreCache(
-   EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
-   const size_t cInstancesRequiredForChildSplitMin,
-   FloatEbmType * const pInteractionScoreReturn
-) {
-   // TODO: eliminate this function.  It's no longer needed. Collapse it into GetInteractionScore below
-
-   // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
-   CachedInteractionThreadResources * const pCachedThreadResources = CachedInteractionThreadResources::Allocate();
-   if(nullptr == pCachedThreadResources) {
-      return 1;
-   }
-
-   if(CalculateInteractionScore(
-      pCachedThreadResources,
-      pEbmInteractionState,
-      pFeatureCombination,
-      cInstancesRequiredForChildSplitMin,
-      pInteractionScoreReturn
-   )) {
-      pCachedThreadResources->Free();
-      return 1;
-   }
-   pCachedThreadResources->Free();
-   return 0;
 }
 
 // we made this a global because if we had put this variable inside the EbmInteractionState object, then we would need to dereference that before getting 
@@ -426,15 +398,26 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       return 0;
    }
 
-   IntEbmType ret = GetInteractionScorePreCache(
+   // TODO : be smarter about our CachedInteractionThreadResources, otherwise why have it?
+   CachedInteractionThreadResources * const pCachedThreadResources = CachedInteractionThreadResources::Allocate();
+   if(nullptr == pCachedThreadResources) {
+      return 1;
+   }
+
+   IntEbmType ret = CalculateInteractionScoreInternal(
+      pCachedThreadResources,
       pEbmInteractionState,
       pFeatureCombination,
       cInstancesRequiredForChildSplitMin,
       interactionScoreReturn
    );
+
+   pCachedThreadResources->Free();
+
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING GetInteractionScore returned %" IntEbmTypePrintf, ret);
    }
+
    if(nullptr != interactionScoreReturn) {
       // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
       EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn);

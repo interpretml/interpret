@@ -32,7 +32,7 @@ public:
    }
 
    EBM_INLINE size_t GetCountBins() const {
-      StopClangAnalysis();
+      StopClangAnalysis(); // clang seems to think we're reading uninitialized data here, but we aren't
       return m_cBins;
    }
 

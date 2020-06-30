@@ -317,7 +317,10 @@ EXIT /B 0
     <ClCompile Include="ApplyModelUpdateValidation.cpp" />
     <ClCompile Include="BinBoosting.cpp" />
     <ClCompile Include="BinInteraction.cpp" />
+    <ClCompile Include="CachedThreadResourcesBoosting.cpp" />
+    <ClCompile Include="CachedThreadResourcesInteraction.cpp" />
     <ClCompile Include="CalculateInteractionScore.cpp" />
+    <ClCompile Include="FeatureGroup.cpp" />
     <ClCompile Include="FindBestBoostingSplitsPairs.cpp" />
     <ClCompile Include="FindBestInteractionGainPairs.cpp" />
     <ClCompile Include="GenerateModelFeatureGroupUpdate.cpp" />

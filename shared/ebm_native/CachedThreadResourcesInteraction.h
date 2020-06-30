@@ -29,41 +29,10 @@ public:
       m_cThreadByteBufferCapacity1 = 0;
    }
 
-   INLINE_RELEASE void Free() {
-      LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Free");
+   void Free();
+   static CachedInteractionThreadResources * Allocate();
+   HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired);
 
-      free(m_aThreadByteBuffer1);
-
-      free(this);
-
-      LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Free");
-   }
-
-   INLINE_RELEASE static CachedInteractionThreadResources * Allocate() {
-      LOG_0(TraceLevelInfo, "Entered CachedInteractionThreadResources::Allocate");
-
-      CachedInteractionThreadResources * const pNew = EbmMalloc<CachedInteractionThreadResources>();
-      if(nullptr != pNew) {
-         pNew->InitializeZero();
-      }
-
-      LOG_0(TraceLevelInfo, "Exited CachedInteractionThreadResources::Allocate");
-
-      return pNew;
-   }
-
-   INLINE_RELEASE HistogramBucketBase * GetThreadByteBuffer1(const size_t cBytesRequired) {
-      HistogramBucketBase * aBuffer = m_aThreadByteBuffer1;
-      if(UNLIKELY(m_cThreadByteBufferCapacity1 < cBytesRequired)) {
-         m_cThreadByteBufferCapacity1 = cBytesRequired << 1;
-         LOG_N(TraceLevelInfo, "Growing CachedInteractionThreadResources::ThreadByteBuffer1 to %zu", m_cThreadByteBufferCapacity1);
-
-         free(aBuffer);
-         aBuffer = static_cast<HistogramBucketBase *>(EbmMalloc<void>(m_cThreadByteBufferCapacity1));
-         m_aThreadByteBuffer1 = aBuffer;
-      }
-      return aBuffer;
-   }
 };
 static_assert(std::is_standard_layout<CachedInteractionThreadResources>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
