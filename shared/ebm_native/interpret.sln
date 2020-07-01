@@ -3,56 +3,56 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native_test", "shared\ebm_native\ebm_native_test\ebm_native_test.vcxproj", "{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native_test", "ebm_native_test\ebm_native_test.vcxproj", "{B1F39CA2-B315-45AC-8D98-C2271EE3B46D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{9C227F82-E92F-445C-9832-5A2EEDB7924B} = {9C227F82-E92F-445C-9832-5A2EEDB7924B}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native", "shared\ebm_native\ebm_native.vcxproj", "{9C227F82-E92F-445C-9832-5A2EEDB7924B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ebm_native", "ebm_native.vcxproj", "{9C227F82-E92F-445C-9832-5A2EEDB7924B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F5894036-AD18-466C-825A-9347FA61CF2D}"
 	ProjectSection(SolutionItems) = preProject
-		.gitattributes = .gitattributes
-		.gitignore = .gitignore
-		ACKNOWLEDGEMENTS.md = ACKNOWLEDGEMENTS.md
-		azure-pipelines.yml = azure-pipelines.yml
-		build.bat = build.bat
-		build.sh = build.sh
-		CHANGELOG.md = CHANGELOG.md
-		CONTRIBUTING.md = CONTRIBUTING.md
-		README.md = README.md
+		..\..\.gitattributes = ..\..\.gitattributes
+		..\..\.gitignore = ..\..\.gitignore
+		..\..\ACKNOWLEDGEMENTS.md = ..\..\ACKNOWLEDGEMENTS.md
+		..\..\azure-pipelines.yml = ..\..\azure-pipelines.yml
+		..\..\build.bat = ..\..\build.bat
+		..\..\build.sh = ..\..\build.sh
+		..\..\CHANGELOG.md = ..\..\CHANGELOG.md
+		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
+		..\..\README.md = ..\..\README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{3939C139-57E9-4CFD-AE75-710460EF590D}"
 	ProjectSection(SolutionItems) = preProject
-		R\build_R.bat = R\build_R.bat
-		R\cran_lic.txt = R\cran_lic.txt
-		R\DESCRIPTION = R\DESCRIPTION
-		R\NAMESPACE = R\NAMESPACE
+		..\..\R\build_R.bat = ..\..\R\build_R.bat
+		..\..\R\cran_lic.txt = ..\..\R\cran_lic.txt
+		..\..\R\DESCRIPTION = ..\..\R\DESCRIPTION
+		..\..\R\NAMESPACE = ..\..\R\NAMESPACE
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "man", "man", "{B695C21B-DB54-4A5C-9968-2A94829CB1CB}"
 	ProjectSection(SolutionItems) = preProject
-		R\man\ebm_classify.Rd = R\man\ebm_classify.Rd
-		R\man\ebm_predict_proba.Rd = R\man\ebm_predict_proba.Rd
+		..\..\R\man\ebm_classify.Rd = ..\..\R\man\ebm_classify.Rd
+		..\..\R\man\ebm_predict_proba.Rd = ..\..\R\man\ebm_predict_proba.Rd
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "R", "R", "{71DB2E08-9023-4AB7-9961-C4635B88C1B8}"
 	ProjectSection(SolutionItems) = preProject
-		R\R\ebm.R = R\R\ebm.R
-		R\R\ebm_booster.R = R\R\ebm_booster.R
-		R\R\ebm_interactions.R = R\R\ebm_interactions.R
+		..\..\R\R\ebm.R = ..\..\R\R\ebm.R
+		..\..\R\R\ebm_booster.R = ..\..\R\R\ebm_booster.R
+		..\..\R\R\ebm_interactions.R = ..\..\R\R\ebm_interactions.R
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{589FA769-174B-43F0-9665-8F310F4C3E5A}"
 	ProjectSection(SolutionItems) = preProject
-		R\src\interpret-win.def = R\src\interpret-win.def
-		R\src\interpret_R.cpp = R\src\interpret_R.cpp
-		R\src\Makevars = R\src\Makevars
-		R\src\Makevars.interpret = R\src\Makevars.interpret
+		..\..\R\src\interpret-win.def = ..\..\R\src\interpret-win.def
+		..\..\R\src\interpret_R.cpp = ..\..\R\src\interpret_R.cpp
+		..\..\R\src\Makevars = ..\..\R\src\Makevars
+		..\..\R\src\Makevars.interpret = ..\..\R\src\Makevars.interpret
 	EndProjectSection
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "..\..\python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
