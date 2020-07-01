@@ -76,6 +76,8 @@ public:
          pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
          const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
 
+         size_t iVector = 0;
+
 #ifndef NDEBUG
 #ifdef EXPAND_BINARY_LOGITS
          constexpr bool bExpandBinaryLogits = true;
@@ -84,7 +86,6 @@ public:
 #endif // EXPAND_BINARY_LOGITS
          FloatEbmType residualTotalDebug = 0;
 #endif // NDEBUG
-         size_t iVector = 0;
          do {
             const FloatEbmType residualError = *pResidualError;
             EBM_ASSERT(!bClassification ||
@@ -275,8 +276,8 @@ public:
             pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
             const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
             HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(
-               pHistogramBucketEntry->m_aHistogramBucketVectorEntry
-            );
+               pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
+
             size_t iVector = 0;
 
 #ifndef NDEBUG

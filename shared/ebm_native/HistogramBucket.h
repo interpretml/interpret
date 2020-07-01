@@ -66,15 +66,29 @@ struct HistogramBucket final : HistogramBucketBase {
 
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket += other.m_cInstancesInBucket;
+
+      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis =
+         ArrayToPointer(m_aHistogramBucketVectorEntry);
+
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther =
+         ArrayToPointer(other.m_aHistogramBucketVectorEntry);
+
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Add(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
+         pHistogramBucketVectorThis[iVector].Add(pHistogramBucketVectorOther[iVector]);
       }
    }
 
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket -= other.m_cInstancesInBucket;
+
+      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis =
+         ArrayToPointer(m_aHistogramBucketVectorEntry);
+
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther =
+         ArrayToPointer(other.m_aHistogramBucketVectorEntry);
+
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].Subtract(ArrayToPointer(other.m_aHistogramBucketVectorEntry)[iVector]);
+         pHistogramBucketVectorThis[iVector].Subtract(pHistogramBucketVectorOther[iVector]);
       }
    }
 
@@ -103,8 +117,12 @@ struct HistogramBucket final : HistogramBucketBase {
       UNUSED(cVectorLength);
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cInstancesInBucket);
+
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVector =
+         ArrayToPointer(m_aHistogramBucketVectorEntry);
+
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
-         ArrayToPointer(m_aHistogramBucketVectorEntry)[iVector].AssertZero();
+         pHistogramBucketVector[iVector].AssertZero();
       }
 #endif // NDEBUG
    }

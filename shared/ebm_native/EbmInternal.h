@@ -162,12 +162,34 @@ constexpr FloatEbmType k_epsilonNegativeValidationMetricAllowed = -1e-7;
 constexpr FloatEbmType k_epsilonResidualError = 1e-7;
 constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 
-// UBSAN and our static checkers really really don't like it when we access data past the end of a class 
-// eg: p->m_a[2], when m_a is declared as an array of 1
-// We do this however in a number of places to co-locate memory for performance reasons.  We do allocate 
-// sufficient memory for doing this, and we also statically check that our classes are standard layout structures, 
-// even if declared as classes, so accessing that memory is legal. ArrayToPointer turns an array reference 
-// into a pointer to the same type of object, which resolves the UBSAN and static checker warnings.
+// The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
+// So, without mitigation, the struct hack would be undefined behavior.  We can however formally turn an array 
+// into a pointer, thus making our modified struct hack completely legal in C++.  So, for instance, the following
+// is illegal in C++:
+//
+// struct MyStruct { int myInt[1]; };
+// MyStruct * pMyStruct = malloc(sizeof(MyStruct) + sizeof(int));
+// "pMyStruct->myInt[2] = 3;" 
+// 
+// Compilers have been getting agressive in using undefined behavior to optimize code, so even though the struct
+// hack is still widely used, we don't want to risk invoking undefined behavior. By converting an array 
+// into a pointer though with the ArrayToPointer function below, we can make this legal again by always writing: 
+//
+// "ArrayToPointer(pMyStruct->myInt)[2] = 3;"
+//
+// I've seen a lot of speculation on the internet that the struct hack is always illegal, but I believe this is
+// incorrect using this modified access method.  To illustrate, everything in this example should be completely legal:
+//
+// struct MyStruct { int myInt[1]; };
+// char * pMem = malloc(sizeof(MyStruct) + sizeof(int));
+// size_t myOffset = offsetof(MyStruct, myInt);
+// int * pInt = reinterpret_cast<int *>(pMem + myOffset);
+// pInt[2] = 3;
+//
+// We endure all this hassle because in a number of places we co-locate memory for performance reasons.  We do allocate 
+// sufficient memory for doing this, and we also statically check that our structures are standard layout structures, 
+// which is required in order to use the offsetof macro, or in our case array to pointer conversion.
+// 
 template<typename T>
 INLINE_ALWAYS T * ArrayToPointer(T * a) {
    return reinterpret_cast<T *>(reinterpret_cast<void *>(a));

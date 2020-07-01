@@ -127,8 +127,9 @@ static bool BoostZeroDimensional(
 
    FloatEbmType * aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
    if(bClassification) {
+      const HistogramBucket<true> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<true>();
       const HistogramBucketVectorEntry<true> * const aSumHistogramBucketVectorEntry =
-         ArrayToPointer(pHistogramBucket->GetHistogramBucket<true>()->m_aHistogramBucketVectorEntry);
+         ArrayToPointer(pHistogramBucketLocal->m_aHistogramBucketVectorEntry);
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
             aSumHistogramBucketVectorEntry[iVector].m_sumResidualError,
@@ -138,11 +139,12 @@ static bool BoostZeroDimensional(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
+      const HistogramBucket<false> * const pHistogramBucketLocal = pHistogramBucket->GetHistogramBucket<false>();
       const HistogramBucketVectorEntry<false> * const aSumHistogramBucketVectorEntry =
-         ArrayToPointer(pHistogramBucket->GetHistogramBucket<false>()->m_aHistogramBucketVectorEntry);
+         ArrayToPointer(pHistogramBucketLocal->m_aHistogramBucketVectorEntry);
       const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
          aSumHistogramBucketVectorEntry[0].m_sumResidualError,
-         static_cast<FloatEbmType>(pHistogramBucket->GetHistogramBucket<false>()->m_cInstancesInBucket)
+         static_cast<FloatEbmType>(pHistogramBucketLocal->m_cInstancesInBucket)
       );
       aValues[0] = smallChangeToModel;
    }
@@ -711,12 +713,15 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
    }
 
    if(0 != cDimensions) {
+      const FeatureCombinationEntry * pFeatureCombinationEntry = 
+         ArrayToPointer(pFeatureCombination->GetFeatureCombinationEntries());
+
       // pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before 
       // calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = ArrayToPointer(pFeatureCombination->GetFeatureCombinationEntries())[iDimension].m_pFeature->GetCountBins();
+         acDivisionIntegersEnd[iDimension] = pFeatureCombinationEntry[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {

@@ -66,6 +66,10 @@ public:
 #ifndef NDEBUG
          cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
 #endif // NDEBUG
+
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
+            ArrayToPointer(pCopyFrom->m_aHistogramBucketVectorEntry);
+
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
             // gain on both sides, we need the sum on both sides, which means when starting from one end
@@ -77,7 +81,7 @@ public:
             // and that is if almost all bins have either 0 or 1 instances, which would happen if we didn't bin at all
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
-            aSumHistogramBucketVectorEntry[iVector].Add(ArrayToPointer(pCopyFrom->m_aHistogramBucketVectorEntry)[iVector]);
+            aSumHistogramBucketVectorEntry[iVector].Add(pHistogramBucketVectorEntry[iVector]);
          }
 
          pCopyFrom = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pCopyFrom, 1);

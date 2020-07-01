@@ -152,26 +152,35 @@ public:
                         FloatEbmType cHighLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->m_cInstancesInBucket);
                         FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->m_cInstancesInBucket);
 
+                        HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsLowLow =
+                           ArrayToPointer(pTotalsLowLow->m_aHistogramBucketVectorEntry);
+                        HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsLowHigh =
+                           ArrayToPointer(pTotalsLowHigh->m_aHistogramBucketVectorEntry);
+                        HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsHighLow =
+                           ArrayToPointer(pTotalsHighLow->m_aHistogramBucketVectorEntry);
+                        HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsHighHigh =
+                           ArrayToPointer(pTotalsHighHigh->m_aHistogramBucketVectorEntry);
+
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
                            // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                            const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
-                              ArrayToPointer(pTotalsLowLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError,
+                              pHistogramBucketVectorEntryTotalsLowLow[iVector].m_sumResidualError,
                               cLowLowInstancesInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
                            const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
-                              ArrayToPointer(pTotalsLowHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsLowHigh[iVector].m_sumResidualError, cLowHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
                            const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(
-                              ArrayToPointer(pTotalsHighLow->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsHighLow[iVector].m_sumResidualError, cHighLowInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
                            const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(
-                              ArrayToPointer(pTotalsHighHigh->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsHighHigh[iVector].m_sumResidualError, cHighHighInstancesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
