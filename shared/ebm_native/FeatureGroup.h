@@ -88,11 +88,10 @@ public:
       return m_cFeatures;
    }
 
-   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
+   INLINE_ALWAYS const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
       return ArrayToPointer(m_FeatureCombinationEntry);
    }
-
-   INLINE_ALWAYS const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
+   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
       return ArrayToPointer(m_FeatureCombinationEntry);
    }
 

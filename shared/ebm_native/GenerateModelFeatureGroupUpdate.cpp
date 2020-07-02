@@ -713,8 +713,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
    }
 
    if(0 != cDimensions) {
-      const FeatureCombinationEntry * pFeatureCombinationEntry = 
-         ArrayToPointer(pFeatureCombination->GetFeatureCombinationEntries());
+      const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
 
       // pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before 
       // calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search

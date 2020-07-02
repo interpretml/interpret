@@ -192,11 +192,11 @@ constexpr FloatEbmType k_epsilonLogLoss = 1e-7;
 // 
 template<typename T>
 INLINE_ALWAYS T * ArrayToPointer(T * a) {
-   return reinterpret_cast<T *>(reinterpret_cast<void *>(a));
+   return a;
 }
 template<typename T>
 INLINE_ALWAYS const T * ArrayToPointer(const T * a) {
-   return reinterpret_cast<const T *>(reinterpret_cast<const void *>(a));
+   return a;
 }
 
 WARNING_PUSH

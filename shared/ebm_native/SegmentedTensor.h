@@ -167,11 +167,10 @@ class SegmentedTensor final {
    // (either the parent or child) if the class is derrived
    DimensionInfo m_aDimensions[1];
 
-   INLINE_ALWAYS DimensionInfo * GetDimensions() {
+   INLINE_ALWAYS const DimensionInfo * GetDimensions() const {
       return ArrayToPointer(m_aDimensions);
    }
-
-   INLINE_ALWAYS const DimensionInfo * GetDimensions() const {
+   INLINE_ALWAYS DimensionInfo * GetDimensions() {
       return ArrayToPointer(m_aDimensions);
    }
 
