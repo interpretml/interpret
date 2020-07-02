@@ -99,7 +99,7 @@ class RulesExplanation(ExplanationMixin):  # pragma: no cover
             raise Exception(msg)
 
 
-class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
+class DecisionListClassifier(ClassifierMixin, ExplainerMixin):  # pragma: no cover
     """ Decision List Classifier
 
     Currently a slight variant of SkopeRules from skope-rules.

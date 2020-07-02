@@ -8,6 +8,7 @@ from sklearn.utils.extmath import softmax
 from sklearn.model_selection import train_test_split
 import numbers
 import numpy as np
+import warnings
 
 
 import logging
@@ -81,6 +82,14 @@ class EBMUtils:
             X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
             y_val = np.empty(shape=(0,), dtype=y.dtype)
         elif test_size > 0:
+            # Adapt test size if too small relative to number of classes
+            if is_classification:
+                y_uniq = len(set(y))
+                n_test_samples = test_size if test_size >= 1 else len(y) * test_size
+                if n_test_samples < y_uniq:  # pragma: no cover
+                    warnings.warn("Too few samples per class, adapting test size to guarantee 1 sample per class.")
+                    test_size = y_uniq
+
             X_train, X_val, y_train, y_val = train_test_split(
                 X,
                 y,
