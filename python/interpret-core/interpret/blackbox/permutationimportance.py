@@ -5,6 +5,7 @@ import scipy as sp
 import numpy as np
 
 import sklearn.metrics
+from scipy.sparse import SparseEfficiencyWarning
 
 from ..utils import gen_name_from_class, gen_local_selector
 
@@ -12,6 +13,8 @@ from interpret.api.base import ExplainerMixin
 from interpret.api.templates import FeatureValueExplanation
 from interpret.utils import unify_predict_fn, unify_data
 from interpret.utils import gen_name_from_class, gen_global_selector
+
+import warnings
 
 
 def _order_imp(summary):
@@ -125,7 +128,6 @@ class PermutationImportance(ExplainerMixin):
         if hasattr(self, "_global_explanation"):
             return self._global_explanation
 
-        evaluation_examples = self.data
         true_labels = self.labels
         mli_dict = {ExplainParams.MODEL_TYPE: "pfi"}
 
@@ -137,7 +139,6 @@ class PermutationImportance(ExplainerMixin):
 
         mli_dict[ExplainParams.NUM_FEATURES] = len(dataset[0])
 
-
         predict_function = self.predict_fn
         # Score the model on the given dataset
         predictions = predict_function(dataset)
@@ -145,7 +146,7 @@ class PermutationImportance(ExplainerMixin):
         if sp.sparse.issparse(true_labels):
             true_labels = true_labels.toarray()
         if sp.sparse.issparse(predictions):
-            predictions = prediction.toarray()
+            predictions = predictions.toarray()
         # Evaluate the model with given metric on the dataset
         base_metric = self.metric(true_labels, predictions)
         column_indexes = range(dataset.shape[1])
