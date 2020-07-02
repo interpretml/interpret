@@ -76,37 +76,24 @@ class EBMUtils:
         # all test/train splits should be done with this function to ensure that
         # if we re-generate the train/test splits that they are generated exactly
         # the same as before
-        if test_size > 0:
-            if is_train:
-                X_train, X_val, y_train, y_val = train_test_split(
-                    X,
-                    y,
-                    test_size=test_size,
-                    random_state=random_state,
-                    stratify=y if is_classification else None,
-                )
-            else:
-                X_train = None
-                y_train = None
-                _, X_val, _, y_val = train_test_split(
-                    X,
-                    y,
-                    test_size=test_size,
-                    random_state=random_state,
-                    stratify=y if is_classification else None,
-                )
-        elif test_size == 0:
-            if is_train:
-                X_train = X
-                y_train = y
-            else:
-                X_train = None
-                y_train = None
-
+        if test_size == 0:
+            X_train, y_train = X, y
             X_val = np.empty(shape=(0, X.shape[1]), dtype=X.dtype)
-            y_val = np.empty(shape=(0), dtype=y.dtype)
+            y_val = np.empty(shape=(0,), dtype=y.dtype)
+        elif test_size > 0:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X,
+                y,
+                test_size=test_size,
+                random_state=random_state,
+                stratify=y if is_classification else None,
+            )
         else:  # pragma: no cover
             raise Exception("test_size must be between 0 and 1.")
+
+        if not is_train:
+            X_train, y_train = None, None
+
 
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
         #         push the re-ordering right to our first call to fit(..) AND stripe convert
@@ -115,7 +102,6 @@ class EBMUtils:
         # AND our C code expects it in that ordering
         if X_train is not None:
             X_train = np.ascontiguousarray(X_train.T)
-
         X_val = np.ascontiguousarray(X_val.T)
 
         return X_train, X_val, y_train, y_val
