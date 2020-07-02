@@ -234,10 +234,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
 
-            pSweepTreeNodeCur->m_pBestHistogramBucketEntry = pHistogramBucketEntryCur;
-            pSweepTreeNodeCur->m_cBestInstancesLeft = cInstancesLeft;
+            pSweepTreeNodeCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
+            pSweepTreeNodeCur->SetCountBestInstancesLeft(cInstancesLeft);
             memcpy(
-               pSweepTreeNodeCur->m_aBestHistogramBucketVectorEntry, aSumHistogramBucketVectorEntryLeft,
+               pSweepTreeNodeCur->GetBestHistogramBucketVectorEntry(), aSumHistogramBucketVectorEntryLeft,
                sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength
             );
 
@@ -282,9 +282,9 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pLeftChild =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->m_pBestHistogramBucketEntry;
+   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->GetBestHistogramBucketEntry();
    pLeftChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = BEST_pHistogramBucketEntry;
-   const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->m_cBestInstancesLeft;
+   const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->GetCountBestInstancesLeft();
    pLeftChild->SetInstances(BEST_cInstancesLeft);
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
@@ -314,7 +314,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
 
    const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntrySweep =
-      ArrayToPointer(pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry);
+      pSweepTreeNodeStart->GetBestHistogramBucketVectorEntry();
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FloatEbmType originalParentScore = 0;

@@ -53,7 +53,7 @@ SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const s
    }
 
    if(0 != cDimensionsMax) {
-      DimensionInfo * pDimension = ArrayToPointer(pSegmentedRegion->m_aDimensions);
+      DimensionInfo * pDimension = pSegmentedRegion->GetDimensions();
       size_t iDimension = 0;
       do {
          pDimension->m_cDivisions = 0;
@@ -63,7 +63,7 @@ SegmentedTensor * SegmentedTensor::Allocate(const size_t cDimensionsMax, const s
          ++iDimension;
       } while(iDimension < cDimensionsMax);
 
-      pDimension = ArrayToPointer(pSegmentedRegion->m_aDimensions);
+      pDimension = pSegmentedRegion->GetDimensions();
       iDimension = 0;
       do {
          ActiveDataType * const aDivisions = EbmMalloc<ActiveDataType>(k_initialDivisionCapacity);
@@ -84,7 +84,7 @@ void SegmentedTensor::Free(SegmentedTensor * const pSegmentedRegion) {
    if(LIKELY(nullptr != pSegmentedRegion)) {
       free(pSegmentedRegion->m_aValues);
       if(LIKELY(0 != pSegmentedRegion->m_cDimensionsMax)) {
-         const DimensionInfo * pDimensionInfo = ArrayToPointer(pSegmentedRegion->m_aDimensions);
+         const DimensionInfo * pDimensionInfo = pSegmentedRegion->GetDimensions();
          const DimensionInfo * const pDimensionInfoEnd = &pDimensionInfo[pSegmentedRegion->m_cDimensionsMax];
          do {
             free(pDimensionInfo->m_aDivisions);
@@ -96,7 +96,7 @@ void SegmentedTensor::Free(SegmentedTensor * const pSegmentedRegion) {
 }
 
 void SegmentedTensor::Reset() {
-   DimensionInfo * pDimensionInfo = ArrayToPointer(m_aDimensions);
+   DimensionInfo * pDimensionInfo = GetDimensions();
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       pDimensionInfo[iDimension].m_cDivisions = 0;
    }
@@ -110,7 +110,7 @@ void SegmentedTensor::Reset() {
 
 bool SegmentedTensor::SetCountDivisions(const size_t iDimension, const size_t cDivisions) {
    EBM_ASSERT(iDimension < m_cDimensions);
-   DimensionInfo * const pDimension = &ArrayToPointer(m_aDimensions)[iDimension];
+   DimensionInfo * const pDimension = &GetDimensions()[iDimension];
    // we shouldn't be able to expand our length after we're been expanded since expanded should be the maximum size already
    EBM_ASSERT(!m_bExpanded || cDivisions <= pDimension->m_cDivisions);
    if(UNLIKELY(pDimension->m_cDivisionCapacity < cDivisions)) {
@@ -177,8 +177,8 @@ bool SegmentedTensor::EnsureValueCapacity(const size_t cValues) {
 bool SegmentedTensor::Copy(const SegmentedTensor & rhs) {
    EBM_ASSERT(m_cDimensions == rhs.m_cDimensions);
 
-   const DimensionInfo * pThisDimensionInfo = ArrayToPointer(m_aDimensions);
-   const DimensionInfo * pRhsDimensionInfo = ArrayToPointer(rhs.m_aDimensions);
+   const DimensionInfo * pThisDimensionInfo = GetDimensions();
+   const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
    size_t cValues = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -205,7 +205,7 @@ bool SegmentedTensor::Copy(const SegmentedTensor & rhs) {
 
 bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
 
-   const DimensionInfo * pThisDimensionInfo = ArrayToPointer(m_aDimensions);
+   const DimensionInfo * pThisDimensionInfo = GetDimensions();
 
    size_t cValues = 1;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
@@ -248,7 +248,7 @@ bool SegmentedTensor::Expand(const size_t * const acValuesPerDimension) {
    EBM_ASSERT(m_cDimensions <= k_cDimensionsMax);
    DimensionInfoStackExpand aDimensionInfoStackExpand[k_cDimensionsMax];
 
-   const DimensionInfo * pDimensionFirst1 = ArrayToPointer(m_aDimensions);
+   const DimensionInfo * pDimensionFirst1 = GetDimensions();
 
    DimensionInfoStackExpand * pDimensionInfoStackFirst = aDimensionInfoStackExpand;
    const DimensionInfoStackExpand * const pDimensionInfoStackEnd = &aDimensionInfoStackExpand[m_cDimensions];
@@ -293,7 +293,7 @@ bool SegmentedTensor::Expand(const size_t * const acValuesPerDimension) {
    }
 
    FloatEbmType * const aValues = m_aValues;
-   const DimensionInfo * const aDimension1 = ArrayToPointer(m_aDimensions);
+   const DimensionInfo * const aDimension1 = GetDimensions();
 
    EBM_ASSERT(cValues1 <= cNewValues);
    EBM_ASSERT(!IsMultiplyError(m_cVectorLength, cValues1)); // we checked against cNewValues above, and cValues1 should be smaller
@@ -404,7 +404,7 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
    EBM_ASSERT(m_bExpanded);
    size_t cItems = m_cVectorLength;
 
-   const DimensionInfo * const aDimension = ArrayToPointer(m_aDimensions);
+   const DimensionInfo * const aDimension = GetDimensions();
 
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
       // this can't overflow since we've already allocated them!
@@ -466,8 +466,8 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
       // TODO: the existing code below works, but handle this differently (we can do it more efficiently)
    }
 
-   const DimensionInfo * pDimensionFirst1 = ArrayToPointer(m_aDimensions);
-   const DimensionInfo * pDimensionFirst2 = ArrayToPointer(rhs.m_aDimensions);
+   const DimensionInfo * pDimensionFirst1 = GetDimensions();
+   const DimensionInfo * pDimensionFirst2 = rhs.GetDimensions();
 
    DimensionInfoStack * pDimensionInfoStackFirst = dimensionStack;
    const DimensionInfoStack * const pDimensionInfoStackEnd = &dimensionStack[m_cDimensions];
@@ -540,10 +540,10 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
    }
 
    const FloatEbmType * pValue2 = &rhs.m_aValues[m_cVectorLength * cValues2];  // we're accessing allocated memory, so it can't overflow
-   const DimensionInfo * const aDimension2 = ArrayToPointer(rhs.m_aDimensions);
+   const DimensionInfo * const aDimension2 = rhs.GetDimensions();
 
    FloatEbmType * const aValues = m_aValues;
-   const DimensionInfo * const aDimension1 = ArrayToPointer(m_aDimensions);
+   const DimensionInfo * const aDimension1 = GetDimensions();
 
    const FloatEbmType * pValue1 = &aValues[m_cVectorLength * cValues1]; // we're accessing allocated memory, so it can't overflow
    FloatEbmType * pValueTop = &aValues[m_cVectorLength * cNewValues]; // we're accessing allocated memory, so it can't overflow
@@ -721,8 +721,8 @@ bool SegmentedTensor::IsEqual(const SegmentedTensor & rhs) const {
       return false;
    }
 
-   const DimensionInfo * pThisDimensionInfo = ArrayToPointer(m_aDimensions);
-   const DimensionInfo * pRhsDimensionInfo = ArrayToPointer(rhs.m_aDimensions);
+   const DimensionInfo * pThisDimensionInfo = GetDimensions();
+   const DimensionInfo * pRhsDimensionInfo = rhs.GetDimensions();
 
    size_t cValues = m_cVectorLength;
    for(size_t iDimension = 0; iDimension < m_cDimensions; ++iDimension) {
