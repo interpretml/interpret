@@ -160,7 +160,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
-      const size_t CHANGE_cInstances = pHistogramBucketEntryCur->m_cInstancesInBucket;
+      const size_t CHANGE_cInstances = pHistogramBucketEntryCur->GetCountInstancesInBucket();
       cInstancesRight -= CHANGE_cInstances;
       if(UNLIKELY(cInstancesRight < cInstancesRequiredForChildSplitMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
@@ -168,7 +168,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       cInstancesLeft += CHANGE_cInstances;
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry =
-         ArrayToPointer(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry);
+         pHistogramBucketEntryCur->GetHistogramBucketVectorEntry();
 
       if(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft)) {
          EBM_ASSERT(0 < cInstancesRight);

@@ -50,10 +50,7 @@ static_assert(std::is_pod<HistogramBucketBase>::value,
 
 template<bool bClassification>
 struct HistogramBucket final : HistogramBucketBase {
-   HistogramBucket() = default; // preserve our POD status
-   ~HistogramBucket() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
+private:
 
    size_t m_cInstancesInBucket;
 
@@ -64,14 +61,34 @@ struct HistogramBucket final : HistogramBucketBase {
    // (either the parent or child) if the class is derrived
    HistogramBucketVectorEntry<bClassification> m_aHistogramBucketVectorEntry[1];
 
+public:
+
+   HistogramBucket() = default; // preserve our POD status
+   ~HistogramBucket() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   INLINE_ALWAYS size_t GetCountInstancesInBucket() const {
+      return m_cInstancesInBucket;
+   }
+   INLINE_ALWAYS void SetCountInstancesInBucket(const size_t cInstancesInBucket) {
+      m_cInstancesInBucket = cInstancesInBucket;
+   }
+
+   INLINE_ALWAYS const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
+      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   }
+   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() {
+      return ArrayToPointer(m_aHistogramBucketVectorEntry);
+   }
+
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket += other.m_cInstancesInBucket;
 
-      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis =
-         ArrayToPointer(m_aHistogramBucketVectorEntry);
+      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther =
-         ArrayToPointer(other.m_aHistogramBucketVectorEntry);
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther = 
+         other.GetHistogramBucketVectorEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Add(pHistogramBucketVectorOther[iVector]);
@@ -81,11 +98,10 @@ struct HistogramBucket final : HistogramBucketBase {
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
       m_cInstancesInBucket -= other.m_cInstancesInBucket;
 
-      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis =
-         ArrayToPointer(m_aHistogramBucketVectorEntry);
+      HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorOther =
-         ArrayToPointer(other.m_aHistogramBucketVectorEntry);
+         other.GetHistogramBucketVectorEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVectorThis[iVector].Subtract(pHistogramBucketVectorOther[iVector]);
@@ -102,7 +118,7 @@ struct HistogramBucket final : HistogramBucketBase {
 
    INLINE_ALWAYS void Zero(const size_t cVectorLength) {
       m_cInstancesInBucket = size_t { 0 };
-      HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = ArrayToPointer(m_aHistogramBucketVectorEntry);
+      HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = GetHistogramBucketVectorEntry();
       const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
       do {
@@ -118,8 +134,7 @@ struct HistogramBucket final : HistogramBucketBase {
 #ifndef NDEBUG
       EBM_ASSERT(0 == m_cInstancesInBucket);
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVector =
-         ArrayToPointer(m_aHistogramBucketVectorEntry);
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVector = GetHistogramBucketVectorEntry();
 
       for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
          pHistogramBucketVector[iVector].AssertZero();

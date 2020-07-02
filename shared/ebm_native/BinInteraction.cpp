@@ -94,10 +94,10 @@ public:
          HistogramBucket<bClassification> * pHistogramBucketEntry =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
-         pHistogramBucketEntry->m_cInstancesInBucket += 1;
+         pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + 1);
 
          HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-            ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
+            pHistogramBucketEntry->GetHistogramBucketVectorEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             const FloatEbmType residualError = *pResidualError;

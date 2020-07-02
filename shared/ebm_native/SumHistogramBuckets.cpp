@@ -64,11 +64,11 @@ public:
       do {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
 #ifndef NDEBUG
-         cInstancesTotalDebug += pCopyFrom->m_cInstancesInBucket;
+         cInstancesTotalDebug += pCopyFrom->GetCountInstancesInBucket();
 #endif // NDEBUG
 
          const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
-            ArrayToPointer(pCopyFrom->m_aHistogramBucketVectorEntry);
+            pCopyFrom->GetHistogramBucketVectorEntry();
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
