@@ -52,7 +52,8 @@ static void Flatten(
       FloatEbmType * const pValuesNext = pValuesCur + cVectorLength;
       *ppValues = pValuesNext;
 
-      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
+      const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
+         ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
       do {
          FloatEbmType smallChangeToModel;
          if(bClassification) {
@@ -540,26 +541,32 @@ public:
             cBytesPerTreeNode
             );
 
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
+            ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry);
+
+         const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryRightChild =
+            ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry);
+
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
             for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                aValues[iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError,
-                  ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  pHistogramBucketVectorEntryLeftChild[iVector].m_sumResidualError,
+                  pHistogramBucketVectorEntryLeftChild[iVector].GetSumDenominator()
                );
                aValues[cVectorLength + iVector] = EbmStatistics::ComputeSmallChangeForOneSegmentClassificationLogOdds(
-                  ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].m_sumResidualError,
-                  ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[iVector].GetSumDenominator()
+                  pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError,
+                  pHistogramBucketVectorEntryRightChild[iVector].GetSumDenominator()
                );
             }
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError,
+               pHistogramBucketVectorEntryLeftChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pLeftChild->GetInstances())
             );
             aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry)[0].m_sumResidualError,
+               pHistogramBucketVectorEntryRightChild[0].m_sumResidualError,
                static_cast<FloatEbmType>(pRightChild->GetInstances())
             );
          }
