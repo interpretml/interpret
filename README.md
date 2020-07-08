@@ -261,6 +261,39 @@ We also build on top of many great packages. Please check them out!
     <a href="https://arxiv.org/pdf/1911.04974.pdf">Paper link</a>
   </details>
 
+  <details>
+    <summary>
+      <em>"Interpreting Interpretability: Understanding Data Scientists' Use of Interpretability Tools for Machine Learning" (H. Kaur, H. Nori, S. Jenkins, R. Caruana, H. Wallach, J. Wortman Vaughan 2020)</em>
+    </summary>
+    <br/>
+    <pre>
+@inproceedings{kaur2020interpreting,
+  title={Interpreting Interpretability: Understanding Data Scientists' Use of Interpretability Tools for Machine Learning},
+  author={Kaur, Harmanpreet and Nori, Harsha and Jenkins, Samuel and Caruana, Rich and Wallach, Hanna and Wortman Vaughan, Jennifer},
+  booktitle={Proceedings of the 2020 CHI Conference on Human Factors in Computing Systems},
+  pages={1--14},
+  year={2020}
+}
+</pre>
+    <a href="http://www-personal.umich.edu/~harmank/Papers/CHI2020_Interpretability.pdf">Paper link</a>
+  </details>
+
+  <details>
+    <summary>
+      <em>"How Interpretable and Trustworthy are GAMs?" (C. Chang, S. Tan, B. Lengerich, A. Goldenberg, R. Caruana 2020)</em>
+    </summary>
+    <br/>
+    <pre>
+@article{chang2020interpretable,
+  title={How Interpretable and Trustworthy are GAMs?},
+  author={Chang, Chun-Hao and Tan, Sarah and Lengerich, Ben and Goldenberg, Anna and Caruana, Rich},
+  journal={arXiv preprint arXiv:2006.06466},
+  year={2020}
+}
+</pre>
+    <a href="https://arxiv.org/pdf/2006.06466.pdf">Paper link</a>
+  </details>
+
   <hr/>
 </details>
 
@@ -471,6 +504,11 @@ We also build on top of many great packages. Please check them out!
   <hr/>
 </details>
 
+# Videos
+
+- [The Science Behind InterpretML: Explainable Boosting Machine](https://www.youtube.com/watch?v=MREiHgHgl0k)
+- [How to Explain Models with IntepretML Deep Dive](https://www.youtube.com/watch?v=WwBeKMQ0-I8)
+
 # External links
 
 - [A gentle introduction to GA2Ms, a white box model](https://blog.fiddler.ai/2019/06/a-gentle-introduction-to-ga2ms-a-white-box-model)
@@ -478,10 +516,20 @@ We also build on top of many great packages. Please check them out!
 - [Benchmarking and MLI experiments on the Adult dataset](https://github.com/sayakpaul/Benchmarking-and-MLI-experiments-on-the-Adult-dataset/blob/master/Benchmarking_experiments_on_the_Adult_dataset_and_interpretability.ipynb)
 - [Dealing with Imbalanced Data (Mortgage loans defaults)](https://mikewlange.github.io/ImbalancedData-/index.html)
 - [Kaggle PGA Tour analysis by GAM](https://www.kaggle.com/juyamagu/pga-tour-analysis-by-gam)
-- [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 - [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
 - [Model Interpretation with Microsoft’s Interpret ML](https://medium.com/@sand.mayur/model-interpretation-with-microsofts-interpret-ml-85aa0ad697ae)
+
+# Papers using or comparing EBMs
+
+- [Identifying main and interaction effects of risk factors to predict intensive care admission in patients hospitalized with COVID-19](https://www.medrxiv.org/content/10.1101/2020.06.30.20143651v1.full.pdf)
+- [Neural Additive Models: Interpretable Machine Learning with Neural Nets](https://arxiv.org/pdf/2004.13912.pdf)
+- [Integrating Co-Clustering and Interpretable Machine Learning for the Prediction of Intravenous Immunoglobulin Resistance in Kawasaki Disease](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9097874)
+- [GAMI-Net: An Explainable Neural Network based on Generalized Additive Models with Structured Interactions](https://arxiv.org/pdf/2003.07132v1.pdf)
+- [Interpretable Prediction of Goals in Soccer](http://statsbomb.com/wp-content/uploads/2019/10/decroos-interpretability-statsbomb.pdf)
+- [Extending the Tsetlin Machine with Integer-Weighted Clauses for Increased Interpretability](https://arxiv.org/pdf/2005.05131.pdf)
+- [In Pursuit of Interpretable, Fair and Accurate Machine Learning for Criminal Recidivism Prediction](https://arxiv.org/pdf/2005.04176.pdf)
+- [Galaxy Zoo: Probabilistic Morphology through Bayesian CNNs and Active Learning](https://arxiv.org/pdf/1905.07424.pdf)
 
 # Contact us
 
