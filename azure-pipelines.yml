@@ -96,7 +96,7 @@ jobs:
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
       Mac:
         image.name: 'macOS-10.14'
       Windows:
@@ -136,7 +136,7 @@ jobs:
 
 - job: 'Build_JS_Inline'
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-18.04'
   variables:
     runCodesignValidationInjection: false
   steps:
@@ -164,7 +164,7 @@ jobs:
 - job: 'Build_Package'
   dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-18.04'
   variables:
     runCodesignValidationInjection: false
   steps:
@@ -225,13 +225,13 @@ jobs:
     matrix:
       LinuxPython35:
         python.version: '3.5'
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
       LinuxPython36:
         python.version: '3.6'
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
       LinuxPython37:
         python.version: '3.7'
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
 #      WindowsPython35:
 #        python.version: '3.5'
 #        image.name: 'windows-2019'
@@ -326,7 +326,7 @@ jobs:
 - job: 'Publish_Package'
   dependsOn: ['Test_ebm_native', 'Test']
   pool:
-    vmImage: 'ubuntu-16.04'
+    vmImage: 'ubuntu-18.04'
   variables:
     runCodesignValidationInjection: false
   steps:
@@ -339,10 +339,3 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       artifactName: 'drop'
-
-schedules:
-- cron: "0 0 * * *"
-  displayName: Daily midnight build
-  branches:
-    include:
-    - master
