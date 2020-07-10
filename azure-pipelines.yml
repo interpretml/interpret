@@ -339,3 +339,11 @@ jobs:
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
       artifactName: 'drop'
+
+schedules:
+- cron: "0 0 * * *"
+  displayName: Daily midnight build
+  branches:
+    include:
+    - develop
+  always: true
