@@ -41,7 +41,7 @@ class AutoVisualizeProvider(VisualizeProvider):
                     detected_envs
                 )
             )
-            self.provider = InlineProvider(detected_envs=detected_envs, js_url=None)
+            self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
         else:
             log.info("Detected non-cloud environment.")
             if self.app_runner:
