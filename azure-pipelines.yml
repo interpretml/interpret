@@ -8,7 +8,7 @@ jobs:
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-16.04'
+        image.name: 'ubuntu-18.04'
       Mac:
         image.name: 'macOS-10.14'
       Windows:
