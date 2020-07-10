@@ -185,7 +185,7 @@ class DashProvider(VisualizeProvider):
 
 class InlineProvider(VisualizeProvider):
     def __init__(self, detected_envs=None, js_url=None):
-        self.detected_envs = detected_envs
+        self.detected_envs = [] if detected_envs is None else detected_envs
         self.js_url = js_url
 
     def render(self, explanation, key=-1, **kwargs):
