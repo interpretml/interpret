@@ -17,21 +17,43 @@ struct HistogramBucket;
 
 template<bool bClassification>
 struct SweepTreeNode final {
+private:
+   size_t m_cBestInstancesLeft;
+   const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
+
+   // use the "struct hack" since Flexible array member method is not available in C++
+   // m_aBestHistogramBucketVectorEntry must be the last item in this struct
+   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
+   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
+   // (either the parent or child) if the class is derrived
+   HistogramBucketVectorEntry<bClassification> m_aBestHistogramBucketVectorEntry[1];
+
+public:
 
    SweepTreeNode() = default; // preserve our POD status
    ~SweepTreeNode() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   size_t m_cBestInstancesLeft;
-   const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
+   INLINE_ALWAYS size_t GetCountBestInstancesLeft() {
+      return m_cBestInstancesLeft;
+   }
 
-   // use the "struct hack" since Flexible array member method is not available in C++
-   // m_aHistogramBucketVectorEntry must be the last item in this struct
-   // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
-   // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
-   // (either the parent or child) if the class is derrived
-   HistogramBucketVectorEntry<bClassification> m_aBestHistogramBucketVectorEntry[1];
+   INLINE_ALWAYS void SetCountBestInstancesLeft(size_t cBestInstancesLeft) {
+      m_cBestInstancesLeft = cBestInstancesLeft;
+   }
+
+   INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() {
+      return m_pBestHistogramBucketEntry;
+   }
+
+   INLINE_ALWAYS void SetBestHistogramBucketEntry(const HistogramBucket<bClassification> * pBestHistogramBucketEntry) {
+      m_pBestHistogramBucketEntry = pBestHistogramBucketEntry;
+   }
+
+   INLINE_ALWAYS HistogramBucketVectorEntry<bClassification> * GetBestHistogramBucketVectorEntry() {
+      return ArrayToPointer(m_aBestHistogramBucketVectorEntry);
+   }
 };
 static_assert(std::is_standard_layout<SweepTreeNode<true>>::value && std::is_standard_layout<SweepTreeNode<false>>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");

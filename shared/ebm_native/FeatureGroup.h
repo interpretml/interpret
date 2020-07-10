@@ -88,12 +88,11 @@ public:
       return m_cFeatures;
    }
 
-   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
-      return &m_FeatureCombinationEntry[0];
-   }
-
    INLINE_ALWAYS const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
-      return &m_FeatureCombinationEntry[0];
+      return ArrayToPointer(m_FeatureCombinationEntry);
+   }
+   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
+      return ArrayToPointer(m_FeatureCombinationEntry);
    }
 
    INLINE_ALWAYS unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {

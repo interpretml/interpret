@@ -135,7 +135,7 @@ void TensorTotalsCompareDebug(
          aiLast,
          pComparison2
          );
-      EBM_ASSERT(pComparison->m_cInstancesInBucket == pComparison2->m_cInstancesInBucket);
+      EBM_ASSERT(pComparison->GetCountInstancesInBucket() == pComparison2->GetCountInstancesInBucket());
       free(pComparison2);
    }
 }

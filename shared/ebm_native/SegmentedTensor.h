@@ -167,6 +167,13 @@ class SegmentedTensor final {
    // (either the parent or child) if the class is derrived
    DimensionInfo m_aDimensions[1];
 
+   INLINE_ALWAYS const DimensionInfo * GetDimensions() const {
+      return ArrayToPointer(m_aDimensions);
+   }
+   INLINE_ALWAYS DimensionInfo * GetDimensions() {
+      return ArrayToPointer(m_aDimensions);
+   }
+
 public:
 
    SegmentedTensor() = default; // preserve our POD status
@@ -221,7 +228,7 @@ public:
 
    INLINE_ALWAYS ActiveDataType * GetDivisionPointer(const size_t iDimension) {
       EBM_ASSERT(iDimension < m_cDimensions);
-      return &ArrayToPointer(m_aDimensions)[iDimension].m_aDivisions[0];
+      return GetDimensions()[iDimension].m_aDivisions;
    }
 
    INLINE_ALWAYS FloatEbmType * GetValuePointer() {

@@ -57,7 +57,7 @@ public:
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
       HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
-         ArrayToPointer(pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
+         pHistogramBucketEntry->GetHistogramBucketVectorEntry();
       do {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          //   in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
@@ -73,7 +73,7 @@ public:
 
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
-         pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
+         pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + cOccurences);
          const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
 
          size_t iVector = 0;
@@ -273,10 +273,10 @@ public:
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
             const size_t cOccurences = *pCountOccurrences;
             ++pCountOccurrences;
-            pHistogramBucketEntry->m_cInstancesInBucket += cOccurences;
+            pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + cOccurences);
             const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
-            HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = ArrayToPointer(
-               pHistogramBucketEntry->m_aHistogramBucketVectorEntry);
+            HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
+               pHistogramBucketEntry->GetHistogramBucketVectorEntry();
 
             size_t iVector = 0;
 

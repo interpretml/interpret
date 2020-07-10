@@ -105,7 +105,7 @@ public:
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->m_cInstancesInBucket)) {
+            if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->GetCountInstancesInBucket())) {
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
                   pFeatureCombination,
@@ -118,7 +118,7 @@ public:
                   , aHistogramBucketsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->m_cInstancesInBucket)) {
+               if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountInstancesInBucket())) {
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
                      pFeatureCombination,
@@ -131,7 +131,7 @@ public:
                      , aHistogramBucketsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->m_cInstancesInBucket)) {
+                  if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->GetCountInstancesInBucket())) {
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
                         pFeatureCombination,
@@ -144,22 +144,22 @@ public:
                         , aHistogramBucketsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->m_cInstancesInBucket)) {
+                     if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->GetCountInstancesInBucket())) {
                         FloatEbmType splittingScore = 0;
 
-                        FloatEbmType cLowLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->m_cInstancesInBucket);
-                        FloatEbmType cLowHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->m_cInstancesInBucket);
-                        FloatEbmType cHighLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->m_cInstancesInBucket);
-                        FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->m_cInstancesInBucket);
+                        FloatEbmType cLowLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->GetCountInstancesInBucket());
+                        FloatEbmType cLowHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->GetCountInstancesInBucket());
+                        FloatEbmType cHighLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->GetCountInstancesInBucket());
+                        FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->GetCountInstancesInBucket());
 
                         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsLowLow =
-                           ArrayToPointer(pTotalsLowLow->m_aHistogramBucketVectorEntry);
+                           pTotalsLowLow->GetHistogramBucketVectorEntry();
                         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsLowHigh =
-                           ArrayToPointer(pTotalsLowHigh->m_aHistogramBucketVectorEntry);
+                           pTotalsLowHigh->GetHistogramBucketVectorEntry();
                         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsHighLow =
-                           ArrayToPointer(pTotalsHighLow->m_aHistogramBucketVectorEntry);
+                           pTotalsHighLow->GetHistogramBucketVectorEntry();
                         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsHighHigh =
-                           ArrayToPointer(pTotalsHighHigh->m_aHistogramBucketVectorEntry);
+                           pTotalsHighHigh->GetHistogramBucketVectorEntry();
 
                         for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
                            // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 

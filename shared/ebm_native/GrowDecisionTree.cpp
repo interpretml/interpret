@@ -40,12 +40,12 @@ static void Flatten(
       EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
       const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-         pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
+         pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pLeftChild, ppDivisions, ppValues, cVectorLength);
-      **ppDivisions = pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+      **ppDivisions = pTreeNode->AFTER_GetDivisionValue();
       ++(*ppDivisions);
       const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-         pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode);
+         pTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode);
       Flatten<bClassification>(pRightChild, ppDivisions, ppValues, cVectorLength);
    } else {
       FloatEbmType * pValuesCur = *ppValues;
@@ -53,7 +53,7 @@ static void Flatten(
       *ppValues = pValuesNext;
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
-         ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
+         pTreeNode->GetHistogramBucketVectorEntry();
       do {
          FloatEbmType smallChangeToModel;
          if(bClassification) {
@@ -61,7 +61,7 @@ static void Flatten(
                pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
          } else {
             smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->GetInstances()));
+               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetInstances()));
          }
          *pValuesCur = smallChangeToModel;
 
@@ -117,25 +117,31 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    FloatEbmType * const aSumResidualErrorsRight = pCachedThreadResources->GetTempFloatVector();
    const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryInit = 
-      ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
+      pTreeNode->GetHistogramBucketVectorEntry();
    for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
       aSumResidualErrorsRight[iVector] = pHistogramBucketVectorEntryInit[iVector].m_sumResidualError;
    }
 
    const HistogramBucket<bClassification> * pHistogramBucketEntryCur =
-      pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst;
+      pTreeNode->BEFORE_GetHistogramBucketEntryFirst();
    const HistogramBucket<bClassification> * const pHistogramBucketEntryLast =
-      pTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast;
+      pTreeNode->BEFORE_GetHistogramBucketEntryLast();
 
    EBM_ASSERT(!GetTreeNodeSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bClassification, cVectorLength);
 
    TreeNode<bClassification> * const pLeftChildInit =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   pLeftChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = pHistogramBucketEntryCur;
    TreeNode<bClassification> * const pRightChildInit =
       GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
-   pRightChildInit->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = pHistogramBucketEntryLast;
+
+#ifndef NDEBUG
+   pLeftChildInit->SetExaminedForPossibleSplitting(false);
+   pRightChildInit->SetExaminedForPossibleSplitting(false);
+#endif // NDEBUG
+
+   pLeftChildInit->BEFORE_SetHistogramBucketEntryFirst(pHistogramBucketEntryCur);
+   pRightChildInit->BEFORE_SetHistogramBucketEntryLast(pHistogramBucketEntryLast);
 
    EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
    const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
@@ -146,7 +152,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->GetEquivalentSplits());
    SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
-   size_t cInstancesRight = pTreeNode->GetInstances();
+   size_t cInstancesRight = pTreeNode->AMBIGUOUS_GetInstances();
    size_t cInstancesLeft = 0;
    FloatEbmType BEST_nodeSplittingScore = k_illegalGain;
    EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
@@ -154,7 +160,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
-      const size_t CHANGE_cInstances = pHistogramBucketEntryCur->m_cInstancesInBucket;
+      const size_t CHANGE_cInstances = pHistogramBucketEntryCur->GetCountInstancesInBucket();
       cInstancesRight -= CHANGE_cInstances;
       if(UNLIKELY(cInstancesRight < cInstancesRequiredForChildSplitMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
@@ -162,7 +168,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       cInstancesLeft += CHANGE_cInstances;
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry =
-         ArrayToPointer(pHistogramBucketEntryCur->m_aHistogramBucketVectorEntry);
+         pHistogramBucketEntryCur->GetHistogramBucketVectorEntry();
 
       if(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft)) {
          EBM_ASSERT(0 < cInstancesRight);
@@ -234,10 +240,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             pSweepTreeNodeCur = UNPREDICTABLE(BEST_nodeSplittingScore == nodeSplittingScore) ? pSweepTreeNodeCur : pSweepTreeNodeStart;
             BEST_nodeSplittingScore = nodeSplittingScore;
 
-            pSweepTreeNodeCur->m_pBestHistogramBucketEntry = pHistogramBucketEntryCur;
-            pSweepTreeNodeCur->m_cBestInstancesLeft = cInstancesLeft;
+            pSweepTreeNodeCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
+            pSweepTreeNodeCur->SetCountBestInstancesLeft(cInstancesLeft);
             memcpy(
-               pSweepTreeNodeCur->m_aBestHistogramBucketVectorEntry, aSumHistogramBucketVectorEntryLeft,
+               pSweepTreeNodeCur->GetBestHistogramBucketVectorEntry(), aSumHistogramBucketVectorEntryLeft,
                sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength
             );
 
@@ -282,10 +288,10 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pLeftChild =
       GetLeftTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->m_pBestHistogramBucketEntry;
-   pLeftChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast = BEST_pHistogramBucketEntry;
-   const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->m_cBestInstancesLeft;
-   pLeftChild->SetInstances(BEST_cInstancesLeft);
+   const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->GetBestHistogramBucketEntry();
+   pLeftChild->BEFORE_SetHistogramBucketEntryLast(BEST_pHistogramBucketEntry);
+   const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->GetCountBestInstancesLeft();
+   pLeftChild->AMBIGUOUS_SetInstances(BEST_cInstancesLeft);
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
@@ -293,9 +299,9 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
-   pRightChild->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = BEST_pHistogramBucketEntryNext;
-   const size_t cInstancesParent = pTreeNode->GetInstances();
-   pRightChild->SetInstances(cInstancesParent - BEST_cInstancesLeft);
+   pRightChild->BEFORE_SetHistogramBucketEntryFirst(BEST_pHistogramBucketEntryNext);
+   const size_t cInstancesParent = pTreeNode->AMBIGUOUS_GetInstances();
+   pRightChild->AMBIGUOUS_SetInstances(cInstancesParent - BEST_cInstancesLeft);
 
    const FloatEbmType cInstancesParentFloatEbmType = static_cast<FloatEbmType>(cInstancesParent);
 
@@ -305,16 +311,16 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(0 < cInstancesParent);
 
    HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
-      ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry);
+      pLeftChild->GetHistogramBucketVectorEntry();
 
    HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryRightChild =
-      ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry);
+      pRightChild->GetHistogramBucketVectorEntry();
 
    const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryTreeNode =
-      ArrayToPointer(pTreeNode->m_aHistogramBucketVectorEntry);
+      pTreeNode->GetHistogramBucketVectorEntry();
 
    const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntrySweep =
-      ArrayToPointer(pSweepTreeNodeStart->m_aBestHistogramBucketVectorEntry);
+      pSweepTreeNodeStart->GetBestHistogramBucketVectorEntry();
 
    // TODO: usually we've done this calculation for the parent already.  Why not keep the result arround to avoid extra work?
    FloatEbmType originalParentScore = 0;
@@ -340,14 +346,15 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    EBM_ASSERT(std::isnan(originalParentScore) || FloatEbmType { 0 } <= originalParentScore);
 
 
-
    // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
    // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetInstances() needs to be done above 
    // these lines because it uses m_UNION.m_beforeExaminationForPossibleSplitting for classification!
+#ifndef NDEBUG
+   pTreeNode->SetExaminedForPossibleSplitting(true);
+#endif // NDEBUG
 
 
-
-   pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren = pTreeNodeChildrenAvailableStorageSpaceCur;
+   pTreeNode->AFTER_SetTreeNodeChildren(pTreeNodeChildrenAvailableStorageSpaceCur);
    const FloatEbmType splitGain = BEST_nodeSplittingScore - originalParentScore;
    // mathematically BEST_nodeSplittingScore should be bigger than originalParentScore, and the result positive, but these are numbers that are calculated
    //   from sumation, so they are inaccurate, and we could get a slighly negative number outcome
@@ -358,17 +365,17 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    // could trigger it, and we don't want someone giving us data to use a vulnerability in our system, so check for it!
    // within a set, no split should make our model worse.  It might in our validation set, but not within the training set
    EBM_ASSERT(std::isnan(splitGain) || (!bClassification) && std::isinf(splitGain) || k_epsilonNegativeGainAllowed <= splitGain);
-   pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain = splitGain;
+   pTreeNode->AFTER_SetSplitGain(splitGain);
    EBM_ASSERT(reinterpret_cast<const char *>(aHistogramBucket) <= reinterpret_cast<const char *>(BEST_pHistogramBucketEntry));
    EBM_ASSERT(0 == (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) % cBytesPerHistogramBucket);
-   pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue =
-      (reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket;
+   pTreeNode->AFTER_SetDivisionValue((reinterpret_cast<const char *>(BEST_pHistogramBucketEntry) - 
+      reinterpret_cast<const char *>(aHistogramBucket)) / cBytesPerHistogramBucket);
 
    LOG_N(
       TraceLevelVerbose,
       "Exited ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: divisionValue=%zu, nodeSplittingScore=%" FloatEbmTypePrintf,
-      static_cast<size_t>(pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue),
-      pTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain
+      static_cast<size_t>(pTreeNode->AFTER_GetDivisionValue()),
+      pTreeNode->AFTER_GetSplitGain()
    );
 
    return false;
@@ -379,7 +386,7 @@ class CompareTreeNodeSplittingGain final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
    INLINE_ALWAYS bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
-      return lhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain <= rhs->m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain;
+      return lhs->AFTER_GetSplitGain() <= rhs->AFTER_GetSplitGain();
    }
 };
 
@@ -454,19 +461,24 @@ public:
       TreeNode<bClassification> * pRootTreeNode =
          static_cast<TreeNode<bClassification> *>(pCachedThreadResources->GetThreadByteBuffer2());
 
-      pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryFirst = aHistogramBucket;
-      pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast =
-         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1);
+#ifndef NDEBUG
+      pRootTreeNode->SetExaminedForPossibleSplitting(false);
+#endif // NDEBUG
+
+      pRootTreeNode->BEFORE_SetHistogramBucketEntryFirst(aHistogramBucket);
+      pRootTreeNode->BEFORE_SetHistogramBucketEntryLast(
+         GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBucket, cHistogramBuckets - 1)
+      );
       ASSERT_BINNED_BUCKET_OK(
          cBytesPerHistogramBucket,
-         pRootTreeNode->m_UNION.m_beforeExaminationForPossibleSplitting.m_pHistogramBucketEntryLast,
+         pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
          aHistogramBucketsEndDebug
       );
-      pRootTreeNode->SetInstances(cInstancesTotal);
+      pRootTreeNode->AMBIGUOUS_SetInstances(cInstancesTotal);
 
       // copying existing mem
       memcpy(
-         ArrayToPointer(pRootTreeNode->m_aHistogramBucketVectorEntry),
+         pRootTreeNode->GetHistogramBucketVectorEntry(),
          aSumHistogramBucketVectorEntry,
          cVectorLength * sizeof(*aSumHistogramBucketVectorEntry)
       );
@@ -514,9 +526,9 @@ public:
          // there will be exactly 1 split, which is a special case that we can return faster without as much overhead as the multiple split case
 
          EBM_ASSERT(2 != cHistogramBuckets || !GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren, cBytesPerTreeNode)->IsSplittable() &&
+            pRootTreeNode->AFTER_GetTreeNodeChildren(), cBytesPerTreeNode)->IsSplittable() &&
             !GetRightTreeNodeChild<bClassification>(
-               pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren,
+               pRootTreeNode->AFTER_GetTreeNodeChildren(),
                cBytesPerTreeNode
                )->IsSplittable()
          );
@@ -527,25 +539,25 @@ public:
          }
 
          ActiveDataType * pDivisions = pSmallChangeToModelOverwriteSingleSamplingSet->GetDivisionPointer(0);
-         pDivisions[0] = pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_divisionValue;
+         pDivisions[0] = pRootTreeNode->AFTER_GetDivisionValue();
 
          // we don't need to call EnsureValueCapacity because by default we start with a value capacity of 2 * cVectorLength
 
          // TODO : we don't need to get the right and left pointer from the root.. we know where they will be
          const TreeNode<bClassification> * const pLeftChild = GetLeftTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren,
+            pRootTreeNode->AFTER_GetTreeNodeChildren(),
             cBytesPerTreeNode
             );
          const TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-            pRootTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren,
+            pRootTreeNode->AFTER_GetTreeNodeChildren(),
             cBytesPerTreeNode
             );
 
          const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
-            ArrayToPointer(pLeftChild->m_aHistogramBucketVectorEntry);
+            pLeftChild->GetHistogramBucketVectorEntry();
 
          const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryRightChild =
-            ArrayToPointer(pRightChild->m_aHistogramBucketVectorEntry);
+            pRightChild->GetHistogramBucketVectorEntry();
 
          FloatEbmType * const aValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
          if(bClassification) {
@@ -563,11 +575,11 @@ public:
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryLeftChild[0].m_sumResidualError,
-               static_cast<FloatEbmType>(pLeftChild->GetInstances())
+               static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetInstances())
             );
             aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryRightChild[0].m_sumResidualError,
-               static_cast<FloatEbmType>(pRightChild->GetInstances())
+               static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetInstances())
             );
          }
 
@@ -636,7 +648,7 @@ public:
 
             TreeNode<bClassification> * const pLeftChild =
                GetLeftTreeNodeChild<bClassification>(
-                  pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren,
+                  pParentTreeNode->AFTER_GetTreeNodeChildren(),
                   cBytesPerTreeNode
                   );
             if(pLeftChild->IsSplittable()) {
@@ -678,7 +690,7 @@ public:
             }
 
             TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(
-               pParentTreeNode->m_UNION.m_afterExaminationForPossibleSplitting.m_pTreeNodeChildren,
+               pParentTreeNode->AFTER_GetTreeNodeChildren(),
                cBytesPerTreeNode
                );
             if(pRightChild->IsSplittable()) {
