@@ -7,6 +7,10 @@ import logging
 from ..utils.environment import EnvironmentDetector, is_cloud_env
 from warnings import warn
 
+from ..version import __version__
+
+JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(__version__)
+
 log = logging.getLogger(__name__)
 
 
@@ -37,7 +41,7 @@ class AutoVisualizeProvider(VisualizeProvider):
                     detected_envs
                 )
             )
-            self.provider = InlineProvider(detected_envs=detected_envs)
+            self.provider = InlineProvider(detected_envs=detected_envs, js_url=None)
         else:
             log.info("Detected non-cloud environment.")
             if self.app_runner:
@@ -180,10 +184,11 @@ class DashProvider(VisualizeProvider):
 
 
 class InlineProvider(VisualizeProvider):
-    def __init__(self, detected_envs=None):
+    def __init__(self, detected_envs=None, js_url=None):
         self.detected_envs = detected_envs
+        self.js_url = js_url
 
     def render(self, explanation, key=-1, **kwargs):
         from ..visual.inline import render
 
-        render(explanation, default_key=key, detected_envs=self.detected_envs)
+        render(explanation, default_key=key, detected_envs=self.detected_envs, js_url=self.js_url)

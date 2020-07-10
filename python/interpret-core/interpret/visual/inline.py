@@ -4,7 +4,6 @@
 # NOTE: This module is highly experimental. Expect changes every version.
 
 import os
-from IPython.display import display, HTML
 import uuid
 
 from plotly.io import to_json
@@ -103,20 +102,25 @@ def _build_viz_obj(explanation):
     return viz_obj
 
 
-def _build_javascript(viz_obj, id_str=None, default_key=-1):
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
-    with open(js_path, "r", encoding="utf-8") as f:
-        show_js = f.read()
+def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
+    if js_url is None:
+        script_path = os.path.dirname(os.path.abspath(__file__))
+        js_path = os.path.join(script_path, "..", "lib", "interpret-inline.js")
 
-    init_js = """
-    <script type="text/javascript">
-    console.log("Initializing interpret-inline");
-    {0}
-    </script>
-    """.format(
-        show_js
-    )
+        with open(js_path, "r", encoding="utf-8") as f:
+            show_js = f.read()
+        init_js = """
+        <script type="text/javascript">
+        console.log("Initializing interpret-inline");
+        {0}
+        </script>
+        """.format(
+            show_js
+        )
+    else:
+        init_js = """
+        <script type="text/javascript" src="{0}"></script>
+        """.format(js_url)
 
     if id_str is None:
         div_id = "_interpret-viz-{0}".format(uuid.uuid4())
@@ -187,21 +191,24 @@ def _render_databricks(js):  # pragma: no cover
 _render_databricks.displayHTML = None
 
 
-def render(explanation, id_str=None, default_key=-1, detected_envs=None):
+def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=None):
+    from IPython.display import display, HTML
+
     if isinstance(explanation, list):
         msg = "Dashboard not yet supported in cloud environments."
         viz_obj = _build_viz_err_obj(msg)
     else:
         viz_obj = _build_viz_obj(explanation)
 
-    init_js, body_js = _build_javascript(viz_obj, id_str, default_key=default_key)
+    init_js, body_js = _build_javascript(viz_obj, id_str, default_key=default_key, js_url=js_url)
 
-    final_js = body_js
-    if not this.jupyter_initialized:
-        final_js = init_js + body_js
-        this.jupyter_initialized = True
-
-    if detected_envs is not None and "databricks" in detected_envs:
-        _render_databricks(final_js)
-    else:
-        display(HTML(final_js))
+    if "databricks" in detected_envs:
+        _render_databricks(init_js + body_js)
+    elif "colab" in detected_envs:
+        display(HTML(init_js + body_js))
+    else:  # Fallthrough assumes we are in an IPython environment at a minimum.
+        if not this.jupyter_initialized:
+            this.jupyter_initialized = True
+            display(HTML(init_js + body_js))
+        else:
+            display(HTML(body_js))

@@ -10,7 +10,7 @@ const config = {
   entry: "./src/index.js",
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js",
+    filename: "interpret-inline.js",
     library: "interpret-inline",
     libraryTarget: "umd",
     umdNamedDefine: true
