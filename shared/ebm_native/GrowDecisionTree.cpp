@@ -686,6 +686,11 @@ public:
                // before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
                // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are 
                // needed if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+
+#ifndef NDEBUG
+               pLeftChild->SetExaminedForPossibleSplitting(true);
+#endif // NDEBUG
+
                pLeftChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
             }
 
@@ -728,6 +733,11 @@ public:
                // before calling SplitTreeNode because INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED sets 
                // m_UNION.m_afterExaminationForPossibleSplitting.m_splitGain and the m_UNION.m_beforeExaminationForPossibleSplitting values are needed 
                // if we had decided to call ExamineNodeForSplittingAndDetermineBestPossibleSplit
+
+#ifndef NDEBUG
+               pRightChild->SetExaminedForPossibleSplitting(true);
+#endif // NDEBUG
+
                pRightChild->INDICATE_THIS_NODE_EXAMINED_FOR_SPLIT_AND_REJECTED();
             }
             ++cSplits;
