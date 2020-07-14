@@ -4,6 +4,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] - 2020-07-15
+### Breaking Changes
+- With warning, EBM classifier adapts internal validation size
+  when there are too few instances relative to number of unique classes.
+  This ensures that there is at least one instance of each class in the validation set.
+- Cloud Jupyter environments now use a CDN to fix major rendering bugs and performance.
+  - CDN currently used is https://unpkg.com
+  - If you want to specify your own CDN, add the following as the top cell
+    ```python
+    from interpret import set_visualize_provider
+    from interpret.provider import InlineProvider
+    from interpret.version import __version__
+
+    # Change this to your custom CDN.
+    JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(__version__)
+    set_visualize_provider(InlineProvider(js_url=JS_URL))
+    ```
+- EBM has changed initialization parameters:
+  - ```
+    schema -> DROPPED
+    n_estimators -> outer_bags
+    holdout_size -> validation_size
+    scoring -> DROPPED
+    holdout_split -> DROPPED
+    main_attr -> mains
+    data_n_episodes -> max_rounds
+    early_stopping_run_length -> early_stopping_rounds
+    feature_step_n_inner_bags -> inner_bags
+    training_step_epsiodes -> DROPPED
+    max_tree_splits -> max_leaves
+    min_cases_for_splits -> min_samples_leaf
+    binning_strategy -> binning
+    max_n_bins -> max_bins
+    ```
+- EBM has changed public attributes:
+  - ```
+    n_estimators -> outer_bags
+    holdout_size -> validation_size
+    scoring -> DROPPED
+    holdout_split -> DROPPED
+    main_attr -> mains
+    data_n_episodes -> max_rounds
+    early_stopping_run_length -> early_stopping_rounds
+    feature_step_n_inner_bags -> inner_bags
+    training_step_epsiodes -> DROPPED
+    max_tree_splits -> max_leaves
+    min_cases_for_splits -> min_samples_leaf
+    binning_strategy -> binning
+    max_n_bins -> max_bins
+
+    attribute_sets_ -> feature_groups_
+    attribute_set_models_ -> additive_terms_
+    model_errors_ -> term_standard_deviations_
+
+    main_episode_idxs_ -> breakpoint_iteration_[0]
+    inter_episode_idxs_ -> breakpoint_iteration_[1]
+
+    mean_abs_scores_ -> feature_importances_
+    ```
+### Fixed
+- Internal fixes and refactor for native code.
+- Updated dependencies for JavaScript layer.
+- Fixed rendering bugs and performance issues around cloud Jupyter notebooks.
+### Added
+- Experimental support for AzureML notebook VM.
+
 ## [v0.1.22] - 2020-04-27
 ### Upcoming Breaking Changes
 - EBM initialization arguments and public attributes will change in a near-future release.
@@ -259,6 +325,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.0]: https://github.com/microsoft/interpret/releases/tag/v0.2.0
 [v0.1.22]: https://github.com/microsoft/interpret/releases/tag/v0.1.22
 [v0.1.21]: https://github.com/microsoft/interpret/releases/tag/v0.1.21
 [v0.1.20]: https://github.com/microsoft/interpret/releases/tag/v0.1.20
