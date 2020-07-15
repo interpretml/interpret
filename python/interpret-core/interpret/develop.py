@@ -177,7 +177,6 @@ def register_log(filename, level="DEBUG"):
     import logging
     import logging.handlers
     import sys
-    import multiprocessing
 
     if filename is sys.stderr or filename is sys.stdout:
         handler = logging.StreamHandler(stream=filename)
@@ -189,16 +188,11 @@ def register_log(filename, level="DEBUG"):
     )
     handler.setFormatter(formatter)
 
-    queue = multiprocessing.Queue(-1)  # no size limit
-    queue_handler = logging.handlers.QueueHandler(queue)
-    queue_listener = logging.handlers.QueueListener(queue, handler)
-    queue_listener.start()
-
     root = logging.getLogger("interpret")
     root.setLevel(level)
-    root.addHandler(queue_handler)
+    root.addHandler(handler)
 
-    return queue_handler
+    return handler
 
 
 if __name__ == "__main__":  # pragma: no cover
