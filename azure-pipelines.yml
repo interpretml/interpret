@@ -303,12 +303,13 @@ jobs:
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
     condition: startsWith(variables['image.name'], 'windows')
-    displayName: 'Run pytest (Windows)'
+    condition: and(startsWith(variables['image.name'], 'windows'), or(ne(variables['Build.Reason'], 'Schedule'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
+    displayName: 'Run pytest (Windows scheduled / master)'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
-    displayName: 'Run pytest (Linux/Mac)'
+    condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'), and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule')))
+    displayName: 'Run pytest (Linux/Mac/Windows non-scheduled)'
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:
