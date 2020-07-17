@@ -659,7 +659,7 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
 
    const FloatEbmType step = iValBoundary - iVal;
    FloatEbmType badness = 0;
-   for(int i = 1; i <= k_cNeighbourExploreDistanceMax; ++i) {
+   for(unsigned int i = 1; i <= k_cNeighbourExploreDistanceMax; ++i) {
       const FloatEbmType iAspirationCutFloat = iVal + static_cast<FloatEbmType>(i) * step;
       ptrdiff_t iCut = static_cast<ptrdiff_t>(iAspirationCutFloat);
       iCut = std::max(ptrdiff_t { 0 }, iCut);
@@ -690,7 +690,7 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
          // strongly penalize not being able to make a range by making the penalty equal to complete elimination
          // this pentaly is chosen to be so large that even if all the rest of our cuts lead to zero length ranges
          // the loss of this single range would exceed that
-         diffFromIdeal = idealWidth * (k_cNeighbourExploreDistanceMax + unsigned int { 1 });
+         diffFromIdeal = idealWidth * (k_cNeighbourExploreDistanceMax + static_cast<unsigned int>(1));
       } else {
          diffFromIdeal = idealWidth - static_cast<FloatEbmType>(diffPrev);
          // only penalize being too small
@@ -899,10 +899,10 @@ static void BuildNeighbourhoodPlan(
    }
 
    const FloatEbmType iValHighChoiceFloat = static_cast<FloatEbmType>(iValHighChoice);
-   const size_t cRangesHigherLowerOriginal = CalculateRangesLeft(iValHighChoiceFloat, totalDistance, cRanges);
+   //const size_t cRangesHigherLowerOriginal = CalculateRangesLeft(iValHighChoiceFloat, totalDistance, cRanges);
 
-   EBM_ASSERT(1 <= cRangesHigherLowerOriginal);
-   EBM_ASSERT(1 + cRangesHigherLowerOriginal <= cRanges);
+   //EBM_ASSERT(1 <= cRangesHigherLowerOriginal);
+   //EBM_ASSERT(1 + cRangesHigherLowerOriginal <= cRanges);
 
    bool bCanSplitHigh = true;
    if(k_illegalIndex == iValHigher) {
@@ -975,8 +975,6 @@ INLINE_RELEASE static size_t SplitSegment(
    // we need to be able to put down at least one split not at the edges
    EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
    EBM_ASSERT(nullptr != aNeighbourJumps);
-
-   const FloatEbmType cMinimumInstancesPerBinFloat = static_cast<FloatEbmType>(cMinimumInstancesPerBin);
 
    do {
       // We've located our desired split points previously.  Sometimes those desired split points
@@ -1541,7 +1539,6 @@ INLINE_RELEASE static size_t TreeSearchSplitSegment(
       EBM_ASSERT(i < iHighBound);
 
       const FloatEbmType iLowValFloat = stepInit * iLowBound;
-      const FloatEbmType iCurValFloat = stepInit * i;
       const FloatEbmType iHighValFloat = stepInit * iHighBound;
 
       BuildNeighbourhoodPlan(
