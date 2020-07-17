@@ -25,7 +25,7 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
     perf_dicts = gen_perf_dicts(y, predictions, False)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
-        perf_dict_obj = perf_dicts[i]
+        perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
 
         perf_list.append(perf_dict_obj)
 
