@@ -109,12 +109,6 @@ struct SplitPoint final {
 
    ptrdiff_t      m_cSplitMoveThis;
 
-   size_t         m_cSplitLowerBoundary;
-   SplitPoint *   m_pSplitLowerBoundary;
-
-   size_t         m_cSplitHigherBoundary;
-   SplitPoint *   m_pSplitHigherBoundary;
-
    INLINE_ALWAYS void SetDeleted(bool bDeleted) {
       m_bDeleted = bDeleted;
    }
@@ -164,6 +158,9 @@ INLINE_ALWAYS size_t CalculateRangesLeft(const FloatEbmType iVal, const FloatEbm
    size_t cLeft = static_cast<size_t>(static_cast<FloatEbmType>(cRanges + 1) * iVal / cVals);
    cLeft = std::max(size_t { 1 }, cLeft); // don't allow zero ranges on the low side
    cLeft = std::min(cLeft, cRanges - 1); // don't allow zero ranges on the high side
+
+   // TODO: add a DEBUG check here to verify that we don't get anything better if we increase or decrease our left sided counts
+
    return cLeft;
 }
 
@@ -585,42 +582,189 @@ INLINE_RELEASE static void IronSplits() {
    //       that we can address by pushing our existing cuts arround by small amounts
 }
 
-#ifdef NEVER
-constexpr unsigned int cNeighbourExploreDistanceMax = 5;
-constexpr size_t illegalIndex = std::numeric_limits<size_t>::max();
+constexpr unsigned int k_cNeighbourExploreDistanceMax = 5;
+typedef int signed_neighbour_type;
+constexpr size_t k_illegalIndex = std::numeric_limits<size_t>::max();
 
-INLINE_RELEASE static void BuildNeighbourhoodPlan(
+INLINE_RELEASE static void CalculatePriority(
+   const FloatEbmType iValLowerFloat,
+   const FloatEbmType iValHigherFloat,
+   SplitPoint * const pSplitCur
+) {
+   EBM_ASSERT(!pSplitCur->IsDeleted());
+   EBM_ASSERT(!pSplitCur->IsSplit());
+
+   EBM_ASSERT(iValLowerFloat <= pSplitCur->m_iVal);
+   EBM_ASSERT(iValLowerFloat < pSplitCur->m_iValAspirationalFloat);
+
+   const FloatEbmType lowerPriority = std::abs(FloatEbmType { 1 } - 
+      ((pSplitCur->m_iVal - iValLowerFloat) / (pSplitCur->m_iValAspirationalFloat - iValLowerFloat)));
+
+   EBM_ASSERT(pSplitCur->m_iVal <= iValHigherFloat);
+   EBM_ASSERT(pSplitCur->m_iValAspirationalFloat < iValHigherFloat);
+
+   const FloatEbmType higherPriority = std::abs(FloatEbmType { 1 } -
+      ((iValHigherFloat - pSplitCur->m_iVal) / (iValHigherFloat - pSplitCur->m_iValAspirationalFloat)));
+
+   const FloatEbmType priority = std::max(lowerPriority, higherPriority);
+
+   pSplitCur->m_priority = priority;
+}
+
+INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
+   signed_neighbour_type choices,
+
    const size_t cMinimumInstancesPerBin,
    const size_t iValuesStart,
    const size_t cSplittableItems,
    const NeighbourJump * const aNeighbourJumps,
 
+   const ptrdiff_t direction,
+
+   const size_t cRanges,
+   const size_t iVal,
+   const FloatEbmType iValBoundary,
+
+   const FloatEbmType idealWidth
+) {
+   // this function's purpose is really just to decide if we should move lower or higher for any given cut
+   // The best choice will allow us to place cuts at equidistant spots until the point in the horizon that we're
+   // willing to examine.  As such, we want to drop our potential cuts down at equal intervals and not chain the
+   // decisions by putting down the first cut then putting the next one based on the first.  If we chained them
+   // then we wouldn't really be able to compare the chain where we select the shortest option each time against
+   // the longest, since the longer one will be elongated and might fall on a distant long stretch that puts the outer
+   // edge of our nearby boundary farther than the boundary on the option with the shortest always chosen.
+
+   EBM_ASSERT(0 <= choices);
+
+   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(2 * cMinimumInstancesPerBin <= cSplittableItems);
+   EBM_ASSERT(nullptr != aNeighbourJumps);
+
+   EBM_ASSERT(ptrdiff_t { -1 } == direction || ptrdiff_t { 1 } == direction);
+
+   EBM_ASSERT(1 <= cRanges);
+
+   EBM_ASSERT(ptrdiff_t { -1 } == direction && iValBoundary <= static_cast<FloatEbmType>(iVal) || 
+      ptrdiff_t { 1 } == direction && static_cast<FloatEbmType>(iVal) <= iValBoundary);
+
+   EBM_ASSERT(0 < idealWidth);
+
+   size_t iPrev = iVal;
+
+   const FloatEbmType step = iValBoundary - iVal;
+   FloatEbmType badness = 0;
+   for(int i = 1; i <= k_cNeighbourExploreDistanceMax; ++i) {
+      const FloatEbmType iAspirationCutFloat = iVal + static_cast<FloatEbmType>(i) * step;
+      ptrdiff_t iCut = static_cast<ptrdiff_t>(iAspirationCutFloat);
+      iCut = std::max(ptrdiff_t { 0 }, iCut);
+      iCut = std::min(iCut, static_cast<ptrdiff_t>(cSplittableItems - size_t { 1 }));
+
+      const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValuesStart + static_cast<size_t>(iCut)];
+      EBM_ASSERT(iValuesStart <= pNeighbourJump->m_iStartCur);
+      EBM_ASSERT(iValuesStart < pNeighbourJump->m_iStartNext);
+      EBM_ASSERT(pNeighbourJump->m_iStartCur < pNeighbourJump->m_iStartNext);
+      EBM_ASSERT(pNeighbourJump->m_iStartNext <= iValuesStart + cSplittableItems);
+      EBM_ASSERT(pNeighbourJump->m_iStartCur < iValuesStart + cSplittableItems);
+
+      size_t iCur = *(signed_neighbour_type { 0 } == (choices & signed_neighbour_type { 1 }) ?
+         &pNeighbourJump->m_iStartCur : &pNeighbourJump->m_iStartNext);
+
+      size_t diffPrev;
+      if(direction < 0) {
+         EBM_ASSERT(iCur <= iPrev);
+         diffPrev = iPrev - iCur;
+      } else {
+         EBM_ASSERT(iPrev <= iCur);
+         diffPrev = iCur - iPrev;
+      }
+      iPrev = iCur;
+
+      FloatEbmType diffFromIdeal;
+      if(UNLIKELY(diffPrev < cMinimumInstancesPerBin)) {
+         // strongly penalize not being able to make a range by making the penalty equal to complete elimination
+         // this pentaly is chosen to be so large that even if all the rest of our cuts lead to zero length ranges
+         // the loss of this single range would exceed that
+         diffFromIdeal = idealWidth * (k_cNeighbourExploreDistanceMax + 1);
+      } else {
+         diffFromIdeal = idealWidth - static_cast<FloatEbmType>(diffPrev);
+         // only penalize being too small
+         diffFromIdeal = diffFromIdeal < FloatEbmType { 0 } ? FloatEbmType { 0 } : diffFromIdeal;
+      }
+
+      // square the error so that we penalize being far away more than being in the range
+      diffFromIdeal *= diffFromIdeal;
+
+      badness += diffFromIdeal;
+      EBM_ASSERT(FloatEbmType { 0 } <= badness);
+
+      choices >>= 1; // this operation should be non-implementation defined since 0 <= choices
+   }
+
+   FloatEbmType remainingDistance;
+   if(direction < 0) {
+      EBM_ASSERT(iValBoundary <= static_cast<FloatEbmType>(iPrev));
+      remainingDistance = static_cast<FloatEbmType>(iPrev) - iValBoundary;
+   } else {
+      EBM_ASSERT(static_cast<FloatEbmType>(iPrev) <= iValBoundary);
+      remainingDistance = iValBoundary - static_cast<FloatEbmType>(iPrev);
+   }
+
+   size_t cRangesRemaining = cRanges - k_cNeighbourExploreDistanceMax;
+
+   if(0 != cRangesRemaining) {
+      const FloatEbmType remainingDistancePerRange = remainingDistance / static_cast<FloatEbmType>(cRangesRemaining);
+
+      FloatEbmType diffFromIdeal;
+      diffFromIdeal = idealWidth - remainingDistancePerRange;
+      // only penalize being too small
+      diffFromIdeal = diffFromIdeal < FloatEbmType { 0 } ? FloatEbmType { 0 } : diffFromIdeal;
+
+      // square the error so that we penalize being far away more than being in the range
+      diffFromIdeal *= diffFromIdeal;
+
+      badness += diffFromIdeal * cRangesRemaining;
+   }
+
+   return badness;
+}
+
+static void BuildNeighbourhoodPlan(
+   const size_t cMinimumInstancesPerBin,
+   const size_t iValuesStart,
+   const size_t cSplittableItems,
+   const NeighbourJump * const aNeighbourJumps,
+
+   const size_t cRangesLower,
    const size_t iValLower,
    const FloatEbmType iValAspirationalLowerFloat,
-   const size_t cRangesLower,
 
+   const size_t cRangesHigher,
    const size_t iValHigher,
    const FloatEbmType iValAspirationalHigherFloat,
-   const size_t cRangesHigher,
 
    SplitPoint * const pSplitCur
 ) {
    EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(2 * cMinimumInstancesPerBin <= cSplittableItems);
    EBM_ASSERT(nullptr != aNeighbourJumps);
+
+   EBM_ASSERT(1 <= cRangesLower);
+   EBM_ASSERT(k_illegalIndex == iValLower || static_cast<FloatEbmType>(iValLower) == iValAspirationalLowerFloat);
+
+   EBM_ASSERT(1 <= cRangesHigher);
+   EBM_ASSERT(k_illegalIndex == iValHigher || static_cast<FloatEbmType>(iValHigher) == iValAspirationalHigherFloat);
+
+   EBM_ASSERT(k_illegalIndex == iValHigher || k_illegalIndex == iValLower || iValLower + 2 * cMinimumInstancesPerBin <= iValHigher);
 
    EBM_ASSERT(!pSplitCur->IsDeleted());
    EBM_ASSERT(!pSplitCur->IsSplit());
 
-   EBM_ASSERT(1 <= cRangesLower);
-   EBM_ASSERT(illegalIndex == iValLower || static_cast<FloatEbmType>(iValLower) == iValAspirationalLowerFloat);
-
-   EBM_ASSERT(1 <= cRangesHigher);
-   EBM_ASSERT(illegalIndex == iValHigher || static_cast<FloatEbmType>(iValHigher) == iValAspirationalHigherFloat);
-
    const FloatEbmType cMinimumInstancesPerBinFloat = static_cast<FloatEbmType>(cMinimumInstancesPerBin);
 
    FloatEbmType totalDistance;
-   if(illegalIndex != iValLower && illegalIndex != iValHigher) {
+   // reduce floating point noise when we have have exact distances
+   if(k_illegalIndex != iValLower && k_illegalIndex != iValHigher) {
       totalDistance = static_cast<FloatEbmType>(iValHigher - iValLower);
    } else {
       totalDistance = iValAspirationalHigherFloat - iValAspirationalLowerFloat;
@@ -628,7 +772,9 @@ INLINE_RELEASE static void BuildNeighbourhoodPlan(
    size_t cRanges = cRangesLower + cRangesHigher;
    const FloatEbmType iValAspirationalRelativeFloat = totalDistance / static_cast<FloatEbmType>(cRanges);
 
-   const FloatEbmType iLandingValFloat = iValAspirationalLowerFloat + iValAspirationalRelativeFloat;
+   pSplitCur->m_iValAspirationalFloat = iValAspirationalRelativeFloat;
+
+   const FloatEbmType iLandingValFloat = iValAspirationalLowerFloat + iValAspirationalRelativeFloat * static_cast<FloatEbmType>(cRangesLower);
    EBM_ASSERT(FloatEbmType { 0 } <= iLandingValFloat);
    size_t iLandingVal = static_cast<size_t>(iLandingValFloat);
    if(UNLIKELY(cSplittableItems <= iLandingVal)) {
@@ -643,15 +789,34 @@ INLINE_RELEASE static void BuildNeighbourhoodPlan(
    EBM_ASSERT(pNeighbourJump->m_iStartNext <= iValuesStart + cSplittableItems);
    EBM_ASSERT(pNeighbourJump->m_iStartCur < iValuesStart + cSplittableItems);
 
-   const size_t iValLowChoice = aNeighbourJumps[iValuesStart + iLandingVal].m_iStartCur - iValuesStart;
-   const size_t iValHighChoice = aNeighbourJumps[iValuesStart + iLandingVal].m_iStartNext - iValuesStart;
+   const size_t iValLowChoice = pNeighbourJump->m_iStartCur - iValuesStart;
+   const size_t iValHighChoice = pNeighbourJump->m_iStartNext - iValuesStart;
 
-   const size_t cRangesLowerLower = CalculateRangesLeft(iValLowChoice, totalDistance, cRanges);
-   const size_t cRangesLowerHigher = cRanges - cRangesLowerLower;
+   FloatEbmType distanceLowFloat;
+   FloatEbmType distanceHighFloat;
+
+   if(k_illegalIndex == iValLower) {
+      distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowerFloat;
+   } else {
+      distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice - iValLower);
+   }
+
+   if(k_illegalIndex == iValHigher) {
+      distanceHighFloat = static_cast<FloatEbmType>(iValAspirationalHigherFloat)
+         - static_cast<FloatEbmType>(iValLowChoice);
+   } else {
+      distanceHighFloat = static_cast<FloatEbmType>(iValHigher - iValLowChoice);
+   }
+
+   const FloatEbmType iValLowChoiceFloat = static_cast<FloatEbmType>(iValLowChoice);
+   const size_t cRangesLowerLowerOriginal = CalculateRangesLeft(iValLowChoiceFloat, totalDistance, cRanges);
+
+   EBM_ASSERT(1 <= cRangesLowerLowerOriginal);
+   EBM_ASSERT(1 + cRangesLowerLowerOriginal <= cRanges);
 
    bool bCanSplitLow = true;
-   if(illegalIndex == iValLower) {
-      if(static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowerFloat < cMinimumInstancesPerBinFloat) {
+   if(k_illegalIndex == iValLower) {
+      if(iValLowChoiceFloat - iValAspirationalLowerFloat < cMinimumInstancesPerBinFloat) {
          bCanSplitLow = false;
       }
    } else {
@@ -660,66 +825,118 @@ INLINE_RELEASE static void BuildNeighbourhoodPlan(
       }
    }
 
-   FloatEbmType avgLengthLowBest;
-   size_t cModifyDirectionLowBest = 0;
+   ptrdiff_t transferRangesBestLow = 0;
+   FloatEbmType scoreBestOverallLow = std::numeric_limits<FloatEbmType>::max();
    if(bCanSplitLow) {
-      FloatEbmType distanceLowFloat;
-      FloatEbmType distanceHighFloat;
+      for(ptrdiff_t transferRanges = -2; transferRanges <= 2; ++transferRanges) {
+         const ptrdiff_t cRangesLowerLower = cRangesLowerLowerOriginal + transferRanges;
+         const ptrdiff_t cRangesLowerHigher = cRanges - cRangesLowerLower;
 
-      if(illegalIndex == iValLower) {
-         distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowerFloat;
-      } else {
-         distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice - iValLower);
+         if(1 <= cRangesLowerLower && 1 <= cRangesLowerHigher) {
+            EBM_ASSERT(1 <= cRangesLowerLower);
+            EBM_ASSERT(1 <= cRangesLowerHigher);
+
+            signed_neighbour_type choices = (signed_neighbour_type { 1 } << k_cNeighbourExploreDistanceMax) |
+               ((signed_neighbour_type { 1 } << k_cNeighbourExploreDistanceMax) - signed_neighbour_type { 1 });
+
+            FloatEbmType scoreBestLow = std::numeric_limits<FloatEbmType>::max();
+            do {
+               FloatEbmType score = ScoreOneNeighbourhoodSide(
+                  choices,
+                  cMinimumInstancesPerBin,
+                  iValuesStart,
+                  cSplittableItems,
+                  aNeighbourJumps,
+                  ptrdiff_t { -1 },
+                  cRangesLowerLower,
+                  iValLowChoice,
+                  iValAspirationalLowerFloat,
+                  iValAspirationalRelativeFloat
+               );
+
+               scoreBestLow = std::min(scoreBestLow, score);
+
+               --choices;
+            } while(0 <= choices);
+
+            choices = (signed_neighbour_type { 1 } << k_cNeighbourExploreDistanceMax) |
+               ((signed_neighbour_type { 1 } << k_cNeighbourExploreDistanceMax) - signed_neighbour_type { 1 });
+
+            FloatEbmType scoreBestHigh = std::numeric_limits<FloatEbmType>::max();
+            do {
+               FloatEbmType score = ScoreOneNeighbourhoodSide(
+                  choices,
+                  cMinimumInstancesPerBin,
+                  iValuesStart,
+                  cSplittableItems,
+                  aNeighbourJumps,
+                  ptrdiff_t { 1 },
+                  cRangesLowerHigher,
+                  iValLowChoice,
+                  iValAspirationalHigherFloat,
+                  iValAspirationalRelativeFloat
+               );
+
+               scoreBestHigh = std::min(scoreBestHigh, score);
+
+               --choices;
+            } while(0 <= choices);
+
+            const FloatEbmType scoreBest = scoreBestLow + scoreBestHigh;
+
+            if(scoreBest < scoreBestOverallLow) {
+               transferRangesBestLow = transferRanges;
+               scoreBestOverallLow = scoreBest;
+            }
+         }
       }
-
-      if(illegalIndex == iValHigher) {
-         distanceHighFloat = static_cast<FloatEbmType>(iValAspirationalHigherFloat)
-            - static_cast<FloatEbmType>(iValLowChoice);
-      } else {
-         distanceHighFloat = static_cast<FloatEbmType>(iValHigher - iValLowChoice);
-      }
-
-      int choices = static_cast<int>((unsigned int { 1 } << (unsigned int { 1 } + cNeighbourExploreDistanceMax)) 
-         - unsigned int { 1 });
-      do {
-         // use the bits to go left or right
-
-
-         --choices;
-      } while(0 <= choices);
-
    }
 
+   const FloatEbmType iValHighChoiceFloat = static_cast<FloatEbmType>(iValHighChoice);
+   const size_t cRangesHigherLowerOriginal = CalculateRangesLeft(iValHighChoiceFloat, totalDistance, cRanges);
 
+   EBM_ASSERT(1 <= cRangesHigherLowerOriginal);
+   EBM_ASSERT(1 + cRangesHigherLowerOriginal <= cRanges);
 
+   bool bCanSplitHigh = true;
+   if(k_illegalIndex == iValHigher) {
+      if(iValAspirationalHigherFloat - iValHighChoiceFloat < cMinimumInstancesPerBinFloat) {
+         bCanSplitHigh = false;
+      }
+   } else {
+      if(iValHigher - iValHighChoice < cMinimumInstancesPerBin) {
+         bCanSplitHigh = false;
+      }
+   }
 
+   ptrdiff_t transferRangesBestHigh = 0;
+   FloatEbmType scoreBestOverallHigh = std::numeric_limits<FloatEbmType>::max();
+   if(bCanSplitHigh) {
+      // TODO the high side here
+   }
 
-
-
-
-
-
-
-
-   const size_t cRangesHigherLower = CalculateRangesLeft(iValHighChoice, totalDistance, cRanges);
-   const size_t cRangesHigherHigher = cRanges - cRangesHigherLower;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   if(std::numeric_limits<FloatEbmType>::max() == scoreBestOverallHigh) {
+      if(std::numeric_limits<FloatEbmType>::max() == scoreBestOverallLow) {
+         // no splits possible
+         pSplitCur->SetDeleted(true);
+      } else {
+         pSplitCur->m_iVal = iValLowChoice;
+         pSplitCur->m_cSplitMoveThis = transferRangesBestLow;
+      }
+   } else {
+      if(std::numeric_limits<FloatEbmType>::max() == scoreBestOverallLow) {
+         pSplitCur->m_iVal = iValHighChoice;
+         pSplitCur->m_cSplitMoveThis = transferRangesBestHigh;
+      } else {
+         if(scoreBestOverallLow < scoreBestOverallHigh) {
+            pSplitCur->m_iVal = iValLowChoice;
+            pSplitCur->m_cSplitMoveThis = transferRangesBestLow;
+         } else {
+            pSplitCur->m_iVal = iValHighChoice;
+            pSplitCur->m_cSplitMoveThis = transferRangesBestHigh;
+         }
+      }
+   }
 }
 
 INLINE_RELEASE static size_t SplitSegment(
@@ -729,13 +946,14 @@ INLINE_RELEASE static size_t SplitSegment(
 
    const size_t iValuesStart,
    const size_t cSplittableItems,
-   const NeighbourJump * const aNeighbourJumps,
+   const NeighbourJump * const aNeighbourJumps
 
-   // prior to calling this function, the caller must remove the endpoints if any
-   const size_t cCENTERSplitsAssigned,
-   // for efficiency we include space for the end point cuts even if they don't exist
-   SplitPoint * const aSplitsWithENDPOINTS
+   //// prior to calling this function, the caller must remove the endpoints if any
+   //const size_t cCENTERSplitsAssigned,
+   //// for efficiency we include space for the end point cuts even if they don't exist
+   //SplitPoint * const aSplitsWithENDPOINTS
 ) {
+
    // TODO: someday, for performance, it might make sense to use a non-allocating tree, like:
    //       https://github.com/attractivechaos/klib/blob/master/kavl.h
 
@@ -756,9 +974,19 @@ INLINE_RELEASE static size_t SplitSegment(
    // we need to be able to put down at least one split not at the edges
    EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
    EBM_ASSERT(nullptr != aNeighbourJumps);
+
+#ifdef NEVER
+
    EBM_ASSERT(1 <= cCENTERSplitsAssigned);
    EBM_ASSERT(cCENTERSplitsAssigned < cSplittableItems / cMinimumInstancesPerBin);
    EBM_ASSERT(nullptr != aSplitsWithENDPOINTS);
+
+
+   !!!!!!
+   INITIALIZE OUR STATE IN OUR CALLER, NOT HERE.  THEN OUR CALLER CAN PICK ONE SPLIT TO EXPLORE BOTH SIDES ON
+   IF WE INITIALIZE HERE THEN OUR CALLER CAN'T PICK SOME INITIAL SPLITS THAT WE'LL NEED TO HANDLE
+   !!!!!
+
 
    const size_t iTop = cCENTERSplitsAssigned + 1;
 
@@ -812,6 +1040,7 @@ INLINE_RELEASE static size_t SplitSegment(
 
       pBestSplitPoints->insert(pSplitCur);
    }
+#endif // NEVER
 
    const FloatEbmType cMinimumInstancesPerBinFloat = static_cast<FloatEbmType>(cMinimumInstancesPerBin);
 
@@ -1027,528 +1256,295 @@ INLINE_RELEASE static size_t SplitSegment(
       EBM_ASSERT(!pSplitBest->IsDeleted());
       EBM_ASSERT(!pSplitBest->IsSplit());
 
-      EBM_ASSERT(pSplitBest->m_pSplitLowerBoundary < pSplitBest->m_pSplitMoveThis);
-      EBM_ASSERT(pSplitBest->m_pSplitMoveThis < pSplitBest->m_pSplitHigherBoundary);
-      EBM_ASSERT(1 <= pSplitBest->m_cSplitLowerBoundary);
-      EBM_ASSERT(1 <= pSplitBest->m_cSplitHigherBoundary);
-      EBM_ASSERT(pSplitBest->m_pSplitLowerBoundary <= pSplitBest->m_pSplitMoveThis - pSplitBest->m_cSplitLowerBoundary);
-      EBM_ASSERT(pSplitBest->m_pSplitMoveThis + pSplitBest->m_cSplitHigherBoundary <= pSplitBest->m_pSplitHigherBoundary);
+      // we can't move past our outer boundaries
+      EBM_ASSERT(-ptrdiff_t { k_SplitExploreDistance } < pSplitBest->m_cSplitMoveThis &&
+         pSplitBest->m_cSplitMoveThis < ptrdiff_t { k_SplitExploreDistance });
 
-      // TODO: erase all of them
-      //pBestSplitPoints->erase(iterator);
+      // delete until our visibility window on the low side
+      SplitPoint * pSplitLowLowBoundary = pSplitBest;
+      size_t cLowLowRangesBoundary = k_SplitExploreDistance;
+      bool bLowLowSplit;
+      do {
+         do {
+            --pSplitLowLowBoundary;
+         } while(UNLIKELY(pSplitLowLowBoundary->IsDeleted()));
+         bLowLowSplit = pSplitLowLowBoundary->IsSplit();
+         --cLowLowRangesBoundary;
+      } while(0 != cLowLowRangesBoundary && !bLowLowSplit);
+      cLowLowRangesBoundary = k_SplitExploreDistance - cLowLowRangesBoundary;
+      EBM_ASSERT(1 <= cLowLowRangesBoundary);
+      EBM_ASSERT(cLowLowRangesBoundary <= k_SplitExploreDistance);
+      EBM_ASSERT(-pSplitBest->m_cSplitMoveThis < static_cast<ptrdiff_t>(cLowLowRangesBoundary));
 
-      SplitPoint * const pSplitMoveThis = pSplitBest->m_pSplitMoveThis;
+      // delete until our visibility window on the higher side
+      SplitPoint * pSplitHighHighBoundary = pSplitBest;
+      size_t cHighHighRangesBoundary = k_SplitExploreDistance;
+      bool bHighHighSplit;
+      while(true) {
+         do {
+            ++pSplitHighHighBoundary;
+         } while(UNLIKELY(pSplitHighHighBoundary->IsDeleted()));
+         bHighHighSplit = pSplitHighHighBoundary->IsSplit();
+         --cHighHighRangesBoundary;
+      } while(0 != cHighHighRangesBoundary && !bHighHighSplit);
+      cHighHighRangesBoundary = k_SplitExploreDistance - cHighHighRangesBoundary;
+      EBM_ASSERT(1 <= cHighHighRangesBoundary);
+      EBM_ASSERT(cHighHighRangesBoundary <= k_SplitExploreDistance);
+      EBM_ASSERT(pSplitBest->m_cSplitMoveThis < static_cast<ptrdiff_t>(cHighHighRangesBoundary));
+
+      // we're allowed to move splits from our low to high side before splitting, so let's find our new home
+      ptrdiff_t cSplitMoveThis = pSplitBest->m_cSplitMoveThis;
       const size_t iVal = pSplitBest->m_iVal;
 
-      pSplitMoveThis->m_iVal = iVal;
-      pSplitMoveThis->SetDeleted(false);
-      pSplitMoveThis->SetSplit(true);
+      SplitPoint * pSplitCur = pSplitBest;
 
-      const FloatEbmType iValFloat = static_cast<FloatEbmType>(iVal);
+      SplitPoint * pSplitLowLowWindow = pSplitLowLowBoundary;
+      size_t cLowLowRangesWindow = cLowLowRangesBoundary;
 
-      const size_t cSplitLowerBoundary = pSplitBest->m_cSplitLowerBoundary;
-      SplitPoint * pSplitLowerAspirationalCur = pSplitMoveThis - 1;
-      SplitPoint * const pSplitLowerBoundary = pSplitBest->m_pSplitLowerBoundary;
-      EBM_ASSERT(!pSplitLowerBoundary->IsDeleted());
-      const size_t cSplitLowerEnd = cSplitLowerBoundary - 1;
-      if(LIKELY(0 < cSplitLowerEnd)) {
-         const FloatEbmType iValLowerFloat = pSplitLowerBoundary->IsSplit() ?
-            static_cast<FloatEbmType>(pSplitLowerBoundary->m_iVal) :
-            pSplitLowerBoundary->m_iValAspirationalFloat;
+      SplitPoint * pSplitHighHighWindow = pSplitHighHighBoundary;
+      size_t cHighHighRangesWindow = cHighHighRangesBoundary;
 
-         const FloatEbmType lowerDistancePerSplit = iValLowerFloat / cSplitLowerBoundary;
-         size_t cLowerCompleted = 0;
-         do {
-            pSplitLowerAspirationalCur->SetDeleted(false);
-            ++cLowerCompleted;
-            pSplitLowerAspirationalCur->m_iValAspirationalFloat =
-               iValFloat - lowerDistancePerSplit * static_cast<FloatEbmType>(cLowerCompleted);
-            --pSplitLowerAspirationalCur;
-         } while(LIKELY(cLowerCompleted != cSplitLowerEnd));
-      }
-      while(UNLIKELY(pSplitLowerAspirationalCur != pSplitLowerBoundary)) {
-         pSplitLowerAspirationalCur->SetDeleted(true);
-         --pSplitLowerAspirationalCur;
-      }
-
-
-
-
-      //////////////// GOOD BELOW
-
-      constexpr size_t illegalIndex = std::numeric_limits<size_t>::max();
-
-      SplitPoint * pSplitLowerLower = pSplitBest->m_pSplitLowerStartWindow;
-      EBM_ASSERT(!pSplitLowerLower->IsDeleted());
-      size_t cSplitLowerLower = pSplitBest->m_cSplitLowerStartWindow;
-      size_t iValLowerLower = PREDICTABLE(pSplitLowerLower->IsSplit()) ? pSplitLowerLower->m_iVal : illegalIndex;
-
-      size_t iValLowerHigher = iVal;
-      size_t cSplitLowerHigher = 0;
-      SplitPoint * pSplitLowerHigher = pSplitMoveThis;
-
-      SplitPoint * pSplitLowerCur = pSplitMoveThis;
-      SplitPoint * const pSplitLowerHigherEnd = pSplitBest->m_pSplitLowerBoundary;
-
-      while(true) {
-         EBM_ASSERT(!pSplitLowerLower->IsDeleted());
-         if(PREDICTABLE(illegalIndex == iValLowerLower)) {
-            EBM_ASSERT(!pSplitLowerLower->IsSplit());
+      if(0 != cSplitMoveThis) {
+         if(cSplitMoveThis < 0) {
             do {
-               --pSplitLowerLower;
-            } while(UNLIKELY(pSplitLowerLower->IsDeleted()));
-            if(UNLIKELY(pSplitLowerLower->IsSplit())) {
-               iValLowerLower = pSplitLowerLower->m_iVal;
-            }
-         } else {
-            EBM_ASSERT(pSplitLowerLower->IsSplit());
-            --cSplitLowerLower;
-            if(UNLIKELY(0 == cSplitLowerLower)) {
-               // our center has reached the end of the split range or an unmovable actualized split
-#ifndef NDEBUG
-               SplitPoint * pSplitDebug = pSplitLowerCur;
                do {
-                  --pSplitDebug;
-               } while(UNLIKELY(pSplitDebug->IsDeleted()));
-               EBM_ASSERT(pSplitDebug == pSplitLowerLower); // we should have exited on 0 == cSplitLowerLower beforehand
-#endif // NDEBUG
-               break;
-            }
-         }
+                  --pSplitCur;
+               } while(UNLIKELY(pSplitCur->IsDeleted()));
 
-         EBM_ASSERT(!pSplitLowerHigher->IsDeleted());
-         if(PREDICTABLE(k_SplitExploreDistance == cSplitLowerHigher)) {
+               if(!bLowLowSplit) {
+                  do {
+                     --pSplitLowLowWindow;
+                  } while(UNLIKELY(pSplitLowLowWindow->IsDeleted()));
+                  bLowLowSplit = pSplitLowLowWindow->IsSplit();
+               } else {
+                  // we've hit a split boundary which we can't move, so we get closer to it
+                  EBM_ASSERT(1 <= cLowLowRangesWindow);
+                  --cLowLowRangesWindow;
+               }
+               EBM_ASSERT(bLowLowSplit == pSplitLowLowWindow->IsSplit());
+
+               if(cHighHighRangesWindow == k_SplitExploreDistance) {
+                  do {
+                     --pSplitHighHighWindow;
+                  } while(UNLIKELY(pSplitHighHighWindow->IsDeleted()));
+                  EBM_ASSERT(!pSplitHighHighWindow->IsSplit());
+               } else {
+                  EBM_ASSERT(pSplitHighHighWindow->IsSplit());
+                  // we've escape the length that we need for our window, so we're in the void
+                  ++cHighHighRangesWindow;
+               }
+
+               ++cSplitMoveThis;
+            } while(0 != cSplitMoveThis);
+            bHighHighSplit = pSplitHighHighWindow->IsSplit();
+            EBM_ASSERT(bLowLowSplit == pSplitLowLowWindow->IsSplit());
+         } else {
             do {
-               --pSplitLowerHigher;
-            } while(UNLIKELY(pSplitLowerHigher->IsDeleted()));
-            EBM_ASSERT(!pSplitLowerHigher->IsSplit());
+               do {
+                  ++pSplitCur;
+               } while(UNLIKELY(pSplitCur->IsDeleted()));
 
-            iValLowerHigher = illegalIndex;
-
-            if(UNLIKELY(pSplitLowerHigher == pSplitLowerHigherEnd)) {
-               // the item at pSplitLowerHigherEnd is the limit of our change and it didn't change itself,
-               // so everything beyond this point doesn't need to be updated, so exit the loop
-               break;
-            }
-         } else {
-            EBM_ASSERT(pSplitLowerHigher->IsSplit());
-            EBM_ASSERT(illegalIndex == iValLowerHigher);
-            ++cSplitLowerHigher;
-         }
-
-         do {
-            --pSplitLowerCur;
-         } while(UNLIKELY(pSplitLowerCur->IsDeleted()));
-         EBM_ASSERT(!pSplitLowerCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
-
-         const size_t iValLanding = static_cast<size_t>(pSplitLowerCur->m_iValAspirationalFloat);
-         const size_t iValLowChoice = aNeighbourJumps[iValuesStart + iValLanding].m_iStartCur - iValuesStart;
-         const size_t iValHighChoice = aNeighbourJumps[iValuesStart + iValLanding].m_iStartNext - iValuesStart;
-
-         bool bCanSplitLow = true;
-         if(illegalIndex == iValLowerLower) {
-            EBM_ASSERT(!pSplitLowerLower->IsSplit());
-            if(static_cast<FloatEbmType>(iValLowChoice) - pSplitLowerLower->m_iValAspirationalFloat < 
-               cMinimumInstancesPerBinFloat) 
-            {
-               bCanSplitLow = false;
-            }
-         } else {
-            EBM_ASSERT(pSplitLowerLower->IsSplit());
-            if(iValLowChoice - iValLowerLower < cMinimumInstancesPerBin) {
-               bCanSplitLow = false;
-            }
-         }
-         FloatEbmType avgLengthLowBest;
-         size_t cModifyDirectionLowBest = 0;
-         if(bCanSplitLow) {
-            FloatEbmType distanceLowLowFloat;
-            FloatEbmType distanceLowHighFloat;
-
-            if(illegalIndex == iValLowerLower) {
-               EBM_ASSERT(!pSplitLowerLower->IsSplit());
-               distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice) - pSplitLowerLower->m_iValAspirationalFloat;
-            } else {
-               EBM_ASSERT(pSplitLowerLower->IsSplit());
-               distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice - iValLowerLower);
-            }
-
-            if(illegalIndex == iValLowerHigher) {
-               EBM_ASSERT(!pSplitLowerHigher->IsSplit());
-               distanceLowHighFloat = static_cast<FloatEbmType>(pSplitLowerHigher->m_iValAspirationalFloat)
-                  - static_cast<FloatEbmType>(iValLowChoice);
-            } else {
-               EBM_ASSERT(pSplitLowerHigher->IsSplit());
-               distanceLowHighFloat = static_cast<FloatEbmType>(iValLowerHigher - iValLowChoice);
-            }
-
-            // we dominate our cost by the smallest range which we try to maximize
-            avgLengthLowBest = std::min(distanceLowLowFloat / static_cast<FloatEbmType>(cSplitLowerLower),
-               distanceLowHighFloat / static_cast<FloatEbmType>(cSplitLowerHigher));
-            
-            ptrdiff_t cModifyDirection;
-
-            cModifyDirection = ptrdiff_t { -1 };
-            while(true) {
-               const ptrdiff_t denominatorLow = static_cast<ptrdiff_t>(cSplitLowerLower) + cModifyDirection;
-               if(ptrdiff_t { 0 } == denominatorLow) {
-                  break;
+               if(cLowLowRangesWindow == k_SplitExploreDistance) {
+                  do {
+                     ++pSplitLowLowWindow;
+                  } while(UNLIKELY(pSplitLowLowWindow->IsDeleted()));
+                  EBM_ASSERT(!pSplitLowLowWindow->IsSplit());
+               } else {
+                  EBM_ASSERT(pSplitLowLowWindow->IsSplit());
+                  // we've escape the length that we need for our window, so we're in the void
+                  ++cLowLowRangesWindow;
                }
-               const ptrdiff_t denominatorHigh = static_cast<ptrdiff_t>(cSplitLowerHigher) - cModifyDirection;
 
-               const FloatEbmType avgLengthLow = distanceLowLowFloat / static_cast<FloatEbmType>(denominatorLow);
-               const FloatEbmType avgLengthHigh = distanceLowHighFloat / static_cast<FloatEbmType>(denominatorHigh);
-
-               // we dominate our cost by the smallest range which we try to maximize
-               const FloatEbmType avgLength = std::min(avgLengthLow, avgLengthHigh);
-
-               if(avgLength < avgLengthLowBest) {
-                  // if things didn't improve, don't continue
-                  break;
+               if(!bHighHighSplit) {
+                  do {
+                     ++pSplitHighHighWindow;
+                  } while(UNLIKELY(pSplitHighHighWindow->IsDeleted()));
+                  bHighHighSplit = pSplitHighHighWindow->IsSplit();
+               } else {
+                  // we've hit a split boundary which we can't move, so we get closer to it
+                  EBM_ASSERT(1 <= cHighHighRangesWindow);
+                  --cHighHighRangesWindow;
                }
-               --cModifyDirection;
-               EBM_ASSERT(ptrdiff_t { 0 } != cModifyDirection);
-
-               avgLengthLowBest = avgLength;
-               cModifyDirectionLowBest = cModifyDirection;
-            }
-         }
-
-         //////////////// GOOD ABOVE
-
-
-         const FloatEbmType iValHighChoiceFloat = static_cast<FloatEbmType>(iValHighChoice);
-
-
-         while(true) {
-            move counts from higher to lower since we moved lower(don't bother checking the opposite direction)
-
-
-               const FloatEbmType avgLengthBehindHigh = (iHighChoice - iFloatLeft) / iSplitDistanceLeft;
-            const FloatEbmType avgLengthAheadHigh = (iFloatRight - iValHighChoice) / iSplitDistanceRight;
-            // we dominate our cost by the smallest range which we try to maximize
-            const FloatEbmType avgLengthHigh = avgLengthBehindHigh < avgLengthAheadHigh ?
-               avgLengthBehindHigh : avgLengthAheadHigh;
-         }
-
-         // TODO : verify that we can in fact go low or high with enough separation to the absolute edges to make a cut
-         // because as it stands if this range is selected next it WILL be split that way
-
-         const bool bGoLow = avgLengthHigh < avgLengthLow;
-         const FloatEbmType priority = std::abs(avgLengthLow - avgLengthHigh);
-
-         // we want our priority to be as high as possible because it means that it would be stupid to make one of
-         // the available choices, and we have high certainty that choosing the lower cost side is better
-         // if both sides are low cost, or both sides are high cost, we might as well continue splitting and
-         // push these decisions until a later time when we've decided the more obvious choices
-
-         pBestSplitPoints->erase(&aSplitsWithENDPOINTS[iSplitCenter]);
-         aSplitsWithENDPOINTS[iSplitCenter].m_iVal = bGoLow ? k_SplitLower : k_SplitHigher;
-         aSplitsWithENDPOINTS[iSplitCenter].m_cutPriority = priority;
-         pBestSplitPoints->insert(&aSplitsWithENDPOINTS[iSplitCenter]);
-      }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      // even with floating point inexactness we shouldn't be able to get a number below zero
-      const FloatEbmType iAspirationalValFloatCur = pSplitCur->m_iValAspirationalFloat;
-      EBM_ASSERT(FloatEbmType { 0 } <= iAspirationalValFloatCur);
-      size_t iLandingVal = static_cast<size_t>(iAspirationalValFloatCur); // round down to find the zone
-      if(UNLIKELY(cSplittableItems <= iLandingVal)) {
-         // handle the very very unlikely situation where m_iAspirationalFloat rounds up to 
-         // cSplittableItems due to floating point issues
-         iLandingVal = cSplittableItems - 1;
-      }
-      const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValuesStart + iLandingVal];
-      EBM_ASSERT(iValuesStart <= pNeighbourJump->m_iStartCur);
-      EBM_ASSERT(iValuesStart < pNeighbourJump->m_iStartNext);
-      EBM_ASSERT(pNeighbourJump->m_iStartCur < pNeighbourJump->m_iStartNext);
-      EBM_ASSERT(pNeighbourJump->m_iStartNext <= iValuesStart + cSplittableItems);
-      EBM_ASSERT(pNeighbourJump->m_iStartCur < iValuesStart + cSplittableItems);
-
-      EBM_ASSERT(k_SplitHigher == pSplitCur->m_iValActualized || k_SplitLower == pSplitCur->m_iValActualized);
-      const size_t iActualizedValAbsoluteCur = *(UNPREDICTABLE(k_SplitHigher == pSplitCur->m_iValActualized) ?
-         &pNeighbourJump->m_iStartNext : &pNeighbourJump->m_iStartCur);
-      EBM_ASSERT(iValuesStart <= iActualizedValAbsoluteCur);
-      const size_t iActualizedValCur = iActualizedValAbsoluteCur - iValuesStart;
-      pSplitCur->m_iValActualized = iActualizedValCur;
-
-      //const size_t iSplitCur = pSplitCur - aSplitsWithENDPOINTS;
-
-
-
-
-
-
-
-
-
-      //struct SplitPoint final {
-      //   // TODO can we wrap some of this into a union so that we can overlay pre-set and post-seting of the actual index
-
-      //   SplitPoint() = default; // preserve our POD status
-      //   ~SplitPoint() = default; // preserve our POD status
-      //   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-      //   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-      //   FloatEbmType   m_cutPriority;
-      //   size_t         m_uniqueRandom;
-
-      //   ptrdiff_t      m_iValActualized;
-      //   // TODO: see if we can turn m_iAspirationalFloat into an integer or set of integers (numerator/denominator) to avoid floating point weirdness
-      //   FloatEbmType   m_iValAspirationalFloat;
-
-      //   ptrdiff_t      m_cSplitMoveThis;
-      //   SplitPoint * m_pSplitMoveThis;
-
-      //   size_t         m_cSplitLowerBoundary;
-      //   SplitPoint * m_pSplitLowerBoundary;
-
-      //   size_t         m_cSplitHigherBoundary;
-      //   SplitPoint * m_pSplitHigherBoundary;
-      //};
-
-
-      //size_t         cSplitLowerBoundary = pSplitCur->m_cSplitLowerBoundary;
-      SplitPoint * pSplitLowerBoundary = pSplitCur->m_pSplitLowerBoundary;
-      ptrdiff_t iValActualizedLower = pSplitLowerBoundary->m_iValActualized;
-      FloatEbmType iValLowerFloat = 0 <= iValActualizedLower ? static_cast<FloatEbmType>(iValActualizedLower) :
-         pSplitLowerBoundary->m_iValAspirationalFloat;
-
-      //size_t         cSplitHigherBoundary = pSplitCur->m_cSplitHigherBoundary;
-      SplitPoint * pSplitHigherBoundary = pSplitCur->m_pSplitHigherBoundary;
-      ptrdiff_t iValActualizedHigher = pSplitHigherBoundary->m_iValActualized;
-      FloatEbmType iValHigherFloat = 0 <= iValActualizedHigher ? static_cast<FloatEbmType>(iValActualizedHigher) :
-         pSplitHigherBoundary->m_iValAspirationalFloat;
-
-
-
-
-
-
-      static_assert(1 <= k_SplitExploreDistance, "k_SplitExploreDistance can't be zero");
-      // if this underflows we don't care because underflow isn't undefined behavior, and we have a guard item
-      size_t cSplitWindowRemainingEarlier = k_SplitExploreDistance;
-      size_t iSplitEarlier = iSplitCur;
-      FloatEbmType iValEarlierFloat;
-      while(true) {
-         // TODO: this loop can be elimiminated by storing all the state inside SplitPoint since we need to determine
-         //       it anyways when we compute the cost of splitting on each potential SplitPoint.
-
-         --iSplitEarlier;
-         // we inserted guard items at the start and end, so we are guaranteed to exit before falling off the sides
-         const ptrdiff_t iActualizedValMoving = aSplitsWithENDPOINTS[iSplitEarlier].m_iValActualized;
-         if(UNLIKELY(ptrdiff_t { -1 } < iActualizedValMoving)) {
-            // checking against -1 is a clever way to eliminate one compare instruction since we can then use
-            // the equality flag below without comparing again
-
-            // preserve the accuracy of this value for future use
-            --cSplitWindowRemainingEarlier;
-
-            // this check needs to occur first since m_iAspirationalFloat is invalid if 0 <= iActualMoving
-            iValEarlierFloat = static_cast<FloatEbmType>(iActualizedValMoving);
-            break;
-         }
-         // k_SplitDeleted is -1, so the comparion to k_SplitDeleted is faster and uses the CMP instruction from above
-         if(LIKELY(k_SplitDeleted != iActualizedValMoving)) {
-            --cSplitWindowRemainingEarlier;
-            EBM_ASSERT(k_SplitExploreDistance - cSplitWindowRemainingEarlier <= iSplitCur - iSplitEarlier);
-            if(UNLIKELY(0 == cSplitWindowRemainingEarlier)) {
-               iValEarlierFloat = aSplitsWithENDPOINTS[iSplitEarlier].m_iValAspirationalFloat;
-               break;
-            }
+               EBM_ASSERT(bHighHighSplit == pSplitHighHighWindow->IsSplit());
+
+               --cSplitMoveThis;
+            } while(0 != cSplitMoveThis);
+            bLowLowSplit = pSplitLowLowWindow->IsSplit();
+            EBM_ASSERT(bHighHighSplit == pSplitHighHighWindow->IsSplit());
          }
       }
 
-      //CHANGE THE ALGORITHM HERE.  WE WILL INSTEAD NUKE ALL OUR EXISTING PROPOSED CUTS AND RE-DO THEM WITHIN OUR WINDOW
-      //BECAUSE WE WANT TO DECIDE HERE IF WE'LL MOVE SOME CUTS FROM ONE SIDE TO THE OTHER BASED ON 
+      EBM_ASSERT(pSplitLowLowBoundary < pSplitCur);
+      EBM_ASSERT(pSplitCur < pSplitHighHighBoundary);
 
-      const FloatEbmType scaleDenomerator = iAspirationalFloatCur - iEarlierFloat;
-      if(UNLIKELY(scaleDenomerator <= 0)) {
-         // this might be possible in extreme situations where we have exceedingly large indexes that cause
-         // floating point inexactness
+      EBM_ASSERT(pSplitLowLowWindow < pSplitCur);
+      EBM_ASSERT(pSplitCur < pSplitHighHighWindow);
 
-         // TODO: handle this situation
-         EBM_ASSERT(false); // assert false for now even though we think this might be possible in theory
-      }
-      const FloatEbmType iActualFloat = static_cast<FloatEbmType>(iActualizedValCur);
+      EBM_ASSERT(!pSplitCur->IsDeleted());
+      EBM_ASSERT(!pSplitCur->IsSplit());
 
-      // we multiply the size of any segments earlier by this percentage to find their new aspirational lengths
-      const FloatEbmType scaleEarlier = (iActualFloat - iValEarlierFloat) / scaleDenomerator;
-      if(UNLIKELY(scaleEarlier <= 0)) {
-         // in theory it's probably possible to construct an adversarial dataset that keeps moving
-         // split points to one side to the point where the remaining ranges are larger than the difference
-         // between splits points in the distilled region that now has unnaturally small ranges.
-         // Taken to the extreme, you could even make a large window smaller than the allowed number of
-         // items in one range, so we need to handle this in theory
-         //
-         // Also, this could end up as zero or even negative due to floating point inexactness, probably only
-         // if there were huge numbers of items
+      pSplitCur->SetSplit(true);
 
-         // TODO: handle this situation
-         EBM_ASSERT(false); // assert false for now even though we think this might be possible in theory
-      }
+      pSplitCur->m_iVal = iVal;
+      const FloatEbmType iValFloat = static_cast<FloatEbmType>(iVal);
+      // TODO: after we set m_iVal, do we really still need to keep m_iValAspirationalFloat??
+      pSplitCur->m_iValAspirationalFloat = iValFloat;
 
-      size_t iSplitMoving = iSplitCur;
-      FloatEbmType iNewFloatPrev = iActualFloat;
+      SplitPoint * pSplitLowLowNeighbourhoodWindow = pSplitLowLowWindow;
+      SplitPoint * pSplitLowHighNeighbourhoodWindow = pSplitCur;
+      size_t cLowHighRangesNeighbourhoodWindow = 0;
+      size_t iValLowLow = bLowLowSplit ? pSplitLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
+      size_t iValLowHigh = iVal;
+
+      SplitPoint * pSplitLowerNeighbourhoodCur = pSplitCur;
+
       while(true) {
          do {
-            --iSplitMoving;
-         } while(UNLIKELY(k_SplitDeleted == aSplitsWithENDPOINTS[iSplitMoving].m_iValActualized));
+            --pSplitLowerNeighbourhoodCur;
+         } while(UNLIKELY(pSplitLowerNeighbourhoodCur->IsDeleted()));
+         EBM_ASSERT(!pSplitLowerNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
-         if(UNLIKELY(iSplitEarlier == iSplitMoving)) {
-            if(UNLIKELY(iNewFloatPrev - iValEarlierFloat < cMinimumInstancesPerBin)) {
-               // our split zones are too small.  Eliminate one or more regions, and re-do everything.
-               break;
-            }
-            goto done_earlier_jiggle;
-         }
-
-         EBM_ASSERT(aSplitsWithENDPOINTS[iSplitMoving].m_iValActualized < 0);
-
-         const FloatEbmType iAspirationalFloatMoving = aSplitsWithENDPOINTS[iSplitMoving].m_iValAspirationalFloat;
-         const FloatEbmType distance = iAspirationalValFloatCur - iAspirationalFloatMoving;
-         const FloatEbmType distanceScaled = distance * scaleEarlier;
-         const FloatEbmType iNewFloatMoving = iActualFloat - distanceScaled;
-
-         if(UNLIKELY(iNewFloatPrev - iNewFloatMoving < cMinimumInstancesPerBin)) {
-            // we've passed the point of no return.  Eliminate one or more regions
+         if(pSplitLowerNeighbourhoodCur == pSplitLowLowBoundary) {
             break;
          }
 
-         iNewFloatPrev = iNewFloatMoving;
+         EBM_ASSERT(!pSplitLowLowNeighbourhoodWindow->IsDeleted());
+         if(PREDICTABLE(k_illegalIndex == iValLowLow)) {
+            EBM_ASSERT(!pSplitLowLowNeighbourhoodWindow->IsSplit());
+            do {
+               --pSplitLowLowNeighbourhoodWindow;
+            } while(UNLIKELY(pSplitLowLowNeighbourhoodWindow->IsDeleted()));
+            if(UNLIKELY(pSplitLowLowNeighbourhoodWindow->IsSplit())) {
+               iValLowLow = pSplitLowLowNeighbourhoodWindow->m_iVal;
+            }
+         } else {
+            EBM_ASSERT(pSplitLowLowNeighbourhoodWindow->IsSplit());
+            --cLowLowRangesWindow;
+         }
 
-         // note: this doesn't affect our priority number which we aren't changing here
-         aSplitsWithENDPOINTS[iSplitMoving].m_iValAspirationalFloat = iNewFloatMoving;
+         EBM_ASSERT(!pSplitLowHighNeighbourhoodWindow->IsDeleted());
+         if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesNeighbourhoodWindow)) {
+            do {
+               --pSplitLowHighNeighbourhoodWindow;
+            } while(UNLIKELY(pSplitLowHighNeighbourhoodWindow->IsDeleted()));
+            EBM_ASSERT(!pSplitLowHighNeighbourhoodWindow->IsSplit());
+            iValLowHigh = k_illegalIndex;
+         } else {
+            EBM_ASSERT(pSplitLowHighNeighbourhoodWindow->IsSplit());
+            EBM_ASSERT(k_illegalIndex != iValLowHigh);
+            ++cLowHighRangesNeighbourhoodWindow;
+         }
+
+         BuildNeighbourhoodPlan(
+            cMinimumInstancesPerBin,
+            iValuesStart,
+            cSplittableItems,
+            aNeighbourJumps,
+
+            cLowLowRangesWindow,
+            iValLowLow,
+            pSplitLowLowNeighbourhoodWindow->m_iValAspirationalFloat,
+
+            cLowHighRangesNeighbourhoodWindow,
+            iValLowHigh,
+            pSplitLowHighNeighbourhoodWindow->m_iValAspirationalFloat,
+
+            pSplitLowerNeighbourhoodCur
+         );
       }
 
-      // TODO : handle this case of having a range that's too small
+      // TODO: do the high section now with BuildNeighbourhoodPlan
 
-      // for now allow a range that is less than cMinimumInstancesPerBin in length.  We haven't materialized
-      // it here, so there's a chance things will ultimately resolve with this bin being greater than
-      // cMinimumInstancesPerBin.  Even if we end up with a bin less than cMinimumInstancesPerBin after
-      // materializing, we try a post-process step that might create enough space for this range to expand
-      // into a large enough size
 
-   done_earlier_jiggle:;
+      pBestSplitPoints->erase(pSplitCur);
 
-      size_t iSplitCenter = iSplitCur;
-      size_t iSplitEdgeLeft = iSplitEarlier;
-      size_t iSplitEdgeRight = iSplitCur;
-      size_t iSplitDistanceLeft = k_SplitExploreDistance - cSplitWindowRemainingEarlier;
-      size_t iSplitDistanceRight = 0;
-      FloatEbmType iFloatLeft = iValEarlierFloat;
-      FloatEbmType iFloatRight = iActualFloat;
-      ptrdiff_t iActualLeft = aSplitsWithENDPOINTS[iSplitEdgeLeft].m_iValActualized;
+      SplitPoint * pSplitLowLowPriorityWindow = pSplitLowLowWindow;
+      SplitPoint * pSplitLowHighPriorityWindow = pSplitCur;
+      size_t cLowHighRangesPriorityWindow = 0;
+      SplitPoint * pSplitLowerPriorityCur = pSplitCur;
+
       while(true) {
-         if(PREDICTABLE(iActualLeft < 0)) {
-            EBM_ASSERT(k_SplitDeleted != iActualLeft);
-            do {
-               --iSplitEdgeLeft;
-               iActualLeft = aSplitsWithENDPOINTS[iSplitEdgeLeft].m_iValActualized;
-            } while(UNLIKELY(k_SplitDeleted == iActualLeft));
-            if(LIKELY(iActualLeft <= ptrdiff_t { -1 })) {
-               // the above is a clever way to check if it's below zero.  k_SplitDeleted is -1, 
-               // so we don't need the CMP assembly instruction
-               iFloatLeft = aSplitsWithENDPOINTS[iSplitEdgeLeft].m_iValAspirationalFloat;
-            } else {
-               iFloatLeft = static_cast<FloatEbmType>(iActualLeft);
-            }
-         } else {
-            --iSplitDistanceLeft;
-            if(UNLIKELY(0 == iSplitDistanceLeft)) {
-               // our center has reached the end of the split range or an unmovable actualized split
-               break;
-            }
-         }
-
-         if(PREDICTABLE(k_SplitExploreDistance == iSplitDistanceRight)) {
-            do {
-               --iSplitEdgeRight;
-            } while(UNLIKELY(k_SplitDeleted == aSplitsWithENDPOINTS[iSplitEdgeRight].m_iValActualized));
-            if(UNLIKELY(iSplitEarlier == iSplitEdgeRight)) {
-               // the item at iSplitEarlier was our anchor and didn't itself move, so if that's our right edge
-               // then we're done since it never changed the priority within our window from item iSplitCenter
-               break;
-            }
-            iFloatRight = static_cast<FloatEbmType>(aSplitsWithENDPOINTS[iSplitEdgeRight].m_iValAspirationalFloat);
-         } else {
-            ++iSplitDistanceRight;
-         }
-
          do {
-            --iSplitCenter;
-         } while(UNLIKELY(k_SplitDeleted == aSplitsWithENDPOINTS[iSplitCenter].m_iValActualized));
+            --pSplitLowerPriorityCur;
+         } while(UNLIKELY(pSplitLowerPriorityCur->IsDeleted()));
 
-         const size_t iChoiceLanding = static_cast<size_t>(aSplitsWithENDPOINTS[iSplitCenter].m_iValAspirationalFloat);
-         const size_t iLowChoice = aNeighbourJumps[iValuesStart + iChoiceLanding].m_iStartCur - iValuesStart;
-         const size_t iHighChoice = aNeighbourJumps[iValuesStart + iChoiceLanding].m_iStartNext - iValuesStart;
+         EBM_ASSERT(!pSplitLowLowPriorityWindow->IsDeleted());
+         if(PREDICTABLE(!bLowLowSplit)) {
+            EBM_ASSERT(!pSplitLowLowPriorityWindow->IsSplit());
+            do {
+               --pSplitLowLowPriorityWindow;
+            } while(UNLIKELY(pSplitLowLowPriorityWindow->IsDeleted()));
+         } else {
+            EBM_ASSERT(pSplitLowLowPriorityWindow->IsSplit());
+            if(pSplitLowerPriorityCur == pSplitLowLowPriorityWindow) {
+               EBM_ASSERT(pSplitLowerPriorityCur->IsSplit());
+               break;
+            }
+         }
+         EBM_ASSERT(!pSplitLowerPriorityCur->IsSplit());
 
-         const FloatEbmType avgLengthBehindLow = (iLowChoice - iFloatLeft) / iSplitDistanceLeft;
-         const FloatEbmType avgLengthAheadLow = (iFloatRight - iLowChoice) / iSplitDistanceRight;
-         // we dominate our cost by the smallest range which we try to maximize
-         const FloatEbmType avgLengthLow = avgLengthBehindLow < avgLengthAheadLow ?
-            avgLengthBehindLow : avgLengthAheadLow;
+         EBM_ASSERT(!pSplitLowHighPriorityWindow->IsDeleted());
+         if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesPriorityWindow)) {
+            do {
+               --pSplitLowHighPriorityWindow;
+            } while(UNLIKELY(pSplitLowHighPriorityWindow->IsDeleted()));
+            EBM_ASSERT(!pSplitLowHighPriorityWindow->IsSplit());
 
-         const FloatEbmType avgLengthBehindHigh = (iHighChoice - iFloatLeft) / iSplitDistanceLeft;
-         const FloatEbmType avgLengthAheadHigh = (iFloatRight - iHighChoice) / iSplitDistanceRight;
-         // we dominate our cost by the smallest range which we try to maximize
-         const FloatEbmType avgLengthHigh = avgLengthBehindHigh < avgLengthAheadHigh ?
-            avgLengthBehindHigh : avgLengthAheadHigh;
+            if(pSplitLowHighPriorityWindow == pSplitLowLowBoundary) {
+               break;
+            }
+         } else {
+            EBM_ASSERT(pSplitLowHighPriorityWindow->IsSplit());
+            ++cLowHighRangesPriorityWindow;
+         }
 
-         // TODO : verify that we can in fact go low or high with enough separation to the absolute edges to make a cut
-         // because as it stands if this range is selected next it WILL be split that way
+         pBestSplitPoints->erase(pSplitLowerPriorityCur);
 
-         const bool bGoLow = avgLengthHigh < avgLengthLow;
-         const FloatEbmType priority = std::abs(avgLengthLow - avgLengthHigh);
+         CalculatePriority(
+            pSplitLowLowPriorityWindow->m_iValAspirationalFloat,
+            pSplitLowHighPriorityWindow->m_iValAspirationalFloat,
+            pSplitLowerPriorityCur
+         );
 
-         // we want our priority to be as high as possible because it means that it would be stupid to make one of
-         // the available choices, and we have high certainty that choosing the lower cost side is better
-         // if both sides are low cost, or both sides are high cost, we might as well continue splitting and
-         // push these decisions until a later time when we've decided the more obvious choices
-
-         pBestSplitPoints->erase(&aSplitsWithENDPOINTS[iSplitCenter]);
-         aSplitsWithENDPOINTS[iSplitCenter].m_iValActualized = bGoLow ? k_SplitLower : k_SplitHigher;
-         aSplitsWithENDPOINTS[iSplitCenter].m_priority = priority;
-         pBestSplitPoints->insert(&aSplitsWithENDPOINTS[iSplitCenter]);
+         pBestSplitPoints->erase(pSplitLowerPriorityCur);
       }
 
-      // TODO: also handle the right hand side
+      // TODO: do the high section now with CalculatePriority
 
    } while(!pBestSplitPoints->empty());
+
+   // TODO : we have an optional phase here were we try and reduce the tension between neighbours and improve
+   // the tentative plans of each m_iVal
+
+
+   // TODO: after we have our final m_iVal for each potential split given all our information, we then find
+   // the split that needs to screw everything up the most and start with that one since it's the most constrained
+   // and we want to handle it while we have the most flexibility
+   // 
+   // there are a lot of metrics we might use.  Two ideas:
+   //   1) Look at how bad the best solution for any particular split is.. if it's bad it's probably because the
+   //      alternatives were worse
+   //   2) Look at how bad the worst solution for any particular split is.. we don't want to be forced to take the
+   //      worst
+   //   3) * take the aspirational split, take the best matrialized split, calculate what percentage we need to
+   //      stretch from either boundary (the low boundary and the high boundary).  Take the one that has the highest
+   //      percentage stretch
+   //
+   // I like #3, because after we choose each split everything (within the windows) get re-shuffed.  We might not
+   // even fall on some of the problematic ranges anymore.  Choosing the splits with the highest "tension" causes
+   // us to decide the longest ranges that are the closest to one of our existing imovable boundaries thus
+   // we're nailing down the ones that'll cause the most movement first while we have the most room, and it also
+   // captures the idea that these are bad ones that need to be selected.  It'll tend to try deciding splits
+   // near our existing edge boundaries first instead of the ones in the center.  This is good since the ones at
+   // the boundaries are more critical.  As we materialize cuts we'll get closer to the center and those will start
+   // to want attention
+
+
 
    IronSplits();
 
    return 0;
 }
-#endif // NEVER
 
 INLINE_RELEASE static size_t TreeSearchSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
@@ -1591,8 +1587,29 @@ INLINE_RELEASE static size_t TreeSearchSplitSegment(
    //constexpr size_t k_SplitExploreDepth = 8;
    //constexpr size_t k_SplitExplorations = size_t { 1 } << k_SplitExploreDepth;
 
-//   return SplitSegment(pBestSplitPoints, cMinimumInstancesPerBin, iValuesStart, cSplittableItems, aNeighbourJumps,
-//      cCENTERSplitsAssigned, aSplitsWithENDPOINTS);
+   //for(int iPick = 0; iPick < 256; ++iPick) {
+   //   for(size_t i = 0; i < cRanges; ++i) {
+   //      INLINE_RELEASE static void BuildNeighbourhoodPlan(
+   //         const size_t cMinimumInstancesPerBin,
+   //         const size_t iValuesStart,
+   //         const size_t cSplittableItems,
+   //         const NeighbourJump * const aNeighbourJumps,
+
+   //         const size_t cRangesLower,
+   //         const size_t iValLower,
+   //         const FloatEbmType iValAspirationalLowerFloat,
+
+   //         const size_t cRangesHigher,
+   //         const size_t iValHigher,
+   //         const FloatEbmType iValAspirationalHigherFloat,
+
+   //         SplitPoint * const pSplitCur
+   //      );
+   //   }
+
+   //   return SplitSegment(pBestSplitPoints, cMinimumInstancesPerBin, iValuesStart, cSplittableItems, aNeighbourJumps,
+   //      cCENTERSplitsAssigned, aSplitsWithENDPOINTS);
+   //}
 
    return 999999;
 }
