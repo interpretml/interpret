@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from ..api.templates import FeatureValueExplanation
-from . import gen_name_from_class, unify_data, perf_dict, gen_local_selector
+from . import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
 
 
 def shap_explain_local(explainer, X, y=None, name=None, is_classification=False):
@@ -22,9 +22,10 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
+    perf_dicts = gen_perf_dicts(y, predictions)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
-        perf_dict_obj = perf_dict(y, predictions, i)
+        perf_dict_obj = perf_dicts[i]
 
         perf_list.append(perf_dict_obj)
 

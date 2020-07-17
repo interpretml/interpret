@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 
-from ...utils import perf_dict
+from ...utils import gen_perf_dicts
 from .utils import EBMUtils
 from .internal import NativeHelper
 from .postprocessing import multiclass_postprocess
@@ -1301,8 +1301,9 @@ class BaseEBM(BaseEstimator):
             )
 
         perf_list = []
+        perf_dicts = gen_perf_dicts(y, scores)
         for row_idx in range(n_rows):
-            perf = perf_dict(y, scores, row_idx)
+            perf = perf_dicts[row_idx]
             perf_list.append(perf)
             data_dicts[row_idx]["perf"] = perf
 

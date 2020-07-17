@@ -23,16 +23,21 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def perf_dict(y, y_hat, i):
-    if y is None or y_hat is None:
+def gen_perf_dicts(y, scores):
+    if y is None or scores is None:
         return None
 
-    di = {}
-    di["actual"] = y[i]
-    di["predicted"] = y_hat[i]
-    di["residual"] = y[i] - y_hat[i]
+    predicted_indexes = np.argmax(scores, axis=1)
 
-    return di
+    records = []
+    for i, res in enumerate(y):
+        di = {}
+        di["actual"] = res
+        di["predicted"] = predicted_indexes[i]
+        di["actual_score"] = scores[i, y[i]]
+        di["predicted_score"] = scores[i, predicted_indexes[i]]
+
+    return records
 
 
 def hist_per_column(arr, feature_types=None):

@@ -4,7 +4,7 @@
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_global_selector, gen_local_selector
-from ..utils import perf_dict, hist_per_column
+from ..utils import gen_perf_dicts, hist_per_column
 from ..utils import unify_data
 
 from abc import abstractmethod
@@ -121,6 +121,7 @@ class BaseLinear:
         data_dicts = []
         scores_list = []
         perf_list = []
+        perf_dicts = gen_perf_dicts(y, predictions)
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             scores_list.append(scores)
@@ -128,7 +129,7 @@ class BaseLinear:
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            perf_dict_obj = perf_dict(y, predictions, i)
+            perf_dict_obj = perf_dicts[i]
             data_dict["perf"] = perf_dict_obj
             perf_list.append(perf_dict_obj)
 

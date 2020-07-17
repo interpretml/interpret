@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils import gen_name_from_class, unify_data, perf_dict, gen_local_selector
+from ..utils import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
 
 from sklearn.base import is_classifier
 import numpy as np
@@ -90,12 +90,13 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
+        perf_dicts = gen_perf_dicts(y, predictions)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            perf_dict_obj = perf_dict(y, predictions, i)
+            perf_dict_obj = perf_dicts[i]
             data_dict["perf"] = perf_dict_obj
             perf_list.append(perf_dict_obj)
 
