@@ -586,6 +586,31 @@ constexpr unsigned int k_cNeighbourExploreDistanceMax = 5;
 typedef int signed_neighbour_type;
 constexpr size_t k_illegalIndex = std::numeric_limits<size_t>::max();
 
+INLINE_RELEASE static void CalculatePriority(
+   const FloatEbmType iValLowerFloat,
+   const FloatEbmType iValHigherFloat,
+   SplitPoint * const pSplitCur
+) {
+   EBM_ASSERT(!pSplitCur->IsDeleted());
+   EBM_ASSERT(!pSplitCur->IsSplit());
+
+   EBM_ASSERT(iValLowerFloat <= pSplitCur->m_iVal);
+   EBM_ASSERT(iValLowerFloat < pSplitCur->m_iValAspirationalFloat);
+
+   const FloatEbmType lowerPriority = std::abs(FloatEbmType { 1 } - 
+      ((pSplitCur->m_iVal - iValLowerFloat) / (pSplitCur->m_iValAspirationalFloat - iValLowerFloat)));
+
+   EBM_ASSERT(pSplitCur->m_iVal <= iValHigherFloat);
+   EBM_ASSERT(pSplitCur->m_iValAspirationalFloat < iValHigherFloat);
+
+   const FloatEbmType higherPriority = std::abs(FloatEbmType { 1 } -
+      ((iValHigherFloat - pSplitCur->m_iVal) / (iValHigherFloat - pSplitCur->m_iValAspirationalFloat)));
+
+   const FloatEbmType priority = std::max(lowerPriority, higherPriority);
+
+   pSplitCur->m_priority = priority;
+}
+
 INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
    signed_neighbour_type choices,
 
@@ -1235,9 +1260,6 @@ INLINE_RELEASE static size_t SplitSegment(
       EBM_ASSERT(-ptrdiff_t { k_SplitExploreDistance } < pSplitBest->m_cSplitMoveThis &&
          pSplitBest->m_cSplitMoveThis < ptrdiff_t { k_SplitExploreDistance });
 
-      // TODO : delete the existing split point inside AND outside our boundary (within the visible space which is larger)
-      // pBestSplitPoints->erase(iterator);
-
       // delete until our visibility window on the low side
       SplitPoint * pSplitLowLowBoundary = pSplitBest;
       size_t cLowLowRangesBoundary = k_SplitExploreDistance;
@@ -1368,48 +1390,49 @@ INLINE_RELEASE static size_t SplitSegment(
       // TODO: after we set m_iVal, do we really still need to keep m_iValAspirationalFloat??
       pSplitCur->m_iValAspirationalFloat = iValFloat;
 
-      SplitPoint * pSplitLowHighWindow = pSplitCur;
-      size_t cLowHighRangesWindow = 0;
-      size_t iValLowLow = bLowLowSplit ? pSplitLowLowWindow->m_iVal : k_illegalIndex;
+      SplitPoint * pSplitLowLowNeighbourhoodWindow = pSplitLowLowWindow;
+      SplitPoint * pSplitLowHighNeighbourhoodWindow = pSplitCur;
+      size_t cLowHighRangesNeighbourhoodWindow = 0;
+      size_t iValLowLow = bLowLowSplit ? pSplitLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
       size_t iValLowHigh = iVal;
 
-      SplitPoint * pSplitLowerCur = pSplitCur;
+      SplitPoint * pSplitLowerNeighbourhoodCur = pSplitCur;
 
       while(true) {
          do {
-            --pSplitLowerCur;
-         } while(UNLIKELY(pSplitLowerCur->IsDeleted()));
-         EBM_ASSERT(!pSplitLowerCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
+            --pSplitLowerNeighbourhoodCur;
+         } while(UNLIKELY(pSplitLowerNeighbourhoodCur->IsDeleted()));
+         EBM_ASSERT(!pSplitLowerNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
-         if(pSplitLowerCur == pSplitLowLowBoundary) {
+         if(pSplitLowerNeighbourhoodCur == pSplitLowLowBoundary) {
             break;
          }
 
-         EBM_ASSERT(!pSplitLowLowWindow->IsDeleted());
+         EBM_ASSERT(!pSplitLowLowNeighbourhoodWindow->IsDeleted());
          if(PREDICTABLE(k_illegalIndex == iValLowLow)) {
-            EBM_ASSERT(!pSplitLowLowWindow->IsSplit());
+            EBM_ASSERT(!pSplitLowLowNeighbourhoodWindow->IsSplit());
             do {
-               --pSplitLowLowWindow;
-            } while(UNLIKELY(pSplitLowLowWindow->IsDeleted()));
-            if(UNLIKELY(pSplitLowLowWindow->IsSplit())) {
-               iValLowLow = pSplitLowLowWindow->m_iVal;
+               --pSplitLowLowNeighbourhoodWindow;
+            } while(UNLIKELY(pSplitLowLowNeighbourhoodWindow->IsDeleted()));
+            if(UNLIKELY(pSplitLowLowNeighbourhoodWindow->IsSplit())) {
+               iValLowLow = pSplitLowLowNeighbourhoodWindow->m_iVal;
             }
          } else {
-            EBM_ASSERT(pSplitLowLowWindow->IsSplit());
+            EBM_ASSERT(pSplitLowLowNeighbourhoodWindow->IsSplit());
             --cLowLowRangesWindow;
          }
 
-         EBM_ASSERT(!pSplitLowHighWindow->IsDeleted());
-         if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesWindow)) {
+         EBM_ASSERT(!pSplitLowHighNeighbourhoodWindow->IsDeleted());
+         if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesNeighbourhoodWindow)) {
             do {
-               --pSplitLowHighWindow;
-            } while(UNLIKELY(pSplitLowHighWindow->IsDeleted()));
-            EBM_ASSERT(!pSplitLowHighWindow->IsSplit());
+               --pSplitLowHighNeighbourhoodWindow;
+            } while(UNLIKELY(pSplitLowHighNeighbourhoodWindow->IsDeleted()));
+            EBM_ASSERT(!pSplitLowHighNeighbourhoodWindow->IsSplit());
             iValLowHigh = k_illegalIndex;
          } else {
-            EBM_ASSERT(pSplitLowHighWindow->IsSplit());
+            EBM_ASSERT(pSplitLowHighNeighbourhoodWindow->IsSplit());
             EBM_ASSERT(k_illegalIndex != iValLowHigh);
-            ++cLowHighRangesWindow;
+            ++cLowHighRangesNeighbourhoodWindow;
          }
 
          BuildNeighbourhoodPlan(
@@ -1420,15 +1443,74 @@ INLINE_RELEASE static size_t SplitSegment(
 
             cLowLowRangesWindow,
             iValLowLow,
-            pSplitLowLowWindow->m_iValAspirationalFloat,
+            pSplitLowLowNeighbourhoodWindow->m_iValAspirationalFloat,
 
-            cLowHighRangesWindow,
+            cLowHighRangesNeighbourhoodWindow,
             iValLowHigh,
-            pSplitLowHighWindow->m_iValAspirationalFloat,
+            pSplitLowHighNeighbourhoodWindow->m_iValAspirationalFloat,
 
-            pSplitLowerCur
+            pSplitLowerNeighbourhoodCur
          );
       }
+
+      // TODO: do the high section now with BuildNeighbourhoodPlan
+
+
+      pBestSplitPoints->erase(pSplitCur);
+
+      SplitPoint * pSplitLowLowPriorityWindow = pSplitLowLowWindow;
+      SplitPoint * pSplitLowHighPriorityWindow = pSplitCur;
+      size_t cLowHighRangesPriorityWindow = 0;
+      SplitPoint * pSplitLowerPriorityCur = pSplitCur;
+
+      while(true) {
+         do {
+            --pSplitLowerPriorityCur;
+         } while(UNLIKELY(pSplitLowerPriorityCur->IsDeleted()));
+
+         EBM_ASSERT(!pSplitLowLowPriorityWindow->IsDeleted());
+         if(PREDICTABLE(!bLowLowSplit)) {
+            EBM_ASSERT(!pSplitLowLowPriorityWindow->IsSplit());
+            do {
+               --pSplitLowLowPriorityWindow;
+            } while(UNLIKELY(pSplitLowLowPriorityWindow->IsDeleted()));
+         } else {
+            EBM_ASSERT(pSplitLowLowPriorityWindow->IsSplit());
+            if(pSplitLowerPriorityCur == pSplitLowLowPriorityWindow) {
+               EBM_ASSERT(pSplitLowerPriorityCur->IsSplit());
+               break;
+            }
+         }
+         EBM_ASSERT(!pSplitLowerPriorityCur->IsSplit());
+
+         EBM_ASSERT(!pSplitLowHighPriorityWindow->IsDeleted());
+         if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesPriorityWindow)) {
+            do {
+               --pSplitLowHighPriorityWindow;
+            } while(UNLIKELY(pSplitLowHighPriorityWindow->IsDeleted()));
+            EBM_ASSERT(!pSplitLowHighPriorityWindow->IsSplit());
+
+            if(pSplitLowHighPriorityWindow == pSplitLowLowBoundary) {
+               break;
+            }
+         } else {
+            EBM_ASSERT(pSplitLowHighPriorityWindow->IsSplit());
+            ++cLowHighRangesPriorityWindow;
+         }
+
+         pBestSplitPoints->erase(pSplitLowerPriorityCur);
+
+         CalculatePriority(
+            pSplitLowLowPriorityWindow->m_iValAspirationalFloat,
+            pSplitLowHighPriorityWindow->m_iValAspirationalFloat,
+            pSplitLowerPriorityCur
+         );
+
+         pBestSplitPoints->erase(pSplitLowerPriorityCur);
+      }
+
+      // TODO: do the high section now with CalculatePriority
+
    } while(!pBestSplitPoints->empty());
 
    // TODO : we have an optional phase here were we try and reduce the tension between neighbours and improve
