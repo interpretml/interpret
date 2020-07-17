@@ -704,7 +704,7 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
    return badness;
 }
 
-INLINE_RELEASE static void BuildNeighbourhoodPlan(
+static void BuildNeighbourhoodPlan(
    const size_t cMinimumInstancesPerBin,
    const size_t iValuesStart,
    const size_t cSplittableItems,
@@ -1438,6 +1438,26 @@ INLINE_RELEASE static size_t SplitSegment(
    // TODO: after we have our final m_iVal for each potential split given all our information, we then find
    // the split that needs to screw everything up the most and start with that one since it's the most constrained
    // and we want to handle it while we have the most flexibility
+   // 
+   // there are a lot of metrics we might use.  Two ideas:
+   //   1) Look at how bad the best solution for any particular split is.. if it's bad it's probably because the
+   //      alternatives were worse
+   //   2) Look at how bad the worst solution for any particular split is.. we don't want to be forced to take the
+   //      worst
+   //   3) * take the aspirational split, take the best matrialized split, calculate what percentage we need to
+   //      stretch from either boundary (the low boundary and the high boundary).  Take the one that has the highest
+   //      percentage stretch
+   //
+   // I like #3, because after we choose each split everything (within the windows) get re-shuffed.  We might not
+   // even fall on some of the problematic ranges anymore.  Choosing the splits with the highest "tension" causes
+   // us to decide the longest ranges that are the closest to one of our existing imovable boundaries thus
+   // we're nailing down the ones that'll cause the most movement first while we have the most room, and it also
+   // captures the idea that these are bad ones that need to be selected.  It'll tend to try deciding splits
+   // near our existing edge boundaries first instead of the ones in the center.  This is good since the ones at
+   // the boundaries are more critical.  As we materialize cuts we'll get closer to the center and those will start
+   // to want attention
+
+
 
    IronSplits();
 
@@ -2239,6 +2259,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
                FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
 
+#ifdef NEVER
+
                const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
 
                size_t cCutsRemaining = cMaximumBins - 1 - cUsedSplits;
@@ -2287,6 +2309,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      //EBM_ASSERT(false); // the condition of 1 split needs to be handled!
                   }
                }
+
+#endif // NEVER
 
 
 
