@@ -82,7 +82,7 @@ class TreeInterpreter(ExplainerMixin):
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
 
         if self.is_classifier:
-            predictions = self.model.predict_proba(X)[:, 1]
+            predictions = self.model.predict_proba(X)
         else:
             predictions = self.model.predict(X)
 
@@ -90,13 +90,13 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions)
+        perf_dicts = gen_perf_dicts(y, predictions, self.is_classifier)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            perf_dict_obj = perf_dicts[i]
+            perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
             data_dict["perf"] = perf_dict_obj
             perf_list.append(perf_dict_obj)
 

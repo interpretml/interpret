@@ -109,7 +109,8 @@ class BaseLinear:
 
         sk_model_ = self._model()
 
-        if is_classifier(self):
+        is_classification = is_classifier(self)
+        if is_classification:
             predictions = self.predict_proba(X)[:, 1]
             intercept = sk_model_.intercept_[0]
             coef = sk_model_.coef_[0]
@@ -121,7 +122,7 @@ class BaseLinear:
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions)
+        perf_dicts = gen_perf_dicts(y, predictions, is_classification)
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             scores_list.append(scores)
@@ -129,7 +130,7 @@ class BaseLinear:
             data_dict["data_type"] = "univariate"
 
             # Performance related (conditional)
-            perf_dict_obj = perf_dicts[i]
+            perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
             data_dict["perf"] = perf_dict_obj
             perf_list.append(perf_dict_obj)
 

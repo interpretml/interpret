@@ -22,7 +22,7 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
-    perf_dicts = gen_perf_dicts(y, predictions)
+    perf_dicts = gen_perf_dicts(y, predictions, False)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
         perf_dict_obj = perf_dicts[i]

@@ -1285,13 +1285,14 @@ class BaseEBM(BaseEstimator):
                 else:
                     data_dicts[row_idx]["values"].append("")
 
-        if is_classifier(self):
+        is_classification = is_classifier(self)
+        if is_classification:
             scores = EBMUtils.classifier_predict_proba(
                 instances,
                 self.feature_groups_,
                 self.additive_terms_,
                 self.intercept_,
-            )[:, 1]
+            )
         else:
             scores = EBMUtils.regressor_predict(
                 instances,
@@ -1301,13 +1302,14 @@ class BaseEBM(BaseEstimator):
             )
 
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, scores)
+        perf_dicts = gen_perf_dicts(y, scores, is_classification)
         for row_idx in range(n_rows):
-            perf = perf_dicts[row_idx]
+            perf = None if perf_dicts is None else perf_dicts[row_idx]
             perf_list.append(perf)
             data_dicts[row_idx]["perf"] = perf
 
-        selector = gen_local_selector(y, scores)
+        is_multiclass = is_classification and len(self.classes_) > 2
+        selector = gen_local_selector(y, scores, is_multiclass)
 
         internal_obj = {
             "overall": None,

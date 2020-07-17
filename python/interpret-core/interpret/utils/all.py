@@ -23,19 +23,35 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def gen_perf_dicts(y, scores):
+def gen_perf_dicts(y, scores, is_classification=True):
     if y is None or scores is None:
         return None
 
-    predicted_indexes = np.argmax(scores, axis=1)
+    n_dim = len(scores.shape)
+
+    if not is_classification:
+        predicted = scores
+    else:
+        if n_dim == 1:
+            scores = np.vstack([1 - scores, scores]).T
+        predicted = np.argmax(scores, axis=1)
 
     records = []
     for i, res in enumerate(y):
         di = {}
+        di["is_classification"] = is_classification
         di["actual"] = res
-        di["predicted"] = predicted_indexes[i]
-        di["actual_score"] = scores[i, y[i]]
-        di["predicted_score"] = scores[i, predicted_indexes[i]]
+
+        if is_classification:
+            di["predicted"] = predicted[i]
+            di["actual_score"] = scores[i, y[i]]
+            di["predicted_score"] = scores[i, predicted[i]]
+        else:
+            di["predicted"] = predicted[i]
+            di["actual_score"] = y[i]
+            di["predicted_score"] = scores[i]
+
+        records.append(di)
 
     return records
 
@@ -96,15 +112,15 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
         return df
 
 
-def gen_local_selector(y, y_hat, round=3):
+def gen_local_selector(y, scores, round=3, multiclass=False):
     records = []
 
-    for i in range(y_hat.shape[0]):
+    for i in range(scores.shape[0]):
         record = {}
-        record["Predicted"] = y_hat[i]
+        record["Predicted"] = scores[i].max() if multiclass else scores[i]
         if y is not None:
             record["Actual"] = y[i]
-            resid = y[i] - y_hat[i]
+            resid = y[i] - scores[i, y] if multiclass else y[i] - scores[i]
             record["Residual"] = resid
             record["AbsResidual"] = np.abs(resid)
         else:

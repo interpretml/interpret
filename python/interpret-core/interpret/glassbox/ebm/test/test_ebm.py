@@ -62,6 +62,7 @@ def test_ebm_synthetic_multiclass_pairwise():
         clf.fit(X, y)
 
 
+@pytest.mark.slow
 def test_ebm_synthetic_pairwise():
     a = np.random.randint(low=0, high=50, size=10000)
     b = np.random.randint(low=0, high=20, size=10000)
@@ -90,6 +91,7 @@ def test_ebm_synthetic_pairwise():
     assert clf_global.data(2)["scores"][0][0] > 5
 
 
+@pytest.mark.slow
 def test_prefit_ebm():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -219,6 +221,7 @@ def test_ebm_iris():
     _smoke_test_explanations(global_exp, local_exp, 6001)
 
 
+@pytest.mark.slow
 def test_ebm_sparse():
     """ Validate running EBM on scipy sparse data
     """
@@ -242,6 +245,7 @@ def test_ebm_sparse():
     _smoke_test_explanations(global_exp, local_exp, 6002)
 
 
+@pytest.mark.slow
 def test_zero_validation():
     data = synthetic_classification()
     X = data["full"]["X"]

@@ -7,6 +7,7 @@ from ..api.templates import FeatureValueExplanation
 from ..utils import gen_name_from_class, gen_local_selector
 from ..utils import gen_perf_dicts
 from ..utils import unify_data, unify_predict_fn
+import numpy as np
 import warnings
 
 
@@ -86,7 +87,7 @@ class LimeTabular(ExplainerMixin):
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions)
+        perf_dicts = gen_perf_dicts(y, predictions, False)
         for i, instance in enumerate(X):
             lime_explanation = self.lime.explain_instance(
                 instance, pred_fn, **self.explain_kwargs
@@ -102,7 +103,7 @@ class LimeTabular(ExplainerMixin):
                 values.append(instance[feat_idx])
             intercept = lime_explanation.intercept[1]
 
-            perf_dict_obj = perf_dicts[i]
+            perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
 
             scores_list.append(scores)
             perf_list.append(perf_dict_obj)
