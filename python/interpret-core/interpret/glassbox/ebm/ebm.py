@@ -1308,8 +1308,7 @@ class BaseEBM(BaseEstimator):
             perf_list.append(perf)
             data_dicts[row_idx]["perf"] = perf
 
-        is_multiclass = is_classification and len(self.classes_) > 2
-        selector = gen_local_selector(y, scores, is_multiclass)
+        selector = gen_local_selector(y, scores, is_classification=is_classification)
 
         internal_obj = {
             "overall": None,

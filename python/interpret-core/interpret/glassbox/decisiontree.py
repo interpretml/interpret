@@ -363,13 +363,13 @@ class BaseShallowDecisionTree:
 
         internal_obj = {"overall": None, "specific": data_dicts}
 
-        if is_classifier(self):
+        is_classification = is_classifier(self)
+        if is_classification:
             scores = self.predict_proba(X)[:, 1]
         else:
             scores = self.predict(X)
 
-        selector = gen_local_selector(y, scores)
-
+        selector = gen_local_selector(y, scores, is_classification=is_classification)
         return TreeExplanation(
             "local",
             internal_obj,

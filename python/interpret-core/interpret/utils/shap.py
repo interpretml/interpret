@@ -63,7 +63,7 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
             "value": {"dataset_x": X, "dataset_y": y},
         }
     )
-    selector = gen_local_selector(y, predictions)
+    selector = gen_local_selector(y, predictions, is_classification=False)
 
     return FeatureValueExplanation(
         "local",

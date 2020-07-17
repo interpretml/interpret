@@ -221,18 +221,17 @@ def test_ebm_iris():
     _smoke_test_explanations(global_exp, local_exp, 6001)
 
 
+@pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_sparse():
     """ Validate running EBM on scipy sparse data
     """
-    import sklearn.linear_model
     from sklearn.datasets import make_multilabel_classification
-    from scipy.special import expit
 
     np.random.seed(0)
-    n_features = 20
+    n_features = 5
     X, y = make_multilabel_classification(
-        n_samples=100, sparse=True, n_features=n_features, n_classes=1, n_labels=2
+        n_samples=20, sparse=True, n_features=n_features, n_classes=1, n_labels=2
     )
 
     # train linear model

@@ -112,15 +112,18 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
         return df
 
 
-def gen_local_selector(y, scores, round=3, multiclass=False):
+def gen_local_selector(y, scores, round=3, is_classification=True):
     records = []
+
+    if is_classification and len(scores.shape) == 1:
+        scores = np.vstack([1 - scores, scores]).T
 
     for i in range(scores.shape[0]):
         record = {}
-        record["Predicted"] = scores[i].max() if multiclass else scores[i]
+        record["Predicted"] = scores[i].max() if is_classification else scores[i]
         if y is not None:
             record["Actual"] = y[i]
-            resid = y[i] - scores[i, y] if multiclass else y[i] - scores[i]
+            resid = y[i] - scores[i, y[i]] if is_classification else y[i] - scores[i]
             record["Residual"] = resid
             record["AbsResidual"] = np.abs(resid)
         else:

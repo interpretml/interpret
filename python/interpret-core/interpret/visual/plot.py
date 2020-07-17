@@ -449,27 +449,26 @@ def _names_with_values(names, values):
     return li
 
 
-def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=False):
+# TODO: Adjust titles, push in class names to data dict ('meta' or similar).
+def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle="", start_zero=False):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
-
     scores = data_dict["scores"].copy()
     names = data_dict["names"].copy()
     values = data_dict.get("values", None)
-
     if values is not None:
         values = data_dict["values"].copy()
         names = _names_with_values(names, values)
-
-    # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
     if data_dict.get("perf", None) is not None and title == "":
         title_items = []
         title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
         title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
         title = " | ".join(title_items)
-
-    color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
-
+    if not multiclass:
+        #color by positive/negative:
+        color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
+    else:
+        color = []
     extra = data_dict.get("extra", None)
     if extra is not None:
         scores.extend(extra["scores"])
@@ -477,25 +476,32 @@ def plot_horizontal_bar(data_dict, title="", xtitle="", ytitle="", start_zero=Fa
         if values is not None:
             values.extend(extra["values"])
         color.extend([COLORS[2]] * len(extra["scores"]))
-
     x = scores
     y = names
-    trace = go.Bar(x=x, y=y, orientation="h", marker=dict(color=color))
+    traces = []
+    if multiclass:
+        for index, cls in enumerate(data_dict["class_names"]):
+            trace_scores = [x[index] for x in data_dict['scores']] + [data_dict['extra']['scores'][0][index]]
+            trace_names = data_dict['names'] + [data_dict['extra']['names']]
+            traces.append(go.Bar(y=trace_names, x=trace_scores, orientation='h', name=cls))
+    else:
+        traces.append(go.Bar(x=x, y=y, orientation="h", marker=dict(color=color)))
 
     if start_zero:
-        x_range = [0, max(x)]
+        x_range = [0, np.max(x)]
     else:
-        max_abs_x = max(np.abs(x))
+        max_abs_x = np.max(np.abs(x))
+        if multiclass:
+            max_abs_x = np.sum(np.array(x), axis=1)
         x_range = [-max_abs_x, max_abs_x]
-
     layout = dict(
         title=title,
         yaxis=dict(automargin=True, title=ytitle),
         xaxis=dict(range=x_range, title=xtitle),
     )
-
-    figure = go.Figure(data=[trace], layout=layout)
-
+    if multiclass:
+        layout['barmode'] = 'relative'
+    figure = go.Figure(data=traces, layout=layout)
     return figure
 
 

@@ -138,7 +138,7 @@ class LimeTabular(ExplainerMixin):
                 "value": {"dataset_x": X, "dataset_y": y},
             }
         )
-        selector = gen_local_selector(y, predictions)
+        selector = gen_local_selector(y, predictions, is_classification=False)
 
         return FeatureValueExplanation(
             "local",
