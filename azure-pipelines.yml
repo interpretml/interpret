@@ -302,7 +302,7 @@ jobs:
       set PATH=%PATH%;%GeckoWebDriver%
       python -m pytest -vv -n auto --runslow --runselenium --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     workingDirectory: python/interpret-core
-    condition: and(startsWith(variables['image.name'], 'windows'), or(ne(variables['Build.Reason'], 'Schedule'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
+    condition: and(startsWith(variables['image.name'], 'windows'), or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.SourceBranch'], 'refs/heads/master')))
     displayName: 'Run pytest (Windows scheduled / master)'
   - script: |
       python -m pytest -vv -n auto --runslow --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
