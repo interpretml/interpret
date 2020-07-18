@@ -21,6 +21,8 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
 
+IntEbmType k_randomSeed = 42424242;
+
 constexpr size_t k_SplitExploreDistance = 20;
 
 // keep k_SplitDeleted as -1 since we use this property to make comparisons faster below
@@ -2221,7 +2223,6 @@ INLINE_RELEASE static size_t RemoveMissingValues(const size_t cInstances, FloatE
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
    IntEbmType countMaximumBins,
@@ -2244,7 +2245,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    EBM_ASSERT(nullptr != maxValue);
 
    // TODO: 
-   //   - we shouldn't take a randomization seed from the user.. choosing the split points isn't that critical to have
+   //   - we shouldn't use randomness unless impossible to do otherwise.  choosing the split points isn't that critical to have
    //       variability for.  We can do things like hashing the data, etc to choose random values, and we should REALLY
    //       try to not use randomness, instead using things like index position, etc for that
    //       One option would be to hash the value in a cell and use the hash.  it will be randomly distributed in direction!
@@ -2257,10 +2258,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    //       4) if all the splits are the same from the center, we can use the values given to us to choose a direction
    //       5) if all of these things fail, we can use a random number
 
-   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: randomSeed=%" IntEbmTypePrintf ", countInstances=%" IntEbmTypePrintf 
+   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: countInstances=%" IntEbmTypePrintf 
       ", singleFeatureValues=%p, countMaximumBins=%" IntEbmTypePrintf ", countMinimumInstancesPerBin=%" IntEbmTypePrintf 
       ", cutPointsLowerBoundInclusive=%p, countCutPoints=%p, isMissing=%p, minValue=%p, maxValue=%p", 
-      randomSeed, 
       countInstances, 
       static_cast<void *>(singleFeatureValues), 
       countMaximumBins, 
@@ -2350,7 +2350,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                }
 
                RandomStream randomStream;
-               randomStream.Initialize(randomSeed);
+               randomStream.Initialize(k_randomSeed);
 
                // do this just once and reuse the random numbers
                FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
