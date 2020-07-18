@@ -102,6 +102,12 @@ struct SplitPoint final {
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
+   // TODO: instead of using m_bDeleted, make this a doubly linked list.  That way we can delete elements
+   //       by unlinking them, but we can also in theory transpose an element from one side to annother
+   //       if we want to rebalance them in some way.  This also eliminates all the checking to see if an
+   //       element is deleted, since we just go left or right
+   // TODO: once m_bDeleted is gone, we can replace m_bSplit by making m_iValAspirationalFloat == max
+
    bool           m_bDeleted; // TODO: replace this with m_pSplitLowerBoundary == nullptr
    bool           m_bSplit; // TODO: replace this with m_pSplitHigherBoundary == nullptr
 
@@ -725,13 +731,12 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
 
    FloatEbmType remainingDistance;
    if(PREDICTABLE(direction < 0)) {
-      EBM_ASSERT(iValBoundary <= static_cast<FloatEbmType>(iPrev));
+      // if we have a long-ish range of equal values, it can push our iPrev past our boundary
       remainingDistance = static_cast<FloatEbmType>(iPrev) - iValBoundary;
    } else {
-      EBM_ASSERT(static_cast<FloatEbmType>(iPrev) <= iValBoundary);
+      // if we have a long-ish range of equal values, it can push our iPrev past our boundary
       remainingDistance = iValBoundary - static_cast<FloatEbmType>(iPrev);
    }
-
 
    if(PREDICTABLE(k_cNeighbourExploreDistanceMax < cRanges)) {
       const size_t cRangesRemaining = cRanges - k_cNeighbourExploreDistanceMax;
@@ -795,9 +800,10 @@ static void BuildNeighbourhoodPlan(
    size_t cRanges = cRangesLower + cRangesHigher;
    const FloatEbmType iValAspirationalRelativeFloat = totalDistance / static_cast<FloatEbmType>(cRanges);
 
-   pSplitCur->m_iValAspirationalFloat = iValAspirationalRelativeFloat;
-
    const FloatEbmType iLandingValFloat = iValAspirationalLowerFloat + iValAspirationalRelativeFloat * static_cast<FloatEbmType>(cRangesLower);
+
+   pSplitCur->m_iValAspirationalFloat = iLandingValFloat;
+
    EBM_ASSERT(FloatEbmType { 0 } <= iLandingValFloat);
    size_t iLandingVal = static_cast<size_t>(iLandingValFloat);
    if(UNLIKELY(cSplittableItems <= iLandingVal)) {
@@ -816,30 +822,19 @@ static void BuildNeighbourhoodPlan(
    const size_t iValHighChoice = pNeighbourJump->m_iStartNext - iValuesStart;
 
    FloatEbmType distanceLowFloat;
-   FloatEbmType distanceHighFloat;
-
    if(k_illegalIndex == iValLower) {
       distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowerFloat;
    } else {
       distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice - iValLower);
    }
-
-   if(k_illegalIndex == iValHigher) {
-      distanceHighFloat = static_cast<FloatEbmType>(iValAspirationalHigherFloat)
-         - static_cast<FloatEbmType>(iValLowChoice);
-   } else {
-      distanceHighFloat = static_cast<FloatEbmType>(iValHigher - iValLowChoice);
-   }
-
-   const FloatEbmType iValLowChoiceFloat = static_cast<FloatEbmType>(iValLowChoice);
-   const size_t cRangesLowerLowerOriginal = CalculateRangesLeft(iValLowChoiceFloat, totalDistance, cRanges);
+   const size_t cRangesLowerLowerOriginal = CalculateRangesLeft(distanceLowFloat, totalDistance, cRanges);
 
    EBM_ASSERT(1 <= cRangesLowerLowerOriginal);
    EBM_ASSERT(1 + cRangesLowerLowerOriginal <= cRanges);
 
    bool bCanSplitLow = true;
    if(k_illegalIndex == iValLower) {
-      if(iValLowChoiceFloat - iValAspirationalLowerFloat < cMinimumInstancesPerBinFloat) {
+      if(static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowerFloat < cMinimumInstancesPerBinFloat) {
          bCanSplitLow = false;
       }
    } else {
@@ -915,7 +910,7 @@ static void BuildNeighbourhoodPlan(
       }
    }
 
-   const FloatEbmType iValHighChoiceFloat = static_cast<FloatEbmType>(iValHighChoice);
+
    //const size_t cRangesHigherLowerOriginal = CalculateRangesLeft(iValHighChoiceFloat, totalDistance, cRanges);
 
    //EBM_ASSERT(1 <= cRangesHigherLowerOriginal);
@@ -923,7 +918,7 @@ static void BuildNeighbourhoodPlan(
 
    bool bCanSplitHigh = true;
    if(k_illegalIndex == iValHigher) {
-      if(iValAspirationalHigherFloat - iValHighChoiceFloat < cMinimumInstancesPerBinFloat) {
+      if(iValAspirationalHigherFloat - static_cast<FloatEbmType>(iValHighChoice) < cMinimumInstancesPerBinFloat) {
          bCanSplitHigh = false;
       }
    } else {
@@ -971,6 +966,12 @@ static size_t SplitSegment(
    const size_t cSplittableItems,
    const NeighbourJump * const aNeighbourJumps
 ) noexcept {
+   EBM_ASSERT(nullptr != pBestSplitPoints);
+
+   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   // we need to be able to put down at least one split not at the edges
+   EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
+   EBM_ASSERT(nullptr != aNeighbourJumps);
 
    // TODO: someday, for performance, it might make sense to use a non-allocating tree, like:
    //       https://github.com/attractivechaos/klib/blob/master/kavl.h
@@ -979,23 +980,12 @@ static size_t SplitSegment(
    //   // individual integers can no longer be represented by a double
    //   // use integer math and integer based fractions (this is also slighly faster)
 
-
-
    // this function assumes that there will either be splits on either sides of the ranges OR that we're 
    // at the end of a range.  We don't handle the special case of there only being 1 split in a range that needs
    // to be chosen.  That's a special case handled elsewhere
 
    try {
-
-      EBM_ASSERT(nullptr != pBestSplitPoints);
-      EBM_ASSERT(!pBestSplitPoints->empty());
-
-      EBM_ASSERT(1 <= cMinimumInstancesPerBin);
-      // we need to be able to put down at least one split not at the edges
-      EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
-      EBM_ASSERT(nullptr != aNeighbourJumps);
-
-      do {
+      while(!pBestSplitPoints->empty()) {
          // We've located our desired split points previously.  Sometimes those desired split points
          // are placed in the bulk of a long run of identical values and we have to decide if we'll be putting
          // the split at the start or the end of those long run of identical values.
@@ -1462,9 +1452,7 @@ static size_t SplitSegment(
 
          // TODO: do the high section now with CalculatePriority
 
-      } while(!pBestSplitPoints->empty());
-
-
+      }
    } catch(...) {
       // TODO : HANDLE THIS
    }
@@ -1594,26 +1582,26 @@ static size_t TreeSearchSplitSegment(
 
       pSplit = &aSplitsWithENDPOINTS[1];
       for(size_t i = 1; i < cRanges; ++i) {
-         const size_t iLowBound = i <= k_SplitExploreDistance ? 0 : i - k_SplitExploreDistance;
-         size_t iHighBound = i + k_SplitExploreDistance;
-         iHighBound = cRanges < iHighBound ? cRanges : iHighBound;
+         if(LIKELY(!pSplit->IsDeleted())) {
+            const size_t iLowBound = i <= k_SplitExploreDistance ? 0 : i - k_SplitExploreDistance;
+            size_t iHighBound = i + k_SplitExploreDistance;
+            iHighBound = cRanges < iHighBound ? cRanges : iHighBound;
 
-         EBM_ASSERT(iLowBound < i);
-         EBM_ASSERT(i < iHighBound);
+            EBM_ASSERT(iLowBound < i);
+            EBM_ASSERT(i < iHighBound);
 
-         const FloatEbmType iLowValFloat = stepInit * iLowBound;
-         const FloatEbmType iHighValFloat = stepInit * iHighBound;
+            const FloatEbmType iLowValFloat = stepInit * iLowBound;
+            const FloatEbmType iHighValFloat = stepInit * iHighBound;
 
-         CalculatePriority(
-            iLowValFloat,
-            iHighValFloat,
-            pSplit
-         );
-         pBestSplitPoints->insert(pSplit);
-
+            CalculatePriority(
+               iLowValFloat,
+               iHighValFloat,
+               pSplit
+            );
+            pBestSplitPoints->insert(pSplit);
+         }
          ++pSplit;
       }
-
    } catch(...) {
       // TODO: handle this!
    }
