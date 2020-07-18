@@ -385,8 +385,8 @@ template<bool bClassification>
 class CompareTreeNodeSplittingGain final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
-   INLINE_ALWAYS bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const {
-      return lhs->AFTER_GetSplitGain() <= rhs->AFTER_GetSplitGain();
+   INLINE_ALWAYS bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const noexcept {
+      return lhs->AFTER_GetSplitGain() < rhs->AFTER_GetSplitGain();
    }
 };
 

@@ -138,9 +138,9 @@ public:
    // TODO : check how efficient this is.  Is there a faster way to to this
    INLINE_ALWAYS bool operator() (const SplitPoint * const & lhs, const SplitPoint * const & rhs) const noexcept {
       if(UNLIKELY(lhs->m_priority == rhs->m_priority)) {
-         return UNPREDICTABLE(lhs->m_uniqueRandom <= rhs->m_uniqueRandom);
+         return UNPREDICTABLE(lhs->m_uniqueRandom < rhs->m_uniqueRandom);
       } else {
-         return UNPREDICTABLE(lhs->m_priority <= rhs->m_priority);
+         return UNPREDICTABLE(lhs->m_priority < rhs->m_priority);
       }
    }
 };
@@ -683,26 +683,32 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
       EBM_ASSERT(pNeighbourJump->m_iStartNext <= iValuesStart + cSplittableItems);
       EBM_ASSERT(pNeighbourJump->m_iStartCur < iValuesStart + cSplittableItems);
 
-      size_t iCur = *(signed_neighbour_type { 0 } == (choices & signed_neighbour_type { 1 }) ?
+      size_t iCur = *(signed_neighbour_type { 0 } == UNPREDICTABLE(choices & signed_neighbour_type { 1 }) ?
          &pNeighbourJump->m_iStartCur : &pNeighbourJump->m_iStartNext);
 
-      size_t diffPrev;
-      if(direction < 0) {
-         EBM_ASSERT(iCur <= iPrev);
+      // because we try both sides of each range, it's possible that our previous index chose the lower values
+      // and our current one chooses the higher value, and we then travel "backwards" 
+      ptrdiff_t diffPrev;
+      if(PREDICTABLE(direction < 0)) {
          diffPrev = iPrev - iCur;
       } else {
-         EBM_ASSERT(iPrev <= iCur);
          diffPrev = iCur - iPrev;
       }
-      iPrev = iCur;
 
       FloatEbmType diffFromIdeal;
-      if(UNLIKELY(diffPrev < cMinimumInstancesPerBin)) {
+      if(UNLIKELY(diffPrev < static_cast<ptrdiff_t>(cMinimumInstancesPerBin))) {
+         if(PREDICTABLE(0 < diffPrev)) {
+            iPrev = iCur;
+         }
+
          // strongly penalize not being able to make a range by making the penalty equal to complete elimination
          // this pentaly is chosen to be so large that even if all the rest of our cuts lead to zero length ranges
          // the loss of this single range would exceed that
          diffFromIdeal = idealWidth * (k_cNeighbourExploreDistanceMax + static_cast<unsigned int>(1));
       } else {
+         EBM_ASSERT(0 < diffPrev);
+         iPrev = iCur;
+
          diffFromIdeal = idealWidth - static_cast<FloatEbmType>(diffPrev);
          // only penalize being too small
          diffFromIdeal = diffFromIdeal < FloatEbmType { 0 } ? FloatEbmType { 0 } : diffFromIdeal;
@@ -718,7 +724,7 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
    }
 
    FloatEbmType remainingDistance;
-   if(direction < 0) {
+   if(PREDICTABLE(direction < 0)) {
       EBM_ASSERT(iValBoundary <= static_cast<FloatEbmType>(iPrev));
       remainingDistance = static_cast<FloatEbmType>(iPrev) - iValBoundary;
    } else {
@@ -726,9 +732,9 @@ INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
       remainingDistance = iValBoundary - static_cast<FloatEbmType>(iPrev);
    }
 
-   size_t cRangesRemaining = cRanges - k_cNeighbourExploreDistanceMax;
 
-   if(0 != cRangesRemaining) {
+   if(PREDICTABLE(k_cNeighbourExploreDistanceMax < cRanges)) {
+      const size_t cRangesRemaining = cRanges - k_cNeighbourExploreDistanceMax;
       const FloatEbmType remainingDistancePerRange = remainingDistance / static_cast<FloatEbmType>(cRangesRemaining);
 
       FloatEbmType diffFromIdeal;
@@ -1225,7 +1231,7 @@ static size_t SplitSegment(
          SplitPoint * pSplitHighHighBoundary = pSplitBest;
          size_t cHighHighRangesBoundary = k_SplitExploreDistance;
          bool bHighHighSplit;
-         while(true) {
+         do {
             do {
                ++pSplitHighHighBoundary;
             } while(UNLIKELY(pSplitHighHighBoundary->IsDeleted()));
@@ -1347,11 +1353,11 @@ static size_t SplitSegment(
             do {
                --pSplitLowerNeighbourhoodCur;
             } while(UNLIKELY(pSplitLowerNeighbourhoodCur->IsDeleted()));
-            EBM_ASSERT(!pSplitLowerNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
             if(pSplitLowerNeighbourhoodCur == pSplitLowLowBoundary) {
                break;
             }
+            EBM_ASSERT(!pSplitLowerNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
             EBM_ASSERT(!pSplitLowLowNeighbourhoodWindow->IsDeleted());
             if(PREDICTABLE(k_illegalIndex == iValLowLow)) {
@@ -1569,10 +1575,10 @@ static size_t TreeSearchSplitSegment(
             cSplittableItems,
             aNeighbourJumps,
             i - iLowBound,
-            0 == iLowBound ? iLowBound : k_illegalIndex,
+            size_t { 0 } == iLowBound ? size_t { 0 } : k_illegalIndex,
             iLowValFloat,
             iHighBound - i,
-            cRanges == iHighBound ? iHighBound : k_illegalIndex,
+            cRanges == iHighBound ? cSplittableItems : k_illegalIndex,
             iHighValFloat,
             pSplit
          );
@@ -1677,8 +1683,8 @@ static bool StuffSplitsIntoSplittingRanges(
          const SplittingRange * const & rhs
       ) const noexcept {
          return lhs->m_avgRangeWidthAfterAddingOneSplit == rhs->m_avgRangeWidthAfterAddingOneSplit ?
-            (lhs->m_uniqueRandom <= rhs->m_uniqueRandom) :
-            (lhs->m_avgRangeWidthAfterAddingOneSplit <= rhs->m_avgRangeWidthAfterAddingOneSplit);
+            (lhs->m_uniqueRandom < rhs->m_uniqueRandom) :
+            (lhs->m_avgRangeWidthAfterAddingOneSplit < rhs->m_avgRangeWidthAfterAddingOneSplit);
       }
    };
 
