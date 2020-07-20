@@ -1431,6 +1431,8 @@ static size_t SplitSegment(
             pSplitAspirational->m_iValAspirationalFloat = iValAspirationalFloat;
          }
 
+
+
          SplitPoint * pSplitLowLowNeighbourhoodWindow = pSplitLowLowWindow;
          SplitPoint * pSplitLowHighNeighbourhoodWindow = pSplitCur;
          size_t cLowHighRangesNeighbourhoodWindow = 0;
@@ -1438,7 +1440,7 @@ static size_t SplitSegment(
          size_t iValLowLow = k_splitValue == cSplitMoveThisLowLow ? pSplitLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
          size_t iValLowHigh = iVal;
 
-         SplitPoint * pSplitLowerNeighbourhoodCur = pSplitCur;
+         SplitPoint * pSplitLowNeighbourhoodCur = pSplitCur;
 
          while(true) {
             if(PREDICTABLE(k_illegalIndex == iValLowLow)) {
@@ -1468,8 +1470,8 @@ static size_t SplitSegment(
                ++cLowHighRangesNeighbourhoodWindow;
             }
 
-            pSplitLowerNeighbourhoodCur = pSplitLowerNeighbourhoodCur->m_pPrev;
-            EBM_ASSERT(!pSplitLowerNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
+            pSplitLowNeighbourhoodCur = pSplitLowNeighbourhoodCur->m_pPrev;
+            EBM_ASSERT(!pSplitLowNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
             BuildNeighbourhoodPlan(
                cMinimumInstancesPerBin,
@@ -1485,19 +1487,74 @@ static size_t SplitSegment(
                iValLowHigh,
                pSplitLowHighNeighbourhoodWindow->m_iValAspirationalFloat,
 
-               pSplitLowerNeighbourhoodCur
+               pSplitLowNeighbourhoodCur
             );
          }
 
-         // TODO: do the high section now with BuildNeighbourhoodPlan
+         SplitPoint * pSplitHighHighNeighbourhoodWindow = pSplitHighHighWindow;
+         SplitPoint * pSplitHighLowNeighbourhoodWindow = pSplitCur;
+         size_t cHighLowRangesNeighbourhoodWindow = 0;
 
+         size_t iValHighHigh = k_splitValue == cSplitMoveThisHighHigh ? pSplitHighHighNeighbourhoodWindow->m_iVal : k_illegalIndex;
+         size_t iValHighLow = iVal;
+
+         SplitPoint * pSplitHighNeighbourhoodCur = pSplitCur;
+
+         while(true) {
+            if(PREDICTABLE(k_illegalIndex == iValHighHigh)) {
+               EBM_ASSERT(!pSplitHighHighNeighbourhoodWindow->IsSplit());
+               pSplitHighHighNeighbourhoodWindow = pSplitHighHighNeighbourhoodWindow->m_pNext;
+               if(UNLIKELY(pSplitHighHighNeighbourhoodWindow->IsSplit())) {
+                  iValHighHigh = pSplitHighHighNeighbourhoodWindow->m_iVal;
+               }
+            } else {
+               EBM_ASSERT(pSplitHighHighNeighbourhoodWindow->IsSplit());
+               --cHighHighRangesWindow;
+               if(UNLIKELY(0 == cHighHighRangesWindow)) {
+                  break;
+               }
+            }
+
+            if(PREDICTABLE(k_SplitExploreDistance == cHighLowRangesNeighbourhoodWindow)) {
+               pSplitHighLowNeighbourhoodWindow = pSplitHighLowNeighbourhoodWindow->m_pNext;
+               EBM_ASSERT(!pSplitHighLowNeighbourhoodWindow->IsSplit());
+               iValHighLow = k_illegalIndex;
+               if(UNLIKELY(pSplitHighLowNeighbourhoodWindow == pSplitHighBoundary)) {
+                  break;
+               }
+            } else {
+               EBM_ASSERT(pSplitHighLowNeighbourhoodWindow->IsSplit());
+               EBM_ASSERT(k_illegalIndex != iValHighLow);
+               ++cHighLowRangesNeighbourhoodWindow;
+            }
+
+            pSplitHighNeighbourhoodCur = pSplitHighNeighbourhoodCur->m_pNext;
+            EBM_ASSERT(!pSplitHighNeighbourhoodCur->IsSplit());
+
+            BuildNeighbourhoodPlan(
+               cMinimumInstancesPerBin,
+               iValuesStart,
+               cSplittableItems,
+               aNeighbourJumps,
+
+               cHighLowRangesNeighbourhoodWindow,
+               iValHighLow,
+               pSplitHighLowNeighbourhoodWindow->m_iValAspirationalFloat,
+
+               cHighHighRangesWindow,
+               iValHighHigh,
+               pSplitHighHighNeighbourhoodWindow->m_iValAspirationalFloat,
+
+               pSplitHighNeighbourhoodCur
+            );
+         }
 
          pBestSplitPoints->erase(pSplitCur);
 
          SplitPoint * pSplitLowLowPriorityWindow = pSplitLowLowWindow;
          SplitPoint * pSplitLowHighPriorityWindow = pSplitCur;
          size_t cLowHighRangesPriorityWindow = 0;
-         SplitPoint * pSplitLowerPriorityCur = pSplitCur;
+         SplitPoint * pSplitLowPriorityCur = pSplitCur;
 
          while(true) {
             if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesPriorityWindow)) {
@@ -1511,33 +1568,72 @@ static size_t SplitSegment(
                ++cLowHighRangesPriorityWindow;
             }
 
-            pSplitLowerPriorityCur = pSplitLowerPriorityCur->m_pPrev;
+            pSplitLowPriorityCur = pSplitLowPriorityCur->m_pPrev;
             if(PREDICTABLE(k_splitValue != cSplitMoveThisLowLow)) {
                EBM_ASSERT(!pSplitLowLowPriorityWindow->IsSplit());
                pSplitLowLowPriorityWindow = pSplitLowLowPriorityWindow->m_pPrev;
                cSplitMoveThisLowLow = pSplitLowLowPriorityWindow->m_cSplitMoveThis;
             } else {
                EBM_ASSERT(pSplitLowLowPriorityWindow->IsSplit());
-               if(UNLIKELY(pSplitLowerPriorityCur == pSplitLowLowPriorityWindow)) {
-                  EBM_ASSERT(pSplitLowerPriorityCur->IsSplit());
+               if(UNLIKELY(pSplitLowPriorityCur == pSplitLowLowPriorityWindow)) {
+                  EBM_ASSERT(pSplitLowPriorityCur->IsSplit());
                   break;
                }
             }
-            EBM_ASSERT(!pSplitLowerPriorityCur->IsSplit());
+            EBM_ASSERT(!pSplitLowPriorityCur->IsSplit());
 
-            pBestSplitPoints->erase(pSplitLowerPriorityCur);
+            pBestSplitPoints->erase(pSplitLowPriorityCur);
 
             CalculatePriority(
                pSplitLowLowPriorityWindow->m_iValAspirationalFloat,
                pSplitLowHighPriorityWindow->m_iValAspirationalFloat,
-               pSplitLowerPriorityCur
+               pSplitLowPriorityCur
             );
 
-            pBestSplitPoints->insert(pSplitLowerPriorityCur);
+            pBestSplitPoints->insert(pSplitLowPriorityCur);
          }
 
-         // TODO: do the high section now with CalculatePriority
+         SplitPoint * pSplitHighHighPriorityWindow = pSplitHighHighWindow;
+         SplitPoint * pSplitHighLowPriorityWindow = pSplitCur;
+         size_t cHighLowRangesPriorityWindow = 0;
+         SplitPoint * pSplitHighPriorityCur = pSplitCur;
 
+         while(true) {
+            if(PREDICTABLE(k_SplitExploreDistance == cHighLowRangesPriorityWindow)) {
+               pSplitHighLowPriorityWindow = pSplitHighLowPriorityWindow->m_pNext;
+               EBM_ASSERT(!pSplitHighLowPriorityWindow->IsSplit());
+               if(UNLIKELY(pSplitHighLowPriorityWindow == pSplitHighBoundary)) {
+                  break;
+               }
+            } else {
+               EBM_ASSERT(pSplitHighLowPriorityWindow->IsSplit());
+               ++cHighLowRangesPriorityWindow;
+            }
+
+            pSplitHighPriorityCur = pSplitHighPriorityCur->m_pNext;
+            if(PREDICTABLE(k_splitValue != cSplitMoveThisHighHigh)) {
+               EBM_ASSERT(!pSplitHighHighPriorityWindow->IsSplit());
+               pSplitHighHighPriorityWindow = pSplitHighHighPriorityWindow->m_pNext;
+               cSplitMoveThisHighHigh = pSplitHighHighPriorityWindow->m_cSplitMoveThis;
+            } else {
+               EBM_ASSERT(pSplitHighHighPriorityWindow->IsSplit());
+               if(UNLIKELY(pSplitHighPriorityCur == pSplitHighHighPriorityWindow)) {
+                  EBM_ASSERT(pSplitHighPriorityCur->IsSplit());
+                  break;
+               }
+            }
+            EBM_ASSERT(!pSplitHighPriorityCur->IsSplit());
+
+            pBestSplitPoints->erase(pSplitHighPriorityCur);
+
+            CalculatePriority(
+               pSplitHighLowPriorityWindow->m_iValAspirationalFloat,
+               pSplitHighHighPriorityWindow->m_iValAspirationalFloat,
+               pSplitHighPriorityCur
+            );
+
+            pBestSplitPoints->insert(pSplitHighPriorityCur);
+         }
       }
    } catch(...) {
       // TODO : HANDLE THIS
@@ -1669,7 +1765,7 @@ static size_t TreeSearchSplitSegment(
 
       size_t iPriority = 1;
       // we might write code above that removes SplitPoints, which if it were true could mean no legal splits
-      for(SplitPoint * pSplit = aSplitsWithENDPOINTS[0].m_pNext ; nullptr != pSplit ; pSplit = pSplit->m_pNext) {
+      for(SplitPoint * pSplit = aSplitsWithENDPOINTS[0].m_pNext ; pSplitNext != pSplit ; pSplit = pSplit->m_pNext) {
          const size_t iLowBound = iPriority <= k_SplitExploreDistance ? 0 : iPriority - k_SplitExploreDistance;
          size_t iHighBound = iPriority + k_SplitExploreDistance;
          iHighBound = cRanges < iHighBound ? cRanges : iHighBound;
