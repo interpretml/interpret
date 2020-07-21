@@ -10,7 +10,7 @@ def test_gen_perf_dicts_regression():
     expected_actual_score = np.array([0, 0.5])
     expected_predicted_score = np.array([0.9, 0.1])
 
-    records = gen_perf_dicts(y, scores, False)
+    records = gen_perf_dicts(scores, y, False)
     for i, di in enumerate(records):
         assert di["actual"] == y[i]
         assert di["predicted"] == expected_predicted[i]
@@ -30,7 +30,7 @@ def test_gen_perf_dicts_classification():
     expected_actual_score = np.array([0.9, 0.4])
     expected_predicted_score = np.array([0.9, 0.5])
 
-    records = gen_perf_dicts(y, scores, True)
+    records = gen_perf_dicts(scores, y, True)
     for i, di in enumerate(records):
         assert di["actual"] == y[i]
         assert di["predicted"] == expected_predicted[i]

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.2.0] - 2020-07-15
+## [v0.2.0] - 2020-07-21
 ### Breaking Changes
 - With warning, EBM classifier adapts internal validation size
   when there are too few instances relative to number of unique classes.
@@ -34,7 +34,8 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
     feature_step_n_inner_bags -> inner_bags
     training_step_epsiodes -> DROPPED
     max_tree_splits -> max_leaves
-    min_cases_for_splits -> min_samples_leaf
+    min_cases_for_splits -> DROPPED
+    min_samples_leaf -> ADDED (Minimum number of samples that are in a leaf)
     binning_strategy -> binning
     max_n_bins -> max_bins
     ```
@@ -50,25 +51,30 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
     feature_step_n_inner_bags -> inner_bags
     training_step_epsiodes -> DROPPED
     max_tree_splits -> max_leaves
-    min_cases_for_splits -> min_samples_leaf
+    min_cases_for_splits -> DROPPED
+    min_samples_leaf -> ADDED (Minimum number of samples that are in a leaf)
     binning_strategy -> binning
     max_n_bins -> max_bins
 
     attribute_sets_ -> feature_groups_
-    attribute_set_models_ -> additive_terms_
+    attribute_set_models_ -> additive_terms_ (Pairs are now transposed)
     model_errors_ -> term_standard_deviations_
 
     main_episode_idxs_ -> breakpoint_iteration_[0]
     inter_episode_idxs_ -> breakpoint_iteration_[1]
 
     mean_abs_scores_ -> feature_importances_
+    class_idx_ -> ADDED (Maps class names to class indexes used internally)
     ```
 ### Fixed
 - Internal fixes and refactor for native code.
 - Updated dependencies for JavaScript layer.
 - Fixed rendering bugs and performance issues around cloud Jupyter notebooks.
-### Added
-- Experimental support for AzureML notebook VM.
+- Logging flushing bug fixed.
+- Labels that are shaped as nx1 matrices now automatically transform to vectors for training.
+### Experimental (WIP)
+- Added support for AzureML notebook VM.
+- Added local explanation visualizations for multiclass EBM.
 
 ## [v0.1.22] - 2020-04-27
 ### Upcoming Breaking Changes

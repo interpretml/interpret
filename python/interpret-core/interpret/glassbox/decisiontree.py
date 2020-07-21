@@ -3,7 +3,7 @@
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import unify_data
-from ..utils import gen_name_from_class, gen_local_selector, gen_global_selector
+from ..utils import gen_name_from_class, gen_local_selector, gen_global_selector, gen_perf_dicts
 
 from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.tree import DecisionTreeClassifier as SKDT
@@ -350,6 +350,14 @@ class BaseShallowDecisionTree:
             self._model().decision_path(instance.reshape(1, -1)).nonzero()[1] + 1
             for instance in X
         ]
+
+        is_classification = is_classifier(self)
+        if is_classification:
+            predictions = self.predict_proba(X)[:, 1]
+        else:
+            predictions = self.predict(X)
+
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
         data_dicts = [
             {
                 "type": "tree",
@@ -357,19 +365,14 @@ class BaseShallowDecisionTree:
                 "nodes": nodes,
                 "edges": edges,
                 "decision": decision,
+                "perf": None if perf_dicts is None else perf_dicts[i]
             }
-            for decision in decisions
+            for i, decision in enumerate(decisions)
         ]
 
         internal_obj = {"overall": None, "specific": data_dicts}
 
-        is_classification = is_classifier(self)
-        if is_classification:
-            scores = self.predict_proba(X)[:, 1]
-        else:
-            scores = self.predict(X)
-
-        selector = gen_local_selector(y, scores, is_classification=is_classification)
+        selector = gen_local_selector(data_dicts, is_classification=is_classification)
         return TreeExplanation(
             "local",
             internal_obj,

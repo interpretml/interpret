@@ -23,10 +23,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def gen_perf_dicts(y, scores, is_classification=True):
-    if y is None or scores is None:
-        return None
-
+def gen_perf_dicts(scores, y=None, is_classification=True):
     n_dim = len(scores.shape)
 
     if not is_classification:
@@ -37,18 +34,18 @@ def gen_perf_dicts(y, scores, is_classification=True):
         predicted = np.argmax(scores, axis=1)
 
     records = []
-    for i, res in enumerate(y):
+    for i, _ in enumerate(scores):
         di = {}
         di["is_classification"] = is_classification
-        di["actual"] = res
+        di["actual"] = np.nan if y is None else y[i]
 
         if is_classification:
             di["predicted"] = predicted[i]
-            di["actual_score"] = scores[i, y[i]]
+            di["actual_score"] = np.nan if y is None else scores[i, y[i]]
             di["predicted_score"] = scores[i, predicted[i]]
         else:
             di["predicted"] = predicted[i]
-            di["actual_score"] = y[i]
+            di["actual_score"] = np.nan if y is None else y[i]
             di["predicted_score"] = scores[i]
 
         records.append(di)
@@ -112,28 +109,34 @@ def gen_global_selector(X, feature_names, feature_types, importance_scores, roun
         return df
 
 
-def gen_local_selector(y, scores, round=3, is_classification=True):
+def gen_local_selector(data_dicts, round=3, is_classification=True):
     records = []
 
-    if is_classification and len(scores.shape) == 1:
-        scores = np.vstack([1 - scores, scores]).T
-
-    for i in range(scores.shape[0]):
+    for data_dict in data_dicts:
+        perf_dict = data_dict["perf"]
         record = {}
-        record["Predicted"] = scores[i].max() if is_classification else scores[i]
-        if y is not None:
-            record["Actual"] = y[i]
-            resid = y[i] - scores[i, y[i]] if is_classification else y[i] - scores[i]
-            record["Residual"] = resid
-            record["AbsResidual"] = np.abs(resid)
-        else:
-            record["Actual"] = np.nan
-            record["Residual"] = np.nan
-            record["AbsResidual"] = np.nan
+        record["PrScore"] = perf_dict["predicted_score"]
+        record["AcScore"] = perf_dict["actual_score"]
+
+        if is_classification:
+            record["Predicted"] = perf_dict["predicted"]
+            record["Actual"] = perf_dict["actual"]
+
+        record["Resid"] = record["AcScore"] - record["PrScore"]
+        record["AbsResid"] = abs(record["Resid"])
 
         records.append(record)
 
-    columns = ["Predicted", "Actual", "Residual", "AbsResidual"]
+    if is_classification:
+        columns = [
+            "Predicted", "PrScore", "Actual", "AcScore",
+            "Resid", "AbsResid"
+        ]
+    else:
+        columns = [
+            "Predicted", "Actual", "Resid", "AbsResid"
+        ]
+
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
@@ -226,7 +229,10 @@ def unify_vector(data):
     if isinstance(data, Series):
         new_data = data.values
     elif isinstance(data, np.ndarray):
-        new_data = data
+        if data.ndim > 1:
+            new_data = data.ravel()
+        else:
+            new_data = data
     elif isinstance(data, list):
         new_data = np.array(data)
     elif isinstance(data, NDFrame) and data.shape[1] == 1:

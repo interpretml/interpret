@@ -16,6 +16,14 @@ log = logging.getLogger(__name__)
 COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
 
 
+def is_multiclass_global_data_dict(data_dict):
+    return isinstance(data_dict["scores"], np.ndarray) and data_dict["scores"].ndim == 2
+
+
+def is_multiclass_local_data_dict(data_dict):
+    return isinstance(data_dict["scores"][0], np.ndarray) and len(data_dict["scores"][0]) > 2
+
+
 def plot_performance_curve(
     data_dict, title="", xtitle="", ytitle="", auc_prefix="", baseline=False
 ):
@@ -120,11 +128,12 @@ def plot_continuous_bar(
 
     if multiclass:
         for i in range(y_vals.shape[1]):
+            class_name = "Class {}".format(i) if "meta" not in data_dict else data_dict["meta"]["label_names"][i]
             class_line = go.Scatter(
                 x=new_x_vals,
                 y=new_y_vals[:, i],
                 line=dict(shape="hvh"),
-                name="Class " + str(i),
+                name=class_name,
                 mode="lines",
             )
             data.append(class_line)
@@ -460,9 +469,27 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
         values = data_dict["values"].copy()
         names = _names_with_values(names, values)
     if data_dict.get("perf", None) is not None and title == "":
+        # Predicted (y): prob_score | Actual (y_hat): prob_score
+        # Predicted (y) | Actual (y_hat)
         title_items = []
-        title_items.append("Predicted {0:.2f}".format(data_dict["perf"]["predicted"]))
-        title_items.append("Actual {0:.2f}".format(data_dict["perf"]["actual"]))
+
+        predicted = data_dict["perf"]["predicted"]
+        actual = data_dict["perf"]["actual"]
+        predicted_score = data_dict["perf"]["predicted_score"]
+        actual_score = data_dict["perf"]["actual_score"]
+
+        if "meta" in data_dict and "label_names" in data_dict["meta"]:  # Upgraded classification
+            label_names = data_dict["meta"]["label_names"]
+            predicted = label_names[predicted]
+            actual = label_names[actual]
+            title_items.append("Predicted ({}): {:.3f}".format(predicted, predicted_score))
+            title_items.append("Actual ({}): {:.3f}".format(actual, actual_score))
+        else:  # Regression or old form of classification
+            predicted_score = _pretty_number(predicted_score)
+            actual_score = _pretty_number(actual_score)
+            title_items.append("Predicted ({})".format(predicted_score))
+            title_items.append("Actual ({})".format(actual_score))
+
         title = " | ".join(title_items)
     if not multiclass:
         #color by positive/negative:
@@ -480,7 +507,7 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
     y = names
     traces = []
     if multiclass:
-        for index, cls in enumerate(data_dict["class_names"]):
+        for index, cls in enumerate(data_dict["meta"]["label_names"]):
             trace_scores = [x[index] for x in data_dict['scores']] + [data_dict['extra']['scores'][0][index]]
             trace_names = data_dict['names'] + [data_dict['extra']['names']]
             traces.append(go.Bar(y=trace_names, x=trace_scores, orientation='h', name=cls))

@@ -5,12 +5,19 @@ import pytest
 import numpy as np
 import pandas as pd
 from .. import gen_feat_val_list, gen_name_from_class
-from .. import reverse_map, unify_data
+from .. import reverse_map, unify_data, unify_vector
 
 
 @pytest.fixture
 def fixture_feat_val_list():
     return [("race", 3), ("age", -2), ("gender", 1)]
+
+
+def test_unify_vector_on_ndim_array():
+    y = np.array([[0], [1], [2], [3]])
+    expected = np.array([0, 1, 2, 3])
+    new_y = unify_vector(y)
+    assert np.all(new_y == expected)
 
 
 def test_unify_fails_on_missing():

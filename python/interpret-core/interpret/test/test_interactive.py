@@ -55,6 +55,7 @@ def wait_for_reachable(timeout=5):
     return success
 
 
+@pytest.mark.slow
 def test_shutdown():
     target_addr = ("127.0.0.1", 7000)
     set_show_addr(target_addr)
@@ -72,6 +73,7 @@ def test_shutdown():
     assert actual_response == expected_response
 
 
+@pytest.mark.slow
 def test_addr_assignment():
     target_addr = ("127.0.0.1", 7001)
     set_show_addr(target_addr)
@@ -83,6 +85,7 @@ def test_addr_assignment():
     shutdown_show_server()
 
 
+@pytest.mark.slow
 def test_status_show_server():
     target_addr = ("127.0.0.1", 7002)
     set_show_addr(target_addr)
@@ -102,6 +105,7 @@ def test_status_show_server():
     shutdown_show_server()
 
 
+@pytest.mark.slow
 def test_init_show_server(explanation):
     port = 7004
     target_addr = ("127.0.0.1", port)
@@ -129,6 +133,7 @@ def test_init_show_server(explanation):
     shutdown_show_server()
 
 
+@pytest.mark.slow
 def test_show_link(explanation):
     target_addr = ("127.0.0.1", 7005)
     set_show_addr(target_addr)
@@ -143,6 +148,7 @@ def test_show_link(explanation):
     shutdown_show_server()
 
 
+@pytest.mark.slow
 @pytest.mark.visual
 def test_show(explanation):
     explanation_li = [explanation, explanation]
@@ -165,6 +171,7 @@ def test_show(explanation):
 
 
 @pytest.mark.visual
+@pytest.mark.slow
 def test_preserve(explanation):
     # Overall
     result = preserve(explanation)

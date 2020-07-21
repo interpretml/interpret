@@ -44,6 +44,7 @@ def test_azureml_provider():
         provider.parallel(task_fn, task_args_iter)
 
 
+@pytest.mark.slow
 def test_auto_visualize_provider(example_explanation):
     # NOTE: We know this environment is going to use Dash.
     from ...visual.dashboard import AppRunner
@@ -73,6 +74,7 @@ def test_inline_provider(example_explanation):
     provider.render([example_explanation])
 
 
+@pytest.mark.slow
 def test_dash_provider(example_explanation):
     ip = "127.0.0.1"
     port = "7201"

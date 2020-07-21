@@ -22,7 +22,7 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
-    perf_dicts = gen_perf_dicts(y, predictions, False)
+    perf_dicts = gen_perf_dicts(predictions, y, False)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
         perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
@@ -63,7 +63,7 @@ def shap_explain_local(explainer, X, y=None, name=None, is_classification=False)
             "value": {"dataset_x": X, "dataset_y": y},
         }
     )
-    selector = gen_local_selector(y, predictions, is_classification=False)
+    selector = gen_local_selector(data_dicts, is_classification=False)
 
     return FeatureValueExplanation(
         "local",

@@ -32,8 +32,8 @@ const App = props => {
 
     // Create figure options
     for (let i = 0; i < selector.data.length; i++) {
-      // Get up to 2 columns for display
-      const columns = selector.columns.slice(0, 2);
+      // Get up to 3 columns for display
+      const columns = selector.columns.slice(0, 3);
       const record = columns
         .map(c => `${c} (${selector.data[i][c]})`)
         .join(" | ");

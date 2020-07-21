@@ -284,7 +284,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):  # pragma: no cov
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
-        selector = gen_local_selector(y, prob_scores[:, 1], True)
+        selector = gen_local_selector(data_dicts, is_classification=True)
 
         return RulesExplanation(
             "local",

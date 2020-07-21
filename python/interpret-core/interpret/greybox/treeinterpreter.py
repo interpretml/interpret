@@ -90,7 +90,7 @@ class TreeInterpreter(ExplainerMixin):
 
         data_dicts = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions, self.is_classifier)
+        perf_dicts = gen_perf_dicts(predictions, y, self.is_classifier)
         for i, instance in enumerate(X):
             data_dict = {}
             data_dict["data_type"] = "univariate"
@@ -115,7 +115,7 @@ class TreeInterpreter(ExplainerMixin):
             data_dicts.append(data_dict)
 
         internal_obj = {"overall": None, "specific": data_dicts}
-        selector = gen_local_selector(y, predictions, is_classification=self.is_classifier)
+        selector = gen_local_selector(data_dicts, is_classification=self.is_classifier)
 
         return FeatureValueExplanation(
             "local",

@@ -87,7 +87,7 @@ class LimeTabular(ExplainerMixin):
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions, False)
+        perf_dicts = gen_perf_dicts(predictions, y, False)
         for i, instance in enumerate(X):
             lime_explanation = self.lime.explain_instance(
                 instance, pred_fn, **self.explain_kwargs
@@ -138,7 +138,7 @@ class LimeTabular(ExplainerMixin):
                 "value": {"dataset_x": X, "dataset_y": y},
             }
         )
-        selector = gen_local_selector(y, predictions, is_classification=False)
+        selector = gen_local_selector(data_dicts, is_classification=False)
 
         return FeatureValueExplanation(
             "local",

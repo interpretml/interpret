@@ -77,11 +77,12 @@ class EBMExplanation(FeatureValueExplanation):
         Returns:
             A Plotly figure.
         """
-        from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take
+        from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take, is_multiclass_global_data_dict
 
         data_dict = self.data(key)
         if data_dict is None:
             return None
+
 
         # Overall graph
         if self.explanation_type == "global" and key is None:
@@ -102,10 +103,7 @@ class EBMExplanation(FeatureValueExplanation):
             and self.feature_types[key] == "continuous"
         ):
             title = self.feature_names[key]
-            if (
-                isinstance(data_dict["scores"], np.ndarray)
-                and data_dict["scores"].ndim == 2
-            ):
+            if is_multiclass_global_data_dict(data_dict):
                 figure = plot_continuous_bar(
                     data_dict, multiclass=True, show_error=False, title=title
                 )
@@ -720,6 +718,8 @@ class BaseEBM(BaseEstimator):
         estimators = []
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
+            self.class_idx_ = {x: index for index, x in enumerate(self.classes_)}
+
             y = y.astype(np.int64, casting="unsafe", copy=False)
             n_classes = len(self.classes_)
             if n_classes > 2:  # pragma: no cover
@@ -1171,6 +1171,11 @@ class BaseEBM(BaseEstimator):
                         ),
                     },
                 }
+                if is_classifier(self):
+                    data_dict["meta"] = {
+                        "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
+                    }
+
                 data_dicts.append(data_dict)
             elif len(feature_indexes) == 2:
                 bin_labels_left = self.preprocessor_.get_bin_labels(feature_indexes[0])
@@ -1244,6 +1249,11 @@ class BaseEBM(BaseEstimator):
         check_is_fitted(self, "has_fitted_")
 
         X, y, _, _ = unify_data(X, y, self.feature_names, self.feature_types)
+
+        # Transform y if classifier
+        if is_classifier(self) and y is not None:
+            y = np.array([self.class_idx_[el] for el in y])
+
         instances = self.preprocessor_.transform(X)
 
         instances = np.ascontiguousarray(instances.T)
@@ -1271,6 +1281,10 @@ class BaseEBM(BaseEstimator):
                 "values": [],
                 "extra": {"names": ["Intercept"], "scores": [intercept], "values": [1]},
             }
+            if is_classifier(self):
+                data_dict["meta"] = {
+                    "label_names": self.classes_.tolist()  # Classes should be numpy array, convert to list.
+                }
             data_dicts.append(data_dict)
 
         for set_idx, feature_combination, scores in scores_gen:
@@ -1302,13 +1316,13 @@ class BaseEBM(BaseEstimator):
             )
 
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, scores, is_classification)
+        perf_dicts = gen_perf_dicts(scores, y, is_classification)
         for row_idx in range(n_rows):
             perf = None if perf_dicts is None else perf_dicts[row_idx]
             perf_list.append(perf)
             data_dicts[row_idx]["perf"] = perf
 
-        selector = gen_local_selector(y, scores, is_classification=is_classification)
+        selector = gen_local_selector(data_dicts, is_classification=is_classification)
 
         internal_obj = {
             "overall": None,

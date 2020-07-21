@@ -77,6 +77,7 @@ class FeatureValueExplanation(ExplanationMixin):
             plot_bar,
             plot_horizontal_bar,
             mli_plot_horizontal_bar,
+            is_multiclass_local_data_dict,
         )
         from ..visual.plot import (
             get_sort_indexes,
@@ -101,6 +102,7 @@ class FeatureValueExplanation(ExplanationMixin):
         if self.explanation_type == "local":
             if isinstance(key, tuple) and len(key) == 2:
                 provider, key = key
+                # TODO: MLI should handle multiclass at a future date.
                 if "mli" == provider and "mli" in self.data(-1):
                     explanation_list = self.data(-1)["mli"]
                     explanation_index = get_explanation_index(
@@ -130,10 +132,18 @@ class FeatureValueExplanation(ExplanationMixin):
                         "Visual provider {} not supported".format(provider)
                     )
             else:
+                is_multiclass = is_multiclass_local_data_dict(data_dict)
+                if is_multiclass:
+                    # Sort by predicted class' abs feature values
+                    pred_idx = data_dict['perf']['predicted']
+                    sort_fn = lambda x: -abs(x[pred_idx])
+                else:
+                    # Sort by abs feature values
+                    sort_fn = lambda x: -abs(x)
                 data_dict = sort_take(
-                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+                    data_dict, sort_fn=sort_fn, top_n=15, reverse_results=True
                 )
-                return plot_horizontal_bar(data_dict)
+                return plot_horizontal_bar(data_dict, multiclass=is_multiclass)
 
         # Handle global feature graphs
         feature_type = self.feature_types[key]

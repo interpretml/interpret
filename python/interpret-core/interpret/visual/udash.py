@@ -111,7 +111,7 @@ def generate_app_mini(
     if has_selector:
         for i in range(len(selector)):
             col_strs = []
-            for col_idx in range(min(2, len(selector.columns))):
+            for col_idx in range(min(3, len(selector.columns))):
                 col_strs.append(
                     "{0} ({1})".format(
                         selector.columns[col_idx], selector.iloc[i][col_idx]

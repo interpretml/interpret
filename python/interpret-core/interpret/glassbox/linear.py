@@ -122,7 +122,7 @@ class BaseLinear:
         data_dicts = []
         scores_list = []
         perf_list = []
-        perf_dicts = gen_perf_dicts(y, predictions, is_classification)
+        perf_dicts = gen_perf_dicts(predictions, y, is_classification)
         for i, instance in enumerate(X):
             scores = list(coef * instance)
             scores_list.append(scores)
@@ -169,7 +169,7 @@ class BaseLinear:
             }
         )
 
-        selector = gen_local_selector(y, predictions, is_classification=is_classification)
+        selector = gen_local_selector(data_dicts, is_classification=is_classification)
 
         return FeatureValueExplanation(
             "local",
