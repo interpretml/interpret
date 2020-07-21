@@ -64,7 +64,6 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
     inter_episode_idxs_ -> breakpoint_iteration_[1]
 
     mean_abs_scores_ -> feature_importances_
-    class_idx_ -> ADDED (Maps class names to class indexes used internally)
     ```
 ### Fixed
 - Internal fixes and refactor for native code.

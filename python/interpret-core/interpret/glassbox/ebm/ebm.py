@@ -15,7 +15,7 @@ from ...utils import gen_name_from_class, gen_global_selector, gen_local_selecto
 import numpy as np
 from warnings import warn
 
-from sklearn.base import is_classifier, clone
+from sklearn.base import is_classifier
 from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
 from collections import Counter
@@ -718,7 +718,7 @@ class BaseEBM(BaseEstimator):
         estimators = []
         if is_classifier(self):
             self.classes_, y = np.unique(y, return_inverse=True)
-            self.class_idx_ = {x: index for index, x in enumerate(self.classes_)}
+            self._class_idx_ = {x: index for index, x in enumerate(self.classes_)}
 
             y = y.astype(np.int64, casting="unsafe", copy=False)
             n_classes = len(self.classes_)
@@ -1252,7 +1252,7 @@ class BaseEBM(BaseEstimator):
 
         # Transform y if classifier
         if is_classifier(self) and y is not None:
-            y = np.array([self.class_idx_[el] for el in y])
+            y = np.array([self._class_idx_[el] for el in y])
 
         instances = self.preprocessor_.transform(X)
 
