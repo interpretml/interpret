@@ -118,9 +118,8 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
         record["PrScore"] = perf_dict["predicted_score"]
         record["AcScore"] = perf_dict["actual_score"]
 
-        if is_classification:
-            record["Predicted"] = perf_dict["predicted"]
-            record["Actual"] = perf_dict["actual"]
+        record["Predicted"] = perf_dict["predicted"]
+        record["Actual"] = perf_dict["actual"]
 
         record["Resid"] = record["AcScore"] - record["PrScore"]
         record["AbsResid"] = abs(record["Resid"])
