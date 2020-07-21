@@ -1421,7 +1421,6 @@ TEST_CASE("GenerateQuantileCutPoints, 0 instances") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       0,
       nullptr,
       countMaximumBins,
@@ -1451,7 +1450,6 @@ TEST_CASE("GenerateQuantileCutPoints, only missing") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1482,7 +1480,6 @@ TEST_CASE("GenerateQuantileCutPoints, just one bin") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1516,7 +1513,6 @@ TEST_CASE("GenerateQuantileCutPoints, too small") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1556,7 +1552,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1596,7 +1591,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splita
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1636,7 +1630,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") 
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1676,7 +1669,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1716,7 +1708,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1756,7 +1747,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+right") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1796,7 +1786,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1836,7 +1825,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1876,7 +1864,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1916,7 +1903,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1956,7 +1942,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -1996,7 +1981,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2036,7 +2020,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2076,7 +2059,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2116,7 +2098,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2156,7 +2137,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2196,7 +2176,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2236,7 +2215,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2276,7 +2254,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2316,7 +2293,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2356,7 +2332,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") 
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2396,7 +2371,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+rig
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2436,7 +2410,6 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitabl
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2476,7 +2449,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2516,7 +2488,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2556,7 +2527,6 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2596,7 +2566,6 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2645,7 +2614,6 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    FloatEbmType valMax;
 
    IntEbmType ret = GenerateQuantileCutPoints(
-      randomSeed,
       countInstances,
       singleFeatureValues,
       countMaximumBins,
@@ -2706,7 +2674,6 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          FloatEbmType valMax;
 
          IntEbmType ret = GenerateQuantileCutPoints(
-            randomSeed + iIteration * (randomMaxMax + 1) + randomMax, // make them all different random seeds
             countInstances,
             singleFeatureValues,
             countMaximumBins,
@@ -2803,7 +2770,6 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       std::sort(singleFeatureValues, singleFeatureValues + cInstances);
 
       IntEbmType ret = GenerateQuantileCutPoints(
-         randomSeed + iIteration, // make them all different random seeds
          static_cast<IntEbmType>(cInstances),
          singleFeatureValues,
          static_cast<IntEbmType>(cMaximumBins),

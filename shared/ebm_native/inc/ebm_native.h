@@ -391,7 +391,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   IntEbmType randomSeed,
    IntEbmType countInstances,
    FloatEbmType * singleFeatureValues,
    IntEbmType countMaximumBins,
