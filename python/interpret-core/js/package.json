@@ -1,6 +1,6 @@
 {
   "name": "@interpretml/interpret-inline",
-  "version": "0.1.23-prerelease-2",
+  "version": "0.2.0",
   "description": "Interpret inline library for rendering visualizations across all notebook environments.",
   "main": "index.js",
   "keywords": [],

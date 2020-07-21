@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 name = "interpret-core"
 # NOTE: Version is replaced by a regex script.
-version = "0.1.23-prerelease-2"
+version = "0.2.0"
 long_description = """
 Core system for **the** interpret package.
 
