@@ -335,6 +335,11 @@ jobs:
       buildType: 'current'
       downloadType: 'single'
       artifactName: 'wheel'
+  - task: DownloadBuildArtifacts@0
+    inputs:
+      buildType: 'current'
+      downloadType: 'single'
+      artifactName: 'interpret-inline-bundle'
   - task: PublishPipelineArtifact@0
     inputs:
       sourceFolder: '$(System.ArtifactsDirectory)'
