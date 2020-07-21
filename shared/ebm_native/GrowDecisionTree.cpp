@@ -267,12 +267,13 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       pHistogramBucketEntryCur = GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketEntryCur, 1);
    } while(pHistogramBucketEntryLast != pHistogramBucketEntryCur);
 
+   // handle the case where BEST_nodeSplittingScore is +infinity 
+   // don't use std::inf because with some compiler flags on some compilers that isn't reliable
+   // if we include a case that was equal to max, then ok, no harm done.
    if(UNLIKELY(UNLIKELY(pSweepTreeNodeStart == pSweepTreeNodeCur) || UNLIKELY(std::isnan(BEST_nodeSplittingScore)) ||
-      UNLIKELY(std::isinf(BEST_nodeSplittingScore)))) {
-      EBM_ASSERT((!bClassification) || !std::isinf(BEST_nodeSplittingScore));
+      UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= BEST_nodeSplittingScore))) {
 
       // we didn't find any valid splits, or we hit an overflow
-      EBM_ASSERT(std::isnan(BEST_nodeSplittingScore) || std::isinf(BEST_nodeSplittingScore) || k_illegalGain == BEST_nodeSplittingScore);
       return true;
    }
    EBM_ASSERT(FloatEbmType { 0 } <= BEST_nodeSplittingScore);

@@ -109,9 +109,8 @@ public:
             if(bClassification) {
                EBM_ASSERT(
                   std::isnan(residualError) ||
-                  !std::isinf(residualError) && FloatEbmType {
-                  -1
-               } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
+                  !std::isinf(residualError) && 
+                  FloatEbmType { -1 } - k_epsilonResidualError <= residualError && residualError <= FloatEbmType { 1 }
                   );
 
                // TODO : this code gets executed for each SamplingSet set.  I could probably execute it once and then all the SamplingSet

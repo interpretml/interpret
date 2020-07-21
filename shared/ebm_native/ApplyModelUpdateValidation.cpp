@@ -733,7 +733,10 @@ extern FloatEbmType ApplyModelUpdateValidation(
    }
 
    EBM_ASSERT(std::isnan(ret) || -k_epsilonLogLoss <= ret);
-   if(UNLIKELY(UNLIKELY(std::isnan(ret)) || UNLIKELY(std::isinf(ret)))) {
+   // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
+   // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
+   // might assume that nothing is larger than max if it thinks there's no +infinity
+   if(UNLIKELY(UNLIKELY(std::isnan(ret)) || UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= ret))) {
       // set the metric so high that this round of boosting will be rejected.  The worst metric is std::numeric_limits<FloatEbmType>::max(),
       // Set it to that so that this round of boosting won't be accepted if our caller is using early stopping
       ret = std::numeric_limits<FloatEbmType>::max();

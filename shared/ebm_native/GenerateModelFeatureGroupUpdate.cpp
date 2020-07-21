@@ -702,7 +702,13 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
-      if(UNLIKELY(UNLIKELY(bBad) || UNLIKELY(std::isnan(totalGain)) || UNLIKELY(std::isinf(totalGain)))) {
+      // don't use std::inf because with some compiler flags on some compilers that isn't reliable
+      if(UNLIKELY(
+         UNLIKELY(bBad) || 
+         UNLIKELY(std::isnan(totalGain)) || 
+         UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
+         UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
+      )) {
          pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
          pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
@@ -835,10 +841,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    if(std::isnan(learningRate)) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
    } else if(std::isinf(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is infinity");
    } else if(0 == learningRate) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is zero");
-   } else if(learningRate < 0) {
+   } else if(learningRate < FloatEbmType { 0 }) {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is negative");
    }
 

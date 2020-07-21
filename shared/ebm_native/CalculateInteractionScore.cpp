@@ -206,7 +206,13 @@ static bool CalculateInteractionScoreInternal(
          // if bestSplittingScore was NaN we make it zero so that it's not included.  If infinity, also don't include it since we overloaded something
          // even though bestSplittingScore shouldn't be +-infinity for classification, we check it for +-infinity 
          // here since it's most efficient to check that the exponential is all ones, which is the case only for +-infinity and NaN, but not others
-         if(UNLIKELY(UNLIKELY(std::isnan(bestSplittingScore)) || UNLIKELY(std::isinf(bestSplittingScore)))) {
+
+         // comparing to max is a good way to check for +infinity without using infinity, which can be problematic on
+         // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
+         // might assume that nothing is larger than max if it thinks there's no +infinity
+
+         if(UNLIKELY(UNLIKELY(std::isnan(bestSplittingScore)) || 
+            UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= bestSplittingScore))) {
             bestSplittingScore = FloatEbmType { 0 };
          }
          *pInteractionScoreReturn = bestSplittingScore;

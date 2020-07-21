@@ -526,7 +526,7 @@ public:
 
       // -infinity <= sumResidualError && sumResidualError <= infinity (it's regression which has a larger range)
 
-      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatEbmType>::max() or std::numeric_limits<FloatEbmType>::min(), 
+      // even if we trim inputs of +-infinity from the user to std::numeric_limits<FloatEbmType>::max() or std::numeric_limits<FloatEbmType>::lowest(), 
       // we'll still reach +-infinity if we add a bunch of them together, so sumResidualError can reach +-infinity.
       // After sumResidualError reaches +-infinity, we'll get an update and some instances with +-infinity residuals
       // Then, on the next feature we boost on, we'll calculate an model update for some instances (inside this function) as 

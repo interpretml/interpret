@@ -223,6 +223,7 @@ bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
       // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
       // bits for FF and then OR a 1 if the test is true and 0 if the test is false
+      // TODO: another issue is that isnan and isinf don't work on some compilers with some compiler settings
       bBad |= std::isnan(val) || std::isinf(val);
       *pCur = val;
       ++pCur;
@@ -426,9 +427,13 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
       val = std::isnan(val) ? FloatEbmType { 0 } : val;
       val = *pToValue + val;
       // this is a check for -infinity, without the -infinity value since some compilers make that illegal
-      val = val < std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+      // even so far as to make isinf always FALSE with some compiler flags
+      // include the equals case so that the compiler is less likely to optimize that out
+      val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
       // this is a check for +infinity, without the +infinity value since some compilers make that illegal
-      val = std::numeric_limits<FloatEbmType>::max() < val ? std::numeric_limits<FloatEbmType>::max() : val;
+      // even so far as to make isinf always FALSE with some compiler flags
+      // include the equals case so that the compiler is less likely to optimize that out
+      val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
       *pToValue = val;
       ++pFromValue;
       ++pToValue;

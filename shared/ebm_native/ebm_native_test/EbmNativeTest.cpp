@@ -60,6 +60,16 @@ public:
    bool m_bPassed;
 };
 
+
+
+
+static void FAILED(TestCaseHidden * const pTestCaseHidden) {
+   pTestCaseHidden->m_bPassed = false;
+}
+
+
+
+
 std::vector<TestCaseHidden> g_allTestsHidden;
 
 inline int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
@@ -136,7 +146,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
       const bool bFailedHidden = !(expression); \
       if(bFailedHidden) { \
          std::cout << " FAILED on \"" #expression "\""; \
-         testCaseHidden.m_bPassed = false; \
+         FAILED(&testCaseHidden); \
       } \
    } while((void)0, 0)
 
@@ -148,7 +158,7 @@ inline bool IsApproxEqual(const double value, const double expected, const doubl
       const bool bApproxEqualHidden = IsApproxEqual(valueHidden, static_cast<double>(expected), double { 1e-6 }); \
       if(!bApproxEqualHidden) { \
          std::cout << " FAILED on \"" #value "(" << valueHidden << ") approx " #expected "\""; \
-         testCaseHidden.m_bPassed = false; \
+         FAILED(&testCaseHidden); \
       } \
    } while((void)0, 0)
 
