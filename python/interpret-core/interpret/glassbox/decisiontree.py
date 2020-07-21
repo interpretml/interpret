@@ -3,7 +3,12 @@
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils import unify_data
-from ..utils import gen_name_from_class, gen_local_selector, gen_global_selector, gen_perf_dicts
+from ..utils import (
+    gen_name_from_class,
+    gen_local_selector,
+    gen_global_selector,
+    gen_perf_dicts,
+)
 
 from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.tree import DecisionTreeClassifier as SKDT
@@ -365,7 +370,7 @@ class BaseShallowDecisionTree:
                 "nodes": nodes,
                 "edges": edges,
                 "decision": decision,
-                "perf": None if perf_dicts is None else perf_dicts[i]
+                "perf": None if perf_dicts is None else perf_dicts[i],
             }
             for i, decision in enumerate(decisions)
         ]

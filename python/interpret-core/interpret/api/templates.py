@@ -135,7 +135,7 @@ class FeatureValueExplanation(ExplanationMixin):
                 is_multiclass = is_multiclass_local_data_dict(data_dict)
                 if is_multiclass:
                     # Sort by predicted class' abs feature values
-                    pred_idx = data_dict['perf']['predicted']
+                    pred_idx = data_dict["perf"]["predicted"]
                     sort_fn = lambda x: -abs(x[pred_idx])
                 else:
                     # Sort by abs feature values

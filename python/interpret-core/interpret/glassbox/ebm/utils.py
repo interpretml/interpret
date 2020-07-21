@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 class EBMUtils:
     @staticmethod
     def convert_to_intervals(cuts):
-        cuts = np.array(cuts, dtype = np.float64)
+        cuts = np.array(cuts, dtype=np.float64)
 
         if np.isnan(cuts).any():
             raise Exception("cuts cannot contain nan")
@@ -87,7 +87,9 @@ class EBMUtils:
                 y_uniq = len(set(y))
                 n_test_samples = test_size if test_size >= 1 else len(y) * test_size
                 if n_test_samples < y_uniq:  # pragma: no cover
-                    warnings.warn("Too few samples per class, adapting test size to guarantee 1 sample per class.")
+                    warnings.warn(
+                        "Too few samples per class, adapting test size to guarantee 1 sample per class."
+                    )
                     test_size = y_uniq
 
             X_train, X_val, y_train, y_val = train_test_split(
@@ -102,7 +104,6 @@ class EBMUtils:
 
         if not is_train:
             X_train, y_train = None, None
-
 
         # TODO PK doing a fortran re-ordering here (and an extra copy) isn't the most efficient way
         #         push the re-ordering right to our first call to fit(..) AND stripe convert

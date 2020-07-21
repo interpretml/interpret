@@ -120,7 +120,9 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
     else:
         init_js = """
         <script type="text/javascript" src="{0}"></script>
-        """.format(js_url)
+        """.format(
+            js_url
+        )
 
     if id_str is None:
         div_id = "_interpret-viz-{0}".format(uuid.uuid4())
@@ -200,7 +202,9 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
     else:
         viz_obj = _build_viz_obj(explanation)
 
-    init_js, body_js = _build_javascript(viz_obj, id_str, default_key=default_key, js_url=js_url)
+    init_js, body_js = _build_javascript(
+        viz_obj, id_str, default_key=default_key, js_url=js_url
+    )
 
     if "databricks" in detected_envs:
         _render_databricks(init_js + body_js)

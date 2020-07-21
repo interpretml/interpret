@@ -77,12 +77,16 @@ class EBMExplanation(FeatureValueExplanation):
         Returns:
             A Plotly figure.
         """
-        from ...visual.plot import plot_continuous_bar, plot_horizontal_bar, sort_take, is_multiclass_global_data_dict
+        from ...visual.plot import (
+            plot_continuous_bar,
+            plot_horizontal_bar,
+            sort_take,
+            is_multiclass_global_data_dict,
+        )
 
         data_dict = self.data(key)
         if data_dict is None:
             return None
-
 
         # Overall graph
         if self.explanation_type == "global" and key is None:
@@ -121,11 +125,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
     """ Transformer that preprocesses data to be ready before EBM. """
 
     def __init__(
-        self,
-        feature_names=None,
-        feature_types=None,
-        max_bins=255,
-        binning="quantile",
+        self, feature_names=None, feature_types=None, max_bins=255, binning="quantile",
     ):
         """ Initializes EBM preprocessor.
 
@@ -165,7 +165,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
         self.has_fitted_ = False
 
-        schema = autogen_schema(X, feature_names=self.feature_names, feature_types=self.feature_types)
+        schema = autogen_schema(
+            X, feature_names=self.feature_names, feature_types=self.feature_types
+        )
 
         for col_idx in range(X.shape[1]):
             col_name = list(schema.keys())[col_idx]
@@ -192,11 +194,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                             )
                         )
                     else:  # pragma: no cover
-                        raise ValueError(
-                            "Unknown binning: '{}'.".format(
-                                self.binning
-                            )
-                        )
+                        raise ValueError("Unknown binning: '{}'.".format(self.binning))
 
                 _, bin_edges = np.histogram(col_data, bins=bins)
 
@@ -587,16 +585,15 @@ class BaseEBM(BaseEstimator):
         #   models without fitting them ourselves.  To conform to a common explaination API we get the feature_names
         #   here.
         feature_names,
-
-        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate 
+        # other packages LightGBM, CatBoost, Scikit-Learn (future) are using categorical specific ways to indicate
         #   feature_types.  The benefit to them is that they can accept multiple ways of specifying categoricals like:
         #   categorical = [true, false, true, true] OR categorical = [1, 4, 8] OR categorical = 'all'/'auto'/'none'
         #   We're choosing a different route because for visualization we want to be able to express multiple
         #   different types of data.  For example, if the user has data with strings of "low", "medium", "high"
         #   We want to keep both the ordinal nature of this feature and we wish to preserve the text for visualization
-        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't 
-        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings 
-        #   back anyways.  So we need some way to express both the categorical nature of features and the order 
+        #   scikit-learn callers can pre-convert these things to [0, 1, 2] in the correct order because they don't
+        #   need to worry about visualizing the data afterwards, but for us we  need a way to specify the strings
+        #   back anyways.  So we need some way to express both the categorical nature of features and the order
         #   mapping.  We can do this and more complicated conversions via:
         #   feature_types = ["categorical", ["low", "medium", "high"], "continuous", "time", "bool"]
         feature_types,
@@ -629,9 +626,9 @@ class BaseEBM(BaseEstimator):
         # Native
         learning_rate,
         max_leaves,
-        # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets" 
+        # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets"
         # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
-        # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.  
+        # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.
         min_samples_leaf,
         # Overall
         n_jobs,
@@ -782,9 +779,7 @@ class BaseEBM(BaseEstimator):
         # a single float64 for regression, so we do the same
         if is_classifier(self):
             self.intercept_ = np.zeros(
-                EBMUtils.get_count_scores_c(n_classes),
-                dtype=np.float64,
-                order="C",
+                EBMUtils.get_count_scores_c(n_classes), dtype=np.float64, order="C",
             )
         else:
             self.intercept_ = np.float64(0)
@@ -808,9 +803,7 @@ class BaseEBM(BaseEstimator):
                 # Discard initial interactions
                 new_model = []
                 new_feature_combinations = []
-                for i, feature_combination in enumerate(
-                    estimator.feature_groups_
-                ):
+                for i, feature_combination in enumerate(estimator.feature_groups_):
                     if len(feature_combination) != 1:
                         continue
                     new_model.append(estimator.model_[i])
@@ -827,8 +820,7 @@ class BaseEBM(BaseEstimator):
                     )
 
                 staged_fit_args_iter = (
-                    (estimators[i], X, y, pair_indices)
-                    for i in range(self.outer_bags)
+                    (estimators[i], X, y, pair_indices) for i in range(self.outer_bags)
                 )
 
                 estimators = provider.parallel(staged_fit_fn, staged_fit_args_iter)
@@ -1110,9 +1102,7 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, _ in enumerate(
-            self.feature_groups_
-        ):
+        for feature_combination_index, _ in enumerate(self.feature_groups_):
             errors = self.term_standard_deviations_[feature_combination_index]
             scores = self.additive_terms_[feature_combination_index]
 
@@ -1302,17 +1292,11 @@ class BaseEBM(BaseEstimator):
         is_classification = is_classifier(self)
         if is_classification:
             scores = EBMUtils.classifier_predict_proba(
-                instances,
-                self.feature_groups_,
-                self.additive_terms_,
-                self.intercept_,
+                instances, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
         else:
             scores = EBMUtils.regressor_predict(
-                instances,
-                self.feature_groups_,
-                self.additive_terms_,
-                self.intercept_,
+                instances, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
 
         perf_list = []

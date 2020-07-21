@@ -645,11 +645,7 @@ class NativeEBMBoosting:
         log.info("Deallocation boosting end")
 
     def boosting_step(
-        self,
-        feature_combination_index,
-        learning_rate,
-        max_leaves,
-        min_samples_leaf,
+        self, feature_combination_index, learning_rate, max_leaves, min_samples_leaf,
     ):
 
         """ Conducts a boosting step per feature
@@ -699,9 +695,7 @@ class NativeEBMBoosting:
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception(
-                    "Out of memory in ApplyModelFeatureCombinationUpdate"
-                )
+                raise Exception("Out of memory in ApplyModelFeatureCombinationUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value
@@ -1094,8 +1088,7 @@ class NativeHelper:
         ) as native_ebm_interactions:
             for feature_combination in iter_feature_combinations:
                 score = native_ebm_interactions.get_interaction_score(
-                    feature_combination,
-                    min_samples_leaf,
+                    feature_combination, min_samples_leaf,
                 )
                 interaction_scores.append((feature_combination, score))
 

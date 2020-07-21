@@ -79,7 +79,7 @@ def _detect_azure_notebook():
 
 def _detect_azureml_notebook_vm():
     nbvm_file_path = "/mnt/azmnt/.nbvm"
-    return (os.path.exists(nbvm_file_path) and os.path.isfile(nbvm_file_path))
+    return os.path.exists(nbvm_file_path) and os.path.isfile(nbvm_file_path)
 
 
 def _detect_vscode():

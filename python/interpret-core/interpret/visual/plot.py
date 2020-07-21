@@ -21,7 +21,10 @@ def is_multiclass_global_data_dict(data_dict):
 
 
 def is_multiclass_local_data_dict(data_dict):
-    return isinstance(data_dict["scores"][0], np.ndarray) and len(data_dict["scores"][0]) > 2
+    return (
+        isinstance(data_dict["scores"][0], np.ndarray)
+        and len(data_dict["scores"][0]) > 2
+    )
 
 
 def plot_performance_curve(
@@ -128,7 +131,11 @@ def plot_continuous_bar(
 
     if multiclass:
         for i in range(y_vals.shape[1]):
-            class_name = "Class {}".format(i) if "meta" not in data_dict else data_dict["meta"]["label_names"][i]
+            class_name = (
+                "Class {}".format(i)
+                if "meta" not in data_dict
+                else data_dict["meta"]["label_names"][i]
+            )
             class_line = go.Scatter(
                 x=new_x_vals,
                 y=new_y_vals[:, i],
@@ -458,7 +465,9 @@ def _names_with_values(names, values):
     return li
 
 
-def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle="", start_zero=False):
+def plot_horizontal_bar(
+    data_dict, multiclass=False, title="", xtitle="", ytitle="", start_zero=False
+):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
     scores = data_dict["scores"].copy()
@@ -475,10 +484,14 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
         predicted_score = data_dict["perf"]["predicted_score"]
         actual_score = data_dict["perf"]["actual_score"]
 
-        if "meta" in data_dict and "label_names" in data_dict["meta"]:  # Upgraded classification
+        if (
+            "meta" in data_dict and "label_names" in data_dict["meta"]
+        ):  # Upgraded classification
             label_names = data_dict["meta"]["label_names"]
             predicted = label_names[predicted]
-            title_items.append("Predicted ({}): {:.3f}".format(predicted, predicted_score))
+            title_items.append(
+                "Predicted ({}): {:.3f}".format(predicted, predicted_score)
+            )
 
             if not np.isnan(actual):
                 actual = label_names[actual]
@@ -493,7 +506,7 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
 
         title = " | ".join(title_items)
     if not multiclass:
-        #color by positive/negative:
+        # color by positive/negative:
         color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
     else:
         color = []
@@ -509,9 +522,13 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
     traces = []
     if multiclass:
         for index, cls in enumerate(data_dict["meta"]["label_names"]):
-            trace_scores = [x[index] for x in data_dict['scores']] + [data_dict['extra']['scores'][0][index]]
-            trace_names = data_dict['names'] + [data_dict['extra']['names']]
-            traces.append(go.Bar(y=trace_names, x=trace_scores, orientation='h', name=cls))
+            trace_scores = [x[index] for x in data_dict["scores"]] + [
+                data_dict["extra"]["scores"][0][index]
+            ]
+            trace_names = data_dict["names"] + [data_dict["extra"]["names"]]
+            traces.append(
+                go.Bar(y=trace_names, x=trace_scores, orientation="h", name=cls)
+            )
     else:
         traces.append(go.Bar(x=x, y=y, orientation="h", marker=dict(color=color)))
 
@@ -528,7 +545,7 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
         xaxis=dict(range=x_range, title=xtitle),
     )
     if multiclass:
-        layout['barmode'] = 'relative'
+        layout["barmode"] = "relative"
     figure = go.Figure(data=traces, layout=layout)
     return figure
 
@@ -590,7 +607,7 @@ def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
     bin_labels_right = data_dict["right_names"]
     bin_vals = data_dict["scores"]
 
-    bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1,0)))
+    bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1, 0)))
 
     heatmap = go.Heatmap(z=bin_vals, x=bin_labels_left, y=bin_labels_right)
     if data_dict.get("scores_range", None) is not None:

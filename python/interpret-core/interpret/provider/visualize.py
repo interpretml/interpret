@@ -8,7 +8,10 @@ from ..utils.environment import EnvironmentDetector, is_cloud_env
 from warnings import warn
 
 from ..version import __version__
-JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(__version__)
+
+JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(
+    __version__
+)
 
 log = logging.getLogger(__name__)
 
@@ -190,4 +193,9 @@ class InlineProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         from ..visual.inline import render
 
-        render(explanation, default_key=key, detected_envs=self.detected_envs, js_url=self.js_url)
+        render(
+            explanation,
+            default_key=key,
+            detected_envs=self.detected_envs,
+            js_url=self.js_url,
+        )
