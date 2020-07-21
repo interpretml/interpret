@@ -150,8 +150,7 @@ public:
    }
 };
 
-// TODO rename this and make it irregardless as to the low or high points
-INLINE_ALWAYS size_t CalculateRangesLeft(
+INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
    const FloatEbmType iVal, 
    const FloatEbmType cVals, 
    const size_t cRanges
@@ -174,7 +173,20 @@ INLINE_ALWAYS size_t CalculateRangesLeft(
    cLeft = std::max(size_t { 1 }, cLeft); // don't allow zero ranges on the low side
    cLeft = std::min(cLeft, cRanges - 1); // don't allow zero ranges on the high side
 
-   // TODO: add a DEBUG check here to verify that we don't get anything better if we increase or decrease our left sided counts
+#ifndef NDEBUG
+   
+   FloatEbmType avg = std::min(iVal / cLeft, (cVals - iVal) / (cRanges - cLeft));
+   if(2 <= cLeft) {
+      FloatEbmType avgOther = std::min(iVal / (cLeft - 1), (cVals - iVal) / (cRanges - cLeft + 1));
+      EBM_ASSERT(avgOther <= avg);
+   }
+
+   if(2 <= cRanges - cLeft) {
+      FloatEbmType avgOther = std::min(iVal / (cLeft + 1), (cVals - iVal) / (cRanges - cLeft - 1));
+      EBM_ASSERT(avgOther <= avg);
+   }
+
+#endif
 
    return cLeft;
 }
@@ -978,7 +990,7 @@ static void BuildNeighbourhoodPlan(
    ptrdiff_t transferRangesLow = 0;
    FloatEbmType scoreLow = k_badScore;
    if(bCanSplitLow) {
-      const size_t cRangesLowLow = CalculateRangesLeft(distanceLowFloat, totalDistance, cRanges);
+      const size_t cRangesLowLow = CalculateRangesMaximizeMin(distanceLowFloat, totalDistance, cRanges);
       EBM_ASSERT(1 <= cRangesLowLow);
       EBM_ASSERT(cRangesLowLow < cRanges);
       const size_t cRangesLowHigh = cRanges - cRangesLowLow;
@@ -1003,7 +1015,7 @@ static void BuildNeighbourhoodPlan(
    ptrdiff_t transferRangesHigh = 0;
    FloatEbmType scoreHigh = k_badScore;
    if(bCanSplitHigh) {
-      const size_t cRangesHighLow = CalculateRangesLeft(distanceHighFloat, totalDistance, cRanges);
+      const size_t cRangesHighLow = CalculateRangesMaximizeMin(distanceHighFloat, totalDistance, cRanges);
       EBM_ASSERT(1 <= cRangesHighLow);
       EBM_ASSERT(cRangesHighLow < cRanges);
       const size_t cRangesHighHigh = cRanges - cRangesHighLow;
