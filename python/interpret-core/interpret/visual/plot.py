@@ -458,7 +458,6 @@ def _names_with_values(names, values):
     return li
 
 
-# TODO: Adjust titles, push in class names to data dict ('meta' or similar).
 def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle="", start_zero=False):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
@@ -469,8 +468,6 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
         values = data_dict["values"].copy()
         names = _names_with_values(names, values)
     if data_dict.get("perf", None) is not None and title == "":
-        # Predicted (y): prob_score | Actual (y_hat): prob_score
-        # Predicted (y) | Actual (y_hat)
         title_items = []
 
         predicted = data_dict["perf"]["predicted"]
@@ -481,14 +478,18 @@ def plot_horizontal_bar(data_dict, multiclass=False, title="", xtitle="", ytitle
         if "meta" in data_dict and "label_names" in data_dict["meta"]:  # Upgraded classification
             label_names = data_dict["meta"]["label_names"]
             predicted = label_names[predicted]
-            actual = label_names[actual]
             title_items.append("Predicted ({}): {:.3f}".format(predicted, predicted_score))
-            title_items.append("Actual ({}): {:.3f}".format(actual, actual_score))
+
+            if not np.isnan(actual):
+                actual = label_names[actual]
+                title_items.append("Actual ({}): {:.3f}".format(actual, actual_score))
         else:  # Regression or old form of classification
             predicted_score = _pretty_number(predicted_score)
-            actual_score = _pretty_number(actual_score)
             title_items.append("Predicted ({})".format(predicted_score))
-            title_items.append("Actual ({})".format(actual_score))
+
+            if not np.isnan(actual):
+                actual_score = _pretty_number(actual_score)
+                title_items.append("Actual ({})".format(actual_score))
 
         title = " | ".join(title_items)
     if not multiclass:
