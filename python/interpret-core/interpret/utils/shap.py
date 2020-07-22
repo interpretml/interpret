@@ -5,16 +5,16 @@ from ..api.templates import FeatureValueExplanation
 from . import gen_name_from_class, unify_data, gen_perf_dicts, gen_local_selector
 
 
-def shap_explain_local(explainer, X, y=None, name=None, is_classification=False):
+def shap_explain_local(explainer, X, y=None, name=None, is_classification=False, check_additivity=True):
     if name is None:
         name = gen_name_from_class(explainer)
     X, y, _, _ = unify_data(X, y, explainer.feature_names, explainer.feature_types)
 
     if is_classification:
-        all_shap_values = explainer.shap.shap_values(X)[1]
+        all_shap_values = explainer.shap.shap_values(X, check_additivity=check_additivity)[1]
         expected_value = explainer.shap.expected_value[1]
     else:
-        all_shap_values = explainer.shap.shap_values(X)
+        all_shap_values = explainer.shap.shap_values(X, check_additivity=check_additivity)
         expected_value = explainer.shap.expected_value
 
     predictions = explainer.predict_fn(X)

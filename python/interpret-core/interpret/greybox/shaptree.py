@@ -71,6 +71,9 @@ class ShapTree(ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
+        # NOTE: Check additivity is set to false by default as there is a problem with Mac OS that
+        # doesn't always reach the specified precision.
+        check_additivity = self.kwargs.get("check_additivity", False)
         return shap_explain_local(
-            self, X, y=y, name=name, is_classification=self.is_classifier
+            self, X, y=y, name=name, is_classification=self.is_classifier, check_additivity=check_additivity
         )
