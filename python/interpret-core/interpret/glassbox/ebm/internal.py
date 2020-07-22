@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 # TODO: Add unit tests for internal EBM interfacing
-import sys
 from sys import platform
 import ctypes as ct
 from numpy.ctypeslib import ndpointer
@@ -281,7 +280,8 @@ class Native:
         ]
 
     def _set_logging(self, level=None):
-        def native_log(trace_level, message):
+        # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
+        def native_log(trace_level, message):  # pragma: no cover
             try:
                 trace_level = int(trace_level[0])
                 message = message.decode("ascii")
@@ -351,7 +351,7 @@ class Native:
             return os.path.join(
                 package_path, "lib", "lib_ebm_native_mac_x64{0}.dylib".format(debug_str)
             )
-        else:
+        else:  # pragma: no cover
             msg = "Platform {0} at {1} bit not supported for EBM".format(
                 platform, bitsize
             )
@@ -401,7 +401,7 @@ class Native:
                 feature_ar[idx].featureType = Native.FeatureTypeNominal
             elif feature["type"] == "continuous":
                 feature_ar[idx].featureType = Native.FeatureTypeOrdinal
-            else:
+            else:  # pragma: no cover
                 raise AttributeError('Unrecognized feature["type"]')
             feature_ar[idx].hasMissing = 1 * feature["has_missing"]
             feature_ar[idx].countBins = feature["n_bins"]
@@ -827,6 +827,7 @@ class NativeEBMBoosting:
 
         return array
 
+    # TODO: Needs test.
     def get_current_model(self):
         model = []
         for index in range(len(self._feature_groups)):
@@ -891,7 +892,7 @@ class NativeEBMInteraction:
         feature_array = Native.convert_features_to_c(features)
 
         n_scores = EBMUtils.get_count_scores_c(n_classes)
-        if scores is None:
+        if scores is None:  # pragma: no cover
             scores = np.zeros(len(y) * n_scores, dtype=np.float64, order="C")
         else:
             if scores.shape[0] != len(y):  # pragma: no cover
@@ -1062,6 +1063,8 @@ class NativeHelper:
                     name, min_metric, episode_index
                 )
             )
+
+            # TODO: Add alternative | get_current_model
             model_update = native_ebm_boosting.get_best_model()
 
         return model_update, min_metric, episode_index

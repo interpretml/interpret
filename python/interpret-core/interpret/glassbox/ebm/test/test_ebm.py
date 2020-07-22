@@ -34,21 +34,35 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 
 
+@pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_synthetic_multiclass():
     data = synthetic_multiclass()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
 
     clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, outer_bags=2)
-    clf.fit(X, y)
+    clf.fit(X_train, y_train)
 
-    prob_scores = clf.predict_proba(X)
+    prob_scores = clf.predict_proba(X_train)
 
     within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
     assert within_bounds
 
     valid_ebm(clf)
+
+    # Smoke test visualization(s)
+    ebm_global = clf.explain_global()
+    ebm_global.visualize(None)
+    fig = ebm_global.visualize(0)
+    assert len(fig.data) == 4  # Number of features
+
+    ebm_local = clf.explain_local(X_test, y_test)
+    ebm_local.visualize(None)
+    fig = ebm_local.visualize(0)
+    assert len(fig.data) == 3  # Number of classes
 
 
 @pytest.mark.slow
@@ -125,7 +139,7 @@ def valid_ebm(ebm):
         assert all_finite
 
 
-def test_ebm_synthetic_classfication():
+def test_ebm_synthetic_classification():
     data = synthetic_classification()
     X = data["full"]["X"]
     y = data["full"]["y"]

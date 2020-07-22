@@ -18,8 +18,9 @@ log = logging.getLogger(__name__)
 
 # TODO: Clean up
 class EBMUtils:
+    # NOTE: Interval / cut conversions are future work. Not registered for code coverage.
     @staticmethod
-    def convert_to_intervals(cuts):
+    def convert_to_intervals(cuts):  # pragma: no cover
         cuts = np.array(cuts, dtype=np.float64)
 
         if np.isnan(cuts).any():
@@ -38,7 +39,7 @@ class EBMUtils:
         return intervals
 
     @staticmethod
-    def convert_to_cuts(intervals):
+    def convert_to_cuts(intervals):  # pragma: no cover
         if len(intervals) == 0:
             raise Exception("intervals must have at least one interval")
 
