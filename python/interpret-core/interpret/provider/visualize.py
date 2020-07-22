@@ -36,7 +36,8 @@ class AutoVisualizeProvider(VisualizeProvider):
         detected_envs = self.environment_detector.detect()
         self.in_cloud_env = is_cloud_env(detected_envs)
 
-        if self.in_cloud_env:
+        # NOTE: This is tested manually per release. Ignoring for coverage.
+        if self.in_cloud_env:  # pragma: no cover
             log.info("Detected cloud environment.")
             warn(
                 "Cloud environment detected ({}): viz integration is still experimental.".format(

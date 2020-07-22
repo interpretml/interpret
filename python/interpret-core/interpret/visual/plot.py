@@ -697,7 +697,8 @@ def get_explanation_index(explanation_list, explanation_type):
     return None
 
 
-def rules_to_html(data_dict, title=""):
+# TODO: Remove from code coverage until skope rules is updated upstream to work with latest scikit-learn.
+def rules_to_html(data_dict, title=""):  # pragma: no cover
     multi_html_template = r"""
         <style>
         .container {{

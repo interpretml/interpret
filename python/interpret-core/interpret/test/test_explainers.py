@@ -13,7 +13,6 @@ from ..glassbox import LogisticRegression
 import pytest
 
 
-# TODO: Generalize specific models (currently only testing trees)
 @pytest.mark.slow
 def test_spec_synthetic():
     all_explainers = get_all_explainers()
