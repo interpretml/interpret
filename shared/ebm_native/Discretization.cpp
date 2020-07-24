@@ -497,108 +497,6 @@ cExponentMaxTextDigits < cExponentMinTextDigits ? cExponentMinTextDigits : cExpo
 constexpr int iExp = 3 + cDigitsAfterPeriod;
 constexpr int cCharsFloatPrint = iExp + 2 + cExponentTextDigits + 1;
 
-INLINE_RELEASE static long GetExponent(const char * str) noexcept {
-   str = &str[iExp + 1];
-   // we previously checked that this converted to a long in FloatToString
-   return strtol(str, nullptr, 10);
-}
-
-INLINE_ALWAYS static int IntToString(const int val, char * const str, const int index) noexcept {
-   // snprintf says to use the buffer size for the "n" term, but in alternate unicode versions it says # of characters
-   // with the null terminator as one of the characters, so a string of 5 characters plus a null terminator would be 6.
-   // For char strings, the number of bytes and the number of characters is the same.  I use number of characters for 
-   // future-proofing the n term to unicode versions, so n-1 characters other than the null terminator can fill 
-   // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
-   // the null terminator.
-
-   int cCharsWithoutNullTerminator = snprintf(
-      &str[index],
-      cCharsFloatPrint - index,
-      g_pPrintfLongInt,
-      val
-   );
-   cCharsWithoutNullTerminator = UNLIKELY(cCharsFloatPrint - index <= cCharsWithoutNullTerminator) ? -1 :
-      cCharsWithoutNullTerminator;
-   return cCharsWithoutNullTerminator;
-}
-
-INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept {
-   // we only convert str values that we've verified to conform, OR chopped versions of these which we know to be legal
-   // If the chopped representations underflow (possible on chopping to lower) or 
-   // overflow (possible when we increment from the lower chopped value), then strtod gives 
-   // us enough information to convert these
-
-   static_assert(std::is_same<FloatEbmType, double>::value,
-      "FloatEbmType must be double, otherwise use something other than strtod");
-
-   // the documentation says that if we have an underflow or overflow, strtod returns us +-HUGE_VAL, which is
-   // +-infinity for at least some implementations.  We can't really take a ratio from those numbers, so convert
-   // this to the lowest and max values
-
-   FloatEbmType val = strtod(str, nullptr);
-
-   // this is a check for -infinity/-HUGE_VAL, without the -infinity value since some compilers make that illegal
-   // even so far as to make isinf always FALSE with some compiler flags
-   // include the equals case so that the compiler is less likely to optimize that out
-   val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
-   // this is a check for +infinity/HUGE_VAL, without the +infinity value since some compilers make that illegal
-   // even so far as to make isinf always FALSE with some compiler flags
-   // include the equals case so that the compiler is less likely to optimize that out
-   val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
-
-   return val;
-}
-
-static void StringToFloatChopped(
-   const char * const pStr, 
-   int iTruncateMantissaTextDigitsAfter,
-   FloatEbmType & lowChop,
-   FloatEbmType & highChop
-) noexcept {
-   EBM_ASSERT(nullptr != pStr);
-   // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
-   EBM_ASSERT(iTruncateMantissaTextDigitsAfter <= cDigitsAfterPeriod);
-
-   char strTruncated[cCharsFloatPrint];
-
-   iTruncateMantissaTextDigitsAfter = 0 < iTruncateMantissaTextDigitsAfter ?
-      1 + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
-
-   iTruncateMantissaTextDigitsAfter += 2; // add one for the sign character and one for the first character
-
-   memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
-   strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[iExp]);
-
-   lowChop = StringToFloat(strTruncated);
-
-   char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - 1];
-   while(true) {
-      char ch = *pIncrement;
-      if('.' == ch) {
-         --pIncrement;
-         if('9' == ch) {
-            // oh, great.  now we need to increment our exponential
-            *pIncrement = '1';
-            int exponent = GetExponent(pStr) + 1;
-
-            IntToString(exponent, strTruncated, iTruncateMantissaTextDigitsAfter);
-         } else {
-            *pIncrement = ch + 1;
-            highChop = StringToFloat(strTruncated);
-            return;
-         }
-      }
-      if('9' == ch) {
-         *pIncrement = '0';
-      } else {
-         *pIncrement = ch + 1;
-         highChop = StringToFloat(strTruncated);
-         return;
-      }
-      --pIncrement;
-   }
-}
-
 static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    // NOTE: str must be a buffer with cCharsFloatPrint characters available 
    //       (cCharsFloatPrint includes a character for the null terminator)
@@ -667,6 +565,144 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    return false;
 }
 
+INLINE_RELEASE static long GetExponent(const char * str) noexcept {
+   str = &str[iExp + 1];
+   // we previously checked that this converted to a long in FloatToString
+   return strtol(str, nullptr, 10);
+}
+
+INLINE_ALWAYS static int IntToString(const int val, char * const str, const int index) noexcept {
+   // snprintf says to use the buffer size for the "n" term, but in alternate unicode versions it says # of characters
+   // with the null terminator as one of the characters, so a string of 5 characters plus a null terminator would be 6.
+   // For char strings, the number of bytes and the number of characters is the same.  I use number of characters for 
+   // future-proofing the n term to unicode versions, so n-1 characters other than the null terminator can fill 
+   // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
+   // the null terminator.
+
+   int cCharsWithoutNullTerminator = snprintf(
+      &str[index],
+      cCharsFloatPrint - index,
+      g_pPrintfLongInt,
+      val
+   );
+   cCharsWithoutNullTerminator = UNLIKELY(cCharsFloatPrint - index <= cCharsWithoutNullTerminator) ? -1 :
+      cCharsWithoutNullTerminator;
+   return cCharsWithoutNullTerminator;
+}
+
+INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept {
+   // we only convert str values that we've verified to conform, OR chopped versions of these which we know to be legal
+   // If the chopped representations underflow (possible on chopping to lower) or 
+   // overflow (possible when we increment from the lower chopped value), then strtod gives 
+   // us enough information to convert these
+
+   static_assert(std::is_same<FloatEbmType, double>::value,
+      "FloatEbmType must be double, otherwise use something other than strtod");
+
+   // the documentation says that if we have an underflow or overflow, strtod returns us +-HUGE_VAL, which is
+   // +-infinity for at least some implementations.  We can't really take a ratio from those numbers, so convert
+   // this to the lowest and max values
+
+   FloatEbmType val = strtod(str, nullptr);
+
+   // this is a check for -infinity/-HUGE_VAL, without the -infinity value since some compilers make that illegal
+   // even so far as to make isinf always FALSE with some compiler flags
+   // include the equals case so that the compiler is less likely to optimize that out
+   val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+   // this is a check for +infinity/HUGE_VAL, without the +infinity value since some compilers make that illegal
+   // even so far as to make isinf always FALSE with some compiler flags
+   // include the equals case so that the compiler is less likely to optimize that out
+   val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
+
+   return val;
+}
+
+static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdenticalCharsRequired) noexcept {
+   char strRehydrate[cCharsFloatPrint];
+   FloatEbmType ret = StringToFloat(str);
+   if(FloatToString(ret, strRehydrate)) {
+      return ret;
+   }
+
+   if(0 == memcmp(str, strRehydrate, iIdenticalCharsRequired)) {
+      return ret;
+   }
+
+   // according to the C++ docs, nextafter won't exceed the to parameter, so we don't have to worry about this
+   // generating infinities
+   ret = std::nextafter(ret, '-' == str[0] ? std::numeric_limits<FloatEbmType>::lowest() :
+      std::numeric_limits<FloatEbmType>::max());
+
+   return ret;
+}
+
+
+
+
+static void StringToFloatChopped(
+   const char * const pStr,
+   int iTruncateMantissaTextDigitsAfter,
+   FloatEbmType & lowChop,
+   FloatEbmType & highChop
+) noexcept {
+   EBM_ASSERT(nullptr != pStr);
+   // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
+   EBM_ASSERT(iTruncateMantissaTextDigitsAfter <= cDigitsAfterPeriod);
+
+   char strTruncated[cCharsFloatPrint];
+
+   iTruncateMantissaTextDigitsAfter = 0 < iTruncateMantissaTextDigitsAfter ?
+      1 + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
+
+   iTruncateMantissaTextDigitsAfter += 2; // add one for the sign character and one for the first character
+
+   memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
+   strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[iExp]);
+
+   if('-' == pStr[0]) {
+      highChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
+   } else {
+      lowChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
+   }
+
+   char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - 1];
+   char ch;
+   if(2 == iTruncateMantissaTextDigitsAfter) {
+      goto start_at_top;
+   }
+   while(true) {
+      ch = *pIncrement;
+      if('.' == ch) {
+         --pIncrement;
+      start_at_top:;
+         ch = *pIncrement;
+         if('9' == ch) {
+            // oh, great.  now we need to increment our exponential
+            *pIncrement = '1';
+            *(pIncrement + 1) = 'e';
+            int exponent = GetExponent(pStr) + 1;
+            IntToString(exponent, strTruncated, 3);
+         } else {
+            *pIncrement = ch + 1;
+         }
+         break;
+      }
+      if('9' == ch) {
+         *pIncrement = '0';
+      } else {
+         *pIncrement = ch + 1;
+         break;
+      }
+      --pIncrement;
+   }
+   if('-' == pStr[0]) {
+      lowChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
+   } else {
+      highChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
+   }
+   return;
+}
+
 INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
    const FloatEbmType low, 
    const FloatEbmType high
@@ -723,278 +759,60 @@ INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
    if(FloatToString(avg, strAvg)) {
       return high;
    }
-   int avgExp = GetExponent(strAvg);
 
-   FloatEbmType lowRound;
-   FloatEbmType highRound;
+   FloatEbmType lowChop;
+   FloatEbmType highChop;
 
    if(lowExp + 2 <= highExp) {
       EBM_ASSERT(low < avg);
       EBM_ASSERT(avg < high);
 
-      // TODO: consider the round up and round down scenarios and figure out which makes more sense
+      StringToFloatChopped(strAvg, 0, lowChop, highChop);
 
-      StringToFloatChopped(strAvg, 3, lowRound, highRound);
+      // TODO : handle low == 0.  We probalby want to invert these divisions, or change them to multiplications
+      const FloatEbmType highRatio = high / lowChop;
+      const FloatEbmType lowRatio = highChop / low;
 
-      return high;
-   } else {
-
-      //round here such that it's clear that the number could not be rounded in the direction that we're going
-      //so, 
-
-      //5.555 0000
-      //5.554 9999
-      //5.554 8999
-
-
-
-      if(lowExp + 1 == highExp) {
-         // if our values have different exponents, we only really need to care about the one
-         // with the same exponent number since the other one is sufficiently different, and our
-         // average being in the middle will be differentiable provided we're differentiable
-         // against the one with the same numbers of exponents
-
-         char * pCompareStr;
-         if(avgExp == lowExp) {
-            pCompareStr = strLow;
-         } else if(avgExp == highExp) {
-            pCompareStr = strHigh;
-         } else {
-            // this shouldn't be possible, but who knows.. bail and return high since we don't know
-            // what's wrong
-            return high;
-         }
+      if(highRatio < lowRatio) {
+         return highChop;
       } else {
-         EBM_ASSERT(lowExp == highExp);
-         if(avgExp != highExp) {
-            // you would expect that if low and high both have the same exponent, their average
-            // would too, but maybe with floating point gitter there are violations. In that case
-            // you'd expect low, high, and average to all be close, so let's just return the high
-            return high;
-         }
-
-         return high;
-
+         return lowChop;
       }
+   } else {
+      for(int i = 0; i < cDigitsAfterPeriod; ++i) {
+         FloatEbmType lowLow;
+         FloatEbmType lowHigh;
+         FloatEbmType avgLow;
+         FloatEbmType avgHigh;
+         FloatEbmType highLow;
+         FloatEbmType highHigh;
+
+         StringToFloatChopped(strLow, i, lowLow, lowHigh);
+         StringToFloatChopped(strAvg, i, avgLow, avgHigh);
+         StringToFloatChopped(strHigh, i, highLow, highHigh);
+
+         if(lowHigh < avgLow && avgLow < highLow && low < avgLow && avgLow <= high) {
+            // avgLow is a possibility
+            if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
+               // avgHigh is a possibility
+               FloatEbmType lowDistance = high - avgLow;
+               FloatEbmType highDistance = avgHigh - low;
+               if(highDistance < lowDistance) {
+                  return avgHigh;
+               }
+            }
+            return avgLow;
+         } else {
+            if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
+               // avgHigh is a possibility
+               return avgHigh;
+            }
+         }
+      }
+
+      // this was already checked to be valid
+      return avg;
    }
-
-   return high;
-
-
-
-
-
-
-
-   //                  if(lowExp + 1 == highExp) {
-   //                     EBM_ASSERT(lowAvgExp == lowExp);
-   //                     // 1eLOW can't be above low since it's literally the lowest value with the same exponent
-   //                     // as our low value.  So, skip all the low value computations
-   //                     if(low < highExpFloat && highExpFloat <= high) {
-   //                        return FindClean1eFloat(cCharsFloatPrint, str0, low, high, highExpFloat);
-   //                     } else {
-   //                        // fallthrough case.  Floating point numbers are inexact, so perhaps if they are 
-   //                        // separated by 1 epsilon or something like that and/or the text conversion isn't exact, 
-   //                        // we could get a case where this might happen
-   //                     }
-   //                  } else {
-   //                     const int cLowAvgExpWithoutNullTerminator = snprintf(
-   //                        &str0[2],
-   //                        cCharsFloatPrint - 2,
-   //                        g_pPrintfLongInt,
-   //                        lowAvgExp
-   //                     );
-   //                     if(0 <= cLowAvgExpWithoutNullTerminator && cLowAvgExpWithoutNullTerminator < cCharsFloatPrint - 2) {
-   //                        EBM_ASSERT(lowExp < lowAvgExp);
-   //                        EBM_ASSERT(lowAvgExp < highExp);
-
-   //                        // unless something unexpected happens in our framework, str0 should be a valid 
-   //                        // FloatEbmType value, which means it should also be a valid long double value
-   //                        // so we shouldn't get a return of 0 for errors
-   //                        //
-   //                        // lowAvgExp is above lowExp and below lowAvgExp, which are both valid FloatEbmTypes
-   //                        // so str0 must contain a valid number that is convertable to FloatEbmTypes
-   //                        // but check this anyways incase there is floating point jitter
-
-   //                        const FloatEbmType lowExpFloat = StringToFloat(str0);
-
-   //                        if(low < lowExpFloat && lowExpFloat <= high) {
-   //                           if(low < highExpFloat && highExpFloat <= high) {
-   //                              // We want to handle widly different exponentials, so the average of 1e10 and 1e20 is 1e15, not 1e20 minus some 
-   //                              // small epsilon, so we use the geometric mean instead of the arithmetic mean.
-   //                              const FloatEbmType geometricMean = GeometricMeanSameSign(low, high);
-
-   //                              // TODO: verify what happens if low or high is zero, since the geometric mean would be zero in that case.  There might be overflow and underlfow cases that could also cause problems
-
-   //                              // take the one that is closest to the geometric mean
-   //                              //
-   //                              // we want to compare in terms of exponential distance, so instead of subtacting,
-   //                              // divide these.  Flip them so that the geometricMean is at the bottom of the low
-   //                              // one because it's expected to be bigger than the lowExpFloat (the lowest of all
-   //                              // 3 numbers)
-   //                              const FloatEbmType lowRatio = lowExpFloat / geometricMean;
-   //                              const FloatEbmType highRatio = geometricMean / highExpFloat;
-   //                              // we flipped them, so higher numbers (closer to 1) are bad.  We want small numbers
-   //                              if(lowRatio < highRatio) {
-   //                                 return FindClean1eFloat(cCharsFloatPrint, str0, low, high, lowExpFloat);
-   //                              } else {
-   //                                 return FindClean1eFloat(cCharsFloatPrint, str0, low, high, highExpFloat);
-   //                              }
-   //                           } else {
-   //                              return FindClean1eFloat(cCharsFloatPrint, str0, low, high, lowExpFloat);
-   //                           }
-   //                        } else {
-   //                           if(low < highExpFloat && highExpFloat <= high) {
-   //                              return FindClean1eFloat(cCharsFloatPrint, str0, low, high, highExpFloat);
-   //                           } else {
-   //                              // fallthrough case.  Floating point numbers are inexact, so perhaps if they are 
-   //                              // separated by 1 epsilon or something like that and/or the text conversion isn't exact, 
-   //                              // we could get a case where this might happen
-   //                           }
-   //                        }
-   //                     } else {
-   //                        // this shouldn't happen, but don't trust sprintf
-   //                        // In release mode fall through to a backup method of handling this
-   //                        EBM_ASSERT(false);
-   //                     }
-   //                  }
-   //               } else {
-   //                  // this shouldn't happen, but don't trust sprintf
-   //                  // In release mode fall through to a backup method of handling this
-   //                  EBM_ASSERT(false);
-   //               }
-   //            } else {
-
-
-
-
-
-
-
-
-   //               EBM_ASSERT('+' == str0[0] || '-' == str0[0]);
-   //               EBM_ASSERT('+' == str1[0] || '-' == str1[0]);
-   //               EBM_ASSERT(str0[0] == str1[0]);
-
-   //               // there should somewhere be an 'e" or 'E' character, otherwise we wouldn't have gotten here,
-   //               // so there must at least be 1 character
-   //               size_t iChar = 1;
-   //               // we shouldn't really need to take the min value, but I don't trust floating point number text
-   //               const size_t iCharEnd = std::min(pLowEChar - str0, pHighEChar - str1);
-   //               // handle the virtually impossible case of the string starting with 'e' by using iChar < iCharEnd
-   //               while(LIKELY(iChar < iCharEnd)) {
-   //                  // "+9.1234 5 67890123456e+300" (low)
-   //                  // "+9.1234 6 54654545454e+300" (high)
-   //                  if(UNLIKELY(str0[iChar] != str1[iChar])) {
-   //                     // we know our low value is lower, so this digit should be lower
-   //                     EBM_ASSERT(str0[iChar] < str1[iChar]);
-   //                     // nothing is bigger than '9' for a single digit, so the low value can't be '9'
-   //                     EBM_ASSERT('9' != str0[iChar]);
-   //                     char * pDiffChar = str0 + iChar;
-   //                     memmove(
-   //                        pDiffChar + 1,
-   //                        pLowEChar,
-   //                        static_cast<size_t>(cLowCharsWithoutNullTerminator) - (pLowEChar - str0) + 1
-   //                     );
-
-   //                     // Because of floating point inexactness, geometricMean is NOT GUARANTEED 
-   //                     // to be (low < geometricMean && geometricMean <= high).  We generally don't return the geometric mean though,
-   //                     // so don't check it here.
-   //                     const FloatEbmType geometricMean = GeometricMeanSameSign(low, high);
-
-   //                     // TODO: verify what happens if low or high is zero, since the geometric mean would be zero in that case.  There might be overflow and underlfow cases that could also cause problems
-
-   //                     const char charEnd = str1[iChar];
-   //                     char curChar = *pDiffChar;
-   //                     FloatEbmType ret = FloatEbmType { 0 }; // this value should never be used
-   //                     FloatEbmType bestRatio = std::numeric_limits<FloatEbmType>::lowest();
-   //                     char bestChar = 0;
-   //                     do {
-   //                        // start by incrementing the char, since if we chop off trailing digits we won't
-   //                        // end up with a number higher than the low value
-   //                        ++curChar;
-   //                        *pDiffChar = curChar;
-
-   //                        const FloatEbmType val = StringToFloat(str0);
-   //                        if(low < val && val <= high) {
-   //                           const FloatEbmType ratio =
-   //                              geometricMean < val ? geometricMean / val : val / geometricMean;
-   //                           EBM_ASSERT(ratio <= FloatEbmType { 1 });
-   //                           if(bestRatio < ratio) {
-   //                              bestRatio = ratio;
-   //                              bestChar = curChar;
-   //                              ret = val;
-   //                           }
-   //                        }
-   //                     } while(charEnd != curChar);
-   //                     if(std::numeric_limits<FloatEbmType>::max() != bestRatio) {
-   //                        // once we have our value, try converting it with printf to ensure that it gives 0000s 
-   //                        // at the end (where the text will match up), instead of 9999s.  If we get this, then 
-   //                        // increment the floating point with integer math until it works.
-
-   //                        // restore str0 to the best string available
-   //                        *pDiffChar = bestChar;
-
-   //                        unsigned int cIterationsRemaining = 100;
-   //                        do {
-   //                           int cCheckCharsWithoutNullTerminator = snprintf(
-   //                              str1,
-   //                              cCharsFloatPrint,
-   //                              g_pPrintfForRoundTrip,
-   //                              cDigitsAfterPeriod,
-   //                              ret
-   //                           );
-   //                           if(cCheckCharsWithoutNullTerminator < 0 ||
-   //                              cCharsFloatPrint <= cCheckCharsWithoutNullTerminator) {
-   //                              break;
-   //                           }
-   //                           size_t iFindChar = 0;
-   //                           while(true) {
-   //                              if(LIKELY(iChar < iFindChar)) {
-   //                                 // all seems good.  We examined up until what was the changing char
-   //                                 return ret;
-   //                              }
-   //                              if(str0[iFindChar] != str1[iFindChar]) {
-   //                                 break;
-   //                              }
-   //                              ++iFindChar;
-   //                           }
-   //                           ret = std::nextafter(ret, std::numeric_limits<FloatEbmType>::max());
-   //                           --cIterationsRemaining;
-   //                        } while(0 != cIterationsRemaining);
-   //                     }
-   //                     break; // this shouldn't happen, but who knows with floats
-   //                  }
-   //                  ++iChar;
-   //               }
-   //               // we should have seen a difference somehwere since our low should be lower than our high,
-   //               // and we used enough digits for a "round trip" guarantee, but whatever.  Just fall through
-   //               // and handle it like other close numbers where we just take the geometric mean
-
-   //               // this shouldn't happen, but don't trust sprintf
-   //               // In release mode fall through to a backup method of handling this
-   //               EBM_ASSERT(false);
-   //            }
-   //         } else {
-   //            // this shouldn't happen, but don't trust sprintf
-   //            // In release mode fall through to a backup method of handling this
-   //            EBM_ASSERT(false);
-   //         }
-   //      } else {
-   //         // this shouldn't happen, but don't trust sprintf
-   //         // In release mode fall through to a backup method of handling this
-   //         EBM_ASSERT(false);
-   //      }
-   //   } else {
-   //      // this shouldn't happen, but don't trust sprintf
-   //      // In release mode fall through to a backup method of handling this
-   //      EBM_ASSERT(false);
-   //   }
-   //} else {
-   //   // this shouldn't happen, but don't trust sprintf
-   //   // In release mode fall through to a backup method of handling this
-   //   EBM_ASSERT(false);
-   //}
 }
 
 INLINE_RELEASE static void IronSplits() noexcept {
@@ -3225,7 +3043,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                }
 
                *countCutPoints = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusive;
-               *countCutPoints = 0; // TODO : remove after we debug
 
                free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
 
