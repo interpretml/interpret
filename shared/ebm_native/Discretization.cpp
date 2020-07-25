@@ -54,10 +54,10 @@ constexpr int k_cDigitsAfterPeriod = std::numeric_limits<FloatEbmType>::max_digi
 // it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
 // exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
 // subnormal numbers shouldn't increase the exponent by that much ever.
-constexpr int k_cExponentTextDigits = std::max(
-   CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10),
-   CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1
-);
+constexpr int k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
+constexpr int k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1;
+constexpr int k_cExponentTextDigits =
+k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
 
 // we have a function that ensures our output is exactly in the format that we require.  That format is:
 // "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
@@ -768,6 +768,17 @@ INLINE_RELEASE static void CalculatePriority(
 ) noexcept {
    EBM_ASSERT(!pSplitCur->IsSplit());
 
+   // TODO: It's tempting to want to materialize cuts if both of it's neighbours are materialized, since our 
+   // boundaries won't change.  In the future though we might someday move counts of ranges arround, and perhaps 
+   // a split point will be moved into our range before we make our actual cut.  We should probably therefore give 
+   // a priority of zero to any SplitPoint that has materialized split points to either side so that it doesn't 
+   // get materialized until the end.  For the same reason we probably want to significantly reduce the priority
+   // of range with 2 aspirational cuts, since we already uderstand them well.  We don't want to make the priority
+   // zero though since we want the algorithm to choose which of the 2 cuts should be chosen.  Perhaps we should
+   // just multiply the priority by a tiny value for 1,2,3 cut ranges so that the algorithm favors deciding the
+   // larger ones first and then settle these cuts that we have the power to exmaine combinatorially in our
+   // BuildNeighbourhoodPlan function
+
    // if the m_iVal value was set to k_illegalIndex, then there are no legal splits, 
    // so leave it with the most terrible possible priority
    if(k_illegalIndex == pSplitCur->m_iVal) {
@@ -810,6 +821,7 @@ static void BuildNeighbourhoodPlan(
    // situation.  All other fields are being overwritten as we nuke them, or they were uninitialized
    SplitPoint * const pSplitCur
 ) noexcept {
+
    EBM_ASSERT(1 <= cSamplesPerBinMin);
    EBM_ASSERT(2 * cSamplesPerBinMin <= cSplittableItems);
    EBM_ASSERT(nullptr != aNeighbourJumps);
@@ -829,91 +841,84 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(pSplitCur->m_iValAspirationalFloat <= 
       static_cast<FloatEbmType>(cSplittableItems) + FloatEbmType { 0.001 });
 
-   // TODO TODO TODO:
-   // - the problem with our existing algorithm of choosing the points independnetly is that the neighbouring ranges 
-   //   might need to be fairly different sizes.  For sample say there is a long run at the start and smaller 
-   //   ones at the ends.  
-   // - we should think of the problem as choosing the next 5 splits on the left and right for each of the lower and
-   //   higher choices.  We should consider our window of the larger N, so let's say 50 items, but we're going to
-   //   restrict our next few choices to the next 5 items in any order.  For each of those items we're allowed to
-   //   choose either the higher or lower choices.
-   // - if we allow our next 5 items to be chosen in any order, then we have 5! choices, and we have 2 sides to each
-   //   choice so we have 2^5 side options.  Our last item is special in that we don't really know if we'll choose
-   //   the higher or lower choice due to constraints on the other side.  In fact, we might not choose either of them
-   //   due to constraints on the other side.  Perhaps we want to game a few options like dividing the region up into
-   //   10 different ending points (they could be all over the place if there isn't a long range of values there)
-   //   and taking the geometric mean which would ensure us the best average choice depending on how those values are
-   //   chosen.  I like the idea of spraying the end point with various choices to see what the totality of options are
-   // - for the points beyond our end, if we don't hit a hard split boundary, we should divide them up by the remaining
-   //   split points and use whatever scoring metric we're using for the other, but using floatig aspirational cuts
-   // - our metric probably shouldn't just consider penalizing small ranges otherwise our algorithm will just select
-   //   for all ranges that are big.  We should probably do something like, scale positive and negative distances
-   //   by some factor first to weight the smaller ones more, then square them, and use that
-   // - we might consider taking the second or third best score of all the permutations on the left or right because 
-   //   we are not guaranteed to get the best one.  We are guaranteed to get our split if we're selected from the
-   //   priority queue, but our ultimate cut plan may not occur as we had envisioned, so variety is important, and
-   //   recognizing that if one side has many options, but the other side has much fewer options, we may want to choose
-   //   the side with more options even if the best options are better than the other side.  We aim here for safety
-   //   instead of the best result
+   // Before making any splits, we examine each potential split AS IF we were going to cut it, and we determine
+   // which direction we would go in that instance.  After making all these future decisions for each aspirational
+   // cut, our priority queue picks the decision that looks the hardest, and that'll make the most chaotic damage 
+   // to our future plans.  We'll need to make those decisions someday anyways, and materializing those early gives
+   // us more wiggle room to course correct as we greedily progress in our decision making.
+   // 
+   // The priority queue which determines the order that we materialize splits tends to force us to make the hard 
+   // decisions early. The hardest decisisions tend to be at the tail ends of SplittableRanges, since at center
+   // of a long SplittingRange we can move future aspirational cuts long distances without affecting the average 
+   // size of the remaining splits much since we have lots of options for graudually steering the other cuts in a
+   // direction afterwards.  At the tail ends though, one of our sides is fixed and unmovable, so we have to place our 
+   // splits with that restriction, and if our aspirational cut is in the middle of a long range of equal values we 
+   // have to choose whether to make smaller ranges on the tail end side or on the open space side.  Usually we would 
+   // choose to avoid small cut ranges on the constrained side, but there are cases where we shouldn't, like for 
+   // instance if we're choosing a cut 2 ranges out from a tail end. Perhaps by choosing the inner cut we get a 
+   // perfect cut between our tail and the cut we're materializing, so in reality we should probably explore our close 
+   // neighbourhood a bit to ensure that a choice we're making has good downstream options.
+   // example: if we have 0, 0, 0, 0 | 1, 1, 1, 1 | 2, 2 * 2, 2, 3 | 4, 5, 6 ... and our average cut size is 5, 
+   // we might want to put the cut between the 1 and 2 instead of the 2 and 3 because we can nicely cut the 0s and 1s
+   // afterwards. To make these choices we should examine our near zone neighbourhood and develop a contingency
+   // plan for cuts on either side of the range we're making.  If a cut that we're going to materialize isn't
+   // within a long range of equal values, then we can relax because the priority queue will only try to decide these
+   // after all the hard decisions are already made, and by the time we reach there we're only moving small amounts
+   // so future decisions tend to move our aspirational cut points by small amounts and not generate surprising
+   // new hard to decide cuts.  As we progress in materializing cuts, if a cut becomes progressively harder, eventually
+   // the prioritizing algorithm will notice and force us to materialize that cut. Given we cannot undo our choices,
+   // once materialized, we should try to choose the safest options whenever we can't see past a certain horizon of
+   // future choices.  If a materiazlied boundary is within our neighbourhood examination window, that's great, but
+   // we also need to make choices when one or both sides are completely open.  In that case we don't know where
+   // the future will materialize cuts on the open border side, so we should look at our aspirational cut at our
+   // border and generate a certain number of reasonable points that could be possible (like 10 options).  Then
+   // we should calculate what choices we'd make to each of those 10 possible destinations and then pick either
+   // the worst potential one, or maybe the 2nd worst one (our prioritizing algoritm migh avoid the worst pick).
 
+   // TODO: generate 4-20 potential landing points if either side of our window beyond the 5 or so neighbourhood
+   //       cuts and develop a plan to getting to each of them, and then pick the worst (or 2nd worst) per above
 
-
-   // TODO TODO TODO TODO TODO TODO TODO TODO 
-   //!!!!
-   //Inside BuildNeighbourhoodPlan, it's possible to have a super-improbable condition (but maybe with constructed bad data)
-   //that we try and find where our low and high choices are, and one or BOTH are outside our visibility window.This would only happen
-   //if someone started with big ranges, but then squeezed the ranges close to the minimum and made the possible ranges larger than 50 minimum distances
-   //If one boundary is outside our visibility window, then we shouldn't consider it
-   //If both boundaries are outside our visibility window, then we're in trouble, since we don't have a place to materialize out cut
-   //Even if we pre - scan the range once we've taken out a cut, we move our window lower and higher and it's possible that a cut on one of the sides
-   //will get into a scenario where it has no legal cuts(perhaps the left cut doesn't have the minimum and the right is outside of the visibility window)
-   //So, we need to handle this somehow.
-   //Further complicating this is, if we self - remove ourselves, we screw up the lower and higher counts of our parent since a hole opened up
-   //So, we should probably not deleted ourselves.
-   //Perhaps we can set our priority to the most negative number so that we aren't selected ever. and our algorithm ends when we pull off a cut point with that number since it means all remaining cuts are impossible
-   //but we set the priority in a later function, so we need to somehow signal that we have no cuts, and then set the priority afterwards ? ?
-   //Even if we have no legal cuts because our lower bound doesn't meet the minimum and our upper bound is outside the visibility window, we might in the future become cutable, so we shouldn't delete ourselves
-   //If we initiazlie the priority to a value (zero presumably), we can set it to -max_value to signal that there are no legal cuts and then we won't call the prioritize function when that is observed
-
-
-   // if the splits to the immediate lower and higher positions are both materialized AND if we have a long range
-   // in the middle that only allows our lower and higher splits to be less than cSamplesPerBinMin items
-   // away from the boundaries, then no splits will be possible and this function is allowed to delete pSplitCur
-   // from consideration (returning true so that the SplitPoint isn't inserted into the priority queue).
-   // We never delete a SplitPoint though outside of this condition though since if there are 2 split points within
-   // a range, then neither is guranteed to be the true split since the other one could be selected and our split
-   // point moved.  Deleting/moving Split points is a kind of materialization, so don't do that.
-
-   // It's tempting to materialize our cut if both of our neighbours are materialized, since our boundaries won't
-   // change.  In the future though we might someday move counts of ranges arround, and perhaps a split point will
-   // be moved into our range before we make our actual cut.  We should probably actually give a priority of zero
-   // to any SplitPoint that has materialized split points to either side so that it doesn't get materialized until
-   // the end
-
-
-
-   // TODO: we could take an alternate approach here and look at N lower and N higher points based on our ideal 
-   //       division width, and get the square distance between the ideal cut points and their nearest real 
-   //       cuttable points.  Try this out!
-
-   // TODO: we could run a pre-step in our caller that would, at the time the bounds are determined, jump from
-   //       both the lower and upper bounds by the minimum distances and then assign a count to each SplitPoint
-   //       that indicates how many ranges there are lower and higher for each of the lower and higher cut choices
-   //       this could be done once per entire large window, so each SplitPoint wouldn't need to do this.
-   //       At the minimum this 
-
-   // TODO: another idea would be to slide a window through all potential cut points and measure how well we can
-   //       go from a cut on any particular point to any series of cuts on either side.  If one place has a cut
-   //       cut point that meshes well with others, but nearby points are much worse, we probably want to lock that
-   //       option down.  I strikes me that this method would work really well for the interior regions that are
-   //       far from the edges.  Perhaps we want to mix this method with our other top down method so that we choose
-   //       one cut top down, then one cut bottom up, etc.  Many possible options here
-
-   // TODO: no matter what, I think we'll need to have a way to re-balance the cut points from one open region to
-   //       annother, since otherwise with lumpy ranges we'll end up with too many somewhere and too few in other
-   //       places
-
-
+   // TODO: We're currently NOT examining our near neighbourhood for where we'd put our neighbouring cuts.  We need
+   //       to solve this, and here are some options:
+   //       - the most computationally intensive one would be a mini version of our main splitting algorithm where
+   //         we split the neighbourhood into 5 aspirational cut points and we then materialize them one at a time
+   //         This has the advantage that cuts will reposition themselves based on the others in our mini-neighbourhood
+   //         The problem is that we have 5! orderings on which order to pick the mini-aspirational cuts, and 2 
+   //         directions per choice, so we get 5! * 2 & 5 possible options (3,840) to examine.  That might be doable
+   //       - we can divide the 5 cut neighbourhood into equally sized ranges and examine what happens if we go
+   //         low/high on each cut.  This means we have only 2 ^ 5 options (32 options), but if one of the ranges
+   //         puts one of our cuts in a bad place, it won't reposition the others
+   //       - we can decide the cuts one at a time.  Start from our main low/high aspirational side, then decide
+   //         the cut N/M items to the left or right, then keep going.  We can also reverse the decision making and
+   //         go from our endpoint.  This might work in a lot of cases.  This method only requres 5 choices (or twice
+   //         if we start from either end.  This might work in many cases
+   //       - we could take an alternate approach here and look at N lower and N higher points based on our ideal 
+   //         division width, and get the square distance between the ideal cut points and their nearest real 
+   //         cuttable points.  This doesn't build an exact plan, but it's probably easier (I think we should probably
+   //         try the other ideas above out first).
+   //
+   // TODO: we also want to try tweaking the number of cuts on either side.  Perhaps we determined at first that
+   //       5 cuts on the lower side is ideal for minimizing the minimim cut range size, but when we go and examine
+   //       that side maybe we have 4 perfect cutting points, but 5 doesn't fit.  We should try to go 2 up or 2 down
+   //       or keep going until we get worse results.  I favor going 2 up and 2 down at minimum since it isn't
+   //       guaranteed to have a linear improvement rate, and maybe go to 3, 4, etc.. if 2 improves things.  Perhaps
+   //       we want to go one direction until we don't see an improvement for 2 successive changes
+   // 
+   // TODO: our priority queue priority should probably somewhat incorporate how good or bad our neighbourhood options
+   //       are.  If we have an open ended side, and we have one great option, but all the other options are terrible
+   //       then we probably want to raise our priority so that we get to go first and materialize our only good option
+   //       this should probably be a secondary consideration to the global priority though since the global priority
+   //       measures how much downstream chances a option changes, which is important to minimize.  We could probably
+   //       consider returning a multiple here that we would muliply our global priority by.  Say we could change
+   //       the global priority by a factor of 2 either lower or higher.
+   //
+   // TODO: IF there are no hard decisions to make near the tail ends of the windows, we might want to switch tracts
+   //       and consider how we're going to thread the needle within the interior space.  We might use a completely
+   //       different algorithm that slides a window of 5 cut points along the values and finds windows that are
+   //       really bad that we'd like to avoid, and comparatively good cut points that we wnat to aim for.  This is
+   //       very likely a secondary consideration to make after we've made the hard choices at the tail end
+   //       and our priority queue might already avoid bad outcomes in many cases anyways.  Let's see if we can find
+   //       a bad outcome that needs to be solved.
 
    EBM_ASSERT(FloatEbmType { 0 } <= pSplitCur->m_iValAspirationalFloat);
    size_t iValAspirationalCur = static_cast<size_t>(pSplitCur->m_iValAspirationalFloat);
@@ -984,10 +989,6 @@ static void BuildNeighbourhoodPlan(
 
    constexpr FloatEbmType k_badScore = std::numeric_limits<FloatEbmType>::lowest();
 
-   // TODO: this simple metric just determins which side leads to a better average length.  There are other
-   //       algorithms we should use to calculate which side would be better.  Use one of those algorithms, but for
-   //       now this simple metric will be fine
-
    ptrdiff_t transferRangesLow = 0;
    FloatEbmType scoreLow = k_badScore;
    if(bCanSplitLow) {
@@ -1002,15 +1003,6 @@ static void BuildNeighbourhoodPlan(
 
       scoreLow = std::min(avgLengthLow, avgLengthHigh);
       transferRangesLow = static_cast<ptrdiff_t>(cRangesLowLow) - static_cast<ptrdiff_t>(cRangesLow);
-
-      // TODO: for now this simple metric to choose which direction we go should suffice, but in the future 
-      //       use a more complicated method to measure things like how badly one side or the other meshes with
-      //       nearby ranges
-
-      // TODO: we should also examine how splits work on both sides if we add or subtract some ranges.  We can
-      //       start with the zero move from our new count (which might already be moved but it's the optimal new size)
-      //       and then examine 2-3 chanes on either end or keep going if things keep improving, or maybe we want
-      //       to limit ourselves to just 1 move per split so that we don't get too far away from evenly dividing them
    }
 
    ptrdiff_t transferRangesHigh = 0;
@@ -1027,10 +1019,6 @@ static void BuildNeighbourhoodPlan(
 
       scoreHigh = std::min(avgLengthLow, avgLengthHigh);
       transferRangesHigh = static_cast<ptrdiff_t>(cRangesHighLow) - static_cast<ptrdiff_t>(cRangesLow);
-
-      // TODO: for now this simple metric to choose which direction we go should suffice, but in the future 
-      //       use a more complicated method to measure things like how badly one side or the other meshes with
-      //       nearby ranges
    }
 
    if(scoreLow < scoreHigh) {
@@ -1435,6 +1423,30 @@ static size_t SplitSegment(
          pSplitCur->m_iValAspirationalFloat = static_cast<FloatEbmType>(iVal);
          pSplitCur->m_iVal = iVal;
 
+         // TODO: ok, we've just finished materializing the cut based on the plan we developed earlier.  We'll
+         // now go and re-do our aspirational cut plan for all the aspirational cuts within our visibility windows
+         // on each side.  Before we do that though, we can do a quick check to find out what the maximum number of 
+         // cuts we could place is between our new materialized cut and our visibility windows.  If it's not possible
+         // even in theory to place 20 cuts on our low side, then our aspirational plans shouldn't even consider that
+         // Also, if we delete/move aspirational cuts early, there's a higher chance that we'll be able to re-use them
+         // in a good place.  I think fundamentally if we move between two boundaries if we move by the minimum window
+         // size we should get the same minimum if we start from the left or right, but I might be wrong about that,
+         // so check it with NDEBUG code.  There's actually two subtle issues here that we need to handle differently:
+         //  1) we need to determine if we should delete any cuts on our left or right.  To do this go from our
+         //     materialized cut and jump by cSamplesPerBinMin using aNeighbourJumps until we hit the aspirational
+         //     or materialized window.  If the window is aspirational we can either use the edge that's within the
+         //     aspirational window or the one right outside if we want more certainty, but in either case it's not a
+         //     100% guarantee since we might not even cut on the range that our aspirational cut falls on.  I lean towards
+         //     using our inner window and pruning early so that we get the cuts to useful place early.  The alternate
+         //     viewpoint is to only trim when we hit a materialized boundary before our visibility window.
+         //     since splits could eventually be pushed into the open ended range potentially, but in general we should
+         //     think that if splits can't be used within our range for a long distance we'd want to reallocate them
+         //     even if they could be pushed since it changes the density within our visibility window and
+         //     if we pushed them to a point outside then we'be be increasing the density there, so better to change
+         //     the densities in a more controlled way beforehand
+         //  2) We want to know how many potential cuts there are on each side of each aspirational cut that we're
+         //     we're considering.  Since we're processing like 20-50 of these, we can slide the value window
+         //     with cSamplesPerBinMin as we slide the visiblility windows to the left or right
 
          // TODO : improve this if our boundary is a size_t
          FloatEbmType stepPoint = pSplitLowBoundary->m_iValAspirationalFloat;
