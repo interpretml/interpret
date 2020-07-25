@@ -35,8 +35,47 @@
 //    if we had the values [1, 2, 3, 4] and one SplitPoint, a reasonable cutPoint would be 2.5.
 //  - cut range - the values between two SplitPoint
 
+// VERIFIED
+INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) noexcept {
+   // this works for negative numbers too
+   return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
+}
+
+// According to the C++ documentation, std::numeric_limits<FloatEbmType>::max_digits10 - 1 digits 
+// are required after the period in +9.1234567890123456e-301 notation, so for a double, the values would be 
+// 17 == std::numeric_limits<FloatEbmType>::max_digits10, and printf format specifier "%.16e"
+constexpr int k_cDigitsAfterPeriod = std::numeric_limits<FloatEbmType>::max_digits10 - 1;
+
+// Unfortunately, min_exponent10 doesn't seem to include subnormal numbers, so although it's the true
+// minimum exponent in terms of the floating point exponential representation, it isn't the true minimum exponent 
+// when considering numbers converted into text.  To counter this, we add 1 extra digit.  For double numbers
+// the largest exponent (308), smallest exponent for normal (-307), and the smallest exponent for subnormal (-324) 
+// all have 3 digits, but in the more general scenario we might go from N to N+1 digits, but I think
+// it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
+// exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
+// subnormal numbers shouldn't increase the exponent by that much ever.
+constexpr int k_cExponentTextDigits = std::max(
+   CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10),
+   CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1
+);
+
+// we have a function that ensures our output is exactly in the format that we require.  That format is:
+// "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
+// the exponential term can have some variation.  It can be any number of digits and the +- isn't required
+// our text float handling code handles these conditions without requiring modification.
+// 3 characters for "+9."
+// cDigitsAfterPeriod characters for the mantissa text
+// 2 characters for "e-"
+// cExponentTextDigits characters for the exponent text
+// 1 character for null terminator
+constexpr int k_iExp = 3 + k_cDigitsAfterPeriod;
+constexpr int k_cCharsFloatPrint = k_iExp + 2 + k_cExponentTextDigits + 1;
+
 constexpr IntEbmType k_randomSeed = 42424242;
 constexpr size_t k_SplitExploreDistance = 20;
+constexpr FloatEbmType k_noSplitPriority = std::numeric_limits<FloatEbmType>::lowest();
+constexpr ptrdiff_t k_MovementSplitValue = std::numeric_limits<ptrdiff_t>::lowest();
+constexpr size_t k_illegalIndex = std::numeric_limits<size_t>::max();
 
 constexpr unsigned int k_MiddleSplittingRange = 0x0;
 constexpr unsigned int k_FirstSplittingRange = 0x1;
@@ -105,27 +144,18 @@ static_assert(std::is_trivial<SplittingRange>::value,
 static_assert(std::is_pod<SplittingRange>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-constexpr ptrdiff_t k_splitValue = std::numeric_limits<ptrdiff_t>::min();
-constexpr FloatEbmType k_noSplitPriority = std::numeric_limits<FloatEbmType>::lowest();
 struct SplitPoint final {
    SplitPoint() = default; // preserve our POD status
    ~SplitPoint() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   // TODO: using our doubly linked list, we can move them from one place to
-   //       another place far away.  We can create a second priority queue that measures how much adding
-   //       a split into the open range surrounding a non-materialized aspirational cut.  We can then
-   //       then either check when we're clearing cuts what the best range to insert an orphaned cut would be
-   //       or we can maintain another priority queue of best cuts to remove and then keep shifting items from
-   //       the best to remove to the best to add queue at each step
-
    SplitPoint *   m_pPrev;
    SplitPoint *   m_pNext;
 
-   // m_cSplitMoveThis is a valid number until we split it.  After splitting we don't 
-   // need it's value and we set it to k_splitValue
-   ptrdiff_t      m_cSplitMoveThis;
+   // m_cPredeterminedMovementOnSplit is a valid number until we split it.  After splitting we don't 
+   // need a movement value, so we set it to k_splitValue and use it to detect whether this SplitPoint was split
+   ptrdiff_t      m_cPredeterminedMovementOnSplit;
 
    FloatEbmType   m_iValAspirationalFloat;
    size_t         m_iVal;
@@ -134,10 +164,10 @@ struct SplitPoint final {
    size_t         m_uniqueRandom;
 
    INLINE_ALWAYS void SetSplit() noexcept {
-      m_cSplitMoveThis = k_splitValue;
+      m_cPredeterminedMovementOnSplit = k_MovementSplitValue;
    }
    INLINE_ALWAYS bool IsSplit() noexcept {
-      return k_splitValue == m_cSplitMoveThis;
+      return k_MovementSplitValue == m_cPredeterminedMovementOnSplit;
    }
 };
 static_assert(std::is_standard_layout<SplitPoint>::value,
@@ -152,8 +182,12 @@ public:
    // TODO : check how efficient this is.  Is there a faster way to to this
    INLINE_ALWAYS bool operator() (const SplitPoint * const & lhs, const SplitPoint * const & rhs) const noexcept {
       if(UNLIKELY(lhs->m_priority == rhs->m_priority)) {
+         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(lhs->m_uniqueRandom < rhs->m_uniqueRandom);
       } else {
+         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return UNPREDICTABLE(lhs->m_priority < rhs->m_priority);
       }
    }
@@ -201,96 +235,6 @@ INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
 
    return cLeft;
 }
-
-constexpr static char g_pPrintfForRoundTrip[] = "%+.*" FloatEbmTypePrintf;
-constexpr static char g_pPrintfLongInt[] = "%d";
-
-
-//static FloatEbmType FindClean1eFloat(
-//   const int cCharsFloatPrint,
-//   char * const pStr,
-//   const FloatEbmType low, 
-//   const FloatEbmType high, 
-//   FloatEbmType val
-//) noexcept {
-//   // we know that we are very close to 1e[something].  For positive exponents, we have a whole number,
-//   // which for smaller values is guaranteed to be exact, but for decimal numbers they will all be inexact
-//   // we could therefore be either "+9.99999999999999999e+299" or "+1.00000000000000000e+300"
-//   // we just need to check that the number starts with a 1 to be sure that we're the latter
-//
-//   constexpr int cMantissaTextDigits = std::numeric_limits<FloatEbmType>::max_digits10;
-//   unsigned int cIterationsRemaining = 100;
-//   do {
-//      if(high <= val) {
-//         // oh no.  how did this happen.  Oh well, just return the high value, which is guaranteed 
-//         // to split low and high
-//         break;
-//      }
-//      const int cCharsWithoutNullTerminator = snprintf(
-//         pStr,
-//         cCharsFloatPrint,
-//         g_pPrintfForRoundTrip,
-//         cMantissaTextDigits,
-//         val
-//      );
-//      if(cCharsFloatPrint <= cCharsWithoutNullTerminator) {
-//         break;
-//      }
-//      if(0 == cCharsWithoutNullTerminator) {
-//         // check this before trying to access the 2nd item in the array
-//         break;
-//      }
-//      if('1' == pStr[1]) {
-//         // do one last check to verify for sure that we're above val in the end!
-//         val = low < val ? val : high;
-//         return val;
-//      }
-//
-//      val = std::nextafter(val, std::numeric_limits<FloatEbmType>::max());
-//      --cIterationsRemaining;
-//   } while(0 != cIterationsRemaining);
-//   return high;
-//}
-
-
-
-//static FloatEbmType LoopingMean(const FloatEbmType low, const FloatEbmType high) noexcept {
-//   EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
-//
-//   // nan values represent missing, and are filtered out from our data prior to discretization
-//   EBM_ASSERT(!std::isnan(low));
-//   EBM_ASSERT(!std::isnan(high));
-//
-//   // -infinity is converted to min_float and +infinity is converted to max_float in our data prior to discretization
-//   EBM_ASSERT(!std::isinf(low));
-//   EBM_ASSERT(!std::isinf(high));
-//
-//   FloatEbmType prev;
-//   // if low is zero, it could be a huge gulph towards high if we start from the smallest numbers, so start with
-//   // high and go downwards.  Also, returning high is valid since we use lower bound inclusive binning
-//   FloatEbmType cur = high;
-//   constexpr unsigned int cIterationsRemainingMax = 1000000;
-//   unsigned int cIterationsRemaining = cIterationsRemainingMax;
-//   do {
-//      prev = cur;
-//      cur = std::nextafter(cur, low);
-//      EBM_ASSERT(cur < high);
-//      if(cur <= low) {
-//         unsigned int cIterationsRemaining = (cIterationsRemainingMax - cIterationsRemainingMax) >> 2;
-//         cur = high;
-//         do {
-//            cur = std::nextafter(cur, low);
-//            EBM_ASSERT(cur < high);
-//            if(cur <= low) {
-//               // this really should not happen
-//               return high;
-//            }
-//            --cIterationsRemaining;
-//         } while(0 != cIterationsRemaining);
-//      }
-//      --cIterationsRemaining;
-//   } while(0 != cIterationsRemaining);
-//}
 
 static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
@@ -472,48 +416,13 @@ static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbm
    return result;
 }
 
-// VERIFIED
-INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) noexcept {
-   // this works for negative numbers too
-   return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
-}
-
-// NOTE: according to the C++ documentation, std::numeric_limits<FloatEbmType>::max_digits10 - 1 digits 
-// are required after the period, so for a double, the values would be 
-// 17 == std::numeric_limits<FloatEbmType>::max_digits10, 
-// and printf format specifier "%.16e", and sample output "3.1415926535897932"
-constexpr int cDigitsAfterPeriod = std::numeric_limits<FloatEbmType>::max_digits10 - 1;
-
-// Unfortunately, min_exponent10 doesn't seem to include subnormal numbers, so although it's the true
-// minimum exponent in terms of the floating point exponential representation, it isn't the true minimum exponent 
-// when considering numbers converted into text.  To counter this, we add 1 extra digit.  For double numbers
-// the largest exponent (308), smallest exponent for normal (-307), and the smallest exponent for subnormal (-324) 
-// all have 3 digits, but in the more general scenario we might go from N to N+1 digits, but I think
-// it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
-// exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
-// subnormal numbers shouldn't increase the exponent by that much ever.
-constexpr int cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
-constexpr int cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1;
-constexpr int cExponentTextDigits =
-cExponentMaxTextDigits < cExponentMinTextDigits ? cExponentMinTextDigits : cExponentMaxTextDigits;
-
-// example: "+9.1234567890123456e+300" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
-// 3 characters for "+9."
-// cDigitsAfterPeriod characters for the mantissa text
-// 2 characters for "e+"
-// cExponentTextDigits characters for the exponent text
-// 1 characters for null terminator
-constexpr int iExp = 3 + cDigitsAfterPeriod;
-constexpr int cCharsFloatPrint = iExp + 2 + cExponentTextDigits + 1;
-
 static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
-   // NOTE: str must be a buffer with cCharsFloatPrint characters available 
-   //       (cCharsFloatPrint includes a character for the null terminator)
+   // NOTE: str must be a buffer with k_cCharsFloatPrint characters available 
 
    // the C++ standard is pretty good about harmonizing the "e" format.  There is some openess to what happens
    // in the exponent (2 or 3 digits with or without the leading sign character, etc).  If there is ever any
-   // implementation observed that differs, this function should convert all formats to a common standard
-   // we use string manipulation to find interpretable cut points, so we need all strings to have a common format
+   // implementation observed that differs, this function should convert all formats to a common standard that
+   // we use for string manipulation to find interpretable cut points, so we need all strings to have a common format
 
    // snprintf says to use the buffer size for the "n" term, but in alternate unicode versions it says # of characters
    // with the null terminator as one of the characters, so a string of 5 characters plus a null terminator would be 6.
@@ -522,14 +431,16 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
    // the null terminator.
 
+   constexpr static char g_pPrintfForRoundTrip[] = "%+.*" FloatEbmTypePrintf;
+
    const int cCharsWithoutNullTerminator = snprintf(
       str,
-      cCharsFloatPrint,
+      k_cCharsFloatPrint,
       g_pPrintfForRoundTrip,
-      cDigitsAfterPeriod,
+      k_cDigitsAfterPeriod,
       val
    );
-   if(cCharsWithoutNullTerminator <= iExp || cCharsFloatPrint <= cCharsWithoutNullTerminator) {
+   if(cCharsWithoutNullTerminator <= k_iExp || k_cCharsFloatPrint <= cCharsWithoutNullTerminator) {
       // cCharsWithoutNullTerminator <= iExp checks for both negative values returned and strings that are too short
       return true;
    }
@@ -547,7 +458,7 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
       return true;
    }
    char * pch = &str[3];
-   char * pE = &str[iExp];
+   char * pE = &str[k_iExp];
    do {
       ch = *pch;
       if(ch < '0' || '9' < ch) {
@@ -560,13 +471,13 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
       return true;
    }
 
-   // use strtol instead of atol incase we have a bad input.  atol has undefined behavior if the
+   // use strtol instead of atol in case we have a bad input.  atol has undefined behavior if the
    // number isn't representable as an int.  strtol returns a 0 with bad inputs, or LONG_MAX, or LONG_MIN, 
    // on overflow or underflow.  The C++ standard makes clear though that on error strtol sets endptr
    // equal to str, so we can use that
 
    ++pch;
-   char * endptr = pch;
+   char * endptr = pch; // set it to the error value so that even if the function doesn't set it we get an error
    strtol(pch, &endptr, 10);
    if(endptr == pch) {
       return true;
@@ -575,12 +486,16 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
 }
 
 INLINE_RELEASE static long GetExponent(const char * str) noexcept {
-   str = &str[iExp + 1];
+   str = &str[k_iExp + 1];
    // we previously checked that this converted to a long in FloatToString
    return strtol(str, nullptr, 10);
 }
 
 INLINE_ALWAYS static int IntToString(const int val, char * const str, const int index) noexcept {
+   // TODO: add some static checks either here or our caller that ensures we have enough room in the str buffer to
+   // write the integer that we're writing (we check below that we don't overwrite, so that's good)
+   // TODO: also, is the val we usually write actually a long, since we use strtol above??
+
    // snprintf says to use the buffer size for the "n" term, but in alternate unicode versions it says # of characters
    // with the null terminator as one of the characters, so a string of 5 characters plus a null terminator would be 6.
    // For char strings, the number of bytes and the number of characters is the same.  I use number of characters for 
@@ -588,13 +503,15 @@ INLINE_ALWAYS static int IntToString(const int val, char * const str, const int 
    // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
    // the null terminator.
 
+   constexpr static char g_pPrintfLongInt[] = "%d";
+
    int cCharsWithoutNullTerminator = snprintf(
       &str[index],
-      cCharsFloatPrint - index,
+      k_cCharsFloatPrint - index,
       g_pPrintfLongInt,
       val
    );
-   cCharsWithoutNullTerminator = UNLIKELY(cCharsFloatPrint - index <= cCharsWithoutNullTerminator) ? -1 :
+   cCharsWithoutNullTerminator = UNLIKELY(k_cCharsFloatPrint - index <= cCharsWithoutNullTerminator) ? -1 :
       cCharsWithoutNullTerminator;
    return cCharsWithoutNullTerminator;
 }
@@ -627,7 +544,7 @@ INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept
 }
 
 static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdenticalCharsRequired) noexcept {
-   char strRehydrate[cCharsFloatPrint];
+   char strRehydrate[k_cCharsFloatPrint];
    FloatEbmType ret = StringToFloat(str);
    if(FloatToString(ret, strRehydrate)) {
       return ret;
@@ -645,9 +562,6 @@ static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdentica
    return ret;
 }
 
-
-
-
 static void StringToFloatChopped(
    const char * const pStr,
    int iTruncateMantissaTextDigitsAfter,
@@ -656,9 +570,9 @@ static void StringToFloatChopped(
 ) noexcept {
    EBM_ASSERT(nullptr != pStr);
    // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
-   EBM_ASSERT(iTruncateMantissaTextDigitsAfter <= cDigitsAfterPeriod);
+   EBM_ASSERT(iTruncateMantissaTextDigitsAfter <= k_cDigitsAfterPeriod);
 
-   char strTruncated[cCharsFloatPrint];
+   char strTruncated[k_cCharsFloatPrint];
 
    iTruncateMantissaTextDigitsAfter = 0 < iTruncateMantissaTextDigitsAfter ?
       1 + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
@@ -666,7 +580,7 @@ static void StringToFloatChopped(
    iTruncateMantissaTextDigitsAfter += 2; // add one for the sign character and one for the first character
 
    memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
-   strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[iExp]);
+   strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[k_iExp]);
 
    if('-' == pStr[0]) {
       highChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
@@ -739,9 +653,9 @@ INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
       return FloatEbmType { 0 };
    }
 
-   char strLow[cCharsFloatPrint];
-   char strHigh[cCharsFloatPrint];
-   char strAvg[cCharsFloatPrint];
+   char strLow[k_cCharsFloatPrint];
+   char strHigh[k_cCharsFloatPrint];
+   char strAvg[k_cCharsFloatPrint];
 
    if(FloatToString(low, strLow)) {
       return high;
@@ -788,7 +702,7 @@ INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
          return lowChop;
       }
    } else {
-      for(int i = 0; i < cDigitsAfterPeriod; ++i) {
+      for(int i = 0; i < k_cDigitsAfterPeriod; ++i) {
          FloatEbmType lowLow;
          FloatEbmType lowHigh;
          FloatEbmType avgLow;
@@ -826,32 +740,26 @@ INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
 
 INLINE_RELEASE static void IronSplits() noexcept {
    // - TODO: POST-HEALING
-   //   - after fitting these, we might want to jigger the final results.  We would do this by finding the smallest 
-   //     section and trying to expand it either way.  Each side we'd push it only enough to make things better.
-   //     If we find that we can make a push that improves things, then we take that.  We'd need a priority queue to 
-   //     indicate the smallest sections
-   //
-
-   // TODO: here we should try to even out our final result in case there are large scale differences in size
-   //       that we can address by pushing our existing cuts arround by small amounts
-
-   // TODO: one option would be to try pushing inwards from the outer regions.  Take a window size that we think 
-   //       is good and try pushing inwards simultaneously from both sides such that no window is smaller than that
-   //       size and keep examining the result for best squared error fit while it's happening.  We might end up
-   //       squeezing smaller sized ranges to the center, which might actually be good since overfitting is probably
-   //       happening more on the edges
-
-   // TODO: we might try making a sliding window of 5 cuts.  Delete the 5 cuts in between two boundaries and try
-   //       5! * 2^5 (examine all orderings of cuts and all left/right choices).  Move from both edges simultaneously
-   //       to the center and repeat several times.  This has the advantage that all examinations will have their
-   //       endpoints fixed while being examined, but the end points will themselves be examined as the window
-   //       moves along
-
+   //   Our splitting algorithm is greedy and some of the early decisions might not have been optimal.  
+   //   We can try and improve things after we're done by looking at small one by one movements that try and
+   //   reduce the square error, or some other metric.  Here are some ideas:
+   //   - we could find the smallest section and trying to expand it either way and slide the smallness on either
+   //     side until we find a solution that improves on our old one.  Each side we'd push it only enough to make 
+   //     things better. If we find that we can make a push that improves things, then we take that.  We'd need a 
+   //     priority queue to indicate the smallest sections, or we could iteratively sweep the array (from both
+   //     sides simultaneously to keep them invariant to ordering)
+   //   - we could try pushing inwards from the outer regions.  Take a window size that we think is good and 
+   //     try pushing inwards simultaneously from both sides such that no window is smaller than that
+   //     size and keep examining the result for best squared error fit while it's happening.  We might end up
+   //     squeezing smaller sized ranges to the center, which might actually be good since overfitting is probably
+   //     happening more on the edges.  We should evalute this method on a large number of datasets, since we might
+   //     get better results than our squared error from average length might imply
+   //   - we might try making a sliding window of 5 cuts.  Delete the 5 cuts in between two boundaries and try
+   //     5! * 2^5 (examine all orderings of cuts and all left/right choices).  Move from both edges simultaneously
+   //     to the center and repeat several times.  This has the advantage that all examinations will have their
+   //     endpoints fixed while being examined, but the end points will themselves be examined as the window
+   //     moves along
 }
-
-constexpr unsigned int k_cNeighbourExploreDistanceMax = 5;
-typedef int signed_neighbour_type;
-constexpr size_t k_illegalIndex = std::numeric_limits<size_t>::max();
 
 INLINE_RELEASE static void CalculatePriority(
    const FloatEbmType iValLowerFloat,
@@ -883,132 +791,6 @@ INLINE_RELEASE static void CalculatePriority(
 
    pSplitCur->m_priority = priority;
 }
-
-//WARNING_PUSH
-//WARNING_DISABLE_SIZE_PROMOTION_AFTER_OPERATOR
-//INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
-//   signed_neighbour_type choices,
-//
-//   const size_t cSamplesPerBinMin,
-//   const size_t iValuesStart,
-//   const size_t cSplittableItems,
-//   const NeighbourJump * const aNeighbourJumps,
-//
-//   const ptrdiff_t direction,
-//
-//   const size_t cRanges,
-//   const size_t iVal,
-//   const FloatEbmType iValBoundary,
-//
-//   const FloatEbmType idealWidth
-//) noexcept {
-//   // this function's purpose is really just to decide if we should move lower or higher for any given cut
-//   // The best choice will allow us to place cuts at equidistant spots until the point in the horizon that we're
-//   // willing to examine.  As such, we want to drop our potential cuts down at equal intervals and not chain the
-//   // decisions by putting down the first cut then putting the next one based on the first.  If we chained them
-//   // then we wouldn't really be able to compare the chain where we select the shortest option each time against
-//   // the longest, since the longer one will be elongated and might fall on a distant long stretch that puts the outer
-//   // edge of our nearby boundary farther than the boundary on the option with the shortest always chosen.
-//
-//   EBM_ASSERT(0 <= choices);
-//
-//   EBM_ASSERT(1 <= cSamplesPerBinMin);
-//   EBM_ASSERT(2 * cSamplesPerBinMin <= cSplittableItems);
-//   EBM_ASSERT(nullptr != aNeighbourJumps);
-//
-//   EBM_ASSERT(ptrdiff_t { -1 } == direction || ptrdiff_t { 1 } == direction);
-//
-//   EBM_ASSERT(1 <= cRanges);
-//
-//   EBM_ASSERT(ptrdiff_t { -1 } == direction && iValBoundary <= static_cast<FloatEbmType>(iVal) || 
-//      ptrdiff_t { 1 } == direction && static_cast<FloatEbmType>(iVal) <= iValBoundary);
-//
-//   EBM_ASSERT(0 < idealWidth);
-//
-//   size_t iPrev = iVal;
-//
-//   const FloatEbmType step = iValBoundary - iVal;
-//   FloatEbmType badness = 0;
-//   for(unsigned int i = 1; i <= k_cNeighbourExploreDistanceMax; ++i) {
-//      const FloatEbmType iAspirationCutFloat = iVal + static_cast<FloatEbmType>(i) * step;
-//      ptrdiff_t iCut = static_cast<ptrdiff_t>(iAspirationCutFloat);
-//      iCut = std::max(ptrdiff_t { 0 }, iCut);
-//      iCut = std::min(iCut, static_cast<ptrdiff_t>(cSplittableItems - size_t { 1 }));
-//
-//      const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValuesStart + static_cast<size_t>(iCut)];
-//      EBM_ASSERT(iValuesStart <= pNeighbourJump->m_iStartCur);
-//      EBM_ASSERT(iValuesStart < pNeighbourJump->m_iStartNext);
-//      EBM_ASSERT(pNeighbourJump->m_iStartCur < pNeighbourJump->m_iStartNext);
-//      EBM_ASSERT(pNeighbourJump->m_iStartNext <= iValuesStart + cSplittableItems);
-//      EBM_ASSERT(pNeighbourJump->m_iStartCur < iValuesStart + cSplittableItems);
-//
-//      size_t iCur = *(signed_neighbour_type { 0 } == UNPREDICTABLE(choices & signed_neighbour_type { 1 }) ?
-//         &pNeighbourJump->m_iStartCur : &pNeighbourJump->m_iStartNext);
-//
-//      // because we try both sides of each range, it's possible that our previous index chose the lower values
-//      // and our current one chooses the higher value, and we then travel "backwards" 
-//      ptrdiff_t diffPrev;
-//      if(PREDICTABLE(direction < 0)) {
-//         diffPrev = iPrev - iCur;
-//      } else {
-//         diffPrev = iCur - iPrev;
-//      }
-//
-//      FloatEbmType diffFromIdeal;
-//      if(UNLIKELY(diffPrev < static_cast<ptrdiff_t>(cSamplesPerBinMin))) {
-//         if(PREDICTABLE(0 < diffPrev)) {
-//            iPrev = iCur;
-//         }
-//
-//         // strongly penalize not being able to make a range by making the penalty equal to complete elimination
-//         // this pentaly is chosen to be so large that even if all the rest of our cuts lead to zero length ranges
-//         // the loss of this single range would exceed that
-//         diffFromIdeal = idealWidth * (k_cNeighbourExploreDistanceMax + static_cast<unsigned int>(1));
-//      } else {
-//         EBM_ASSERT(0 < diffPrev);
-//         iPrev = iCur;
-//
-//         diffFromIdeal = idealWidth - static_cast<FloatEbmType>(diffPrev);
-//         // only penalize being too small
-//         diffFromIdeal = diffFromIdeal < FloatEbmType { 0 } ? FloatEbmType { 0 } : diffFromIdeal;
-//      }
-//
-//      // square the error so that we penalize being far away more than being in the range
-//      diffFromIdeal *= diffFromIdeal;
-//
-//      badness += diffFromIdeal;
-//      EBM_ASSERT(FloatEbmType { 0 } <= badness);
-//
-//      choices >>= 1; // this operation should be non-implementation defined since 0 <= choices
-//   }
-//
-//   FloatEbmType remainingDistance;
-//   if(PREDICTABLE(direction < 0)) {
-//      // if we have a long-ish range of equal values, it can push our iPrev past our boundary
-//      remainingDistance = static_cast<FloatEbmType>(iPrev) - iValBoundary;
-//   } else {
-//      // if we have a long-ish range of equal values, it can push our iPrev past our boundary
-//      remainingDistance = iValBoundary - static_cast<FloatEbmType>(iPrev);
-//   }
-//
-//   if(PREDICTABLE(k_cNeighbourExploreDistanceMax < cRanges)) {
-//      const size_t cRangesRemaining = cRanges - k_cNeighbourExploreDistanceMax;
-//      const FloatEbmType remainingDistancePerRange = remainingDistance / static_cast<FloatEbmType>(cRangesRemaining);
-//
-//      FloatEbmType diffFromIdeal;
-//      diffFromIdeal = idealWidth - remainingDistancePerRange;
-//      // only penalize being too small
-//      diffFromIdeal = diffFromIdeal < FloatEbmType { 0 } ? FloatEbmType { 0 } : diffFromIdeal;
-//
-//      // square the error so that we penalize being far away more than being in the range
-//      diffFromIdeal *= diffFromIdeal;
-//
-//      badness += diffFromIdeal * cRangesRemaining;
-//   }
-//
-//   return badness;
-//}
-//WARNING_POP
 
 static void BuildNeighbourhoodPlan(
    const size_t cSamplesPerBinMin,
@@ -1042,17 +824,12 @@ static void BuildNeighbourhoodPlan(
 
    EBM_ASSERT(nullptr != pSplitCur);
 
-   EBM_ASSERT(FloatEbmType { 0 } <= pSplitCur->m_iValAspirationalFloat); // I suppose it could be zero if we had huge numbers and we rounded down
+   // I suppose it could be zero if we had huge numbers and we rounded down
+   EBM_ASSERT(FloatEbmType { 0 } <= pSplitCur->m_iValAspirationalFloat);
    EBM_ASSERT(pSplitCur->m_iValAspirationalFloat <= 
       static_cast<FloatEbmType>(cSplittableItems) + FloatEbmType { 0.001 });
 
    // TODO TODO TODO:
-   // implement this alternate algorithm:
-   // - IDEA: instead of exploring the combinatorial space, maybe instead we take a measured step to the left (based
-   //         on the remaining space, then choose either the left or right direction (based on the bits) and eliminate
-   //         dead end choices that lead to less than the minimum sizes, then re-calculate the remaining space, and make
-   //         the next sequential hop.  This is non-combinatorial, can still use our bits, but we'll end up with different
-   //         sized windows.  We convert the end to 
    // - the problem with our existing algorithm of choosing the points independnetly is that the neighbouring ranges 
    //   might need to be fairly different sizes.  For sample say there is a long run at the start and smaller 
    //   ones at the ends.  
@@ -1258,14 +1035,14 @@ static void BuildNeighbourhoodPlan(
 
    if(scoreLow < scoreHigh) {
       pSplitCur->m_iVal = iValHighChoice;
-      pSplitCur->m_cSplitMoveThis = transferRangesHigh;
+      pSplitCur->m_cPredeterminedMovementOnSplit = transferRangesHigh;
    } else {
       if(k_badScore == scoreHigh && k_badScore == scoreLow) {
          pSplitCur->m_iVal = k_illegalIndex;
-         pSplitCur->m_cSplitMoveThis = 0; // set this to indicate that we aren't split
+         pSplitCur->m_cPredeterminedMovementOnSplit = 0; // set this to indicate that we aren't split
       } else {
          pSplitCur->m_iVal = iValLowChoice;
-         pSplitCur->m_cSplitMoveThis = transferRangesLow;
+         pSplitCur->m_cPredeterminedMovementOnSplit = transferRangesLow;
       }
    }
    EBM_ASSERT(!pSplitCur->IsSplit());
@@ -1520,8 +1297,8 @@ static size_t SplitSegment(
          EBM_ASSERT(!pSplitBest->IsSplit());
 
          // we can't move past our outer boundaries
-         EBM_ASSERT(-ptrdiff_t { k_SplitExploreDistance } < pSplitBest->m_cSplitMoveThis &&
-            pSplitBest->m_cSplitMoveThis < ptrdiff_t { k_SplitExploreDistance });
+         EBM_ASSERT(-ptrdiff_t { k_SplitExploreDistance } < pSplitBest->m_cPredeterminedMovementOnSplit &&
+            pSplitBest->m_cPredeterminedMovementOnSplit < ptrdiff_t { k_SplitExploreDistance });
 
          // TODO: 
          //   We can also write a pre - checker that finds the maximum possible cuts between two materialized bounds and removes cuts that won't work.. this
@@ -1536,32 +1313,32 @@ static size_t SplitSegment(
          // find our visibility window region
          SplitPoint * pSplitLowBoundary = pSplitBest;
          size_t cLowRangesBoundary = k_SplitExploreDistance;
-         ptrdiff_t cSplitMoveThisLowLow;
+         ptrdiff_t cPredeterminedMovementOnSplitLowLow;
          do {
             pSplitLowBoundary = pSplitLowBoundary->m_pPrev;
-            cSplitMoveThisLowLow = pSplitLowBoundary->m_cSplitMoveThis;
+            cPredeterminedMovementOnSplitLowLow = pSplitLowBoundary->m_cPredeterminedMovementOnSplit;
             --cLowRangesBoundary;
-         } while(0 != cLowRangesBoundary && k_splitValue != cSplitMoveThisLowLow);
+         } while(0 != cLowRangesBoundary && k_MovementSplitValue != cPredeterminedMovementOnSplitLowLow);
          cLowRangesBoundary = k_SplitExploreDistance - cLowRangesBoundary;
          EBM_ASSERT(1 <= cLowRangesBoundary);
          EBM_ASSERT(cLowRangesBoundary <= k_SplitExploreDistance);
-         EBM_ASSERT(-pSplitBest->m_cSplitMoveThis < static_cast<ptrdiff_t>(cLowRangesBoundary));
+         EBM_ASSERT(-pSplitBest->m_cPredeterminedMovementOnSplit < static_cast<ptrdiff_t>(cLowRangesBoundary));
 
          SplitPoint * pSplitHighBoundary = pSplitBest;
          size_t cHighRangesBoundary = k_SplitExploreDistance;
-         ptrdiff_t cSplitMoveThisHighHigh;
+         ptrdiff_t cPredeterminedMovementOnSplitHighHigh;
          do {
             pSplitHighBoundary = pSplitHighBoundary->m_pNext;
-            cSplitMoveThisHighHigh = pSplitHighBoundary->m_cSplitMoveThis;
+            cPredeterminedMovementOnSplitHighHigh = pSplitHighBoundary->m_cPredeterminedMovementOnSplit;
             --cHighRangesBoundary;
-         } while(0 != cHighRangesBoundary && k_splitValue != cSplitMoveThisHighHigh);
+         } while(0 != cHighRangesBoundary && k_MovementSplitValue != cPredeterminedMovementOnSplitHighHigh);
          cHighRangesBoundary = k_SplitExploreDistance - cHighRangesBoundary;
          EBM_ASSERT(1 <= cHighRangesBoundary);
          EBM_ASSERT(cHighRangesBoundary <= k_SplitExploreDistance);
-         EBM_ASSERT(pSplitBest->m_cSplitMoveThis < static_cast<ptrdiff_t>(cHighRangesBoundary));
+         EBM_ASSERT(pSplitBest->m_cPredeterminedMovementOnSplit < static_cast<ptrdiff_t>(cHighRangesBoundary));
 
          // we're allowed to move splits from our low to high side before splitting, so let's find our new home
-         ptrdiff_t cSplitMoveThis = pSplitBest->m_cSplitMoveThis;
+         ptrdiff_t cPredeterminedMovementOnSplit = pSplitBest->m_cPredeterminedMovementOnSplit;
          const size_t iVal = pSplitBest->m_iVal;
 
          SplitPoint * pSplitCur = pSplitBest;
@@ -1572,27 +1349,27 @@ static size_t SplitSegment(
          SplitPoint * pSplitHighHighWindow = pSplitHighBoundary;
          size_t cHighHighRangesWindow = cHighRangesBoundary;
 
-         cLowRangesBoundary += cSplitMoveThis;
-         cHighRangesBoundary -= cSplitMoveThis;
+         cLowRangesBoundary += cPredeterminedMovementOnSplit;
+         cHighRangesBoundary -= cPredeterminedMovementOnSplit;
 
          EBM_ASSERT(1 <= cLowRangesBoundary);
          EBM_ASSERT(1 <= cHighRangesBoundary);
 
-         if(0 != cSplitMoveThis) {
-            if(cSplitMoveThis < 0) {
+         if(0 != cPredeterminedMovementOnSplit) {
+            if(cPredeterminedMovementOnSplit < 0) {
                do {
                   pSplitCur = pSplitCur->m_pPrev;
                   EBM_ASSERT(!pSplitCur->IsSplit());
 
-                  if(k_splitValue != cSplitMoveThisLowLow) {
+                  if(k_MovementSplitValue != cPredeterminedMovementOnSplitLowLow) {
                      pSplitLowLowWindow = pSplitLowLowWindow->m_pPrev;
-                     cSplitMoveThisLowLow = pSplitLowLowWindow->m_cSplitMoveThis;
+                     cPredeterminedMovementOnSplitLowLow = pSplitLowLowWindow->m_cPredeterminedMovementOnSplit;
                   } else {
                      // we've hit a split boundary which we can't move, so we get closer to it
                      EBM_ASSERT(2 <= cLowLowRangesWindow);
                      --cLowLowRangesWindow;
                   }
-                  EBM_ASSERT((k_splitValue == cSplitMoveThisLowLow) == pSplitLowLowWindow->IsSplit());
+                  EBM_ASSERT((k_MovementSplitValue == cPredeterminedMovementOnSplitLowLow) == pSplitLowLowWindow->IsSplit());
 
                   // TODO: since the movement of pSplitHighHighWindow is dependent on hitting a maximum, we should
                   // be able to calculate the required movement, and then loop it without all this checking and
@@ -1606,10 +1383,10 @@ static size_t SplitSegment(
                      ++cHighHighRangesWindow;
                   }
 
-                  ++cSplitMoveThis;
-               } while(0 != cSplitMoveThis);
-               cSplitMoveThisHighHigh = pSplitHighHighWindow->m_cSplitMoveThis;
-               EBM_ASSERT((k_splitValue == cSplitMoveThisLowLow) == pSplitLowLowWindow->IsSplit());
+                  ++cPredeterminedMovementOnSplit;
+               } while(0 != cPredeterminedMovementOnSplit);
+               cPredeterminedMovementOnSplitHighHigh = pSplitHighHighWindow->m_cPredeterminedMovementOnSplit;
+               EBM_ASSERT((k_MovementSplitValue == cPredeterminedMovementOnSplitLowLow) == pSplitLowLowWindow->IsSplit());
             } else {
                do {
                   pSplitCur = pSplitCur->m_pNext;
@@ -1624,20 +1401,20 @@ static size_t SplitSegment(
                      // we've escape the length that we need for our window, so we're in the void
                      ++cLowLowRangesWindow;
                   }
-                  if(k_splitValue != cSplitMoveThisHighHigh) {
+                  if(k_MovementSplitValue != cPredeterminedMovementOnSplitHighHigh) {
                      pSplitHighHighWindow = pSplitHighHighWindow->m_pNext;
-                     cSplitMoveThisHighHigh = pSplitHighHighWindow->m_cSplitMoveThis;
+                     cPredeterminedMovementOnSplitHighHigh = pSplitHighHighWindow->m_cPredeterminedMovementOnSplit;
                   } else {
                      // we've hit a split boundary which we can't move, so we get closer to it
                      EBM_ASSERT(2 <= cHighHighRangesWindow);
                      --cHighHighRangesWindow;
                   }
-                  EBM_ASSERT((k_splitValue == cSplitMoveThisHighHigh) == pSplitHighHighWindow->IsSplit());
+                  EBM_ASSERT((k_MovementSplitValue == cPredeterminedMovementOnSplitHighHigh) == pSplitHighHighWindow->IsSplit());
 
-                  --cSplitMoveThis;
-               } while(0 != cSplitMoveThis);
-               cSplitMoveThisLowLow = pSplitLowLowWindow->m_cSplitMoveThis;
-               EBM_ASSERT((k_splitValue == cSplitMoveThisHighHigh) == pSplitHighHighWindow->IsSplit());
+                  --cPredeterminedMovementOnSplit;
+               } while(0 != cPredeterminedMovementOnSplit);
+               cPredeterminedMovementOnSplitLowLow = pSplitLowLowWindow->m_cPredeterminedMovementOnSplit;
+               EBM_ASSERT((k_MovementSplitValue == cPredeterminedMovementOnSplitHighHigh) == pSplitHighHighWindow->IsSplit());
             }
          }
 
@@ -1689,7 +1466,7 @@ static size_t SplitSegment(
          SplitPoint * pSplitLowHighNeighbourhoodWindow = pSplitCur;
          size_t cLowHighRangesNeighbourhoodWindow = 0;
 
-         size_t iValLowLow = k_splitValue == cSplitMoveThisLowLow ? pSplitLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
+         size_t iValLowLow = k_MovementSplitValue == cPredeterminedMovementOnSplitLowLow ? pSplitLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
          size_t iValLowHigh = iVal;
 
          SplitPoint * pSplitLowNeighbourhoodCur = pSplitCur;
@@ -1747,7 +1524,7 @@ static size_t SplitSegment(
          SplitPoint * pSplitHighLowNeighbourhoodWindow = pSplitCur;
          size_t cHighLowRangesNeighbourhoodWindow = 0;
 
-         size_t iValHighHigh = k_splitValue == cSplitMoveThisHighHigh ? pSplitHighHighNeighbourhoodWindow->m_iVal : k_illegalIndex;
+         size_t iValHighHigh = k_MovementSplitValue == cPredeterminedMovementOnSplitHighHigh ? pSplitHighHighNeighbourhoodWindow->m_iVal : k_illegalIndex;
          size_t iValHighLow = iVal;
 
          SplitPoint * pSplitHighNeighbourhoodCur = pSplitCur;
@@ -1822,10 +1599,10 @@ static size_t SplitSegment(
             }
 
             pSplitLowPriorityCur = pSplitLowPriorityCur->m_pPrev;
-            if(PREDICTABLE(k_splitValue != cSplitMoveThisLowLow)) {
+            if(PREDICTABLE(k_MovementSplitValue != cPredeterminedMovementOnSplitLowLow)) {
                EBM_ASSERT(!pSplitLowLowPriorityWindow->IsSplit());
                pSplitLowLowPriorityWindow = pSplitLowLowPriorityWindow->m_pPrev;
-               cSplitMoveThisLowLow = pSplitLowLowPriorityWindow->m_cSplitMoveThis;
+               cPredeterminedMovementOnSplitLowLow = pSplitLowLowPriorityWindow->m_cPredeterminedMovementOnSplit;
             } else {
                EBM_ASSERT(pSplitLowLowPriorityWindow->IsSplit());
                if(UNLIKELY(pSplitLowPriorityCur == pSplitLowLowPriorityWindow)) {
@@ -1865,10 +1642,10 @@ static size_t SplitSegment(
             }
 
             pSplitHighPriorityCur = pSplitHighPriorityCur->m_pNext;
-            if(PREDICTABLE(k_splitValue != cSplitMoveThisHighHigh)) {
+            if(PREDICTABLE(k_MovementSplitValue != cPredeterminedMovementOnSplitHighHigh)) {
                EBM_ASSERT(!pSplitHighHighPriorityWindow->IsSplit());
                pSplitHighHighPriorityWindow = pSplitHighHighPriorityWindow->m_pNext;
-               cSplitMoveThisHighHigh = pSplitHighHighPriorityWindow->m_cSplitMoveThis;
+               cPredeterminedMovementOnSplitHighHigh = pSplitHighHighPriorityWindow->m_cPredeterminedMovementOnSplit;
             } else {
                EBM_ASSERT(pSplitHighHighPriorityWindow->IsSplit());
                if(UNLIKELY(pSplitHighPriorityCur == pSplitHighHighPriorityWindow)) {
@@ -2112,6 +1889,8 @@ static bool StuffSplitsIntoSplittingRanges(
          const SplittingRange * const & lhs,
          const SplittingRange * const & rhs
       ) const noexcept {
+         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return lhs->m_avgSplittableRangeWidthAfterAddingOneSplit == rhs->m_avgSplittableRangeWidthAfterAddingOneSplit ?
             (lhs->m_uniqueRandom < rhs->m_uniqueRandom) :
             (lhs->m_avgSplittableRangeWidthAfterAddingOneSplit < rhs->m_avgSplittableRangeWidthAfterAddingOneSplit);
@@ -2895,15 +2674,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         //        when materializing a split if both our lower and higher split points are aspirational
                         //        or materialized.  If they are both materialized, then insert our new materialized
                         //        split into the open space priority queue AND the split to the left (which represents)
-                        //        the lower range.  Of if that's too complicated then take the maximum min from both
+                        //        the lower range.  Or if that's too complicated then take the maximum min from both
                         //        our sides and insert ourselves with that.  We can always examine the left and right
-                        //        on extraction to determine which side we should go.
+                        //        on extraction to determine which side we should go to.
                         //        Inisde CalculateRangesMaximizeMin, we might notice that one of our sides doesn't
                         //        work very well with a certain number of splits.  We should speculatively move
                         //        one of our splits from that side to a new set of ranges (encoded as SplitPoints)
                         //        We still do the low/high split number optimization with our left and right windows
-                        //        when planning since it's more efficient 
-                        //       
+                        //        when planning since it's more efficient, and no changes should leak information
+                        //        outside those windows otherwise it would become an N^2 algorithm.
+                        //        We use our doubly linked list to move non-materialized split points long distances
+                        //        from one part of the splitting range to annother if necessary.
+                        //        We should also use the doubly linked list to delete SplitPoints that we can't use
+                        //        if there is no place to put them
+
                         std::set<SplitPoint *, CompareSplitPoint> fillTheVoids;
 #endif // NEVER
 
@@ -3163,6 +2947,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          const ptrdiff_t missingVal = static_cast<ptrdiff_t>(cCutPoints + size_t { 1 });
          const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
          do {
+            // TODO: if we pad the cutPointsLowerBoundInclusive array up to a power of 2 by putting min or max values,
+            // or +-infinity values in the padded positions (use a branchless comparison at the end to check for the 
+            // padded values and change to the appropriate result in that case) , then we can guarantee
+            // that we'll execute the loop exactly N times from 2^N.  Once we have a known exact number of loop iterations
+            // then we can use SIMD to process the loop, making it 8 times faster.  We can also build 
+            // 1, 2, 4, 8, 16, 32, 64, 128, 256 specific versions of this function to eliminate the loop, thus 
+            // eliminating one last branch mispredict.  It also makes our memory prefetcher more accurate if the
+            // data isn't random since if large numbers of values are the same, then the fetch order will be the same
+            // and since the processor pays attention to which instruction fetch which memory, we get that performance
+            // benefit by unwinding the loop to nothing.
+            // Here are some partial solutions:
+            // https://stackoverflow.com/questions/11360831/about-the-branchless-binary-search
+            // https://stackoverflow.com/questions/11349221/about-reducing-the-branch-miss-prediciton
+            // https://blog.demofox.org/2017/06/20/simd-gpu-friendly-branchless-binary-search/
+            //
+            // TODO: if we want to go crazy, we could also parallelize this, which would probably use hypterthreading
+            // effectively given we'll probably still have some latency to L1 cache, at least for random data.
+
             const FloatEbmType val = *pValue;
             ptrdiff_t middle = missingVal;
             if(!std::isnan(val)) {

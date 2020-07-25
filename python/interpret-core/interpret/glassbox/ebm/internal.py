@@ -85,10 +85,26 @@ class Native:
             # void (* fn)(signed char traceLevel, const char * message) logMessageFunction
             self._LogFuncType
         ]
+        self.lib.SetLogMessageFunction.restype = None
         self.lib.SetTraceLevel.argtypes = [
             # signed char traceLevel
             ct.c_char
         ]
+        self.lib.SetTraceLevel.restype = None
+
+        self.lib.Discretize.argtypes = [
+            # int64_t countSamples
+            ct.c_longlong,
+            # double * featureValues
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t countCutPoints
+            ct.c_longlong,
+            # double * cutPointsLowerBoundInclusive
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * discretizedReturn
+            ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self.lib.Discretize.restype = None
 
         self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
@@ -220,6 +236,7 @@ class Native:
             # void * ebmBoosting
             ct.c_void_p
         ]
+        self.lib.FreeBoosting.restype = None
 
         self.lib.InitializeInteractionClassification.argtypes = [
             # int64_t countTargetClasses
@@ -278,6 +295,7 @@ class Native:
             # void * ebmInteraction
             ct.c_void_p
         ]
+        self.lib.FreeInteraction.restype = None
 
     def _set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
