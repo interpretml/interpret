@@ -29,7 +29,7 @@ static FloatEbmType SweepMultiDiemensional(
    size_t * const aiPoint,
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
    HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pHistogramBucketBestAndTemp,
    size_t * const piBestCut
@@ -75,7 +75,7 @@ static FloatEbmType SweepMultiDiemensional(
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pHistogramBucketBestAndTemp, 3);
    ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotalsHigh, aHistogramBucketsEndDebug);
 
-   EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
    FloatEbmType bestSplit = k_illegalGain;
    size_t iBin = 0;
@@ -94,7 +94,7 @@ static FloatEbmType SweepMultiDiemensional(
          , aHistogramBucketsEndDebug
 #endif // NDEBUG
          );
-      if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->GetCountInstancesInBucket())) {
+      if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLow->GetCountSamplesInBucket())) {
          TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
             runtimeLearningTypeOrCountTargetClasses,
             pFeatureGroup,
@@ -107,13 +107,13 @@ static FloatEbmType SweepMultiDiemensional(
             , aHistogramBucketsEndDebug
 #endif // NDEBUG
             );
-         if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHigh->GetCountInstancesInBucket())) {
+         if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHigh->GetCountSamplesInBucket())) {
             FloatEbmType splittingScore = FloatEbmType { 0 };
-            EBM_ASSERT(0 < pTotalsLow->GetCountInstancesInBucket());
-            EBM_ASSERT(0 < pTotalsHigh->GetCountInstancesInBucket());
+            EBM_ASSERT(0 < pTotalsLow->GetCountSamplesInBucket());
+            EBM_ASSERT(0 < pTotalsHigh->GetCountSamplesInBucket());
 
-            FloatEbmType cLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLow->GetCountInstancesInBucket());
-            FloatEbmType cHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHigh->GetCountInstancesInBucket());
+            FloatEbmType cLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsLow->GetCountSamplesInBucket());
+            FloatEbmType cHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsHigh->GetCountSamplesInBucket());
 
             HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryLow =
                pTotalsLow->GetHistogramBucketVectorEntry();
@@ -126,11 +126,11 @@ static FloatEbmType SweepMultiDiemensional(
                // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
 
                const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
-                  pHistogramBucketVectorEntryLow[iVector].m_sumResidualError, cLowInstancesInBucket);
+                  pHistogramBucketVectorEntryLow[iVector].m_sumResidualError, cLowSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                splittingScore += splittingScoreUpdate1;
                const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
-                  pHistogramBucketVectorEntryHigh[iVector].m_sumResidualError, cHighInstancesInBucket);
+                  pHistogramBucketVectorEntryHigh[iVector].m_sumResidualError, cHighSamplesInBucket);
                EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                splittingScore += splittingScoreUpdate2;
             }
@@ -183,7 +183,7 @@ public:
    static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
       HistogramBucketBase * const pTotalBase,
       HistogramBucketBase * const aHistogramBucketsBase,
@@ -240,11 +240,11 @@ public:
 
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pTotal, aHistogramBucketsEndDebug);
 
-      EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+      EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
       FloatEbmType splittingScoreParent = FloatEbmType { 0 };
-      EBM_ASSERT(0 < pTotal->GetCountInstancesInBucket());
-      const FloatEbmType cInstancesInParentBucket = static_cast<FloatEbmType>(pTotal->GetCountInstancesInBucket());
+      EBM_ASSERT(0 < pTotal->GetCountSamplesInBucket());
+      const FloatEbmType cSamplesInParentBucket = static_cast<FloatEbmType>(pTotal->GetCountSamplesInBucket());
 
       HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotal =
          pTotal->GetHistogramBucketVectorEntry();
@@ -255,7 +255,7 @@ public:
 
          const FloatEbmType splittingScoreParentUpdate = EbmStatistics::ComputeNodeSplittingScore(
             pHistogramBucketVectorEntryTotal[iVector].m_sumResidualError,
-            cInstancesInParentBucket
+            cSamplesInParentBucket
          );
          EBM_ASSERT(std::isnan(splittingScoreParentUpdate) || FloatEbmType { 0 } <= splittingScoreParentUpdate);
          splittingScoreParent += splittingScoreParentUpdate;
@@ -280,7 +280,7 @@ public:
             aiStart,
             0x0,
             1,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals2LowLowBest,
             &cutSecond1LowBest
@@ -308,7 +308,7 @@ public:
                aiStart,
                0x1,
                1,
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals2HighLowBest,
                &cutSecond1HighBest
@@ -386,7 +386,7 @@ public:
             aiStart,
             0x0,
             0,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             runtimeLearningTypeOrCountTargetClasses,
             pTotals1LowLowBestInner,
             &cutSecond2LowBest
@@ -414,7 +414,7 @@ public:
                aiStart,
                0x2,
                0,
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                runtimeLearningTypeOrCountTargetClasses,
                pTotals1HighLowBestInner,
                &cutSecond2HighBest
@@ -496,7 +496,7 @@ public:
                EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                prediction = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                   pHistogramBucketVectorEntryTotal[iVector].m_sumResidualError,
-                  cInstancesInParentBucket
+                  cSamplesInParentBucket
                );
             }
             pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer()[iVector] = prediction;
@@ -593,19 +593,19 @@ public:
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals2LowLowBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals2LowLowBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals2LowLowBest->GetCountSamplesInBucket())
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals2LowHighBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals2LowHighBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals2LowHighBest->GetCountSamplesInBucket())
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals2HighLowBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals2HighLowBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals2HighLowBest->GetCountSamplesInBucket())
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals2HighHighBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals2HighHighBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals2HighHighBest->GetCountSamplesInBucket())
                   );
                }
 
@@ -718,19 +718,19 @@ public:
                   EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
                   predictionLowLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals1LowLowBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals1LowLowBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals1LowLowBest->GetCountSamplesInBucket())
                   );
                   predictionLowHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals1LowHighBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals1LowHighBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals1LowHighBest->GetCountSamplesInBucket())
                   );
                   predictionHighLow = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals1HighLowBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals1HighLowBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals1HighLowBest->GetCountSamplesInBucket())
                   );
                   predictionHighHigh = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                      pHistogramBucketVectorEntryTotals1HighHighBest[iVector].m_sumResidualError,
-                     static_cast<FloatEbmType>(pTotals1HighHighBest->GetCountInstancesInBucket())
+                     static_cast<FloatEbmType>(pTotals1HighHighBest->GetCountSamplesInBucket())
                   );
                }
                if(cutFirst1LowBest < cutFirst1HighBest) {
@@ -779,7 +779,7 @@ public:
    INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const pTotal,
       HistogramBucketBase * const aHistogramBuckets,
@@ -801,7 +801,7 @@ public:
          return FindBestBoostingSplitPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pEbmBoostingState,
             pFeatureGroup,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             pTotal,
             aHistogramBuckets,
@@ -816,7 +816,7 @@ public:
          return FindBestBoostingSplitPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmBoostingState,
             pFeatureGroup,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             pTotal,
             aHistogramBuckets,
@@ -840,7 +840,7 @@ public:
    INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const pTotal,
       HistogramBucketBase * const aHistogramBuckets,
@@ -859,7 +859,7 @@ public:
       return FindBestBoostingSplitPairsInternal<k_dynamicClassification>::Func(
          pEbmBoostingState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
          aHistogramBuckets,
@@ -876,7 +876,7 @@ public:
 extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const pTotal,
    HistogramBucketBase * const aHistogramBuckets,
@@ -893,7 +893,7 @@ extern bool FindBestBoostingSplitPairs(
       return FindBestBoostingSplitPairsTarget<2>::Func(
          pEbmBoostingState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
          aHistogramBuckets,
@@ -909,7 +909,7 @@ extern bool FindBestBoostingSplitPairs(
       return FindBestBoostingSplitPairsInternal<k_regression>::Func(
          pEbmBoostingState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
          aHistogramBuckets,

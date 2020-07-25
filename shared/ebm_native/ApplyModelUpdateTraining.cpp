@@ -47,13 +47,13 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances * cVectorLength;
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
@@ -120,13 +120,13 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances;
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
       const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
@@ -154,11 +154,11 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
@@ -252,8 +252,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -273,13 +273,13 @@ public:
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances * cVectorLength;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
@@ -369,8 +369,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
 
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -390,13 +390,13 @@ public:
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
@@ -452,8 +452,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
 
-      const size_t cInstances = pTrainingSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -472,13 +472,13 @@ public:
       const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cSamples;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
       const FloatEbmType * pResidualErrorInnerEnd = pResidualErrorTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      pResidualErrorExit = pResidualErrorTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 

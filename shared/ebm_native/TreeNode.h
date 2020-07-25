@@ -36,7 +36,7 @@ struct TreeNodeData<true> {
 
       const HistogramBucket<true> * m_pHistogramBucketEntryFirst;
       const HistogramBucket<true> * m_pHistogramBucketEntryLast;
-      size_t m_cInstances;
+      size_t m_cSamples;
    };
    static_assert(std::is_standard_layout<BeforeExaminationForPossibleSplitting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -81,13 +81,13 @@ struct TreeNodeData<true> {
    static_assert(std::is_pod<TreeNodeDataUnion>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
-   INLINE_ALWAYS size_t AMBIGUOUS_GetInstances() const {
+   INLINE_ALWAYS size_t AMBIGUOUS_GetSamples() const {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      return m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances;
+      return m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples;
    }
-   INLINE_ALWAYS void AMBIGUOUS_SetInstances(const size_t cInstances) {
+   INLINE_ALWAYS void AMBIGUOUS_SetSamples(const size_t cSamples) {
       EBM_ASSERT(!IsExaminedForPossibleSplitting());
-      m_UNION.m_beforeExaminationForPossibleSplitting.m_cInstances = cInstances;
+      m_UNION.m_beforeExaminationForPossibleSplitting.m_cSamples = cSamples;
    }
 
 
@@ -247,11 +247,11 @@ struct TreeNodeData<false> {
    static_assert(std::is_pod<TreeNodeDataUnion>::value,
       "We use a lot of C constructs, so disallow non-POD types in general");
 
-   INLINE_ALWAYS size_t AMBIGUOUS_GetInstances() const {
-      return m_cInstances;
+   INLINE_ALWAYS size_t AMBIGUOUS_GetSamples() const {
+      return m_cSamples;
    }
-   INLINE_ALWAYS void AMBIGUOUS_SetInstances(const size_t cInstances) {
-      m_cInstances = cInstances;
+   INLINE_ALWAYS void AMBIGUOUS_SetSamples(const size_t cSamples) {
+      m_cSamples = cSamples;
    }
 
 
@@ -337,7 +337,7 @@ private:
 
    TreeNodeDataUnion m_UNION;
 
-   size_t m_cInstances;
+   size_t m_cSamples;
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_aHistogramBucketVectorEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom

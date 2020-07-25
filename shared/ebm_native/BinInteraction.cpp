@@ -54,12 +54,12 @@ public:
 
       const DataSetByFeature * const pDataSet = pEbmInteractionState->GetDataSetByFeature();
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountSamples();
 
       EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures()); // for interactions, we just return 0 for interactions with zero features
       const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
 
-      for(size_t iInstance = 0; pResidualErrorEnd != pResidualError; ++iInstance) {
+      for(size_t iSample = 0; pResidualErrorEnd != pResidualError; ++iSample) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
          // in complete sequential order, so we'll probably want to use non-branching instructions for any solution like conditional selection or multiplication
          // this loop gets about 3 times slower if you use a bad pseudo random number generator like rand(), although it might be better if you inlined rand().
@@ -68,7 +68,7 @@ public:
          // stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure 
          // related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
 
-         // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level 
+         // TODO : try using a sampling method with non-repeating samples, and put the count into a bit.  Then unwind that loop either at the byte level 
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
          // TODO : we can elminate the inner vector loop for regression at least, and also if we add a templated bool for binary class.  Propegate this change 
@@ -81,7 +81,7 @@ public:
             const Feature * const pInputFeature = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature;
             const size_t cBins = pInputFeature->GetCountBins();
             const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
-            pInputData += iInstance;
+            pInputData += iSample;
             StorageDataType iBinOriginal = *pInputData;
             EBM_ASSERT((IsNumberConvertable<size_t, StorageDataType>(iBinOriginal)));
             size_t iBin = static_cast<size_t>(iBinOriginal);
@@ -94,7 +94,7 @@ public:
          HistogramBucket<bClassification> * pHistogramBucketEntry =
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, iBucket);
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
-         pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + 1);
+         pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + 1);
 
          HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
             pHistogramBucketEntry->GetHistogramBucketVectorEntry();

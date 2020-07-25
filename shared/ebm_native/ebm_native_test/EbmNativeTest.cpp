@@ -222,21 +222,21 @@ public:
    }
 };
 
-class RegressionInstance final {
+class RegressionSample final {
 public:
    const FloatEbmType m_target;
    const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
    const FloatEbmType m_priorPredictorPrediction;
    const bool m_bNullPredictionScores;
 
-   RegressionInstance(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
+   RegressionSample(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(0),
       m_bNullPredictionScores(true) {
    }
 
-   RegressionInstance(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType priorPredictorPrediction) :
+   RegressionSample(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType priorPredictorPrediction) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(priorPredictorPrediction),
@@ -244,20 +244,20 @@ public:
    }
 };
 
-class ClassificationInstance final {
+class ClassificationSample final {
 public:
    const IntEbmType m_target;
    const std::vector<IntEbmType> m_binnedDataPerFeatureArray;
    const std::vector<FloatEbmType> m_priorPredictorPerClassLogits;
    const bool m_bNullPredictionScores;
 
-   ClassificationInstance(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
+   ClassificationSample(const IntEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_bNullPredictionScores(true) {
    }
 
-   ClassificationInstance(
+   ClassificationSample(
       const IntEbmType target, 
       const std::vector<IntEbmType> binnedDataPerFeatureArray, 
       const std::vector<FloatEbmType> priorPredictorPerClassLogits) 
@@ -488,27 +488,27 @@ public:
       m_stage = Stage::FeatureGroupsAdded;
    }
 
-   void AddTrainingInstances(const std::vector<RegressionInstance> instances) {
+   void AddTrainingSamples(const std::vector<RegressionSample> samples) {
       if(Stage::FeatureGroupsAdded != m_stage) {
          exit(1);
       }
       if(k_learningTypeRegression != m_learningTypeOrCountTargetClasses) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullTrainingPredictionScores = bNullPredictionScores;
 
-         for(const RegressionInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const RegressionSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const FloatEbmType target = oneInstance.m_target;
+            const FloatEbmType target = oneSample.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -517,7 +517,7 @@ public:
             }
             m_trainingRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneSample.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -529,8 +529,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -544,27 +544,27 @@ public:
       m_stage = Stage::TrainingAdded;
    }
 
-   void AddTrainingInstances(const std::vector<ClassificationInstance> instances) {
+   void AddTrainingSamples(const std::vector<ClassificationSample> samples) {
       if(Stage::FeatureGroupsAdded != m_stage) {
          exit(1);
       }
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullTrainingPredictionScores = bNullPredictionScores;
 
-         for(const ClassificationInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const ClassificationSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntEbmType target = oneInstance.m_target;
+            const IntEbmType target = oneSample.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -573,11 +573,11 @@ public:
             }
             m_trainingClassificationTargets.push_back(target);
             if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneInstance.m_priorPredictorPerClassLogits.size()) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorPredictorPerClassLogits.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneSample.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -590,16 +590,16 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_trainingPredictionScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[0]);
+                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -608,18 +608,18 @@ public:
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_logits[0]);
+                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                           m_trainingPredictionScores.push_back(oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_trainingPredictionScores.push_back(oneLogit);
                      } else {
-                        m_trainingPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_trainingPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -629,8 +629,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -644,27 +644,27 @@ public:
       m_stage = Stage::TrainingAdded;
    }
 
-   void AddValidationInstances(const std::vector<RegressionInstance> instances) {
+   void AddValidationSamples(const std::vector<RegressionSample> samples) {
       if(Stage::TrainingAdded != m_stage) {
          exit(1);
       }
       if(k_learningTypeRegression != m_learningTypeOrCountTargetClasses) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullValidationPredictionScores = bNullPredictionScores;
 
-         for(const RegressionInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const RegressionSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const FloatEbmType target = oneInstance.m_target;
+            const FloatEbmType target = oneSample.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -673,7 +673,7 @@ public:
             }
             m_validationRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneSample.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -685,8 +685,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -700,27 +700,27 @@ public:
       m_stage = Stage::ValidationAdded;
    }
 
-   void AddValidationInstances(const std::vector<ClassificationInstance> instances) {
+   void AddValidationSamples(const std::vector<ClassificationSample> samples) {
       if(Stage::TrainingAdded != m_stage) {
          exit(1);
       }
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullValidationPredictionScores = bNullPredictionScores;
 
-         for(const ClassificationInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const ClassificationSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntEbmType target = oneInstance.m_target;
+            const IntEbmType target = oneSample.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -729,11 +729,11 @@ public:
             }
             m_validationClassificationTargets.push_back(target);
             if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneInstance.m_priorPredictorPerClassLogits.size()) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorPredictorPerClassLogits.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneSample.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -746,16 +746,16 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_validationPredictionScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[0]);
+                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -764,18 +764,18 @@ public:
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneInstance.m_logits[0]);
+                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_validationPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                           m_validationPredictionScores.push_back(oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_validationPredictionScores.push_back(oneLogit);
                      } else {
-                        m_validationPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_validationPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -785,8 +785,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -966,27 +966,27 @@ public:
       return pModel;
    }
 
-   void AddInteractionInstances(const std::vector<RegressionInstance> instances) {
+   void AddInteractionSamples(const std::vector<RegressionSample> samples) {
       if(Stage::FeaturesAdded != m_stage) {
          exit(1);
       }
       if(k_learningTypeRegression != m_learningTypeOrCountTargetClasses) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullInteractionPredictionScores = bNullPredictionScores;
 
-         for(const RegressionInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const RegressionSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const FloatEbmType target = oneInstance.m_target;
+            const FloatEbmType target = oneSample.m_target;
             if(std::isnan(target)) {
                exit(1);
             }
@@ -995,7 +995,7 @@ public:
             }
             m_interactionRegressionTargets.push_back(target);
             if(!bNullPredictionScores) {
-               const FloatEbmType score = oneInstance.m_priorPredictorPrediction;
+               const FloatEbmType score = oneSample.m_priorPredictorPrediction;
                if(std::isnan(score)) {
                   exit(1);
                }
@@ -1007,8 +1007,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -1022,27 +1022,27 @@ public:
       m_stage = Stage::InteractionAdded;
    }
 
-   void AddInteractionInstances(const std::vector<ClassificationInstance> instances) {
+   void AddInteractionSamples(const std::vector<ClassificationSample> samples) {
       if(Stage::FeaturesAdded != m_stage) {
          exit(1);
       }
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          exit(1);
       }
-      const size_t cInstances = instances.size();
-      if(0 != cInstances) {
+      const size_t cSamples = samples.size();
+      if(0 != cSamples) {
          const size_t cFeatures = m_features.size();
-         const bool bNullPredictionScores = instances[0].m_bNullPredictionScores;
+         const bool bNullPredictionScores = samples[0].m_bNullPredictionScores;
          m_bNullInteractionPredictionScores = bNullPredictionScores;
 
-         for(const ClassificationInstance oneInstance : instances) {
-            if(cFeatures != oneInstance.m_binnedDataPerFeatureArray.size()) {
+         for(const ClassificationSample oneSample : samples) {
+            if(cFeatures != oneSample.m_binnedDataPerFeatureArray.size()) {
                exit(1);
             }
-            if(bNullPredictionScores != oneInstance.m_bNullPredictionScores) {
+            if(bNullPredictionScores != oneSample.m_bNullPredictionScores) {
                exit(1);
             }
-            const IntEbmType target = oneInstance.m_target;
+            const IntEbmType target = oneSample.m_target;
             if(target < 0) {
                exit(1);
             }
@@ -1051,11 +1051,11 @@ public:
             }
             m_interactionClassificationTargets.push_back(target);
             if(!bNullPredictionScores) {
-               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneInstance.m_priorPredictorPerClassLogits.size()) {
+               if(static_cast<size_t>(m_learningTypeOrCountTargetClasses) != oneSample.m_priorPredictorPerClassLogits.size()) {
                   exit(1);
                }
                ptrdiff_t iLogit = 0;
-               for(const FloatEbmType oneLogit : oneInstance.m_priorPredictorPerClassLogits) {
+               for(const FloatEbmType oneLogit : oneSample.m_priorPredictorPerClassLogits) {
                   if(std::isnan(oneLogit)) {
                      exit(1);
                   }
@@ -1068,16 +1068,16 @@ public:
                      if(m_iZeroClassificationLogit < 0) {
                         m_interactionPredictionScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_interactionPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #else // EXPAND_BINARY_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[0]);
+                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                         }
                      }
 #endif // EXPAND_BINARY_LOGITS
@@ -1086,18 +1086,18 @@ public:
 #ifdef REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         if(0 != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_logits[0]);
+                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_logits[0]);
                         }
                      } else {
                         if(m_iZeroClassificationLogit != iLogit) {
-                           m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_logits[m_iZeroClassificationLogit]);
+                           m_interactionPredictionScores.push_back(oneLogit - oneSample.m_logits[m_iZeroClassificationLogit]);
                         }
                      }
 #else // REDUCE_MULTICLASS_LOGITS
                      if(m_iZeroClassificationLogit < 0) {
                         m_interactionPredictionScores.push_back(oneLogit);
                      } else {
-                        m_interactionPredictionScores.push_back(oneLogit - oneInstance.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
+                        m_interactionPredictionScores.push_back(oneLogit - oneSample.m_priorPredictorPerClassLogits[m_iZeroClassificationLogit]);
                      }
 #endif // REDUCE_MULTICLASS_LOGITS
                   }
@@ -1107,8 +1107,8 @@ public:
          }
          for(size_t iFeature = 0; iFeature < cFeatures; ++iFeature) {
             const EbmNativeFeature feature = m_features[iFeature];
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               const IntEbmType data = instances[iInstance].m_binnedDataPerFeatureArray[iFeature];
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               const IntEbmType data = samples[iSample].m_binnedDataPerFeatureArray[iFeature];
                if(data < 0) {
                   exit(1);
                }
@@ -1198,13 +1198,13 @@ TEST_CASE("test random number generator equivalency") {
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
 
-   std::vector<ClassificationInstance> instances;
+   std::vector<ClassificationSample> samples;
    for(int i = 0; i < 1000; ++i) {
-      instances.push_back(ClassificationInstance(i % 2, { 0 == (i * 7) % 3 }));
+      samples.push_back(ClassificationSample(i % 2, { 0 == (i * 7) % 3 }));
    }
 
-   test.AddTrainingInstances( instances );
-   test.AddValidationInstances({ ClassificationInstance(0, { 0 }), ClassificationInstance(1, { 1 }) });
+   test.AddTrainingSamples( samples );
+   test.AddValidationSamples({ ClassificationSample(0, { 0 }), ClassificationSample(1, { 1 }) });
 
    test.InitializeBoosting(2);
 
@@ -1221,14 +1221,14 @@ TEST_CASE("test random number generator equivalency") {
    CHECK_APPROX(modelValue, -0.021981997067385354);
 }
 
-TEST_CASE("Discretize, zero instances") {
+TEST_CASE("Discretize, zero samples") {
    UNUSED(testCaseHidden);
    const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   constexpr IntEbmType  cInstances = 0;
+   constexpr IntEbmType  cSamples = 0;
 
    Discretize(
-      cInstances,
+      cSamples,
       nullptr,
       countCuts,
       cutPointsLowerBoundInclusive,
@@ -1236,7 +1236,7 @@ TEST_CASE("Discretize, zero instances") {
    );
 
    Discretize(
-      cInstances,
+      cSamples,
       nullptr,
       countCuts,
       cutPointsLowerBoundInclusive,
@@ -1248,23 +1248,23 @@ TEST_CASE("Discretize, zero cuts, known missing") {
    FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
    const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
 
-   constexpr size_t cInstances = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cInstances and expectedDiscretized must be the same length"
+   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
+   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cSamples and expectedDiscretized must be the same length"
       );
    constexpr IntEbmType countCuts = 0;
-   IntEbmType singleFeatureDiscretized[cInstances];
-   const bool bMissing = std::any_of(featureValues, featureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   IntEbmType singleFeatureDiscretized[cSamples];
+   const bool bMissing = std::any_of(featureValues, featureValues + cSamples, [](const FloatEbmType val) { return std::isnan(val); });
 
    Discretize(
-      IntEbmType { cInstances },
+      IntEbmType { cSamples },
       featureValues,
       countCuts,
       nullptr,
       singleFeatureDiscretized
    );
 
-   for(size_t i = 0; i < cInstances; ++i) {
+   for(size_t i = 0; i < cSamples; ++i) {
       CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
    }
 }
@@ -1273,22 +1273,22 @@ TEST_CASE("Discretize, zero cuts, unknown missing") {
    FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
    const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
 
-   constexpr size_t cInstances = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cInstances and expectedDiscretized must be the same length"
+   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
+   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cSamples and expectedDiscretized must be the same length"
       );
    constexpr IntEbmType countCuts = 0;
-   IntEbmType singleFeatureDiscretized[cInstances];
+   IntEbmType singleFeatureDiscretized[cSamples];
 
    Discretize(
-      IntEbmType { cInstances },
+      IntEbmType { cSamples },
       featureValues,
       countCuts,
       nullptr,
       singleFeatureDiscretized
    );
 
-   for(size_t i = 0; i < cInstances; ++i) {
+   for(size_t i = 0; i < cSamples; ++i) {
       CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
    }
 }
@@ -1298,23 +1298,23 @@ TEST_CASE("Discretize, known missing") {
    FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
    const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, 10, 7, 9 };
 
-   constexpr size_t cInstances = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cInstances and expectedDiscretized must be the same length"
+   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
+   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cSamples and expectedDiscretized must be the same length"
       );
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType singleFeatureDiscretized[cInstances];
-   const bool bMissing = std::any_of(featureValues, featureValues + cInstances, [](const FloatEbmType val) { return std::isnan(val); });
+   IntEbmType singleFeatureDiscretized[cSamples];
+   const bool bMissing = std::any_of(featureValues, featureValues + cSamples, [](const FloatEbmType val) { return std::isnan(val); });
 
    Discretize(
-      IntEbmType { cInstances },
+      IntEbmType { cSamples },
       featureValues,
       countCuts,
       cutPointsLowerBoundInclusive,
       singleFeatureDiscretized
    );
 
-   for(size_t i = 0; i < cInstances; ++i) {
+   for(size_t i = 0; i < cSamples; ++i) {
       CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
    }
 }
@@ -1324,22 +1324,22 @@ TEST_CASE("Discretize, unknown missing") {
    FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
    const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, 10, 7, 9 };
 
-   constexpr size_t cInstances = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cInstances == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cInstances and expectedDiscretized must be the same length"
+   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
+   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
+      "cSamples and expectedDiscretized must be the same length"
       );
    constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType singleFeatureDiscretized[cInstances];
+   IntEbmType singleFeatureDiscretized[cSamples];
 
    Discretize(
-      IntEbmType { cInstances },
+      IntEbmType { cSamples },
       featureValues,
       countCuts,
       cutPointsLowerBoundInclusive,
       singleFeatureDiscretized
    );
 
-   for(size_t i = 0; i < cInstances; ++i) {
+   for(size_t i = 0; i < cSamples; ++i) {
       CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
    }
 }
@@ -1421,7 +1421,7 @@ TEST_CASE("Discretize, increasing lengths") {
    }
 }
 
-TEST_CASE("GenerateQuantileCutPoints, 0 instances") {
+TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
    constexpr IntEbmType countBinsMax = 2;
    constexpr IntEbmType countSamplesPerBinMin = 1;
 
@@ -2601,7 +2601,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+spl
 
 TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the ceiling instead of rounding") {
    // our algorithm makes an internal assumption that we can give each cut point a split.  This is guaranteed if we 
-   // make the average length of the equal value long ranges the ceiling of the average instances per bin.  
+   // make the average length of the equal value long ranges the ceiling of the average samples per bin.  
    // This test stresses that average calculation by having an average bin lenght of 2.2222222222 but if you use 
    // a bin width of 2, then there are 3 cut points that can't get any cuts.  3 cut points means that even if you 
    // don't give the first and last SplittingRanges an actual cut point, which can be reasonalbe since the 
@@ -2674,11 +2674,11 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
 
    for(int iIteration = 0; iIteration < 100; ++iIteration) {
       for(size_t randomMax = 1; randomMax <= randomMaxMax; randomMax += 2) {
-         // since randomMax isn't larger than the number of instances, we'll always be chunky.  This is good for testing range collisions
-         for(size_t iInstance = 0; iInstance < countSamples; ++iInstance) {
+         // since randomMax isn't larger than the number of samples, we'll always be chunky.  This is good for testing range collisions
+         for(size_t iSample = 0; iSample < countSamples; ++iSample) {
             bool bMissing = 0 == randomStream.Next(countSamples); // some datasetes will have zero missing values, some will have 1 or more
             size_t iRandom = randomStream.Next(randomMax + 1);
-            featureValues[iInstance] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
+            featureValues[iSample] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
          }
          // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
          const bool bMissing = std::any_of(featureValues, featureValues + countSamples, [](const FloatEbmType val) { return std::isnan(val); });
@@ -2741,12 +2741,12 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
 
    constexpr size_t cMaximumBins = 10;
    constexpr IntEbmType countSamplesPerBinMin = 3;
-   constexpr size_t cInstances = 100;
+   constexpr size_t cSamples = 100;
    constexpr size_t maxRandomVal = 70;
    const size_t cLongBinLength = static_cast<size_t>(
-      std::ceil(static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins))
+      std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cMaximumBins))
    );
-   FloatEbmType featureValues[cInstances];
+   FloatEbmType featureValues[cSamples];
    FloatEbmType cutPointsLowerBoundInclusive[cMaximumBins - 1];
 
    for(int iIteration = 0; iIteration < 30000; ++iIteration) {
@@ -2758,7 +2758,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength) + cLongBinLength;
          size_t val = randomStream.Next(maxRandomVal) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            featureValues[i % cInstances] = static_cast<FloatEbmType>(val);
+            featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
             ++i;
          }
       }
@@ -2767,13 +2767,13 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          size_t cItems = randomStream.Next(cLongBinLength);
          size_t val = randomStream.Next(maxRandomVal) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
-            featureValues[i % cInstances] = static_cast<FloatEbmType>(val);
+            featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
             ++i;
          }
       }
-      for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-         if(0 == featureValues[iInstance]) {
-            featureValues[iInstance] = static_cast<FloatEbmType>(randomStream.Next(maxRandomVal) + 1);
+      for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+         if(0 == featureValues[iSample]) {
+            featureValues[iSample] = static_cast<FloatEbmType>(randomStream.Next(maxRandomVal) + 1);
          }
       }
       IntEbmType countCutPoints;
@@ -2781,10 +2781,10 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       FloatEbmType valMin;
       FloatEbmType valMax;
 
-      std::sort(featureValues, featureValues + cInstances);
+      std::sort(featureValues, featureValues + cSamples);
 
       IntEbmType ret = GenerateQuantileCutPoints(
-         static_cast<IntEbmType>(cInstances),
+         static_cast<IntEbmType>(cSamples),
          featureValues,
          static_cast<IntEbmType>(cMaximumBins),
          countSamplesPerBinMin,
@@ -2933,8 +2933,8 @@ TEST_CASE("zero learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ RegressionInstance(10, {}) });
-   test.AddValidationInstances({ RegressionInstance(12, {}) });
+   test.AddTrainingSamples({ RegressionSample(10, {}) });
+   test.AddValidationSamples({ RegressionSample(12, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -2956,8 +2956,8 @@ TEST_CASE("zero learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -2983,8 +2983,8 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3014,8 +3014,8 @@ TEST_CASE("negative learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ RegressionInstance(10, {}) });
-   test.AddValidationInstances({ RegressionInstance(12, {}) });
+   test.AddTrainingSamples({ RegressionSample(10, {}) });
+   test.AddValidationSamples({ RegressionSample(12, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3044,8 +3044,8 @@ TEST_CASE("negative learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3081,8 +3081,8 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3126,11 +3126,11 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({
-      RegressionInstance(10, { 0 }),
-      RegressionInstance(10, { 1 }),
+   test.AddTrainingSamples({
+      RegressionSample(10, { 0 }),
+      RegressionSample(10, { 1 }),
       });
-   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
+   test.AddValidationSamples({ RegressionSample(12, { 1 }) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, k_countTreeSplitsMaxDefault, 0);
@@ -3148,11 +3148,11 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({ 
-      RegressionInstance(10, { 0 }),
-      RegressionInstance(10, { 1 }),
+   test.AddTrainingSamples({ 
+      RegressionSample(10, { 0 }),
+      RegressionSample(10, { 1 }),
       });
-   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
+   test.AddValidationSamples({ RegressionSample(12, { 1 }) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = test.Boost(0, {}, {}, k_learningRateDefault, 0);
@@ -3169,8 +3169,8 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
 //   test.AddFeatureGroups({ { 0 } });
-//   test.AddTrainingInstances({ RegressionInstance(FloatEbmType { std::numeric_limits<FloatEbmType>::infinity() }, { 1 }) });
-//   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
+//   test.AddTrainingSamples({ RegressionSample(FloatEbmType { std::numeric_limits<FloatEbmType>::infinity() }, { 1 }) });
+//   test.AddValidationSamples({ RegressionSample(12, { 1 }) });
 //   test.InitializeBoosting();
 //
 //   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3183,12 +3183,12 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 
 
 
-TEST_CASE("Zero training instances, boosting, regression") {
+TEST_CASE("Zero training samples, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances(std::vector<RegressionInstance> {});
-   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
+   test.AddTrainingSamples(std::vector<RegressionSample> {});
+   test.AddValidationSamples({ RegressionSample(12, { 1 }) });
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3201,12 +3201,12 @@ TEST_CASE("Zero training instances, boosting, regression") {
    }
 }
 
-TEST_CASE("Zero training instances, boosting, binary") {
+TEST_CASE("Zero training samples, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances(std::vector<ClassificationInstance> {});
-   test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
+   test.AddTrainingSamples(std::vector<ClassificationSample> {});
+   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3223,12 +3223,12 @@ TEST_CASE("Zero training instances, boosting, binary") {
    }
 }
 
-TEST_CASE("Zero training instances, boosting, multiclass") {
+TEST_CASE("Zero training samples, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances(std::vector<ClassificationInstance> {});
-   test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
+   test.AddTrainingSamples(std::vector<ClassificationSample> {});
+   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3248,12 +3248,12 @@ TEST_CASE("Zero training instances, boosting, multiclass") {
    }
 }
 
-TEST_CASE("Zero validation instances, boosting, regression") {
+TEST_CASE("Zero validation samples, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
-   test.AddValidationInstances(std::vector<RegressionInstance> {});
+   test.AddTrainingSamples({ RegressionSample(10, { 1 }) });
+   test.AddValidationSamples(std::vector<RegressionSample> {});
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3277,12 +3277,12 @@ TEST_CASE("Zero validation instances, boosting, regression") {
    }
 }
 
-TEST_CASE("Zero validation instances, boosting, binary") {
+TEST_CASE("Zero validation samples, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
-   test.AddValidationInstances(std::vector<ClassificationInstance> {});
+   test.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
+   test.AddValidationSamples(std::vector<ClassificationSample> {});
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3315,12 +3315,12 @@ TEST_CASE("Zero validation instances, boosting, binary") {
    }
 }
 
-TEST_CASE("Zero validation instances, boosting, multiclass") {
+TEST_CASE("Zero validation samples, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
-   test.AddValidationInstances(std::vector<ClassificationInstance> {});
+   test.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
+   test.AddValidationSamples(std::vector<ClassificationSample> {});
    test.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3363,30 +3363,30 @@ TEST_CASE("Zero validation instances, boosting, multiclass") {
    }
 }
 
-TEST_CASE("Zero interaction instances, interaction, regression") {
+TEST_CASE("Zero interaction samples, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddInteractionInstances(std::vector<RegressionInstance> {});
+   test.AddInteractionSamples(std::vector<RegressionSample> {});
    test.InitializeInteraction();
 
    FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("Zero interaction instances, interaction, binary") {
+TEST_CASE("Zero interaction samples, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddInteractionInstances(std::vector<ClassificationInstance> {});
+   test.AddInteractionSamples(std::vector<ClassificationSample> {});
    test.InitializeInteraction();
 
    FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("Zero interaction instances, interaction, multiclass") {
+TEST_CASE("Zero interaction samples, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddInteractionInstances(std::vector<ClassificationInstance> {});
+   test.AddInteractionSamples(std::vector<ClassificationSample> {});
    test.InitializeInteraction();
 
    FloatEbmType metricReturn = test.InteractionScore({ 0 });
@@ -3398,8 +3398,8 @@ TEST_CASE("features with 0 states, boosting") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(0) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances(std::vector<RegressionInstance> {});
-   test.AddValidationInstances(std::vector<RegressionInstance> {});
+   test.AddTrainingSamples(std::vector<RegressionSample> {});
+   test.AddValidationSamples(std::vector<RegressionSample> {});
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = test.Boost(0);
@@ -3414,7 +3414,7 @@ TEST_CASE("features with 0 states, boosting") {
 TEST_CASE("features with 0 states, interaction") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(0) });
-   test.AddInteractionInstances(std::vector<RegressionInstance> {});
+   test.AddInteractionSamples(std::vector<RegressionSample> {});
    test.InitializeInteraction();
 
    FloatEbmType validationMetric = test.InteractionScore({ 0 });
@@ -3426,8 +3426,8 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    TestApi test = TestApi(0);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances(std::vector<ClassificationInstance> {});
-   test.AddValidationInstances(std::vector<ClassificationInstance> {});
+   test.AddTrainingSamples(std::vector<ClassificationSample> {});
+   test.AddValidationSamples(std::vector<ClassificationSample> {});
    test.InitializeBoosting();
 
    CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
@@ -3443,7 +3443,7 @@ TEST_CASE("classification with 0 possible target states, boosting") {
 TEST_CASE("classification with 0 possible target states, interaction") {
    TestApi test = TestApi(0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddInteractionInstances(std::vector<ClassificationInstance> {});
+   test.AddInteractionSamples(std::vector<ClassificationSample> {});
    test.InitializeInteraction();
 
    FloatEbmType validationMetric = test.InteractionScore({ 0 });
@@ -3454,8 +3454,8 @@ TEST_CASE("classification with 1 possible target, boosting") {
    TestApi test = TestApi(1);
    test.AddFeatures({ FeatureTest(2) });
    test.AddFeatureGroups({ { 0 } });
-   test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
-   test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
+   test.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
+   test.AddValidationSamples({ ClassificationSample(0, { 1 }) });
    test.InitializeBoosting();
 
    CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
@@ -3471,7 +3471,7 @@ TEST_CASE("classification with 1 possible target, boosting") {
 TEST_CASE("classification with 1 possible target, interaction") {
    TestApi test = TestApi(1);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddInteractionInstances({ ClassificationInstance(0, { 1 }) });
+   test.AddInteractionSamples({ ClassificationSample(0, { 1 }) });
    test.InitializeInteraction();
 
    FloatEbmType validationMetric = test.InteractionScore({ 0 });
@@ -3486,8 +3486,8 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2)
       });
    test0.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
-   test0.AddTrainingInstances({ RegressionInstance(10, { 0, 1, 1 }) });
-   test0.AddValidationInstances({ RegressionInstance(12, { 0, 1, 1 }) });
+   test0.AddTrainingSamples({ RegressionSample(10, { 0, 1, 1 }) });
+   test0.AddValidationSamples({ RegressionSample(12, { 0, 1, 1 }) });
    test0.InitializeBoosting();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
@@ -3497,8 +3497,8 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2)
       });
    test1.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
-   test1.AddTrainingInstances({ RegressionInstance(10, { 1, 0, 1 }) });
-   test1.AddValidationInstances({ RegressionInstance(12, { 1, 0, 1 }) });
+   test1.AddTrainingSamples({ RegressionSample(10, { 1, 0, 1 }) });
+   test1.AddValidationSamples({ RegressionSample(12, { 1, 0, 1 }) });
    test1.InitializeBoosting();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
@@ -3508,8 +3508,8 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(1)
       });
    test2.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
-   test2.AddTrainingInstances({ RegressionInstance(10, { 1, 1, 0 }) });
-   test2.AddValidationInstances({ RegressionInstance(12, { 1, 1, 0 }) });
+   test2.AddTrainingSamples({ RegressionSample(10, { 1, 1, 0 }) });
+   test2.AddValidationSamples({ RegressionSample(12, { 1, 1, 0 }) });
    test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3565,8 +3565,8 @@ TEST_CASE("zero FeatureGroups, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureGroups({});
-   test.AddTrainingInstances({ RegressionInstance(10, {}) });
-   test.AddValidationInstances({ RegressionInstance(12, {}) });
+   test.AddTrainingSamples({ RegressionSample(10, {}) });
+   test.AddValidationSamples({ RegressionSample(12, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
@@ -3577,8 +3577,8 @@ TEST_CASE("zero FeatureGroups, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureGroups({});
-   test.AddTrainingInstances({ ClassificationInstance(1, {}) });
-   test.AddValidationInstances({ ClassificationInstance(1, {}) });
+   test.AddTrainingSamples({ ClassificationSample(1, {}) });
+   test.AddValidationSamples({ ClassificationSample(1, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
@@ -3589,8 +3589,8 @@ TEST_CASE("zero FeatureGroups, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddFeatureGroups({});
-   test.AddTrainingInstances({ ClassificationInstance(2, {}) });
-   test.AddValidationInstances({ ClassificationInstance(2, {}) });
+   test.AddTrainingSamples({ ClassificationSample(2, {}) });
+   test.AddValidationSamples({ ClassificationSample(2, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
@@ -3601,8 +3601,8 @@ TEST_CASE("FeatureGroup with zero features, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ RegressionInstance(10, {}) });
-   test.AddValidationInstances({ RegressionInstance(12, {}) });
+   test.AddTrainingSamples({ RegressionSample(10, {}) });
+   test.AddValidationSamples({ RegressionSample(12, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3631,8 +3631,8 @@ TEST_CASE("FeatureGroup with zero features, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3667,8 +3667,8 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ });
    test.AddFeatureGroups({ {} });
-   test.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   test.AddValidationInstances({ ClassificationInstance(0, {}) });
+   test.AddTrainingSamples({ ClassificationSample(0, {}) });
+   test.AddValidationSamples({ ClassificationSample(0, {}) });
    test.InitializeBoosting();
 
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
@@ -3708,7 +3708,7 @@ TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
 TEST_CASE("FeatureGroup with zero features, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddInteractionInstances({ RegressionInstance(10, {}) });
+   test.AddInteractionSamples({ RegressionSample(10, {}) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -3717,7 +3717,7 @@ TEST_CASE("FeatureGroup with zero features, interaction, regression") {
 TEST_CASE("FeatureGroup with zero features, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddInteractionInstances({ ClassificationInstance(0, {}) });
+   test.AddInteractionSamples({ ClassificationSample(0, {}) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -3726,7 +3726,7 @@ TEST_CASE("FeatureGroup with zero features, interaction, binary") {
 TEST_CASE("FeatureGroup with zero features, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddInteractionInstances({ ClassificationInstance(0, {}) });
+   test.AddInteractionSamples({ ClassificationSample(0, {}) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({});
    CHECK(0 == metricReturn);
@@ -3736,22 +3736,22 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    TestApi testZeroFeaturesInGroup = TestApi(k_learningTypeRegression);
    testZeroFeaturesInGroup.AddFeatures({});
    testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingInstances({ RegressionInstance(10, {}) });
-   testZeroFeaturesInGroup.AddValidationInstances({ RegressionInstance(12, {}) });
+   testZeroFeaturesInGroup.AddTrainingSamples({ RegressionSample(10, {}) });
+   testZeroFeaturesInGroup.AddValidationSamples({ RegressionSample(12, {}) });
    testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureGroups({ { 0 } });
-   testOneState.AddTrainingInstances({ RegressionInstance(10, { 0 }) });
-   testOneState.AddValidationInstances({ RegressionInstance(12, { 0 }) });
+   testOneState.AddTrainingSamples({ RegressionSample(10, { 0 }) });
+   testOneState.AddValidationSamples({ RegressionSample(12, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(k_learningTypeRegression);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureGroups({ { 0 } });
-   testTwoStates.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
-   testTwoStates.AddValidationInstances({ RegressionInstance(12, { 1 }) });
+   testTwoStates.AddTrainingSamples({ RegressionSample(10, { 1 }) });
+   testTwoStates.AddValidationSamples({ RegressionSample(12, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3777,22 +3777,22 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    TestApi testZeroFeaturesInGroup = TestApi(2, 0);
    testZeroFeaturesInGroup.AddFeatures({});
    testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInGroup.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testZeroFeaturesInGroup.AddValidationSamples({ ClassificationSample(0, {}) });
    testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureGroups({ { 0 } });
-   testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
-   testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
+   testOneState.AddTrainingSamples({ ClassificationSample(0, { 0 }) });
+   testOneState.AddValidationSamples({ ClassificationSample(0, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(2, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureGroups({ { 0 } });
-   testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
-   testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
+   testTwoStates.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
+   testTwoStates.AddValidationSamples({ ClassificationSample(0, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3824,22 +3824,22 @@ TEST_CASE("FeatureGroup with one feature with one or two states is the exact sam
    TestApi testZeroFeaturesInGroup = TestApi(3);
    testZeroFeaturesInGroup.AddFeatures({});
    testZeroFeaturesInGroup.AddFeatureGroups({ {} });
-   testZeroFeaturesInGroup.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInGroup.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testZeroFeaturesInGroup.AddValidationSamples({ ClassificationSample(0, {}) });
    testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddFeatures({ FeatureTest(1) });
    testOneState.AddFeatureGroups({ { 0 } });
-   testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
-   testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
+   testOneState.AddTrainingSamples({ ClassificationSample(0, { 0 }) });
+   testOneState.AddValidationSamples({ ClassificationSample(0, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(3);
    testTwoStates.AddFeatures({ FeatureTest(2) });
    testTwoStates.AddFeatureGroups({ { 0 } });
-   testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
-   testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
+   testTwoStates.AddTrainingSamples({ ClassificationSample(0, { 1 }) });
+   testTwoStates.AddValidationSamples({ ClassificationSample(0, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3877,37 +3877,37 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
    test0.AddFeatureGroups({ { 0, 1, 2 } });
-   test0.AddTrainingInstances({ 
-      RegressionInstance(9, { 0, 0, 0 }),
-      RegressionInstance(10, { 0, 1, 0 }),
-      RegressionInstance(11, { 0, 0, 1 }),
-      RegressionInstance(12, { 0, 1, 1 }),
+   test0.AddTrainingSamples({ 
+      RegressionSample(9, { 0, 0, 0 }),
+      RegressionSample(10, { 0, 1, 0 }),
+      RegressionSample(11, { 0, 0, 1 }),
+      RegressionSample(12, { 0, 1, 1 }),
       });
-   test0.AddValidationInstances({ RegressionInstance(12, { 0, 1, 0 }) });
+   test0.AddValidationSamples({ RegressionSample(12, { 0, 1, 0 }) });
    test0.InitializeBoosting();
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
    test1.AddFeatureGroups({ { 0, 1, 2 } });
-   test1.AddTrainingInstances({
-      RegressionInstance(9, { 0, 0, 0 }),
-      RegressionInstance(10, { 0, 0, 1 }),
-      RegressionInstance(11, { 1, 0, 0 }),
-      RegressionInstance(12, { 1, 0, 1 }),
+   test1.AddTrainingSamples({
+      RegressionSample(9, { 0, 0, 0 }),
+      RegressionSample(10, { 0, 0, 1 }),
+      RegressionSample(11, { 1, 0, 0 }),
+      RegressionSample(12, { 1, 0, 1 }),
       });
-   test1.AddValidationInstances({ RegressionInstance(12, { 0, 0, 1 }) });
+   test1.AddValidationSamples({ RegressionSample(12, { 0, 0, 1 }) });
    test1.InitializeBoosting();
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
    test2.AddFeatureGroups({ { 0, 1, 2 } });
-   test2.AddTrainingInstances({
-      RegressionInstance(9, { 0, 0, 0 }),
-      RegressionInstance(10, { 1, 0, 0 }),
-      RegressionInstance(11, { 0, 1, 0 }),
-      RegressionInstance(12, { 1, 1, 0 }),
+   test2.AddTrainingSamples({
+      RegressionSample(9, { 0, 0, 0 }),
+      RegressionSample(10, { 1, 0, 0 }),
+      RegressionSample(11, { 0, 1, 0 }),
+      RegressionSample(12, { 1, 1, 0 }),
       });
-   test2.AddValidationInstances({ RegressionInstance(12, { 1, 0, 0 }) });
+   test2.AddValidationSamples({ RegressionSample(12, { 1, 0, 0 }) });
    test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
@@ -3949,7 +3949,7 @@ TEST_CASE("3 dimensional featureGroup with one dimension reduced in different wa
 TEST_CASE("FeatureGroup with one feature with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(1) });
-   test.AddInteractionInstances({ RegressionInstance(10, { 0 }) });
+   test.AddInteractionSamples({ RegressionSample(10, { 0 }) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
@@ -3958,7 +3958,7 @@ TEST_CASE("FeatureGroup with one feature with one state, interaction, regression
 TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(1) });
-   test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
+   test.AddInteractionSamples({ ClassificationSample(0, { 0 }) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({ 0 });
    CHECK(0 == metricReturn);
@@ -3967,7 +3967,7 @@ TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
 TEST_CASE("FeatureGroup with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(1) });
-   test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
+   test.AddInteractionSamples({ ClassificationSample(0, { 0 }) });
    test.InitializeInteraction();
    FloatEbmType metricReturn = test.InteractionScore({0});
    CHECK(0 == metricReturn);
@@ -3977,8 +3977,8 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingInstances({ RegressionInstance(10, {}) });
-   testContinuous.AddValidationInstances({ RegressionInstance(12, {}) });
+   testContinuous.AddTrainingSamples({ RegressionSample(10, {}) });
+   testContinuous.AddValidationSamples({ RegressionSample(12, {}) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -3990,8 +3990,8 @@ TEST_CASE("Test Rehydration, boosting, regression") {
       TestApi testRestart = TestApi(k_learningTypeRegression);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingInstances({ RegressionInstance(10, {}, model0) });
-      testRestart.AddValidationInstances({ RegressionInstance(12, {}, model0) });
+      testRestart.AddTrainingSamples({ RegressionSample(10, {}, model0) });
+      testRestart.AddValidationSamples({ RegressionSample(12, {}, model0) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
@@ -4008,8 +4008,8 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    TestApi testContinuous = TestApi(2, 0);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testContinuous.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testContinuous.AddValidationSamples({ ClassificationSample(0, {}) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -4022,8 +4022,8 @@ TEST_CASE("Test Rehydration, boosting, binary") {
       TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
-      testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
+      testRestart.AddTrainingSamples({ ClassificationSample(0, {}, { model0, model1 }) });
+      testRestart.AddValidationSamples({ ClassificationSample(0, {}, { model0, model1 }) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
@@ -4044,8 +4044,8 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    TestApi testContinuous = TestApi(3);
    testContinuous.AddFeatures({});
    testContinuous.AddFeatureGroups({ {} });
-   testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testContinuous.AddTrainingSamples({ ClassificationSample(0, {}) });
+   testContinuous.AddValidationSamples({ ClassificationSample(0, {}) });
    testContinuous.InitializeBoosting();
 
    FloatEbmType model0 = 0;
@@ -4059,8 +4059,8 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
       TestApi testRestart = TestApi(3);
       testRestart.AddFeatures({});
       testRestart.AddFeatureGroups({ {} });
-      testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
-      testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
+      testRestart.AddTrainingSamples({ ClassificationSample(0, {}, { model0, model1, model2 }) });
+      testRestart.AddValidationSamples({ ClassificationSample(0, {}, { model0, model1, model2 }) });
       testRestart.InitializeBoosting();
 
       validationMetricRestart = testRestart.Boost(0);
@@ -4087,21 +4087,21 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 
+         // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on a 
          // 64 bit machine
-         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+         for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(cBins) });
             test.AddFeatureGroups({ { 0 } });
 
-            std::vector<RegressionInstance> trainingInstances;
-            std::vector<RegressionInstance> validationInstances;
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               trainingInstances.push_back(RegressionInstance(7, { cBins - 1 }));
-               validationInstances.push_back(RegressionInstance(8, { cBins - 1 }));
+            std::vector<RegressionSample> trainingSamples;
+            std::vector<RegressionSample> validationSamples;
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               trainingSamples.push_back(RegressionSample(7, { cBins - 1 }));
+               validationSamples.push_back(RegressionSample(8, { cBins - 1 }));
             }
-            test.AddTrainingInstances(trainingInstances);
-            test.AddValidationInstances(validationInstances);
+            test.AddTrainingSamples(trainingSamples);
+            test.AddValidationSamples(validationSamples);
             test.InitializeBoosting();
 
             FloatEbmType validationMetric = test.Boost(0);
@@ -4119,21 +4119,21 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
-         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+         for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(cBins) });
             test.AddFeatureGroups({ { 0 } });
 
-            std::vector<ClassificationInstance> trainingInstances;
-            std::vector<ClassificationInstance> validationInstances;
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               trainingInstances.push_back(ClassificationInstance(0, { cBins - 1 }));
-               validationInstances.push_back(ClassificationInstance(1, { cBins - 1 }));
+            std::vector<ClassificationSample> trainingSamples;
+            std::vector<ClassificationSample> validationSamples;
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               trainingSamples.push_back(ClassificationSample(0, { cBins - 1 }));
+               validationSamples.push_back(ClassificationSample(1, { cBins - 1 }));
             }
-            test.AddTrainingInstances(trainingInstances);
-            test.AddValidationInstances(validationInstances);
+            test.AddTrainingSamples(trainingSamples);
+            test.AddValidationSamples(validationSamples);
             test.InitializeBoosting();
 
             FloatEbmType validationMetric = test.Boost(0);
@@ -4155,17 +4155,17 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
-         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+         for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
 
-            std::vector<RegressionInstance> instances;
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               instances.push_back(RegressionInstance(7, { 0, cBins - 1 }));
+            std::vector<RegressionSample> samples;
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               samples.push_back(RegressionSample(7, { 0, cBins - 1 }));
             }
-            test.AddInteractionInstances(instances);
+            test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
             FloatEbmType metric = test.InteractionScore({ 0, 1 });
@@ -4181,17 +4181,17 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
       // if we set the number of bins to be exponential, then we'll be just under a bit packing boundary.  4 bins means bits packs 00, 01, 10, and 11
       for(IntEbmType iRange = IntEbmType { -1 }; iRange <= IntEbmType { 1 }; ++iRange) {
          IntEbmType cBins = exponential + iRange; // check one less than the tight fit, the tight fit, and one above the tight fit
-         // try everything from 0 instances to 65 instances because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
+         // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed into a single data value on 
          // a 64 bit machine
-         for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
+         for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(2), FeatureTest(cBins) });
 
-            std::vector<ClassificationInstance> instances;
-            for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-               instances.push_back(ClassificationInstance(1, { 0, cBins - 1 }));
+            std::vector<ClassificationSample> samples;
+            for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+               samples.push_back(ClassificationSample(1, { 0, cBins - 1 }));
             }
-            test.AddInteractionInstances(instances);
+            test.AddInteractionSamples(samples);
             test.InitializeInteraction();
 
             FloatEbmType metric = test.InteractionScore({ 0, 1 });

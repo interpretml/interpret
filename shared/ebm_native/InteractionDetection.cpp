@@ -37,7 +37,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
    const EbmNativeFeature * const aNativeFeatures,
-   const size_t cInstances,
+   const size_t cSamples,
    const void * const aTargets,
    const IntEbmType * const aBinnedData,
    const FloatEbmType * const aPredictorScores
@@ -80,8 +80,8 @@ EbmInteractionState * EbmInteractionState::Allocate(
             free(aFeatures);
             return nullptr;
          }
-         if(0 == countBins && 0 != cInstances) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cInstances");
+         if(0 == countBins && 0 != cSamples) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cSamples");
             free(aFeatures);
             return nullptr;
          }
@@ -135,7 +135,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    if(pRet->m_dataSet.Initialize(
       cFeatures,
       aFeatures,
-      cInstances,
+      cSamples,
       aBinnedData,
       aTargets,
       aPredictorScores,
@@ -199,14 +199,14 @@ static EbmInteractionState * AllocateInteraction(
    }
 
    size_t cFeatures = static_cast<size_t>(countFeatures);
-   size_t cInstances = static_cast<size_t>(countSamples);
+   size_t cSamples = static_cast<size_t>(countSamples);
 
    EbmInteractionState * const pEbmInteractionState = EbmInteractionState::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
       features,
-      cInstances,
+      cSamples,
       targets,
       binnedData,
       predictorScores
@@ -246,7 +246,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       return nullptr;
    }
    if(0 == countTargetClasses && 0 != countSamples) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no instances");
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no samples");
       return nullptr;
    }
    if(!IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)) {

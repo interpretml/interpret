@@ -48,13 +48,13 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
 
-      const size_t cInstances = pTrainingSet->GetDataSetByFeatureGroup()->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetDataSetByFeatureGroup()->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cSamples;
 
       HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntry =
          pHistogramBucketEntry->GetHistogramBucketVectorEntry();
@@ -68,12 +68,12 @@ public:
          //   pressure related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right 
          //   sampling method 
 
-         // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level 
+         // TODO : try using a sampling method with non-repeating samples, and put the count into a bit.  Then unwind that loop either at the byte level 
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
          const size_t cOccurences = *pCountOccurrences;
          ++pCountOccurrences;
-         pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + cOccurences);
+         pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
          const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
 
          size_t iVector = 0;
@@ -224,21 +224,21 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const size_t cInstances = pTrainingSet->GetDataSetByFeatureGroup()->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pTrainingSet->GetDataSetByFeatureGroup()->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
       const StorageDataType * pInputData = pTrainingSet->GetDataSetByFeatureGroup()->GetInputDataPointer(pFeatureGroup);
       const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
+      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cSamples;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
-      size_t cItemsRemaining = cInstances;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      size_t cItemsRemaining = cSamples;
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      pResidualErrorExit = pResidualErrorTrueEnd - cVectorLength * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
@@ -251,7 +251,7 @@ public:
          // stored in memory if shouldn't increase the time spent fetching it by 2 times, unless our bottleneck when threading is overwhelmingly memory pressure
          // related, and even then we could store the count for a single bit aleviating the memory pressure greatly, if we use the right sampling method 
 
-         // TODO : try using a sampling method with non-repeating instances, and put the count into a bit.  Then unwind that loop either at the byte level 
+         // TODO : try using a sampling method with non-repeating samples, and put the count into a bit.  Then unwind that loop either at the byte level 
          //   (8 times) or the uint64_t level.  This can be done without branching and doesn't require random number generators
 
          cItemsRemaining = cItemsPerBitPackedDataUnit;
@@ -273,7 +273,7 @@ public:
             ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntry, aHistogramBucketsEndDebug);
             const size_t cOccurences = *pCountOccurrences;
             ++pCountOccurrences;
-            pHistogramBucketEntry->SetCountInstancesInBucket(pHistogramBucketEntry->GetCountInstancesInBucket() + cOccurences);
+            pHistogramBucketEntry->SetCountSamplesInBucket(pHistogramBucketEntry->GetCountSamplesInBucket() + cOccurences);
             const FloatEbmType cFloatOccurences = static_cast<FloatEbmType>(cOccurences);
             HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
                pHistogramBucketEntry->GetHistogramBucketVectorEntry();

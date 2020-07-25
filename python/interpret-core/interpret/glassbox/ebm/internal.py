@@ -103,7 +103,7 @@ class Native:
             ct.POINTER(self.EbmNativeFeatureGroup),
             # int64_t * featureGroupIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countTrainingInstances
+            # int64_t countTrainingSamples
             ct.c_longlong,
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -112,7 +112,7 @@ class Native:
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
-            # int64_t countValidationInstances
+            # int64_t countValidationSamples
             ct.c_longlong,
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -141,7 +141,7 @@ class Native:
             ct.POINTER(self.EbmNativeFeatureGroup),
             # int64_t * featureGroupIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countTrainingInstances
+            # int64_t countTrainingSamples
             ct.c_longlong,
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -149,7 +149,7 @@ class Native:
             ndpointer(dtype=np.float64, ndim=1),
             # double * trainingPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
-            # int64_t countValidationInstances
+            # int64_t countValidationSamples
             ct.c_longlong,
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -466,13 +466,13 @@ class NativeEBMBoosting:
             y_train: Training response as 1-D ndarray.
             scores_train: training predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
             X_val: Validation design matrix as 2-D ndarray.
             y_val: Validation response as 1-D ndarray.
             scores_val: Validation predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
             n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
@@ -501,7 +501,7 @@ class NativeEBMBoosting:
 
         if X_train.shape[1] != len(y_train):  # pragma: no cover
             raise ValueError(
-                "X_train does not have the same number of instances as y_train"
+                "X_train does not have the same number of samples as y_train"
             )
 
         if X_val.ndim != 2:  # pragma: no cover
@@ -517,7 +517,7 @@ class NativeEBMBoosting:
 
         if X_val.shape[1] != len(y_val):  # pragma: no cover
             raise ValueError(
-                "X_val does not have the same number of instances as y_val"
+                "X_val does not have the same number of samples as y_val"
             )
 
         self._native = Native.get_native_singleton()
@@ -545,7 +545,7 @@ class NativeEBMBoosting:
         else:
             if scores_train.shape[0] != len(y_train):  # pragma: no cover
                 raise ValueError(
-                    "scores_train does not have the same number of instances as y_train"
+                    "scores_train does not have the same number of samples as y_train"
                 )
             if n_scores == 1:
                 if scores_train.ndim != 1:  # pragma: no cover
@@ -567,7 +567,7 @@ class NativeEBMBoosting:
         else:
             if scores_val.shape[0] != len(y_val):  # pragma: no cover
                 raise ValueError(
-                    "scores_val does not have the same number of instances as y_val"
+                    "scores_val does not have the same number of samples as y_val"
                 )
             if n_scores == 1:
                 if scores_val.ndim != 1:  # pragma: no cover
@@ -741,9 +741,9 @@ class NativeEBMBoosting:
             # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
             # a None value here for now and handle in the upper levels
             #
-            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # If we were to allow datasets with zero samples, then it would also be legal for there
             # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any instances in any evaluations need to have a state
+            # any samples in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
             return None
@@ -802,9 +802,9 @@ class NativeEBMBoosting:
             # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
             # a None value here for now and handle in the upper levels
             #
-            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # If we were to allow datasets with zero samples, then it would also be legal for there
             # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any instances in any evaluations need to have a state
+            # any samples in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
             return None
@@ -858,7 +858,7 @@ class NativeEBMInteraction:
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
             scores: predictions from a prior predictor.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
 
         """
@@ -882,7 +882,7 @@ class NativeEBMInteraction:
             )
 
         if X.shape[1] != len(y):  # pragma: no cover
-            raise ValueError("X does not have the same number of instances as y")
+            raise ValueError("X does not have the same number of samples as y")
 
         self._native = Native.get_native_singleton()
 
@@ -897,7 +897,7 @@ class NativeEBMInteraction:
         else:
             if scores.shape[0] != len(y):  # pragma: no cover
                 raise ValueError(
-                    "scores does not have the same number of instances as y"
+                    "scores does not have the same number of samples as y"
                 )
             if n_scores == 1:
                 if scores.ndim != 1:  # pragma: no cover

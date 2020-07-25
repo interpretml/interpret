@@ -492,20 +492,20 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   size_t cTrainingInstances;
+   size_t cTrainingSamples;
    const IntEbmType * aTrainingTargets;
-   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
+   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingSamples, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
+   const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cTrainingInstances * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -515,12 +515,12 @@ SEXP InitializeBoostingClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cTrainingInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cVectorLength)");
+   if(IsMultiplyError(cTrainingSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cTrainingInstances != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingInstances != cTrainingPredictorScores");
+   if(cVectorLength * cTrainingSamples != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -531,20 +531,20 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   size_t cValidationInstances;
+   size_t cValidationSamples;
    const IntEbmType * aValidationTargets;
-   if(ConvertDoublesToIndexes(validationTargets, &cValidationInstances, &aValidationTargets)) {
+   if(ConvertDoublesToIndexes(validationTargets, &cValidationSamples, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
+   const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationInstances * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cValidationInstances * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -554,12 +554,12 @@ SEXP InitializeBoostingClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cValidationInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cVectorLength)");
+   if(IsMultiplyError(cValidationSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cValidationInstances != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationInstances != cValidationPredictorScores");
+   if(cVectorLength * cValidationSamples != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
@@ -589,11 +589,11 @@ SEXP InitializeBoostingClassification_R(
       countFeatureGroups, 
       aFeatureGroups, 
       aFeatureGroupIndexes, 
-      countTrainingInstances, 
+      countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
@@ -680,20 +680,20 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   size_t cTrainingInstances;
+   size_t cTrainingSamples;
    const FloatEbmType * aTrainingTargets;
-   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
+   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingSamples, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
+   const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingInstances, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -703,8 +703,8 @@ SEXP InitializeBoostingRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cTrainingInstances != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances != cTrainingPredictorScores");
+   if(cTrainingSamples != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -715,20 +715,20 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   size_t cValidationInstances;
+   size_t cValidationSamples;
    const FloatEbmType * aValidationTargets;
-   if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
+   if(ConvertDoublesToDoubles(validationTargets, &cValidationSamples, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
+   const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationInstances, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationInstances * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -738,8 +738,8 @@ SEXP InitializeBoostingRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cValidationInstances != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances != cValidationPredictorScores");
+   if(cValidationSamples != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
@@ -768,11 +768,11 @@ SEXP InitializeBoostingRegression_R(
       countFeatureGroups, 
       aFeatureGroups, 
       aFeatureGroupIndexes, 
-      countTrainingInstances, 
+      countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
@@ -858,19 +858,19 @@ SEXP BoostingStep_R(
       LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
-   IntEbmType cInstancesRequiredForChildSplitMin;
+   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
+   IntEbmType cSamplesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) || 
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
+   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) || 
+      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
    ) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin overflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin underflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
    double * pTrainingWeights = nullptr;
@@ -886,8 +886,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()");
+      if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()");
          return R_NilValue;
       }
       pTrainingWeights = REAL(trainingWeights);
@@ -902,8 +902,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()");
+      if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()");
          return R_NilValue;
       }
       pValidationWeights = REAL(validationWeights);
@@ -915,7 +915,7 @@ SEXP BoostingStep_R(
       iFeatureGroup, 
       learningRateLocal, 
       cTreeSplitsMax, 
-      cInstancesRequiredForChildSplitMin, 
+      cSamplesRequiredForChildSplitMin, 
       pTrainingWeights, 
       pValidationWeights, 
       &validationMetricReturn
@@ -1116,20 +1116,20 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   size_t cInstances;
+   size_t cSamples;
    const IntEbmType * aTargets;
-   if(ConvertDoublesToIndexes(targets, &cInstances, &aTargets)) {
+   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countSamples = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cInstances * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cInstances * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1139,12 +1139,12 @@ SEXP InitializeInteractionClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cVectorLength)");
+   if(IsMultiplyError(cSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cInstances != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cInstances != cPredictorScores");
+   if(cVectorLength * cSamples != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cSamples != cPredictorScores");
       return R_NilValue;
    }
 
@@ -1197,20 +1197,20 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   size_t cInstances;
+   size_t cSamples;
    const FloatEbmType * aTargets;
-   if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
+   if(ConvertDoublesToDoubles(targets, &cSamples, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countSamples = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cInstances * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1220,8 +1220,8 @@ SEXP InitializeInteractionRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cInstances != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
+   if(cSamples != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples != cPredictorScores");
       return R_NilValue;
    }
 
@@ -1271,23 +1271,23 @@ SEXP GetInteractionScore_R(
       LOG_0(TraceLevelError, "ERROR GetInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
-   IntEbmType cInstancesRequiredForChildSplitMin;
+   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
+   IntEbmType cSamplesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) ||
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
+   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
+      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
       ) {
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
    FloatEbmType interactionScoreReturn;
-   if(0 != GetInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cInstancesRequiredForChildSplitMin, &interactionScoreReturn)) {
+   if(0 != GetInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreReturn)) {
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R GetInteractionScore returned error code");
       return R_NilValue;
    }

@@ -30,7 +30,7 @@ public:
    static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
       HistogramBucketBase * const aHistogramBucketsBase
 #ifndef NDEBUG
@@ -77,7 +77,7 @@ public:
       // (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension2);
 
-      EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+      EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
 
       // never return anything above zero, which might happen due to numeric instability if we set this lower than 0
       FloatEbmType bestSplittingScore = FloatEbmType { 0 };
@@ -105,7 +105,7 @@ public:
                , aHistogramBucketsEndDebug
 #endif // NDEBUG
                );
-            if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->GetCountInstancesInBucket())) {
+            if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowLow->GetCountSamplesInBucket())) {
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
                   pFeatureGroup,
@@ -118,7 +118,7 @@ public:
                   , aHistogramBucketsEndDebug
 #endif // NDEBUG
                   );
-               if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountInstancesInBucket())) {
+               if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountSamplesInBucket())) {
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
                      pFeatureGroup,
@@ -131,7 +131,7 @@ public:
                      , aHistogramBucketsEndDebug
 #endif // NDEBUG
                      );
-                  if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->GetCountInstancesInBucket())) {
+                  if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighLow->GetCountSamplesInBucket())) {
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
                         pFeatureGroup,
@@ -144,13 +144,13 @@ public:
                         , aHistogramBucketsEndDebug
 #endif // NDEBUG
                         );
-                     if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighHigh->GetCountInstancesInBucket())) {
+                     if(LIKELY(cSamplesRequiredForChildSplitMin <= pTotalsHighHigh->GetCountSamplesInBucket())) {
                         FloatEbmType splittingScore = 0;
 
-                        FloatEbmType cLowLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->GetCountInstancesInBucket());
-                        FloatEbmType cLowHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->GetCountInstancesInBucket());
-                        FloatEbmType cHighLowInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->GetCountInstancesInBucket());
-                        FloatEbmType cHighHighInstancesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->GetCountInstancesInBucket());
+                        FloatEbmType cLowLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsLowLow->GetCountSamplesInBucket());
+                        FloatEbmType cLowHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsLowHigh->GetCountSamplesInBucket());
+                        FloatEbmType cHighLowSamplesInBucket = static_cast<FloatEbmType>(pTotalsHighLow->GetCountSamplesInBucket());
+                        FloatEbmType cHighHighSamplesInBucket = static_cast<FloatEbmType>(pTotalsHighHigh->GetCountSamplesInBucket());
 
                         HistogramBucketVectorEntry<bClassification> * const pHistogramBucketVectorEntryTotalsLowLow =
                            pTotalsLowLow->GetHistogramBucketVectorEntry();
@@ -167,20 +167,20 @@ public:
 
                            const FloatEbmType splittingScoreUpdate1 = EbmStatistics::ComputeNodeSplittingScore(
                               pHistogramBucketVectorEntryTotalsLowLow[iVector].m_sumResidualError,
-                              cLowLowInstancesInBucket
+                              cLowLowSamplesInBucket
                            );
                            EBM_ASSERT(std::isnan(splittingScoreUpdate1) || FloatEbmType { 0 } <= splittingScoreUpdate1);
                            splittingScore += splittingScoreUpdate1;
                            const FloatEbmType splittingScoreUpdate2 = EbmStatistics::ComputeNodeSplittingScore(
-                              pHistogramBucketVectorEntryTotalsLowHigh[iVector].m_sumResidualError, cLowHighInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsLowHigh[iVector].m_sumResidualError, cLowHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate2) || FloatEbmType { 0 } <= splittingScoreUpdate2);
                            splittingScore += splittingScoreUpdate2;
                            const FloatEbmType splittingScoreUpdate3 = EbmStatistics::ComputeNodeSplittingScore(
-                              pHistogramBucketVectorEntryTotalsHighLow[iVector].m_sumResidualError, cHighLowInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsHighLow[iVector].m_sumResidualError, cHighLowSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate3) || FloatEbmType { 0 } <= splittingScoreUpdate3);
                            splittingScore += splittingScoreUpdate3;
                            const FloatEbmType splittingScoreUpdate4 = EbmStatistics::ComputeNodeSplittingScore(
-                              pHistogramBucketVectorEntryTotalsHighHigh[iVector].m_sumResidualError, cHighHighInstancesInBucket);
+                              pHistogramBucketVectorEntryTotalsHighHigh[iVector].m_sumResidualError, cHighHighSamplesInBucket);
                            EBM_ASSERT(std::isnan(splittingScoreUpdate4) || FloatEbmType { 0 } <= splittingScoreUpdate4);
                            splittingScore += splittingScoreUpdate4;
                         }
@@ -217,7 +217,7 @@ public:
    INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -236,7 +236,7 @@ public:
          return FindBestInteractionGainPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pEbmInteractionState,
             pFeatureGroup,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -248,7 +248,7 @@ public:
          return FindBestInteractionGainPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmInteractionState,
             pFeatureGroup,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             aHistogramBuckets
 #ifndef NDEBUG
@@ -269,7 +269,7 @@ public:
    INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
       const FeatureGroup * const pFeatureGroup,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -285,7 +285,7 @@ public:
       return FindBestInteractionGainPairsInternal<k_dynamicClassification>::Func(
          pEbmInteractionState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -299,7 +299,7 @@ public:
 extern FloatEbmType FindBestInteractionGainPairs(
    EbmInteractionState * const pEbmInteractionState,
    const FeatureGroup * const pFeatureGroup,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -313,7 +313,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
       return FindBestInteractionGainPairsTarget<2>::Func(
          pEbmInteractionState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -326,7 +326,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
       return FindBestInteractionGainPairsInternal<k_regression>::Func(
          pEbmInteractionState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
 #ifndef NDEBUG

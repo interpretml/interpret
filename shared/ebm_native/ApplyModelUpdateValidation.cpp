@@ -41,13 +41,13 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType sumLogLoss = FloatEbmType { 0 };
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances * cVectorLength;
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples * cVectorLength;
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
@@ -70,16 +70,16 @@ public:
             sumExp += oneExp;
             ++iVector;
          } while(iVector < cVectorLength);
-         const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
+         const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
             sumExp,
             itemExp
          );
 
-         EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
-         sumLogLoss += instanceLogLoss;
+         EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
+         sumLogLoss += sampleLogLoss;
 
       } while(pPredictorScoresEnd != pPredictorScores);
-      return sumLogLoss / cInstances;
+      return sumLogLoss / cSamples;
    }
 };
 
@@ -95,13 +95,13 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       DataSetByFeatureGroup * const pValidationSet = pEbmBoostingState->GetValidationSet();
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType sumLogLoss = 0;
       const StorageDataType * pTargetData = pValidationSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
-      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances;
+      const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cSamples;
       const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
@@ -110,11 +110,11 @@ public:
          const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
          *pPredictorScores = predictorScore;
          ++pPredictorScores;
-         const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(predictorScore, targetData);
-         EBM_ASSERT(std::isnan(instanceLogLoss) || FloatEbmType { 0 } <= instanceLogLoss);
-         sumLogLoss += instanceLogLoss;
+         const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
+         EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
+         sumLogLoss += sampleLogLoss;
       } while(pPredictorScoresEnd != pPredictorScores);
-      return sumLogLoss / cInstances;
+      return sumLogLoss / cSamples;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -130,23 +130,23 @@ public:
       const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       DataSetByFeatureGroup * const pValidationSet = pEbmBoostingState->GetValidationSet();
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
 
       FloatEbmType sumSquareError = FloatEbmType { 0 };
       FloatEbmType * pResidualError = pValidationSet->GetResidualPointer();
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
       const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
          const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-         const FloatEbmType instanceSquaredError = EbmStatistics::ComputeSingleInstanceSquaredErrorRegression(residualError);
-         EBM_ASSERT(std::isnan(instanceSquaredError) || FloatEbmType { 0 } <= instanceSquaredError);
-         sumSquareError += instanceSquaredError;
+         const FloatEbmType sampleSquaredError = EbmStatistics::ComputeSingleSampleSquaredErrorRegression(residualError);
+         EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
+         sumSquareError += sampleSquaredError;
          *pResidualError = residualError;
          ++pResidualError;
       } while(pResidualErrorEnd != pResidualError);
-      return sumSquareError / cInstances;
+      return sumSquareError / cSamples;
    }
 };
 
@@ -228,8 +228,8 @@ public:
          runtimeLearningTypeOrCountTargetClasses
       );
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -249,13 +249,13 @@ public:
       FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances * cVectorLength;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples * cVectorLength;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1) * cVectorLength;
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
@@ -288,13 +288,13 @@ public:
                sumExp += oneExp;
                ++iVector;
             } while(iVector < cVectorLength);
-            const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossMulticlass(
+            const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossMulticlass(
                sumExp,
                itemExp
             );
 
-            EBM_ASSERT(std::isnan(instanceLogLoss) || -k_epsilonLogLoss <= instanceLogLoss);
-            sumLogLoss += instanceLogLoss;
+            EBM_ASSERT(std::isnan(sampleLogLoss) || -k_epsilonLogLoss <= sampleLogLoss);
+            sumLogLoss += sampleLogLoss;
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
       } while(pPredictorScoresExit != pPredictorScores);
@@ -305,7 +305,7 @@ public:
          pPredictorScoresExit = pPredictorScoresTrueEnd;
          goto one_last_loop;
       }
-      return sumLogLoss / cInstances;
+      return sumLogLoss / cSamples;
    }
 };
 
@@ -324,8 +324,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pValidationSet = pEbmBoostingState->GetValidationSet();
 
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -345,13 +345,13 @@ public:
       FloatEbmType * pPredictorScores = pValidationSet->GetPredictorScores();
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cInstances;
+      const FloatEbmType * const pPredictorScoresTrueEnd = pPredictorScores + cSamples;
       const FloatEbmType * pPredictorScoresExit = pPredictorScoresTrueEnd;
       const FloatEbmType * pPredictorScoresInnerEnd = pPredictorScoresTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      pPredictorScoresExit = pPredictorScoresTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pPredictorScores < pPredictorScoresExit);
       EBM_ASSERT(pPredictorScoresExit < pPredictorScoresTrueEnd);
 
@@ -374,10 +374,10 @@ public:
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
             ++pPredictorScores;
-            const FloatEbmType instanceLogLoss = EbmStatistics::ComputeSingleInstanceLogLossBinaryClassification(predictorScore, targetData);
+            const FloatEbmType sampleLogLoss = EbmStatistics::ComputeSingleSampleLogLossBinaryClassification(predictorScore, targetData);
 
-            EBM_ASSERT(std::isnan(instanceLogLoss) || FloatEbmType { 0 } <= instanceLogLoss);
-            sumLogLoss += instanceLogLoss;
+            EBM_ASSERT(std::isnan(sampleLogLoss) || FloatEbmType { 0 } <= sampleLogLoss);
+            sumLogLoss += sampleLogLoss;
 
             iTensorBinCombined >>= cBitsPerItemMax;
          } while(pPredictorScoresInnerEnd != pPredictorScores);
@@ -389,7 +389,7 @@ public:
          pPredictorScoresExit = pPredictorScoresTrueEnd;
          goto one_last_loop;
       }
-      return sumLogLoss / cInstances;
+      return sumLogLoss / cSamples;
    }
 };
 #endif // EXPAND_BINARY_LOGITS
@@ -408,8 +408,8 @@ public:
       const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
       DataSetByFeatureGroup * const pValidationSet = pEbmBoostingState->GetValidationSet();
 
-      const size_t cInstances = pValidationSet->GetCountInstances();
-      EBM_ASSERT(0 < cInstances);
+      const size_t cSamples = pValidationSet->GetCountSamples();
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
@@ -428,13 +428,13 @@ public:
       const StorageDataType * pInputData = pValidationSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory
-      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cSamples;
       const FloatEbmType * pResidualErrorExit = pResidualErrorTrueEnd;
       const FloatEbmType * pResidualErrorInnerEnd = pResidualErrorTrueEnd;
-      if(cInstances <= cItemsPerBitPackedDataUnit) {
+      if(cSamples <= cItemsPerBitPackedDataUnit) {
          goto one_last_loop;
       }
-      pResidualErrorExit = pResidualErrorTrueEnd - ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+      pResidualErrorExit = pResidualErrorTrueEnd - ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
       EBM_ASSERT(pResidualError < pResidualErrorExit);
       EBM_ASSERT(pResidualErrorExit < pResidualErrorTrueEnd);
 
@@ -452,9 +452,9 @@ public:
             const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing ValidationPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
-            const FloatEbmType instanceSquaredError = EbmStatistics::ComputeSingleInstanceSquaredErrorRegression(residualError);
-            EBM_ASSERT(std::isnan(instanceSquaredError) || FloatEbmType { 0 } <= instanceSquaredError);
-            sumSquareError += instanceSquaredError;
+            const FloatEbmType sampleSquaredError = EbmStatistics::ComputeSingleSampleSquaredErrorRegression(residualError);
+            EBM_ASSERT(std::isnan(sampleSquaredError) || FloatEbmType { 0 } <= sampleSquaredError);
+            sumSquareError += sampleSquaredError;
             *pResidualError = residualError;
             ++pResidualError;
 
@@ -468,7 +468,7 @@ public:
          pResidualErrorExit = pResidualErrorTrueEnd;
          goto one_last_loop;
       }
-      return sumSquareError / cInstances;
+      return sumSquareError / cSamples;
    }
 };
 
@@ -753,7 +753,7 @@ extern FloatEbmType ApplyModelUpdateValidation(
             // be guaranteed to return a positive or zero number, so let's just always check for numbers less than zero and round up
             EBM_ASSERT(IsMulticlass(runtimeLearningTypeOrCountTargetClasses));
 
-            // because of floating point inexact reasons, ComputeSingleInstanceLogLossMulticlass can return a negative number
+            // because of floating point inexact reasons, ComputeSingleSampleLogLossMulticlass can return a negative number
             // so correct this before we return.  Any negative numbers were really meant to be zero
             ret = FloatEbmType { 0 };
          }

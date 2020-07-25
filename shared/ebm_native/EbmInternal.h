@@ -505,7 +505,7 @@ INLINE_ALWAYS FloatEbmType EbmExp(FloatEbmType val) {
    // Exp is also used to calculate the log loss, but in that case we report the log loss, but otherwise don't use it again, so any errors
    // in calculating the log loss don't propegate cyclically
    //
-   // when we get our logit update from training a feature, we apply that to both the model AND our per instance array of logits, so we can
+   // when we get our logit update from training a feature, we apply that to both the model AND our per sample array of logits, so we can
    // potentialy diverge there over time, but that's just an addition operation which is going to be exact for many decimal places.
    // that divergence will NOT be affected by noise in the exp function since the noise in the exp function
    // will generate noise in the logit update, but it won't cause a divergence between the model and the error

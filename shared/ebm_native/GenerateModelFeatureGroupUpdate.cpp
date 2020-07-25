@@ -46,7 +46,7 @@ extern void SumHistogramBuckets(
    HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
-   , const size_t cInstancesTotal
+   , const size_t cSamplesTotal
 #endif // NDEBUG
 );
 
@@ -54,10 +54,10 @@ extern bool GrowDecisionTree(
    EbmBoostingState * const pEbmBoostingState,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
-   const size_t cInstancesTotal,
+   const size_t cSamplesTotal,
    const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -68,7 +68,7 @@ extern bool GrowDecisionTree(
 extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const pTotal,
    HistogramBucketBase * const aHistogramBuckets,
@@ -144,7 +144,7 @@ static bool BoostZeroDimensional(
          pHistogramBucketLocal->GetHistogramBucketVectorEntry();
       const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
          aSumHistogramBucketVectorEntry[0].m_sumResidualError,
-         static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountInstancesInBucket())
+         static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
       );
       aValues[0] = smallChangeToModel;
    }
@@ -158,7 +158,7 @@ static bool BoostSingleDimensional(
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
@@ -245,21 +245,21 @@ static bool BoostSingleDimensional(
       aSumHistogramBucketVectorEntry
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
-      , pTrainingSet->GetTotalCountInstanceOccurrences()
+      , pTrainingSet->GetTotalCountSampleOccurrences()
 #endif // NDEBUG
    );
 
-   const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
-   EBM_ASSERT(1 <= cInstancesTotal);
+   const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
+   EBM_ASSERT(1 <= cSamplesTotal);
 
    bool bRet = GrowDecisionTree(
       pEbmBoostingState,
       cHistogramBuckets,
       aHistogramBuckets,
-      cInstancesTotal,
+      cSamplesTotal,
       aSumHistogramBucketVectorEntry,
       cTreeSplitsMax,
-      cInstancesRequiredForChildSplitMin,
+      cSamplesRequiredForChildSplitMin,
       pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
 #ifndef NDEBUG
@@ -278,7 +278,7 @@ static bool BoostMultiDimensional(
    EbmBoostingState * const pEbmBoostingState,
    const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
@@ -519,7 +519,7 @@ static bool BoostMultiDimensional(
       bool bError = FindBestBoostingSplitPairs(
          pEbmBoostingState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
          aHistogramBuckets,
@@ -573,7 +573,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    const size_t iFeatureGroup,
    const FloatEbmType learningRate,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    const FloatEbmType * const aTrainingWeights,
    const FloatEbmType * const aValidationWeights,
    FloatEbmType * const pGainReturn
@@ -594,7 +594,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
    pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
-   // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training instances
+   // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
@@ -620,7 +620,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                cTreeSplitsMax,
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -634,7 +634,7 @@ static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
                pEbmBoostingState,
                pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -861,13 +861,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
+   size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
-      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
       if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
-         // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
+         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
-         cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+         cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
@@ -896,7 +896,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       iFeatureGroup,
       learningRate,
       cTreeSplitsMax,
-      cInstancesRequiredForChildSplitMin,
+      cSamplesRequiredForChildSplitMin,
       trainingWeights,
       validationWeights,
       gainReturn

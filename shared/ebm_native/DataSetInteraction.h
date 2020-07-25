@@ -15,7 +15,7 @@
 class DataSetByFeature final {
    FloatEbmType * m_aResidualErrors;
    StorageDataType * * m_aaInputData;
-   size_t m_cInstances;
+   size_t m_cSamples;
    size_t m_cFeatures;
 
 public:
@@ -30,14 +30,14 @@ public:
    INLINE_ALWAYS void InitializeZero() {
       m_aResidualErrors = nullptr;
       m_aaInputData = nullptr;
-      m_cInstances = 0;
+      m_cSamples = 0;
       m_cFeatures = 0;
    }
 
    bool Initialize(
       const size_t cFeatures, 
       const Feature * const aFeatures, 
-      const size_t cInstances, 
+      const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargetData, 
       const FloatEbmType * const aPredictorScores, 
@@ -55,8 +55,8 @@ public:
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeature->GetIndexFeatureData()];
    }
-   INLINE_ALWAYS size_t GetCountInstances() const {
-      return m_cInstances;
+   INLINE_ALWAYS size_t GetCountSamples() const {
+      return m_cSamples;
    }
    INLINE_ALWAYS size_t GetCountFeatures() const {
       return m_cFeatures;

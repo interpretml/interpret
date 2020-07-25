@@ -55,7 +55,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    // Our caller should really just not pass us the first two, but it's hard for our caller to protect against giving us values that won't overflow
    // so we should have some reasonable way to handle them.  If we were meant to overflow, logits or regression values at the maximum/minimum values
    // of doubles should be so close to infinity that it won't matter, and then you can at least graph them without overflowing to special values
-   // We have the same problem when we go to make changes to the individual instance updates, but there we can have two graphs that combined push towards
+   // We have the same problem when we go to make changes to the individual sample updates, but there we can have two graphs that combined push towards
    // an overflow to +-infinity.  We just ignore those overflows, because checking for them would add branches that we don't want, and we can just
    // propagate +-infinity and NaN values to the point where we get a metric and that should cause our client to stop boosting when our metric
    // overlfows and gets converted to the maximum value which will mean the metric won't be changing or improving after that.
@@ -65,7 +65,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
 
    const FeatureGroup * const pFeatureGroup = pEbmBoostingState->GetFeatureGroups()[iFeatureGroup];
 
-   if(0 != pEbmBoostingState->GetTrainingSet()->GetCountInstances()) {
+   if(0 != pEbmBoostingState->GetTrainingSet()->GetCountSamples()) {
       ApplyModelUpdateTraining(
          pEbmBoostingState,
          pFeatureGroup,
@@ -74,16 +74,16 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    }
 
    FloatEbmType modelMetric = FloatEbmType { 0 };
-   if(0 != pEbmBoostingState->GetValidationSet()->GetCountInstances()) {
+   if(0 != pEbmBoostingState->GetValidationSet()->GetCountSamples()) {
       // if there is no validation set, it's pretty hard to know what the metric we'll get for our validation set
       // we could in theory return anything from zero to infinity or possibly, NaN (probably legally the best), but we return 0 here
       // because we want to kick our caller out of any loop it might be calling us in.  Infinity and NaN are odd values that might cause problems in
       // a caller that isn't expecting those values, so 0 is the safest option, and our caller can avoid the situation entirely by not calling
       // us with zero count validation sets
 
-      // if the count of training instances is zero, don't update the best model (it will stay as all zeros), and we don't need to update our 
+      // if the count of training samples is zero, don't update the best model (it will stay as all zeros), and we don't need to update our 
       // non-existant training set either C++ doesn't define what happens when you compare NaN to annother number.  It probably follows IEEE 754, 
-      // but it isn't guaranteed, so let's check for zero instances in the validation set this better way
+      // but it isn't guaranteed, so let's check for zero samples in the validation set this better way
       // https://stackoverflow.com/questions/31225264/what-is-the-result-of-comparing-a-number-with-nan
 
       modelMetric = ApplyModelUpdateValidation(

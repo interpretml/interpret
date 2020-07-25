@@ -287,7 +287,7 @@ public:
                aiLast,
                pDebugBucket
                );
-            EBM_ASSERT(pDebugBucket->GetCountInstancesInBucket() == pHistogramBucket->GetCountInstancesInBucket());
+            EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
          }
 #endif // NDEBUG
 
@@ -632,7 +632,7 @@ extern void TensorTotalsBuild(
 //            aiLast[iDebugDimension] = currentIndexAndCountBins[iDebugDimension].m_iCur;
 //         }
 //         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
-//         EBM_ASSERT(pDebugBucket->GetCountInstancesInBucket() == pHistogramBucket->GetCountInstancesInBucket());
+//         EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //
 //         free(aHistogramBucketsDebugCopy);
 //      }
@@ -765,7 +765,7 @@ extern void TensorTotalsBuild(
 //            multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //         }
 //         TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
-//         EBM_ASSERT(pDebugBucket->GetCountInstancesInBucket() == pHistogramBucket->GetCountInstancesInBucket());
+//         EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //         free(aHistogramBucketsDebugCopy);
 //      }
 //#endif // NDEBUG
@@ -871,9 +871,9 @@ extern void TensorTotalsBuild(
 //
 //      ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucket, aHistogramBucketsEndDebug);
 //
-//      const size_t cInstancesInBucket = pHistogramBucket->GetCountInstancesInBucket() + pPrevious->GetCountInstancesInBucket();
-//      pHistogramBucket->m_cInstancesInBucket = cInstancesInBucket;
-//      pPrevious->m_cInstancesInBucket = cInstancesInBucket;
+//      const size_t cSamplesInBucket = pHistogramBucket->GetCountSamplesInBucket() + pPrevious->GetCountSamplesInBucket();
+//      pHistogramBucket->m_cSamplesInBucket = cSamplesInBucket;
+//      pPrevious->m_cSamplesInBucket = cSamplesInBucket;
 //      for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
 //         const FloatEbmType sumResidualError = pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError + pPrevious->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError;
 //         pHistogramBucket->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError = sumResidualError;
@@ -929,7 +929,7 @@ extern void TensorTotalsBuild(
 //         multipleTotalDebug = currentIndexAndCountBins[iDebugDimension].multipleTotal;
 //      }
 //      TensorTotalsSumDebugSlow<compilerLearningTypeOrCountTargetClasses, compilerCountDimensions>(runtimeLearningTypeOrCountTargetClasses, pFeatureGroup, aHistogramBucketsDebugCopy, aiStart, aiLast, pDebugBucket);
-//      EBM_ASSERT(pDebugBucket->GetCountInstancesInBucket() == pHistogramBucket->GetCountInstancesInBucket());
+//      EBM_ASSERT(pDebugBucket->GetCountSamplesInBucket() == pHistogramBucket->GetCountSamplesInBucket());
 //#endif // NDEBUG
 //
 //      // we're walking through all buckets, so just move to the next one in the flat array, with the knoledge that we'll figure out it's multi-dimenional index below
@@ -1077,8 +1077,8 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountInstancesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountInstancesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1120,8 +1120,8 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountInstancesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountInstancesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1163,8 +1163,8 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountInstancesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountInstancesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification
@@ -1205,8 +1205,8 @@ extern void TensorTotalsBuild(
 //
 //                  if(IS_REGRESSION(compilerLearningTypeOrCountTargetClasses)) {
 //                     // regression
-//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountInstancesInBucket());
-//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountInstancesInBucket());
+//                     predictionTarget = ComputeSmallChangeForOneSegmentRegression(pTotalsTarget->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsTarget->GetCountSamplesInBucket());
+//                     predictionOther = ComputeSmallChangeForOneSegmentRegression(pTotalsOther->GetHistogramBucketVectorEntry()[iVector].m_sumResidualError, pTotalsOther->GetCountSamplesInBucket());
 //                  } else {
 //                     EBM_ASSERT(IS_CLASSIFICATION(compilerLearningTypeOrCountTargetClasses));
 //                     // classification

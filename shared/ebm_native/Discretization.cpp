@@ -889,7 +889,7 @@ INLINE_RELEASE static void CalculatePriority(
 //INLINE_RELEASE static FloatEbmType ScoreOneNeighbourhoodSide(
 //   signed_neighbour_type choices,
 //
-//   const size_t cMinimumInstancesPerBin,
+//   const size_t cMinimumSamplesPerBin,
 //   const size_t iValuesStart,
 //   const size_t cSplittableItems,
 //   const NeighbourJump * const aNeighbourJumps,
@@ -912,8 +912,8 @@ INLINE_RELEASE static void CalculatePriority(
 //
 //   EBM_ASSERT(0 <= choices);
 //
-//   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
-//   EBM_ASSERT(2 * cMinimumInstancesPerBin <= cSplittableItems);
+//   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
+//   EBM_ASSERT(2 * cMinimumSamplesPerBin <= cSplittableItems);
 //   EBM_ASSERT(nullptr != aNeighbourJumps);
 //
 //   EBM_ASSERT(ptrdiff_t { -1 } == direction || ptrdiff_t { 1 } == direction);
@@ -955,7 +955,7 @@ INLINE_RELEASE static void CalculatePriority(
 //      }
 //
 //      FloatEbmType diffFromIdeal;
-//      if(UNLIKELY(diffPrev < static_cast<ptrdiff_t>(cMinimumInstancesPerBin))) {
+//      if(UNLIKELY(diffPrev < static_cast<ptrdiff_t>(cMinimumSamplesPerBin))) {
 //         if(PREDICTABLE(0 < diffPrev)) {
 //            iPrev = iCur;
 //         }
@@ -1011,7 +1011,7 @@ INLINE_RELEASE static void CalculatePriority(
 //WARNING_POP
 
 static void BuildNeighbourhoodPlan(
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
    const size_t iValuesStart,
    const size_t cSplittableItems,
    const NeighbourJump * const aNeighbourJumps,
@@ -1028,8 +1028,8 @@ static void BuildNeighbourhoodPlan(
    // situation.  All other fields are being overwritten as we nuke them, or they were uninitialized
    SplitPoint * const pSplitCur
 ) noexcept {
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
-   EBM_ASSERT(2 * cMinimumInstancesPerBin <= cSplittableItems);
+   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
+   EBM_ASSERT(2 * cMinimumSamplesPerBin <= cSplittableItems);
    EBM_ASSERT(nullptr != aNeighbourJumps);
    
    EBM_ASSERT(1 <= cRangesLow);
@@ -1054,7 +1054,7 @@ static void BuildNeighbourhoodPlan(
    //         the next sequential hop.  This is non-combinatorial, can still use our bits, but we'll end up with different
    //         sized windows.  We convert the end to 
    // - the problem with our existing algorithm of choosing the points independnetly is that the neighbouring ranges 
-   //   might need to be fairly different sizes.  For instance say there is a long run at the start and smaller 
+   //   might need to be fairly different sizes.  For sample say there is a long run at the start and smaller 
    //   ones at the ends.  
    // - we should think of the problem as choosing the next 5 splits on the left and right for each of the lower and
    //   higher choices.  We should consider our window of the larger N, so let's say 50 items, but we're going to
@@ -1100,7 +1100,7 @@ static void BuildNeighbourhoodPlan(
 
 
    // if the splits to the immediate lower and higher positions are both materialized AND if we have a long range
-   // in the middle that only allows our lower and higher splits to be less than cMinimumInstancesPerBin items
+   // in the middle that only allows our lower and higher splits to be less than cMinimumSamplesPerBin items
    // away from the boundaries, then no splits will be possible and this function is allowed to delete pSplitCur
    // from consideration (returning true so that the SplitPoint isn't inserted into the priority queue).
    // We never delete a SplitPoint though outside of this condition though since if there are 2 split points within
@@ -1165,41 +1165,41 @@ static void BuildNeighbourhoodPlan(
    bool bCanSplitHigh;
 
    // this can underflow, but that's legal for unsigned numbers.  We check for underflow below
-   const size_t lowMinusMin = iValLowChoice - cMinimumInstancesPerBin;
+   const size_t lowMinusMin = iValLowChoice - cMinimumSamplesPerBin;
 
    if(k_illegalIndex == iValLow) {
       totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
       distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowFloat;
       distanceHighFloat = static_cast<FloatEbmType>(iValHighChoice) - iValAspirationalLowFloat;
-      bCanSplitLow = cMinimumInstancesPerBin <= iValLowChoice && 
+      bCanSplitLow = cMinimumSamplesPerBin <= iValLowChoice && 
          iValAspirationalLowFloat <= static_cast<FloatEbmType>(lowMinusMin);
       if(k_illegalIndex == iValHigh) {
          // this can overflow, but that's legal for unsigned numbers.  We check for overflow below
-         const size_t highPlusMin = cMinimumInstancesPerBin + iValHighChoice;
+         const size_t highPlusMin = cMinimumSamplesPerBin + iValHighChoice;
 
-         // if the add of cMinimumInstancesPerBin iValHighChoice is an overflow, then the sum is not representable
+         // if the add of cMinimumSamplesPerBin iValHighChoice is an overflow, then the sum is not representable
          // inside memory, and thus we can conclude we're too close to the upper boundary, which must be
          // representable within memory as cSplittableItems items
-         bCanSplitHigh = !IsAddError(cMinimumInstancesPerBin, iValHighChoice) &&
+         bCanSplitHigh = !IsAddError(cMinimumSamplesPerBin, iValHighChoice) &&
             static_cast<FloatEbmType>(highPlusMin) <= iValAspirationalHighFloat;
       } else {
-         bCanSplitHigh = iValHighChoice <= iValHigh && cMinimumInstancesPerBin <= iValHigh - iValHighChoice;
+         bCanSplitHigh = iValHighChoice <= iValHigh && cMinimumSamplesPerBin <= iValHigh - iValHighChoice;
       }
    } else {
       distanceLowFloat = static_cast<FloatEbmType>(iValLowChoice - iValLow);
       distanceHighFloat = static_cast<FloatEbmType>(iValHighChoice - iValLow);
       EBM_ASSERT(iValLow <= iValLowChoice); // our boundary is materialized, so we can't be lower
-      bCanSplitLow = cMinimumInstancesPerBin <= iValLowChoice && iValLow <= lowMinusMin;
+      bCanSplitLow = cMinimumSamplesPerBin <= iValLowChoice && iValLow <= lowMinusMin;
       if(k_illegalIndex == iValHigh) {
          totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
          // this can overflow, but that's legal for unsigned numbers.  We check for overflow below
-         const size_t highPlusMin = cMinimumInstancesPerBin + iValHighChoice;
-         bCanSplitHigh = !IsAddError(cMinimumInstancesPerBin, iValHighChoice) &&
+         const size_t highPlusMin = cMinimumSamplesPerBin + iValHighChoice;
+         bCanSplitHigh = !IsAddError(cMinimumSamplesPerBin, iValHighChoice) &&
             static_cast<FloatEbmType>(highPlusMin) <= iValAspirationalHighFloat;
       } else {
          // reduce floating point noise when we have have exact distances
          totalDistance = static_cast<FloatEbmType>(iValHigh - iValLow);
-         bCanSplitHigh = iValHighChoice <= iValHigh && cMinimumInstancesPerBin <= iValHigh - iValHighChoice;
+         bCanSplitHigh = iValHighChoice <= iValHigh && cMinimumSamplesPerBin <= iValHigh - iValHighChoice;
       }
    }
 
@@ -1274,7 +1274,7 @@ static void BuildNeighbourhoodPlan(
 static size_t SplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * const pBestSplitPoints,
 
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
 
    const size_t iValuesStart,
    const size_t cSplittableItems,
@@ -1282,9 +1282,9 @@ static size_t SplitSegment(
 ) noexcept {
    EBM_ASSERT(nullptr != pBestSplitPoints);
 
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
    // we need to be able to put down at least one split not at the edges
-   EBM_ASSERT(2 <= cSplittableItems / cMinimumInstancesPerBin);
+   EBM_ASSERT(2 <= cSplittableItems / cMinimumSamplesPerBin);
    EBM_ASSERT(nullptr != aNeighbourJumps);
 
    // TODO: someday, for performance, it might make sense to use a non-allocating tree, like:
@@ -1530,7 +1530,7 @@ static size_t SplitSegment(
          //   and if they are we find how many cuts we are allowed at maximum and we prune any that can't happen
          //   This probably won't be too useful in the general sense, but it will be important to handle the final condition
          //   where we have enough room on both sides to make cuts in theory but we have a long-ish range that 
-         //   is just big enough that it doesn't leave enough room to make cuts at cMinimumInstancesPerBin apart
+         //   is just big enough that it doesn't leave enough room to make cuts at cMinimumSamplesPerBin apart
 
 
          // find our visibility window region
@@ -1726,7 +1726,7 @@ static size_t SplitSegment(
             EBM_ASSERT(!pSplitLowNeighbourhoodCur->IsSplit()); // we should have exited on 0 == cSplitLowerLower beforehand
 
             BuildNeighbourhoodPlan(
-               cMinimumInstancesPerBin,
+               cMinimumSamplesPerBin,
                iValuesStart,
                cSplittableItems,
                aNeighbourJumps,
@@ -1784,7 +1784,7 @@ static size_t SplitSegment(
             EBM_ASSERT(!pSplitHighNeighbourhoodCur->IsSplit());
 
             BuildNeighbourhoodPlan(
-               cMinimumInstancesPerBin,
+               cMinimumSamplesPerBin,
                iValuesStart,
                cSplittableItems,
                aNeighbourJumps,
@@ -1933,7 +1933,7 @@ static size_t SplitSegment(
 static size_t TreeSearchSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
 
    const size_t iValuesStart,
    const size_t cSplittableItems,
@@ -1947,11 +1947,11 @@ static size_t TreeSearchSplitSegment(
       EBM_ASSERT(nullptr != pBestSplitPoints);
       EBM_ASSERT(pBestSplitPoints->empty());
 
-      EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+      EBM_ASSERT(1 <= cMinimumSamplesPerBin);
       EBM_ASSERT(nullptr != aNeighbourJumps);
 
       EBM_ASSERT(2 <= cRanges);
-      EBM_ASSERT(cRanges <= cSplittableItems / cMinimumInstancesPerBin);
+      EBM_ASSERT(cRanges <= cSplittableItems / cMinimumSamplesPerBin);
       EBM_ASSERT(nullptr != aSplitsWithENDPOINTS);
 
       // - TODO: EXPLORING BOTH SIDES
@@ -2000,7 +2000,7 @@ static size_t TreeSearchSplitSegment(
          pSplitCur->m_iValAspirationalFloat = iValAspirationalCurFloat;
 
          BuildNeighbourhoodPlan(
-            cMinimumInstancesPerBin,
+            cMinimumSamplesPerBin,
             iValuesStart,
             cSplittableItems,
             aNeighbourJumps,
@@ -2050,7 +2050,7 @@ static size_t TreeSearchSplitSegment(
 
    return SplitSegment(
       pBestSplitPoints,
-      cMinimumInstancesPerBin,
+      cMinimumSamplesPerBin,
       iValuesStart,
       cSplittableItems,
       aNeighbourJumps
@@ -2060,7 +2060,7 @@ static size_t TreeSearchSplitSegment(
 INLINE_RELEASE static size_t TradeSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
 
    const size_t iValuesStart,
    const size_t cSplittableItems,
@@ -2083,19 +2083,19 @@ INLINE_RELEASE static size_t TradeSplitSegment(
    //     of splits.  Perahps we want to use a binary algorithm where we do +1, +2, +4, +8, and if we exceed then
    //     do binary descent between 4 and 8 until we get our exact number.
 
-   return TreeSearchSplitSegment(pBestSplitPoints, cMinimumInstancesPerBin, iValuesStart, cSplittableItems, aNeighbourJumps,
+   return TreeSearchSplitSegment(pBestSplitPoints, cMinimumSamplesPerBin, iValuesStart, cSplittableItems, aNeighbourJumps,
       cRanges, aSplitsWithENDPOINTS);
 }
 
 static bool StuffSplitsIntoSplittingRanges(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange,
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
    size_t cRemainingSplits
 ) noexcept {
    EBM_ASSERT(1 <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
 
    // generally, having small bins with insufficient data is more dangerous for overfitting
    // than the lost opportunity from not cutting big bins down.  So, what we want to avoid is having
@@ -2153,7 +2153,7 @@ static bool StuffSplitsIntoSplittingRanges(
             
             const size_t cSplittableItems = pSplittingRangeInit->m_cSplittableValues;
             // use more exact integer math here
-            if(cMinimumInstancesPerBin <= cSplittableItems / newProposedRanges) {
+            if(cMinimumSamplesPerBin <= cSplittableItems / newProposedRanges) {
                const FloatEbmType avgRangeWidthAfterAddingOneSplit =
                   static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
@@ -2164,7 +2164,7 @@ static bool StuffSplitsIntoSplittingRanges(
             ++pSplittingRangeInit;
          } while(pSplittingRangeEnd != pSplittingRangeInit);
 
-         // the queue can initially be empty if all the ranges are too short to make them cMinimumInstancesPerBin
+         // the queue can initially be empty if all the ranges are too short to make them cMinimumSamplesPerBin
          while(!queue.empty()) {
             SplittingRange * pSplittingRangeAdd = queue.top();
             queue.pop();
@@ -2204,7 +2204,7 @@ static bool StuffSplitsIntoSplittingRanges(
 
             const size_t cSplittableItems = pSplittingRangeAdd->m_cSplittableValues;
             // use more exact integer math here
-            if(cMinimumInstancesPerBin <= cSplittableItems / newProposedRanges) {
+            if(cMinimumSamplesPerBin <= cSplittableItems / newProposedRanges) {
                const FloatEbmType avgRangeWidthAfterAddingOneSplit =
                   static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
@@ -2265,19 +2265,19 @@ INLINE_RELEASE static size_t FillSplittingRangeRemaining(
 }
 
 INLINE_RELEASE static void FillSplittingRangeNeighbours(
-   const size_t cInstances,
+   const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) noexcept {
-   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aSingleFeatureValues);
    EBM_ASSERT(1 <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
 
    SplittingRange * pSplittingRange = aSplittingRange;
    size_t cUnsplittablePriorItems = pSplittingRange->m_pSplittableValuesFirst - aSingleFeatureValues;
-   const FloatEbmType * const aSingleFeatureValuesEnd = aSingleFeatureValues + cInstances;
+   const FloatEbmType * const aSingleFeatureValuesEnd = aSingleFeatureValues + cSamples;
    if(1 != cSplittingRanges) {
       const SplittingRange * const pSplittingRangeLast = pSplittingRange + cSplittingRanges - 1; // exit without doing the last one
       do {
@@ -2299,17 +2299,17 @@ INLINE_RELEASE static void FillSplittingRangeNeighbours(
 }
 
 INLINE_RELEASE static void FillSplittingRangeBasics(
-   const size_t cInstances,
+   const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
-   const size_t cMinimumInstancesPerBin,
+   const size_t cMinimumSamplesPerBin,
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) noexcept {
-   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aSingleFeatureValues);
    EBM_ASSERT(1 <= avgLength);
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
    EBM_ASSERT(1 <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
 
@@ -2317,7 +2317,7 @@ INLINE_RELEASE static void FillSplittingRangeBasics(
    FloatEbmType * pSplittableValuesStart = aSingleFeatureValues;
    const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
    FloatEbmType * pScan = aSingleFeatureValues + 1;
-   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cInstances;
+   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cSamples;
 
    SplittingRange * pSplittingRange = aSplittingRange;
    while(pValuesEnd != pScan) {
@@ -2325,7 +2325,7 @@ INLINE_RELEASE static void FillSplittingRangeBasics(
       if(val != rangeValue) {
          size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(avgLength <= cEqualRangeItems) {
-            if(aSingleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
+            if(aSingleFeatureValues != pSplittableValuesStart || cMinimumSamplesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
                EBM_ASSERT(pSplittingRange < aSplittingRange + cSplittingRanges);
                pSplittingRange->m_pSplittableValuesFirst = pSplittableValuesStart;
                pSplittingRange->m_cSplittableValues = pStartEqualRange - pSplittableValuesStart;
@@ -2432,21 +2432,21 @@ INLINE_RELEASE static void FillSplitPointRandom(
 }
 
 INLINE_RELEASE static NeighbourJump * ConstructJumps(
-   const size_t cInstances, 
+   const size_t cSamples, 
    const FloatEbmType * const aValues
 ) noexcept {
    // TODO test this
-   EBM_ASSERT(0 < cInstances);
+   EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aValues);
 
-   NeighbourJump * const aNeighbourJump = EbmMalloc<NeighbourJump>(cInstances);
+   NeighbourJump * const aNeighbourJump = EbmMalloc<NeighbourJump>(cSamples);
    if(nullptr == aNeighbourJump) {
       return nullptr;
    }
 
    FloatEbmType valNext = aValues[0];
    const FloatEbmType * pValue = aValues;
-   const FloatEbmType * const pValueEnd = aValues + cInstances;
+   const FloatEbmType * const pValueEnd = aValues + cSamples;
 
    size_t iStartCur = 0;
    NeighbourJump * pNeighbourJump = aNeighbourJump;
@@ -2477,33 +2477,33 @@ INLINE_RELEASE static NeighbourJump * ConstructJumps(
 }
 
 INLINE_RELEASE static size_t CountSplittingRanges(
-   const size_t cInstances,
+   const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
-   const size_t cMinimumInstancesPerBin
+   const size_t cMinimumSamplesPerBin
 ) noexcept {
-   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aSingleFeatureValues);
    EBM_ASSERT(1 <= avgLength);
-   EBM_ASSERT(1 <= cMinimumInstancesPerBin);
+   EBM_ASSERT(1 <= cMinimumSamplesPerBin);
 
-   if(cInstances < (cMinimumInstancesPerBin << 1)) {
-      // we can't make any cuts if we have less than 2 * cMinimumInstancesPerBin instances, 
-      // since we need at least cMinimumInstancesPerBin instances on either side of the cut point
+   if(cSamples < (cMinimumSamplesPerBin << 1)) {
+      // we can't make any cuts if we have less than 2 * cMinimumSamplesPerBin samples, 
+      // since we need at least cMinimumSamplesPerBin samples on either side of the cut point
       return 0;
    }
    FloatEbmType rangeValue = *aSingleFeatureValues;
    const FloatEbmType * pSplittableValuesStart = aSingleFeatureValues;
    const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
    const FloatEbmType * pScan = aSingleFeatureValues + 1;
-   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cInstances;
+   const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cSamples;
    size_t cSplittingRanges = 0;
    while(pValuesEnd != pScan) {
       const FloatEbmType val = *pScan;
       if(val != rangeValue) {
          size_t cEqualRangeItems = pScan - pStartEqualRange;
          if(avgLength <= cEqualRangeItems) {
-            if(aSingleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
+            if(aSingleFeatureValues != pSplittableValuesStart || cMinimumSamplesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
                ++cSplittingRanges;
             }
             pSplittableValuesStart = pScan;
@@ -2518,9 +2518,9 @@ INLINE_RELEASE static size_t CountSplittingRanges(
 
       // we're still on the first splitting range.  We need to make sure that there is at least one possible cut
       // if we require 3 items for a cut, a problematic range like 0 1 3 3 4 5 could look ok, but we can't cut it in the middle!
-      const FloatEbmType * pCheckForSplitPoint = aSingleFeatureValues + cMinimumInstancesPerBin;
+      const FloatEbmType * pCheckForSplitPoint = aSingleFeatureValues + cMinimumSamplesPerBin;
       EBM_ASSERT(pCheckForSplitPoint <= pValuesEnd);
-      const FloatEbmType * pCheckForSplitPointLast = pValuesEnd - cMinimumInstancesPerBin;
+      const FloatEbmType * pCheckForSplitPointLast = pValuesEnd - cMinimumSamplesPerBin;
       EBM_ASSERT(aSingleFeatureValues <= pCheckForSplitPointLast);
       EBM_ASSERT(aSingleFeatureValues < pCheckForSplitPoint);
       FloatEbmType checkValue = *(pCheckForSplitPoint - 1);
@@ -2534,7 +2534,7 @@ INLINE_RELEASE static size_t CountSplittingRanges(
       return 0;
    } else {
       const size_t cItemsLast = static_cast<size_t>(pValuesEnd - pSplittableValuesStart);
-      if(cMinimumInstancesPerBin <= cItemsLast) {
+      if(cMinimumSamplesPerBin <= cItemsLast) {
          ++cSplittingRanges;
       }
       return cSplittingRanges;
@@ -2542,13 +2542,13 @@ INLINE_RELEASE static size_t CountSplittingRanges(
 }
 
 INLINE_RELEASE static size_t GetAvgLength(
-   const size_t cInstances, 
+   const size_t cSamples, 
    const size_t cMaximumBins, 
-   const size_t cMinimumInstancesPerBin
+   const size_t cMinimumSamplesPerBin
 ) noexcept {
-   EBM_ASSERT(size_t { 1 } <= cInstances);
+   EBM_ASSERT(size_t { 1 } <= cSamples);
    EBM_ASSERT(size_t { 2 } <= cMaximumBins); // if there is just one bin, then you can't have splits, so we exit earlier
-   EBM_ASSERT(size_t { 1 } <= cMinimumInstancesPerBin);
+   EBM_ASSERT(size_t { 1 } <= cMinimumSamplesPerBin);
 
    // SplittingRanges are ranges of numbers that we have the guaranteed option of making at least one split within.
    // if there is only one SplittingRange, then we have no choice other than make cuts within the one SplittingRange that we're given
@@ -2562,34 +2562,34 @@ INLINE_RELEASE static size_t GetAvgLength(
    // To avoid the bad scenario of having to figure out which SplittingRange won't get a cut, we instead ensure that we can never have more SplittingRanges
    // than we have cuts.  This way every SplittingRanges is guaranteed to have at least 1 cut.
    // 
-   // If our avgLength is the ceiling of cInstances / cMaximumBins, then we get this guarantee
-   // but std::ceil works on floating point numbers, and it is inexact, especially if cInstances is above the point where floating point numbers can't
+   // If our avgLength is the ceiling of cSamples / cMaximumBins, then we get this guarantee
+   // but std::ceil works on floating point numbers, and it is inexact, especially if cSamples is above the point where floating point numbers can't
    // represent all integer values anymore (above 2^52)
    // so, instead of taking the std::ceil, we take the floor instead by just converting it to size_t, then we increment the avgLength until we
    // get our guarantee using integer math.  This gives us a true guarantee that we'll have sufficient cuts to give each SplittingRange at least one cut
 
-   // Example of a bad situation if we took the rounded average of cInstances / cMaximumBins:
-   // 20 == cInstances, 9 == cMaximumBins (so 8 cuts).  20 / 9 = 2.22222222222.  std::round(2.222222222) = 2.  So avgLength would be 2 if we rounded 20 / 9
+   // Example of a bad situation if we took the rounded average of cSamples / cMaximumBins:
+   // 20 == cSamples, 9 == cMaximumBins (so 8 cuts).  20 / 9 = 2.22222222222.  std::round(2.222222222) = 2.  So avgLength would be 2 if we rounded 20 / 9
    // but if our data is:
    // 0,0|1,1|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9
    // then we get 9 SplittingRanges, but we only have 8 cuts to distribute.  And then we get to somehow choose which SplittingRange gets 0 cuts.
    // a better choice would have been to make avgLength 3 instead, so the ceiling.  Then we'd be guaranteed to have 8 or less SplittingRanges
 
-   // our algorithm has the option of not putting cut points in the first and last SplittingRanges, since they could be cMinimumInstancesPerBin long
+   // our algorithm has the option of not putting cut points in the first and last SplittingRanges, since they could be cMinimumSamplesPerBin long
    // and have a long set of equal values only on one side, which means that a cut there isn't absolutely required.  We still need to take the ceiling
    // for the avgLength though since it's possible to create arbitrarily high number of missing bins.  We have a test that creates 3 missing bins, thereby
    // testing for the case that we don't give the first and last SplittingRanges an initial cut.  In this case, we're still missing a cut for one of the
    // long ranges that we can't fullfil.
 
-   size_t avgLength = static_cast<size_t>(static_cast<FloatEbmType>(cInstances) / static_cast<FloatEbmType>(cMaximumBins));
-   avgLength = UNPREDICTABLE(avgLength < cMinimumInstancesPerBin) ? cMinimumInstancesPerBin : avgLength;
+   size_t avgLength = static_cast<size_t>(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cMaximumBins));
+   avgLength = UNPREDICTABLE(avgLength < cMinimumSamplesPerBin) ? cMinimumSamplesPerBin : avgLength;
    while(true) {
       if(UNLIKELY(IsMultiplyError(avgLength, cMaximumBins))) {
-         // cInstances isn't an overflow (we checked when we entered), so if we've reached an overflow in the multiplication, 
-         // then our multiplication result must be larger than cInstances, even though we can't perform it, so we're good
+         // cSamples isn't an overflow (we checked when we entered), so if we've reached an overflow in the multiplication, 
+         // then our multiplication result must be larger than cSamples, even though we can't perform it, so we're good
          break;
       }
-      if(PREDICTABLE(cInstances <= avgLength * cMaximumBins)) {
+      if(PREDICTABLE(cSamples <= avgLength * cMaximumBins)) {
          break;
       }
       ++avgLength;
@@ -2629,7 +2629,7 @@ INLINE_RELEASE static size_t PossiblyRemoveBinForMissing(
    return cMaximumBins;
 }
 
-INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_t cInstances, FloatEbmType * const aValues) noexcept {
+INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept {
    // we really don't want to have cut points that are either -infinity or +infinity because these values are 
    // problematic for serialization, cross language compatibility, human understantability, graphing, etc.
    // In some cases though, +-infinity might carry some information that we do want to capture.  In almost all
@@ -2644,7 +2644,7 @@ INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_
    // case and for simplicity.
 
    FloatEbmType * pCopyFrom = aValues;
-   const FloatEbmType * const pValuesEnd = aValues + cInstances;
+   const FloatEbmType * const pValuesEnd = aValues + cSamples;
    do {
       FloatEbmType val = *pCopyFrom;
       if(UNLIKELY(std::isnan(val))) {
@@ -2664,9 +2664,9 @@ INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_
          skip_val:
             ++pCopyFrom;
          } while(LIKELY(pValuesEnd != pCopyFrom));
-         const size_t cInstancesWithoutMissing = pCopyTo - aValues;
-         EBM_ASSERT(cInstancesWithoutMissing < cInstances);
-         return cInstancesWithoutMissing;
+         const size_t cSamplesWithoutMissing = pCopyTo - aValues;
+         EBM_ASSERT(cSamplesWithoutMissing < cSamples);
+         return cSamplesWithoutMissing;
       }
       if(UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= val)) {
          *pCopyFrom = std::numeric_limits<FloatEbmType>::max();
@@ -2675,7 +2675,7 @@ INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_
       }
       ++pCopyFrom;
    } while(LIKELY(pValuesEnd != pCopyFrom));
-   return cInstances;
+   return cSamples;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
@@ -2692,7 +2692,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    EBM_ASSERT(0 <= countSamples);
    EBM_ASSERT(0 == countSamples || nullptr != featureValues);
    EBM_ASSERT(0 <= countBinsMax);
-   EBM_ASSERT(0 == countSamples || 0 < countBinsMax); // countBinsMax can only be zero if there are no instances, because otherwise you need a bin
+   EBM_ASSERT(0 == countSamples || 0 < countBinsMax); // countBinsMax can only be zero if there are no samples, because otherwise you need a bin
    EBM_ASSERT(0 <= countSamplesPerBinMin);
    EBM_ASSERT(nullptr != countCutPointsReturn);
    EBM_ASSERT(0 == countSamples || countBinsMax <= 1 || nullptr != cutPointsLowerBoundInclusiveReturn);
@@ -2743,28 +2743,28 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       return 1;
    }
 
-   const size_t cInstancesIncludingMissingValues = static_cast<size_t>(countSamples);
+   const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
 
-   if(0 == cInstancesIncludingMissingValues) {
+   if(0 == cSamplesIncludingMissingValues) {
       *countCutPointsReturn = 0;
       *isMissingPresentReturn = EBM_FALSE;
       *minValueReturn = 0;
       *maxValueReturn = 0;
    } else {
-      const size_t cInstances = RemoveMissingValuesAndReplaceInfinities(
-         cInstancesIncludingMissingValues, 
+      const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(
+         cSamplesIncludingMissingValues, 
          featureValues
       );
 
-      const bool bMissing = cInstancesIncludingMissingValues != cInstances;
+      const bool bMissing = cSamplesIncludingMissingValues != cSamples;
       *isMissingPresentReturn = bMissing ? EBM_TRUE : EBM_FALSE;
 
-      if(0 == cInstances) {
+      if(0 == cSamples) {
          *countCutPointsReturn = 0;
          *minValueReturn = 0;
          *maxValueReturn = 0;
       } else {
-         FloatEbmType * const pValuesEnd = featureValues + cInstances;
+         FloatEbmType * const pValuesEnd = featureValues + cSamples;
          std::sort(featureValues, pValuesEnd);
          *minValueReturn = featureValues[0];
          *maxValueReturn = pValuesEnd[-1];
@@ -2772,24 +2772,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
             *countCutPointsReturn = 0;
          } else {
-            const size_t cMinimumInstancesPerBin =
+            const size_t cMinimumSamplesPerBin =
                countSamplesPerBinMin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countSamplesPerBinMin);
             const size_t cMaximumBins = PossiblyRemoveBinForMissing(bMissing, countBinsMax);
             EBM_ASSERT(2 <= cMaximumBins); // if we had just one bin then there would be no cuts and we should have exited above
-            const size_t avgLength = GetAvgLength(cInstances, cMaximumBins, cMinimumInstancesPerBin);
+            const size_t avgLength = GetAvgLength(cSamples, cMaximumBins, cMinimumSamplesPerBin);
             EBM_ASSERT(1 <= avgLength);
-            const size_t cSplittingRanges = CountSplittingRanges(cInstances, featureValues, avgLength, cMinimumInstancesPerBin);
+            const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cMinimumSamplesPerBin);
             // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
             EBM_ASSERT(cSplittingRanges < cMaximumBins);
             if(0 == cSplittingRanges) {
                *countCutPointsReturn = 0;
             } else {
-               NeighbourJump * const aNeighbourJumps = ConstructJumps(cInstances, featureValues);
+               NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
                if(nullptr == aNeighbourJumps) {
                   goto exit_error;
                }
 
-               // TODO: limit cMaximumBins to a reasonable number based on the number of instances.
+               // TODO: limit cMaximumBins to a reasonable number based on the number of samples.
                //       if the user passes us the maximum size_t number, we shouldn't try and allocate
                //       that much memory
 
@@ -2832,8 +2832,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
                FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
 
-               FillSplittingRangeBasics(cInstances, featureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
-               FillSplittingRangeNeighbours(cInstances, featureValues, cSplittingRanges, aSplittingRange);
+               FillSplittingRangeBasics(cSamples, featureValues, avgLength, cMinimumSamplesPerBin, cSplittingRanges, aSplittingRange);
+               FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
 
                const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
 
@@ -2842,7 +2842,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                if(StuffSplitsIntoSplittingRanges(
                   cSplittingRanges,
                   aSplittingRange,
-                  cMinimumInstancesPerBin,
+                  cMinimumSamplesPerBin,
                   cCutsRemaining
                )) {
                   free(apSplittingRange);
@@ -2910,7 +2910,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         // TODO : don't ignore the return value of TradeSplitSegment
                         TradeSplitSegment(
                            &bestSplitPoints,
-                           cMinimumInstancesPerBin,
+                           cMinimumSamplesPerBin,
                            pSplittingRange->m_pSplittableValuesFirst - featureValues,
                            pSplittingRange->m_cSplittableValues,
                            aNeighbourJumps,
@@ -3056,7 +3056,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
 
                // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
-               // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumInstancesPerBin items
+               // side, but the short range isn't big enough to split.  In otherwords, there are less than cMinimumSamplesPerBin items
                // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
 
                free(aSplitPoints);
@@ -3146,9 +3146,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          EBM_ASSERT(cutPointsLowerBoundInclusive[iDebug - 1] < cutPointsLowerBoundInclusive[iDebug]);
       }
 # endif // NDEBUG
-      const size_t cInstances = static_cast<size_t>(countSamples);
+      const size_t cSamples = static_cast<size_t>(countSamples);
       const FloatEbmType * pValue = featureValues;
-      const FloatEbmType * const pValueEnd = featureValues + cInstances;
+      const FloatEbmType * const pValueEnd = featureValues + cSamples;
       IntEbmType * pDiscretized = discretizedReturn;
 
       if(size_t { 0 } == cCutPoints) {

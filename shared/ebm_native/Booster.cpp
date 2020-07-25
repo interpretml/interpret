@@ -29,7 +29,7 @@
 
 extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cInstances,
+   const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
    FloatEbmType * const aTempFloatVector,
@@ -155,11 +155,11 @@ EbmBoostingState * EbmBoostingState::Allocate(
    const EbmNativeFeature * const aFeatures,
    const EbmNativeFeatureGroup * const aFeatureGroups, 
    const IntEbmType * featureGroupIndexes, 
-   const size_t cTrainingInstances, 
+   const size_t cTrainingSamples, 
    const void * const aTrainingTargets, 
    const IntEbmType * const aTrainingBinnedData, 
    const FloatEbmType * const aTrainingPredictorScores, 
-   const size_t cValidationInstances, 
+   const size_t cValidationSamples, 
    const void * const aValidationTargets, 
    const IntEbmType * const aValidationBinnedData, 
    const FloatEbmType * const aValidationPredictorScores,
@@ -228,8 +228,8 @@ EbmBoostingState * EbmBoostingState::Allocate(
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
-         if(0 == countBins && (0 != cTrainingInstances || 0 != cValidationInstances)) {
-            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be zero if either 0 < cTrainingInstances OR 0 < cValidationInstances");
+         if(0 == countBins && (0 != cTrainingSamples || 0 != cValidationSamples)) {
+            LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countBins cannot be zero if either 0 < cTrainingSamples OR 0 < cValidationSamples");
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
@@ -462,7 +462,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       bClassification, 
       cFeatureGroups, 
       pBooster->m_apFeatureGroups,
-      cTrainingInstances, 
+      cTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
@@ -479,7 +479,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
       bClassification, 
       cFeatureGroups, 
       pBooster->m_apFeatureGroups,
-      cValidationInstances, 
+      cValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
@@ -493,7 +493,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
    pBooster->m_randomStream.Initialize(randomSeed);
 
    EBM_ASSERT(nullptr == pBooster->m_apSamplingSets);
-   if(0 != cTrainingInstances) {
+   if(0 != cTrainingSamples) {
       pBooster->m_cSamplingSets = cSamplingSets;
       pBooster->m_apSamplingSets = SamplingSet::GenerateSamplingSets(&pBooster->m_randomStream, &pBooster->m_trainingSet, cSamplingSets);
       if(UNLIKELY(nullptr == pBooster->m_apSamplingSets)) {
@@ -504,10 +504,10 @@ EbmBoostingState * EbmBoostingState::Allocate(
    }
 
    if(bClassification) {
-      if(0 != cTrainingInstances) {
+      if(0 != cTrainingSamples) {
          InitializeResiduals(
             runtimeLearningTypeOrCountTargetClasses,
-            cTrainingInstances,
+            cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
             pBooster->GetCachedThreadResources()->GetTempFloatVector(),
@@ -516,20 +516,20 @@ EbmBoostingState * EbmBoostingState::Allocate(
       }
    } else {
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
-      if(0 != cTrainingInstances) {
+      if(0 != cTrainingSamples) {
          InitializeResiduals(
             k_regression,
-            cTrainingInstances,
+            cTrainingSamples,
             aTrainingTargets,
             aTrainingPredictorScores,
             nullptr,
             pBooster->m_trainingSet.GetResidualPointer()
          );
       }
-      if(0 != cValidationInstances) {
+      if(0 != cValidationSamples) {
          InitializeResiduals(
             k_regression,
-            cValidationInstances,
+            cValidationSamples,
             aValidationTargets,
             aValidationPredictorScores,
             nullptr,
@@ -556,11 +556,11 @@ static EbmBoostingState * AllocateBoosting(
    const EbmNativeFeatureGroup * const featureGroups, 
    const IntEbmType * const featureGroupIndexes, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   const IntEbmType countTrainingInstances, 
+   const IntEbmType countTrainingSamples, 
    const void * const trainingTargets, 
    const IntEbmType * const trainingBinnedData, 
    const FloatEbmType * const trainingPredictorScores, 
-   const IntEbmType countValidationInstances, 
+   const IntEbmType countValidationSamples, 
    const void * const validationTargets, 
    const IntEbmType * const validationBinnedData, 
    const FloatEbmType * const validationPredictorScores, 
@@ -587,36 +587,36 @@ static EbmBoostingState * AllocateBoosting(
    }
    // featureGroupIndexes -> it's legal for featureGroupIndexes to be nullptr if there are no features indexed by our featureGroups.  
    // FeatureGroups can have zero features, so it could be legal for this to be null even if there are featureGroups
-   if(countTrainingInstances < 0) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting countTrainingInstances must be positive");
+   if(countTrainingSamples < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countTrainingSamples must be positive");
       return nullptr;
    }
-   if(0 != countTrainingInstances && nullptr == trainingTargets) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingTargets cannot be nullptr if 0 < countTrainingInstances");
+   if(0 != countTrainingSamples && nullptr == trainingTargets) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingTargets cannot be nullptr if 0 < countTrainingSamples");
       return nullptr;
    }
-   if(0 != countTrainingInstances && 0 != countFeatures && nullptr == trainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingBinnedData cannot be nullptr if 0 < countTrainingInstances AND 0 < countFeatures");
+   if(0 != countTrainingSamples && 0 != countFeatures && nullptr == trainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingBinnedData cannot be nullptr if 0 < countTrainingSamples AND 0 < countFeatures");
       return nullptr;
    }
-   if(0 != countTrainingInstances && nullptr == trainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingPredictorScores cannot be nullptr if 0 < countTrainingInstances");
+   if(0 != countTrainingSamples && nullptr == trainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting trainingPredictorScores cannot be nullptr if 0 < countTrainingSamples");
       return nullptr;
    }
-   if(countValidationInstances < 0) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting countValidationInstances must be positive");
+   if(countValidationSamples < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting countValidationSamples must be positive");
       return nullptr;
    }
-   if(0 != countValidationInstances && nullptr == validationTargets) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationTargets cannot be nullptr if 0 < countValidationInstances");
+   if(0 != countValidationSamples && nullptr == validationTargets) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationTargets cannot be nullptr if 0 < countValidationSamples");
       return nullptr;
    }
-   if(0 != countValidationInstances && 0 != countFeatures && nullptr == validationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationBinnedData cannot be nullptr if 0 < countValidationInstances AND 0 < countFeatures");
+   if(0 != countValidationSamples && 0 != countFeatures && nullptr == validationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationBinnedData cannot be nullptr if 0 < countValidationSamples AND 0 < countFeatures");
       return nullptr;
    }
-   if(0 != countValidationInstances && nullptr == validationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationPredictorScores cannot be nullptr if 0 < countValidationInstances");
+   if(0 != countValidationSamples && nullptr == validationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting validationPredictorScores cannot be nullptr if 0 < countValidationSamples");
       return nullptr;
    }
    if(countInnerBags < 0) {
@@ -634,14 +634,14 @@ static EbmBoostingState * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatureGroups)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)) {
+   if(!IsNumberConvertable<size_t, IntEbmType>(countTrainingSamples)) {
       // the caller should not have been able to allocate enough memory in "trainingTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingInstances)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingSamples)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)) {
+   if(!IsNumberConvertable<size_t, IntEbmType>(countValidationSamples)) {
       // the caller should not have been able to allocate enough memory in "validationTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationInstances)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationSamples)");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countInnerBags)) {
@@ -653,20 +653,20 @@ static EbmBoostingState * AllocateBoosting(
 
    size_t cFeatures = static_cast<size_t>(countFeatures);
    size_t cFeatureGroups = static_cast<size_t>(countFeatureGroups);
-   size_t cTrainingInstances = static_cast<size_t>(countTrainingInstances);
-   size_t cValidationInstances = static_cast<size_t>(countValidationInstances);
+   size_t cTrainingSamples = static_cast<size_t>(countTrainingSamples);
+   size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
    size_t cInnerBags = static_cast<size_t>(countInnerBags);
 
    size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(IsMultiplyError(cVectorLength, cTrainingInstances)) {
+   if(IsMultiplyError(cVectorLength, cTrainingSamples)) {
       // the caller should not have been able to allocate enough memory in "trainingPredictorScores" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cTrainingInstances)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cTrainingSamples)");
       return nullptr;
    }
-   if(IsMultiplyError(cVectorLength, cValidationInstances)) {
+   if(IsMultiplyError(cVectorLength, cValidationSamples)) {
       // the caller should not have been able to allocate enough memory in "validationPredictorScores" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cValidationInstances)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting IsMultiplyError(cVectorLength, cValidationSamples)");
       return nullptr;
    }
 
@@ -679,11 +679,11 @@ static EbmBoostingState * AllocateBoosting(
       features,
       featureGroups,
       featureGroupIndexes,
-      cTrainingInstances,
+      cTrainingSamples,
       trainingTargets,
       trainingBinnedData,
       trainingPredictorScores,
-      cValidationInstances,
+      cValidationSamples,
       validationTargets,
       validationBinnedData,
       validationPredictorScores,
@@ -703,11 +703,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    IntEbmType countFeatureGroups,
    const EbmNativeFeatureGroup * featureGroups,
    const IntEbmType * featureGroupIndexes,
-   IntEbmType countTrainingInstances,
+   IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances,
+   IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -716,8 +716,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
-      ", features=%p, countFeatureGroups=%" IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingInstances=%" 
-      IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" 
+      ", features=%p, countFeatureGroups=%" IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" 
+      IntEbmTypePrintf ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" 
       IntEbmTypePrintf ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" 
       IntEbmTypePrintf ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
       countTargetClasses, 
@@ -726,11 +726,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countFeatureGroups, 
       static_cast<const void *>(featureGroups), 
       static_cast<const void *>(featureGroupIndexes), 
-      countTrainingInstances, 
+      countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
       static_cast<const void *>(trainingPredictorScores), 
-      countValidationInstances, 
+      countValidationSamples, 
       static_cast<const void *>(validationBinnedData), 
       static_cast<const void *>(validationTargets), 
       static_cast<const void *>(validationPredictorScores), 
@@ -742,7 +742,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be negative");
       return nullptr;
    }
-   if(0 == countTargetClasses && (0 != countTrainingInstances || 0 != countValidationInstances)) {
+   if(0 == countTargetClasses && (0 != countTrainingSamples || 0 != countValidationSamples)) {
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be zero unless there are no training and no validation cases");
       return nullptr;
    }
@@ -759,11 +759,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       featureGroups, 
       featureGroupIndexes, 
       runtimeLearningTypeOrCountTargetClasses, 
-      countTrainingInstances, 
+      countTrainingSamples, 
       trainingTargets, 
       trainingBinnedData, 
       trainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       validationTargets, 
       validationBinnedData, 
       validationPredictorScores, 
@@ -780,11 +780,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    IntEbmType countFeatureGroups,
    const EbmNativeFeatureGroup * featureGroups,
    const IntEbmType * featureGroupIndexes,
-   IntEbmType countTrainingInstances,
+   IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const FloatEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances,
+   IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -793,8 +793,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
    const FloatEbmType * optionalTempParams
 ) {
    LOG_N(TraceLevelInfo, "Entered InitializeBoostingRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countFeatureGroups=%" 
-      IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingInstances=%" IntEbmTypePrintf 
-      ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationInstances=%" IntEbmTypePrintf 
+      IntEbmTypePrintf ", featureGroups=%p, featureGroupIndexes=%p, countTrainingSamples=%" IntEbmTypePrintf 
+      ", trainingBinnedData=%p, trainingTargets=%p, trainingPredictorScores=%p, countValidationSamples=%" IntEbmTypePrintf 
       ", validationBinnedData=%p, validationTargets=%p, validationPredictorScores=%p, countInnerBags=%" IntEbmTypePrintf 
       ", randomSeed=%" IntEbmTypePrintf ", optionalTempParams=%p",
       countFeatures, 
@@ -802,11 +802,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       countFeatureGroups, 
       static_cast<const void *>(featureGroups), 
       static_cast<const void *>(featureGroupIndexes), 
-      countTrainingInstances, 
+      countTrainingSamples, 
       static_cast<const void *>(trainingBinnedData), 
       static_cast<const void *>(trainingTargets), 
       static_cast<const void *>(trainingPredictorScores), 
-      countValidationInstances, 
+      countValidationSamples, 
       static_cast<const void *>(validationBinnedData), 
       static_cast<const void *>(validationTargets), 
       static_cast<const void *>(validationPredictorScores), 
@@ -822,11 +822,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       featureGroups, 
       featureGroupIndexes, 
       k_regression, 
-      countTrainingInstances, 
+      countTrainingSamples, 
       trainingTargets, 
       trainingBinnedData, 
       trainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       validationTargets, 
       validationBinnedData, 
       validationPredictorScores, 

@@ -161,9 +161,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //     than negating a logit at the end, so whether we keep negated or non-negated logits isn't a big deal computationally
 // - shifting logits
 //   - for multiclass, we only require K-1 logits for a K-class prediction problem.  If we use K logits, then we can shift all the logits together at will 
-//     in any particular instance/bin WITHOUT changing the intercept by adding a constant accross all logits within the bin.  If we have K-1 logits, then 
+//     in any particular sample/bin WITHOUT changing the intercept by adding a constant accross all logits within the bin.  If we have K-1 logits, then 
 //     one of the logits is implicitly zero and the others are forced into the only values that make sense relative to the zero by having shifted all the 
-//     logits so that one of the bins/instances is zero
+//     logits so that one of the bins/samples is zero
 //   - we can also shift all the logits together (even after reduction to K-1 logits) for any feature by shifting the model's intercept 
 //     (this allows us to move the graphs up and down)
 //   - we center the binary classification graphs by creating/moving an intercept term.  This helps us visually compare different graphs
@@ -290,11 +290,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countFeatureGroups,
    const EbmNativeFeatureGroup * featureGroups,
    const IntEbmType * featureGroupIndexes,
-   IntEbmType countTrainingInstances,
+   IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances,
+   IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -308,11 +308,11 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countFeatureGroups, 
    const EbmNativeFeatureGroup * featureGroups,
    const IntEbmType * featureGroupIndexes, 
-   IntEbmType countTrainingInstances, 
+   IntEbmType countTrainingSamples, 
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances, 
+   IntEbmType countValidationSamples, 
    const IntEbmType * validationBinnedData, 
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -441,7 +441,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  memory if there are long segments with just a single value
 //   - OBSERVATION: our boosting algorithm is position independent, so we can sort the data by the target feature, which
 //   -              helps us because we can move the class number into a loop count and not fetch the memory, and it allows
-//                  us to elimiante a branch when calculating statistics since all instances will have the same target within a loop
+//                  us to elimiante a branch when calculating statistics since all samples will have the same target within a loop
 //   - OBSERVATION: we'll be sorting on the target, so we can't sort primarily on intput features (secondary sort ok)
 //                  So, sparse input features are not typically expected to clump into ranges of non - default parameters
 //                  So, we won't use ranges in our representation, so our sparse feature representation will be
@@ -505,8 +505,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  they did and pay the cost if they didn't.  Even if they didn't, we'll only go back to the original twice, so it's not that bad
 // 
 // STEPS :
-//   - We receive the data from the user in the cache inefficient format X[instances, features], or alternatively in a cache efficient format 
-//     X[features, instances] if we're luck
+//   - We receive the data from the user in the cache inefficient format X[samples, features], or alternatively in a cache efficient format 
+//     X[features, samples] if we're luck
 //   - If our caller get the data from a file/database where the columns are adjacent, then it's probably better for us to process it since we only 
 //     do 2 transpose operations (efficiently) and we don't allocate more than 3% more memory.  If the user transposed the data themselves, then 
 //     they'd double the memory useage
@@ -515,21 +515,21 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //   - allocate a sizing object in C (potentially we don't need to allocate anything IF we can return a size per feature, and we can calculate the 
 //     target + header when passed info on those)
 //   - Loop over M:
-//     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
 //     - Loop over N:
 //       - take 1 single feature's data from the correctly ordered X_partial
 //       - bin the feature, if needed.  For strings and other categoricals we use hashtables, for continuous numerics we pass to C for sorting and bin 
 //         edge determining, and then again for discritization
 //       - we now have a binned single feature array.  Pass that into C for sizing
 //   - after all features have been binned and sized, pass in the target feature.  C calculates the final memory size and returns it.  Don't free the 
-//     memory sizing object since we want to have a separate function for that in case we need to exit early, for instance if we get an out of memory error
+//     memory sizing object since we want to have a separate function for that in case we need to exit early, for sample if we get an out of memory error
 //   - free the sizing object in C
 //   - python allocates the exact sized RawArray
 //   - call InitializeData in C passing it whatever we need to initialize the data header of the RawArray class
 //   - NOTE: this transposes the matrix twice (once for preprocessing/sizing, and once for filling the buffer with data),
 //     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
 //   - Loop over M:
-//     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
 //     - Loop over N:
 //       - take 1 single feature's data from the correctly ordered X_partial
 //       - re-discritize the feature using the bin cuts or hashstables from our previous loop above
@@ -561,7 +561,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //     - C will allocate the memory for the boosting dataset
 //     - C will do a second pass to fill the boosting data structure and return that to python (no need for a RawArray this time since it isn't shared)
 //     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements to 
-//       select whether each instance for that feature goes into the train or validation set, and handling increments
+//       select whether each sample for that feature goes into the train or validation set, and handling increments
 //   - FOR INTERACTIONS:
 //     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
 //     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the 
@@ -571,7 +571,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
 //       interactions into the train/validations splits
 //     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
-//       to select whether each instance for that feature goes into the train or validation set, and handling increments
+//       to select whether each sample for that feature goes into the train or validation set, and handling increments
 
 
 #ifdef __cplusplus

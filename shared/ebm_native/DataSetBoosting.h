@@ -18,7 +18,7 @@ class DataSetByFeatureGroup final {
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
-   size_t m_cInstances;
+   size_t m_cSamples;
    size_t m_cFeatureGroups;
 
 public:
@@ -33,7 +33,7 @@ public:
       m_aPredictorScores = nullptr;
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
-      m_cInstances = 0;
+      m_cSamples = 0;
       m_cFeatureGroups = 0;
    }
 
@@ -45,7 +45,7 @@ public:
       const bool bAllocateTargetData, 
       const size_t cFeatureGroups, 
       const FeatureGroup * const * const apFeatureGroup, 
-      const size_t cInstances, 
+      const size_t cSamples, 
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargets, 
       const FloatEbmType * const aPredictorScoresFrom, 
@@ -75,8 +75,8 @@ public:
       EBM_ASSERT(nullptr != m_aaInputData);
       return m_aaInputData[pFeatureGroup->GetIndexInputData()];
    }
-   INLINE_ALWAYS size_t GetCountInstances() const {
-      return m_cInstances;
+   INLINE_ALWAYS size_t GetCountSamples() const {
+      return m_cSamples;
    }
    INLINE_ALWAYS size_t GetCountFeatureGroups() const {
       return m_cFeatureGroups;

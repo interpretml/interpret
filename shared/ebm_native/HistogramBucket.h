@@ -52,7 +52,7 @@ template<bool bClassification>
 struct HistogramBucket final : HistogramBucketBase {
 private:
 
-   size_t m_cInstancesInBucket;
+   size_t m_cSamplesInBucket;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // aHistogramBucketVectorEntry must be the last item in this struct
@@ -68,11 +68,11 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS size_t GetCountInstancesInBucket() const {
-      return m_cInstancesInBucket;
+   INLINE_ALWAYS size_t GetCountSamplesInBucket() const {
+      return m_cSamplesInBucket;
    }
-   INLINE_ALWAYS void SetCountInstancesInBucket(const size_t cInstancesInBucket) {
-      m_cInstancesInBucket = cInstancesInBucket;
+   INLINE_ALWAYS void SetCountSamplesInBucket(const size_t cSamplesInBucket) {
+      m_cSamplesInBucket = cSamplesInBucket;
    }
 
    INLINE_ALWAYS const HistogramBucketVectorEntry<bClassification> * GetHistogramBucketVectorEntry() const {
@@ -83,7 +83,7 @@ public:
    }
 
    INLINE_ALWAYS void Add(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      m_cInstancesInBucket += other.m_cInstancesInBucket;
+      m_cSamplesInBucket += other.m_cSamplesInBucket;
 
       HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
 
@@ -96,7 +96,7 @@ public:
    }
 
    INLINE_ALWAYS void Subtract(const HistogramBucket<bClassification> & other, const size_t cVectorLength) {
-      m_cInstancesInBucket -= other.m_cInstancesInBucket;
+      m_cSamplesInBucket -= other.m_cSamplesInBucket;
 
       HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorThis = GetHistogramBucketVectorEntry();
 
@@ -117,7 +117,7 @@ public:
    }
 
    INLINE_ALWAYS void Zero(const size_t cVectorLength) {
-      m_cInstancesInBucket = size_t { 0 };
+      m_cSamplesInBucket = size_t { 0 };
       HistogramBucketVectorEntry<bClassification> * pHistogramTargetEntry = GetHistogramBucketVectorEntry();
       const HistogramBucketVectorEntry<bClassification> * const pHistogramTargetEntryEnd = &pHistogramTargetEntry[cVectorLength];
       EBM_ASSERT(1 <= cVectorLength);
@@ -132,7 +132,7 @@ public:
    INLINE_ALWAYS void AssertZero(const size_t cVectorLength) const {
       UNUSED(cVectorLength);
 #ifndef NDEBUG
-      EBM_ASSERT(0 == m_cInstancesInBucket);
+      EBM_ASSERT(0 == m_cSamplesInBucket);
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVector = GetHistogramBucketVectorEntry();
 

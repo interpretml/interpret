@@ -33,7 +33,7 @@ extern void BinInteraction(
 extern FloatEbmType FindBestInteractionGainPairs(
    EbmInteractionState * const pEbmInteractionState,
    const FeatureGroup * const pFeatureGroup,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -46,7 +46,7 @@ static bool CalculateInteractionScoreInternal(
    CachedInteractionThreadResources * const pCachedThreadResources,
    EbmInteractionState * const pEbmInteractionState,
    const FeatureGroup * const pFeatureGroup,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    FloatEbmType * const pInteractionScoreReturn
 ) {
    // TODO : we NEVER use the denominator term in HistogramBucketVectorEntry when calculating interaction scores, but we're spending time calculating 
@@ -186,7 +186,7 @@ static bool CalculateInteractionScoreInternal(
       FloatEbmType bestSplittingScore = FindBestInteractionGainPairs(
          pEbmInteractionState,
          pFeatureGroup,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
 #ifndef NDEBUG
@@ -302,9 +302,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       }
       return 0;
    }
-   if(0 == pEbmInteractionState->GetDataSetByFeature()->GetCountInstances()) {
-      // if there are zero instances, there isn't much basis to say whether there are interactions, so just return zero
-      LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero instances");
+   if(0 == pEbmInteractionState->GetDataSetByFeature()->GetCountSamples()) {
+      // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
+      LOG_0(TraceLevelInfo, "INFO GetInteractionScore zero samples");
       if(nullptr != interactionScoreReturn) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
          // caler be smarter about this condition
@@ -313,13 +313,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       return 0;
    }
 
-   size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
+   size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
-      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
       if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
-         // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
+         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
-         cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+         cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
       LOG_0(TraceLevelWarning, "WARNING GetInteractionScore countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
@@ -414,7 +414,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GetIntera
       pCachedThreadResources,
       pEbmInteractionState,
       pFeatureGroup,
-      cInstancesRequiredForChildSplitMin,
+      cSamplesRequiredForChildSplitMin,
       interactionScoreReturn
    );
 

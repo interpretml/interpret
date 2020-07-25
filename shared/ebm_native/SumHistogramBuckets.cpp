@@ -29,7 +29,7 @@ public:
       HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
-      , const size_t cInstancesTotal
+      , const size_t cSamplesTotal
 #endif // NDEBUG
    ) {
       constexpr bool bClassification = IsClassification(compilerLearningTypeOrCountTargetClasses);
@@ -42,7 +42,7 @@ public:
       EBM_ASSERT(2 <= cHistogramBuckets); // we pre-filter out features with only one bucket
 
 #ifndef NDEBUG
-      size_t cInstancesTotalDebug = 0;
+      size_t cSamplesTotalDebug = 0;
 #endif // NDEBUG
 
       const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -64,7 +64,7 @@ public:
       do {
          ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pCopyFrom, aHistogramBucketsEndDebug);
 #ifndef NDEBUG
-         cInstancesTotalDebug += pCopyFrom->GetCountInstancesInBucket();
+         cSamplesTotalDebug += pCopyFrom->GetCountSamplesInBucket();
 #endif // NDEBUG
 
          const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry = 
@@ -74,11 +74,11 @@ public:
             // when building a tree, we start from one end and sweep to the other.  In order to caluculate
             // gain on both sides, we need the sum on both sides, which means when starting from one end
             // we need to know the sum of everything on the other side, so we need to calculate this sum
-            // somewhere.  If we have a continuous value and bin it such that many instances are in the same bin
+            // somewhere.  If we have a continuous value and bin it such that many samples are in the same bin
             // then it makes sense to calculate the total of all bins after generating the histograms of the bins
-            // since then we just need to sum N bins (where N is the number of bins) vs the # of instances.
-            // There is one case though where we might want to calculate the sum while looping the instances,
-            // and that is if almost all bins have either 0 or 1 instances, which would happen if we didn't bin at all
+            // since then we just need to sum N bins (where N is the number of bins) vs the # of samples.
+            // There is one case though where we might want to calculate the sum while looping the samples,
+            // and that is if almost all bins have either 0 or 1 samples, which would happen if we didn't bin at all
             // beforehand.  We'll still want this per-bin sumation though since it's unlikley that all data
             // will be continuous in an ML problem.
             aSumHistogramBucketVectorEntry[iVector].Add(pHistogramBucketVectorEntry[iVector]);
@@ -88,7 +88,7 @@ public:
       } while(pCopyFromEnd != pCopyFrom);
       EBM_ASSERT(0 == (reinterpret_cast<const char *>(pCopyFrom) - reinterpret_cast<const char *>(aHistogramBuckets)) % cBytesPerHistogramBucket);
 
-      EBM_ASSERT(cInstancesTotal == cInstancesTotalDebug);
+      EBM_ASSERT(cSamplesTotal == cSamplesTotalDebug);
    }
 };
 
@@ -99,7 +99,7 @@ extern void SumHistogramBuckets(
    HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
-   , const size_t cInstancesTotal
+   , const size_t cSamplesTotal
 #endif // NDEBUG
 ) {
    LOG_0(TraceLevelVerbose, "Entered SumHistogramBuckets");
@@ -113,7 +113,7 @@ extern void SumHistogramBuckets(
             aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
-            , cInstancesTotal
+            , cSamplesTotal
 #endif // NDEBUG
          );
       } else {
@@ -124,7 +124,7 @@ extern void SumHistogramBuckets(
             aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
-            , cInstancesTotal
+            , cSamplesTotal
 #endif // NDEBUG
          );
       }
@@ -137,7 +137,7 @@ extern void SumHistogramBuckets(
          aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
-         , cInstancesTotal
+         , cSamplesTotal
 #endif // NDEBUG
       );
    }

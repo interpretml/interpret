@@ -49,7 +49,7 @@ ebm_classify <- function(
    num_early_stopping_run_length = 50, 
    learning_rate = 0.01, 
    max_tree_splits = 2, 
-   min_instances_for_split = 2, 
+   min_samples_for_split = 2, 
    random_state = 42
 ) {
    col_names = colnames(X)
@@ -96,7 +96,7 @@ ebm_classify <- function(
       random_state,
       learning_rate,
       max_tree_splits, 
-      min_instances_for_split, 
+      min_samples_for_split, 
       max_epochs,
       num_early_stopping_run_length
    )

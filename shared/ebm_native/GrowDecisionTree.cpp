@@ -61,7 +61,7 @@ static void Flatten(
                pHistogramBucketVectorEntry->m_sumResidualError, pHistogramBucketVectorEntry->GetSumDenominator());
          } else {
             smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetInstances()));
+               pHistogramBucketVectorEntry->m_sumResidualError, static_cast<FloatEbmType>(pTreeNode->AMBIGUOUS_GetSamples()));
          }
          *pValuesCur = smallChangeToModel;
 
@@ -81,7 +81,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBucket,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * pTreeNode,
    TreeNode<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const pTreeNodeChildrenAvailableStorageSpaceCur,
-   const size_t cInstancesRequiredForChildSplitMin
+   const size_t cSamplesRequiredForChildSplitMin
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -91,12 +91,12 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    LOG_N(
       TraceLevelVerbose,
       "Entered ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint: pEbmBoostingState=%p, aHistogramBucket=%p, pTreeNode=%p, "
-      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cInstancesRequiredForChildSplitMin=%zu",
+      "pTreeNodeChildrenAvailableStorageSpaceCur=%p, cSamplesRequiredForChildSplitMin=%zu",
       static_cast<const void *>(pEbmBoostingState),
       static_cast<const void *>(aHistogramBucket),
       static_cast<void *>(pTreeNode),
       static_cast<void *>(pTreeNodeChildrenAvailableStorageSpaceCur),
-      cInstancesRequiredForChildSplitMin
+      cSamplesRequiredForChildSplitMin
    );
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
@@ -152,30 +152,30 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       static_cast<SweepTreeNode<bClassification> *>(pCachedThreadResources->GetEquivalentSplits());
    SweepTreeNode<bClassification> * pSweepTreeNodeCur = pSweepTreeNodeStart;
 
-   size_t cInstancesRight = pTreeNode->AMBIGUOUS_GetInstances();
-   size_t cInstancesLeft = 0;
+   size_t cSamplesRight = pTreeNode->AMBIGUOUS_GetSamples();
+   size_t cSamplesLeft = 0;
    FloatEbmType BEST_nodeSplittingScore = k_illegalGain;
-   EBM_ASSERT(0 < cInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(0 < cSamplesRequiredForChildSplitMin);
    EBM_ASSERT(pHistogramBucketEntryLast != pHistogramBucketEntryCur); // we wouldn't call this function on a non-splittable node
    do {
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pHistogramBucketEntryCur, aHistogramBucketsEndDebug);
 
-      const size_t CHANGE_cInstances = pHistogramBucketEntryCur->GetCountInstancesInBucket();
-      cInstancesRight -= CHANGE_cInstances;
-      if(UNLIKELY(cInstancesRight < cInstancesRequiredForChildSplitMin)) {
+      const size_t CHANGE_cSamples = pHistogramBucketEntryCur->GetCountSamplesInBucket();
+      cSamplesRight -= CHANGE_cSamples;
+      if(UNLIKELY(cSamplesRight < cSamplesRequiredForChildSplitMin)) {
          break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
       }
-      cInstancesLeft += CHANGE_cInstances;
+      cSamplesLeft += CHANGE_cSamples;
 
       const HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntry =
          pHistogramBucketEntryCur->GetHistogramBucketVectorEntry();
 
-      if(LIKELY(cInstancesRequiredForChildSplitMin <= cInstancesLeft)) {
-         EBM_ASSERT(0 < cInstancesRight);
-         EBM_ASSERT(0 < cInstancesLeft);
+      if(LIKELY(cSamplesRequiredForChildSplitMin <= cSamplesLeft)) {
+         EBM_ASSERT(0 < cSamplesRight);
+         EBM_ASSERT(0 < cSamplesLeft);
 
-         const FloatEbmType cInstancesRightFloatEbmType = static_cast<FloatEbmType>(cInstancesRight);
-         const FloatEbmType cInstancesLeftFloatEbmType = static_cast<FloatEbmType>(cInstancesLeft);
+         const FloatEbmType cSamplesRightFloatEbmType = static_cast<FloatEbmType>(cSamplesRight);
+         const FloatEbmType cSamplesLeftFloatEbmType = static_cast<FloatEbmType>(cSamplesLeft);
          FloatEbmType nodeSplittingScore = 0;
 
          for(size_t iVector = 0; iVector < cVectorLength; ++iVector) {
@@ -186,7 +186,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreRight = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cInstancesRightFloatEbmType);
+            const FloatEbmType nodeSplittingScoreRight = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorRight, cSamplesRightFloatEbmType);
             EBM_ASSERT(std::isnan(nodeSplittingScoreRight) || FloatEbmType { 0 } <= nodeSplittingScoreRight);
             nodeSplittingScore += nodeSplittingScoreRight;
 
@@ -195,7 +195,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
             // TODO : we can make this faster by doing the division in ComputeNodeSplittingScore after we add all the numerators 
             // (but only do this after we've determined the best node splitting score for classification, and the NewtonRaphsonStep for gain
-            const FloatEbmType nodeSplittingScoreLeft = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cInstancesLeftFloatEbmType);
+            const FloatEbmType nodeSplittingScoreLeft = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorLeft, cSamplesLeftFloatEbmType);
             EBM_ASSERT(std::isnan(nodeSplittingScoreLeft) || FloatEbmType { 0 } <= nodeSplittingScoreLeft);
             nodeSplittingScore += nodeSplittingScoreLeft;
 
@@ -213,11 +213,11 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
          // NaN values will get us soon and shut down boosting.
          if(UNLIKELY(/* DO NOT CHANGE THIS WITHOUT READING THE ABOVE. WE DO THIS STRANGE COMPARISON FOR NaN values*/
             !(nodeSplittingScore < BEST_nodeSplittingScore))) {
-            // it's very possible that we have bins with zero instances in them, in which case we could easily be presented with equally favorable splits
+            // it's very possible that we have bins with zero samples in them, in which case we could easily be presented with equally favorable splits
             // or it's even possible for two different possible unrelated sections of bins, or individual bins to have exactly the same gain 
             // (think low count symetric data) we want to avoid any bias of always choosing the higher or lower value to split on, so what we should 
             // do is store the indexes of any ties in a stack and we reset the stack if we later find a gain that's larger than any we have in the stack.
-            // The stack needs to be size_t to hold indexes, and we need the stack to be as long as the number of instances - 1, incase all gain for 
+            // The stack needs to be size_t to hold indexes, and we need the stack to be as long as the number of samples - 1, incase all gain for 
             // all bins are the same (potential_splits = bins - 1) after we exit the loop we can examine our stack and choose a random split from all 
             // the equivalent splits available.  eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random number 
             // between 0 -> 3 to select which one we actually split on
@@ -227,7 +227,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             // numbers which have mathematically equality, end up with different gains due to floating point computation issues, that the error will 
             // be roughtly symetric such that either the first or the last could be chosen, which is fine for us since we just want to ensure 
             // randomized picking. Having two mathematically identical gains is pretty rare in any case, except for the situation where one bucket 
-            // has bins with zero instances, but in that case we'll have floating point equality too since we'll be adding zero to the floating 
+            // has bins with zero samples, but in that case we'll have floating point equality too since we'll be adding zero to the floating 
             // points values, which is an exact operation.
             //
             // TODO : implement the randomized splitting described for interaction effect, which can be done the same although we might want to 
@@ -241,7 +241,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
             BEST_nodeSplittingScore = nodeSplittingScore;
 
             pSweepTreeNodeCur->SetBestHistogramBucketEntry(pHistogramBucketEntryCur);
-            pSweepTreeNodeCur->SetCountBestInstancesLeft(cInstancesLeft);
+            pSweepTreeNodeCur->SetCountBestSamplesLeft(cSamplesLeft);
             memcpy(
                pSweepTreeNodeCur->GetBestHistogramBucketVectorEntry(), aSumHistogramBucketVectorEntryLeft,
                sizeof(*aSumHistogramBucketVectorEntryLeft) * cVectorLength
@@ -291,8 +291,8 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntry = pSweepTreeNodeStart->GetBestHistogramBucketEntry();
    pLeftChild->BEFORE_SetHistogramBucketEntryLast(BEST_pHistogramBucketEntry);
-   const size_t BEST_cInstancesLeft = pSweepTreeNodeStart->GetCountBestInstancesLeft();
-   pLeftChild->AMBIGUOUS_SetInstances(BEST_cInstancesLeft);
+   const size_t BEST_cSamplesLeft = pSweepTreeNodeStart->GetCountBestSamplesLeft();
+   pLeftChild->AMBIGUOUS_SetSamples(BEST_cSamplesLeft);
 
    const HistogramBucket<bClassification> * const BEST_pHistogramBucketEntryNext =
       GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, BEST_pHistogramBucketEntry, 1);
@@ -301,15 +301,15 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
    TreeNode<bClassification> * const pRightChild = GetRightTreeNodeChild<bClassification>(pTreeNodeChildrenAvailableStorageSpaceCur, cBytesPerTreeNode);
 
    pRightChild->BEFORE_SetHistogramBucketEntryFirst(BEST_pHistogramBucketEntryNext);
-   const size_t cInstancesParent = pTreeNode->AMBIGUOUS_GetInstances();
-   pRightChild->AMBIGUOUS_SetInstances(cInstancesParent - BEST_cInstancesLeft);
+   const size_t cSamplesParent = pTreeNode->AMBIGUOUS_GetSamples();
+   pRightChild->AMBIGUOUS_SetSamples(cSamplesParent - BEST_cSamplesLeft);
 
-   const FloatEbmType cInstancesParentFloatEbmType = static_cast<FloatEbmType>(cInstancesParent);
+   const FloatEbmType cSamplesParentFloatEbmType = static_cast<FloatEbmType>(cSamplesParent);
 
-   // if the total instances is 0 then we should be using our specialty handling of that case
-   // if the total instances if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
-   // parent should ever have zero instances
-   EBM_ASSERT(0 < cInstancesParent);
+   // if the total samples is 0 then we should be using our specialty handling of that case
+   // if the total samples if not 0, then our splitting code should never split any node that has zero on either the left or right, so no new 
+   // parent should ever have zero samples
+   EBM_ASSERT(0 < cSamplesParent);
 
    HistogramBucketVectorEntry<bClassification> * pHistogramBucketVectorEntryLeftChild =
       pLeftChild->GetHistogramBucketVectorEntry();
@@ -332,7 +332,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
       const FloatEbmType sumResidualErrorParent = pHistogramBucketVectorEntryTreeNode[iVector].m_sumResidualError;
       pHistogramBucketVectorEntryRightChild[iVector].m_sumResidualError = sumResidualErrorParent - BEST_sumResidualErrorLeft;
 
-      const FloatEbmType originalParentScoreUpdate = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cInstancesParentFloatEbmType);
+      const FloatEbmType originalParentScoreUpdate = EbmStatistics::ComputeNodeSplittingScore(sumResidualErrorParent, cSamplesParentFloatEbmType);
       EBM_ASSERT(std::isnan(originalParentScoreUpdate) || FloatEbmType { 0 } <= originalParentScoreUpdate);
       originalParentScore += originalParentScoreUpdate;
 
@@ -348,7 +348,7 @@ static bool ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint(
 
 
    // IMPORTANT!! : we need to finish all our calls that use this->m_UNION.m_beforeExaminationForPossibleSplitting BEFORE setting anything in 
-   // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetInstances() needs to be done above 
+   // m_UNION.m_afterExaminationForPossibleSplitting as we do below this comment!  The call above to this->GetSamples() needs to be done above 
    // these lines because it uses m_UNION.m_beforeExaminationForPossibleSplitting for classification!
 #ifndef NDEBUG
    pTreeNode->SetExaminedForPossibleSplitting(true);
@@ -401,10 +401,10 @@ public:
       EbmBoostingState * const pEbmBoostingState,
       const size_t cHistogramBuckets,
       const HistogramBucketBase * const aHistogramBucketBase,
-      const size_t cInstancesTotal,
+      const size_t cSamplesTotal,
       const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
       const size_t cTreeSplitsMax,
-      const size_t cInstancesRequiredForChildSplitMin,
+      const size_t cSamplesRequiredForChildSplitMin,
       SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
       FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -427,7 +427,7 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
 
       EBM_ASSERT(nullptr != pTotalGain);
-      EBM_ASSERT(1 <= cInstancesTotal); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(1 <= cSamplesTotal); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(2 <= cHistogramBuckets); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(1 <= cTreeSplitsMax); // filter these out at the start where we can handle this case easily
 
@@ -475,7 +475,7 @@ public:
          pRootTreeNode->BEFORE_GetHistogramBucketEntryLast(),
          aHistogramBucketsEndDebug
       );
-      pRootTreeNode->AMBIGUOUS_SetInstances(cInstancesTotal);
+      pRootTreeNode->AMBIGUOUS_SetSamples(cSamplesTotal);
 
       // copying existing mem
       memcpy(
@@ -490,7 +490,7 @@ public:
          aHistogramBucket,
          pRootTreeNode,
          AddBytesTreeNode<bClassification>(pRootTreeNode, cBytesPerTreeNode),
-         cInstancesRequiredForChildSplitMin
+         cSamplesRequiredForChildSplitMin
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -513,7 +513,7 @@ public:
          } else {
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
-               aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cInstancesTotal)
+               aSumHistogramBucketVectorEntry[0].m_sumResidualError, static_cast<FloatEbmType>(cSamplesTotal)
             );
             FloatEbmType * pValues = pSmallChangeToModelOverwriteSingleSamplingSet->GetValuePointer();
             pValues[0] = smallChangeToModel;
@@ -576,11 +576,11 @@ public:
             EBM_ASSERT(IsRegression(compilerLearningTypeOrCountTargetClasses));
             aValues[0] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryLeftChild[0].m_sumResidualError,
-               static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetInstances())
+               static_cast<FloatEbmType>(pLeftChild->AMBIGUOUS_GetSamples())
             );
             aValues[1] = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
                pHistogramBucketVectorEntryRightChild[0].m_sumResidualError,
-               static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetInstances())
+               static_cast<FloatEbmType>(pRightChild->AMBIGUOUS_GetSamples())
             );
          }
 
@@ -630,7 +630,7 @@ public:
             // We handle equal gain values in ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint because we 
             // can have zero instnaces in bins, in which case it occurs, but those equivalent situations have been cleansed by
             // the time we reach this code, so the only realistic scenario where we might get equivalent gains is if we had an almost
-            // symetric distribution instances bin distributions AND two tail ends that happen to have the same statistics AND
+            // symetric distribution samples bin distributions AND two tail ends that happen to have the same statistics AND
             // either this is our first cut, or we've only made a single cut in the center in the case where there is symetry in the center
             // Even if all of these things are true, after one non-symetric cut, we won't see that scenario anymore since the residuals won't be
             // symetric anymore.  This is so rare, and limited to one cut, so we shouldn't bother to handle it since the complexity of doing so
@@ -670,7 +670,7 @@ public:
                   aHistogramBucket,
                   pLeftChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
-                  cInstancesRequiredForChildSplitMin
+                  cSamplesRequiredForChildSplitMin
 #ifndef NDEBUG
                   , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -717,7 +717,7 @@ public:
                   aHistogramBucket,
                   pRightChild,
                   pTreeNodeChildrenAvailableStorageSpaceCur,
-                  cInstancesRequiredForChildSplitMin
+                  cSamplesRequiredForChildSplitMin
 #ifndef NDEBUG
                   , aHistogramBucketsEndDebug
 #endif // NDEBUG
@@ -794,10 +794,10 @@ extern bool GrowDecisionTree(
    EbmBoostingState * const pEbmBoostingState,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
-   const size_t cInstancesTotal,
+   const size_t cSamplesTotal,
    const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -815,10 +815,10 @@ extern bool GrowDecisionTree(
             pEbmBoostingState,
             cHistogramBuckets,
             aHistogramBucketBase,
-            cInstancesTotal,
+            cSamplesTotal,
             aSumHistogramBucketVectorEntryBase,
             cTreeSplitsMax,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -830,10 +830,10 @@ extern bool GrowDecisionTree(
             pEbmBoostingState,
             cHistogramBuckets,
             aHistogramBucketBase,
-            cInstancesTotal,
+            cSamplesTotal,
             aSumHistogramBucketVectorEntryBase,
             cTreeSplitsMax,
-            cInstancesRequiredForChildSplitMin,
+            cSamplesRequiredForChildSplitMin,
             pSmallChangeToModelOverwriteSingleSamplingSet,
             pTotalGain
 #ifndef NDEBUG
@@ -847,10 +847,10 @@ extern bool GrowDecisionTree(
          pEbmBoostingState,
          cHistogramBuckets,
          aHistogramBucketBase,
-         cInstancesTotal,
+         cSamplesTotal,
          aSumHistogramBucketVectorEntryBase,
          cTreeSplitsMax,
-         cInstancesRequiredForChildSplitMin,
+         cSamplesRequiredForChildSplitMin,
          pSmallChangeToModelOverwriteSingleSamplingSet,
          pTotalGain
 #ifndef NDEBUG

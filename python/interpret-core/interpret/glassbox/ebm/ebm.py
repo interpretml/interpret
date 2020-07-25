@@ -141,10 +141,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         self.binning = binning
 
     def fit(self, X):
-        """ Fits transformer to provided instances.
+        """ Fits transformer to provided samples.
 
         Args:
-            X: Numpy array for training instances.
+            X: Numpy array for training samples.
 
         Returns:
             Itself.
@@ -226,10 +226,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        """ Transform on provided instances.
+        """ Transform on provided samples.
 
         Args:
-            X: Numpy array for instances.
+            X: Numpy array for samples.
 
         Returns:
             Transformed numpy array.
@@ -627,7 +627,7 @@ class BaseEBM(BaseEstimator):
         learning_rate,
         max_leaves,
         # Holte, R. C. (1993) "Very simple classification rules perform well on most commonly used datasets"
-        # says use 6 as the minimum instances https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
+        # says use 6 as the minimum samples https://link.springer.com/content/pdf/10.1023/A:1022631118932.pdf
         # TODO PK try setting this (not here, but in our caller) to 6 and run tests to verify the best value.
         min_samples_leaf,
         # Overall
@@ -670,15 +670,15 @@ class BaseEBM(BaseEstimator):
 
     # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
     #       doesn't like parameters in the fit function, other than ones like weights that have
-    #       the same length as the number of instances.  See:
+    #       the same length as the number of samples.  See:
     #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
     #
     # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
-        """ Fits model to provided instances.
+        """ Fits model to provided samples.
 
         Args:
-            X: Numpy array for training instances.
+            X: Numpy array for training samples.
             y: Numpy array as training labels.
 
         Returns:
@@ -691,7 +691,7 @@ class BaseEBM(BaseEstimator):
         #      they are well formed (look for NaNs, etc)
 
         # TODO PK handle calls where X.dim == 1.  This could occur if there was only 1 feature, or if
-        #     there was only 1 instance?  We can differentiate either condition via y.dim and reshape
+        #     there was only 1 sample?  We can differentiate either condition via y.dim and reshape
         #     AND add some tests for the X.dim == 1 scenario
 
         # TODO PK write an efficient striping converter for X that replaces unify_data for EBMs
@@ -1065,7 +1065,7 @@ class BaseEBM(BaseEstimator):
         """ Predict scores from model before calling the link function.
 
             Args:
-                X: Numpy array for instances.
+                X: Numpy array for samples.
 
             Returns:
                 The sum of the additive term contributions.
@@ -1219,7 +1219,7 @@ class BaseEBM(BaseEstimator):
         )
 
     def explain_local(self, X, y=None, name=None):
-        """ Provides local explanations for provided instances.
+        """ Provides local explanations for provided samples.
 
         Args:
             X: Numpy array for X to explain.
@@ -1228,10 +1228,10 @@ class BaseEBM(BaseEstimator):
 
         Returns:
             An explanation object, visualizing feature-value pairs
-            for each instance as horizontal bar charts.
+            for each sample as horizontal bar charts.
         """
 
-        # Produce feature value pairs for each instance.
+        # Produce feature value pairs for each sample.
         # Values are the model graph score per respective feature group.
         if name is None:
             name = gen_name_from_class(self)
@@ -1244,17 +1244,17 @@ class BaseEBM(BaseEstimator):
         if is_classifier(self) and y is not None:
             y = np.array([self._class_idx_[el] for el in y])
 
-        instances = self.preprocessor_.transform(X)
+        samples = self.preprocessor_.transform(X)
 
-        instances = np.ascontiguousarray(instances.T)
+        samples = np.ascontiguousarray(samples.T)
 
         scores_gen = EBMUtils.scores_by_feature_group(
-            instances, self.feature_groups_, self.additive_terms_
+            samples, self.feature_groups_, self.additive_terms_
         )
 
         # TODO PK add a test to see if we handle X.ndim == 1 (or should we throw ValueError)
 
-        n_rows = instances.shape[1]
+        n_rows = samples.shape[1]
         data_dicts = []
         intercept = self.intercept_
         if not is_classifier(self) or len(self.classes_) <= 2:
@@ -1292,11 +1292,11 @@ class BaseEBM(BaseEstimator):
         is_classification = is_classifier(self)
         if is_classification:
             scores = EBMUtils.classifier_predict_proba(
-                instances, self.feature_groups_, self.additive_terms_, self.intercept_,
+                samples, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
         else:
             scores = EBMUtils.regressor_predict(
-                instances, self.feature_groups_, self.additive_terms_, self.intercept_,
+                samples, self.feature_groups_, self.additive_terms_, self.intercept_,
             )
 
         perf_list = []
@@ -1426,13 +1426,13 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 
     # TODO: Throw ValueError like scikit for 1d instead of 2d arrays
     def predict_proba(self, X):
-        """ Probability estimates on provided instances.
+        """ Probability estimates on provided samples.
 
         Args:
-            X: Numpy array for instances.
+            X: Numpy array for samples.
 
         Returns:
-            Probability estimate of instance for each class.
+            Probability estimate of sample for each class.
         """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
@@ -1448,13 +1448,13 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
         return prob
 
     def predict(self, X):
-        """ Predicts on provided instances.
+        """ Predicts on provided samples.
 
         Args:
-            X: Numpy array for instances.
+            X: Numpy array for samples.
 
         Returns:
-            Predicted class label per instance.
+            Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)
@@ -1559,13 +1559,13 @@ class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
         )
 
     def predict(self, X):
-        """ Predicts on provided instances.
+        """ Predicts on provided samples.
 
         Args:
-            X: Numpy array for instances.
+            X: Numpy array for samples.
 
         Returns:
-            Predicted class label per instance.
+            Predicted class label per sample.
         """
         check_is_fitted(self, "has_fitted_")
         X, _, _, _ = unify_data(X, None, self.feature_names, self.feature_types)

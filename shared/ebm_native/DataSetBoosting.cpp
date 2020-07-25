@@ -15,18 +15,18 @@
 #include "FeatureGroup.h"
 #include "DataSetBoosting.h"
 
-INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
+INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cSamples, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructResidualErrors");
 
-   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
+   if(IsMultiplyError(cSamples, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
-   const size_t cElements = cInstances * cVectorLength;
+   const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
    LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructResidualErrors");
@@ -34,22 +34,22 @@ INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cInsta
 }
 
 INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
-   const size_t cInstances, 
+   const size_t cSamples, 
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructPredictorScores");
 
-   EBM_ASSERT(0 < cInstances);
+   EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
-   if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores IsMultiplyError(cInstances, cVectorLength)");
+   if(IsMultiplyError(cSamples, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
-   const size_t cElements = cInstances * cVectorLength;
+   const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
       LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores nullptr == aPredictorScoresTo");
@@ -63,7 +63,7 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
    if(bZeroingLogits) {
       // TODO : integrate this subtraction into the copy instead of doing it afterwards
       FloatEbmType * pScore = aPredictorScoresTo;
-      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cInstances;
+      const FloatEbmType * const pScoreExteriorEnd = pScore + cVectorLength * cSamples;
       do {
          FloatEbmType scoreShift = pScore[k_iZeroClassificationLogitAtInitialize];
          const FloatEbmType * const pScoreInteriorEnd = pScore + cVectorLength;
@@ -79,25 +79,25 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
 }
 
 INLINE_RELEASE static StorageDataType * ConstructTargetData(
-   const size_t cInstances, 
+   const size_t cSamples, 
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructTargetData");
 
-   EBM_ASSERT(0 < cInstances);
+   EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aTargets);
    EBM_ASSERT(1 <= runtimeLearningTypeOrCountTargetClasses); // this should be classification
    const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
 
-   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cInstances);
+   StorageDataType * const aTargetData = EbmMalloc<StorageDataType>(cSamples);
    if(nullptr == aTargetData) {
       LOG_0(TraceLevelWarning, "WARNING nullptr == aTargetData");
       return nullptr;
    }
 
    const IntEbmType * pTargetFrom = aTargets;
-   const IntEbmType * const pTargetFromEnd = aTargets + cInstances;
+   const IntEbmType * const pTargetFromEnd = aTargets + cSamples;
    StorageDataType * pTargetTo = aTargetData;
    do {
       const IntEbmType data = *pTargetFrom;
@@ -155,15 +155,15 @@ static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
 INLINE_RELEASE static StorageDataType * * ConstructInputData(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroup, 
-   const size_t cInstances, 
+   const size_t cSamples, 
    const IntEbmType * const aInputDataFrom
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatureGroups);
    EBM_ASSERT(nullptr != apFeatureGroup);
-   EBM_ASSERT(0 < cInstances);
-   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureGroups && 0 < cInstances IF the featureGroups are all empty, 
+   EBM_ASSERT(0 < cSamples);
+   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureGroups && 0 < cSamples IF the featureGroups are all empty, 
    // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureGroups);
@@ -190,8 +190,8 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
          // if we have 1 item, it can't be larger than the number of bits of storage
          EBM_ASSERT(cBitsPerItemMax <= CountBitsRequiredPositiveMax<StorageDataType>());
 
-         EBM_ASSERT(0 < cInstances);
-         const size_t cDataUnits = (cInstances - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
+         EBM_ASSERT(0 < cSamples);
+         const size_t cDataUnits = (cSamples - 1) / cItemsPerBitPackedDataUnit + 1; // this can't overflow or underflow
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
@@ -216,7 +216,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
          const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
             const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
-            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cInstances];
+            pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cSamples];
             pDimensionInfo->m_cBins = pFeature->GetCountBins();
             ++pFeatureGroupEntry;
             ++pDimensionInfo;
@@ -280,7 +280,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
 
          if(pInputDataTo == pInputDataToLast) {
             // if this is the first time we've exited the loop, then re-enter it to do our last loop, but reduce the number of times we do the inner loop
-            shiftEnd = cBitsPerItemMax * ((cInstances - 1) % cItemsPerBitPackedDataUnit + 1);
+            shiftEnd = cBitsPerItemMax * ((cSamples - 1) % cItemsPerBitPackedDataUnit + 1);
             goto one_last_loop;
          }
       }
@@ -305,7 +305,7 @@ bool DataSetByFeatureGroup::Initialize(
    const bool bAllocateTargetData, 
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroup, 
-   const size_t cInstances, 
+   const size_t cSamples, 
    const IntEbmType * const aInputDataFrom, 
    const void * const aTargets, 
    const FloatEbmType * const aPredictorScoresFrom, 
@@ -319,10 +319,10 @@ bool DataSetByFeatureGroup::Initialize(
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::Initialize");
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
-   if(0 != cInstances) {
+   if(0 != cSamples) {
       FloatEbmType * aResidualErrors = nullptr;
       if(bAllocateResidualErrors) {
-         aResidualErrors = ConstructResidualErrors(cInstances, cVectorLength);
+         aResidualErrors = ConstructResidualErrors(cSamples, cVectorLength);
          if(nullptr == aResidualErrors) {
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aResidualErrors");
             return true;
@@ -330,7 +330,7 @@ bool DataSetByFeatureGroup::Initialize(
       }
       FloatEbmType * aPredictorScores = nullptr;
       if(bAllocatePredictorScores) {
-         aPredictorScores = ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom);
+         aPredictorScores = ConstructPredictorScores(cSamples, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
             free(aResidualErrors);
             LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aPredictorScores");
@@ -339,7 +339,7 @@ bool DataSetByFeatureGroup::Initialize(
       }
       StorageDataType * aTargetData = nullptr;
       if(bAllocateTargetData) {
-         aTargetData = ConstructTargetData(cInstances, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
+         aTargetData = ConstructTargetData(cSamples, static_cast<const IntEbmType *>(aTargets), runtimeLearningTypeOrCountTargetClasses);
          if(nullptr == aTargetData) {
             free(aResidualErrors);
             free(aPredictorScores);
@@ -349,7 +349,7 @@ bool DataSetByFeatureGroup::Initialize(
       }
       StorageDataType ** aaInputData = nullptr;
       if(0 != cFeatureGroups) {
-         aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cInstances, aInputDataFrom);
+         aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cSamples, aInputDataFrom);
          if(nullptr == aaInputData) {
             free(aResidualErrors);
             free(aPredictorScores);
@@ -363,7 +363,7 @@ bool DataSetByFeatureGroup::Initialize(
       m_aPredictorScores = aPredictorScores;
       m_aTargetData = aTargetData;
       m_aaInputData = aaInputData;
-      m_cInstances = cInstances;
+      m_cSamples = cSamples;
       m_cFeatureGroups = cFeatureGroups;
    }
 
