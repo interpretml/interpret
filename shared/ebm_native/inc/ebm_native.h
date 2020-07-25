@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// to minimize confusion, we try whenever possible to use common terms with scikit-learn -> https://scikit-learn.org/stable/glossary.html
+// to minimize confusion, we try whenever possible to use common terms with scikit-learn:
+// https://scikit-learn.org/stable/glossary.html
 
 #ifndef EBM_NATIVE_H
 #define EBM_NATIVE_H
@@ -23,8 +24,9 @@ extern "C" {
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #ifdef EBM_NATIVE_R
-// R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   
-// Also, we export R specific functions rather than the generic ones that we can consume from other languages
+// R has it's own way of exporting functions.  There is a single entry point that describes to 
+// R how to call our functions.  Also, we export R specific functions rather than the generic 
+// ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
@@ -37,18 +39,21 @@ extern "C" {
 #elif defined(_MSC_VER) // compiler type
 
 #ifdef EBM_NATIVE_R 
-// R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   
-// Also, we export R specific functions rather than the generic ones that we can consume from other languages
+// R has it's own way of exporting functions.  There is a single entry point that describes to 
+// R how to call our functions.  Also, we export R specific functions rather than the generic 
+// ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
 
 #ifdef EBM_NATIVE_EXPORTS
-// we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
+// we use a .def file in Visual Studio because we can remove the C name mangling entirely, 
+// in addition to C++ name mangling, unlike __declspec(dllexport)
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_EXPORTS
-// __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
+// __declspec(dllimport) is optional, but having it allows the compiler to make the 
+// resulting code more efficient when imported
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #endif // EBM_NATIVE_EXPORTS
@@ -57,12 +62,13 @@ extern "C" {
 
 #ifdef _WIN64
 // _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64
-// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for future compatibility 
-// (not specifying it means it can be the new default if somehting new comes along later)
+// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for 
+// future compatibility.  Not specifying it means it can be the new default if somehting new comes along later
 #define EBM_NATIVE_CALLING_CONVENTION
 #else // _WIN64
-// in Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined by Windows and all languages essentially 
-// support it within the Windows ecosystem since they all need to call win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
+// In Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined 
+// by Windows and all languages essentially support it within the Windows ecosystem since they all need to call 
+// win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
 #define EBM_NATIVE_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
@@ -71,15 +77,15 @@ extern "C" {
 #endif // compiler type
 
 typedef struct _EbmBoosting {
-   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if 
-   // they try to mix these pointer types.
+   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} *PEbmBoosting;
+} * PEbmBoosting;
 typedef struct _EbmInteraction {
-   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if 
-   // they try to mix these pointer types.
+   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} *PEbmInteraction;
+} * PEbmInteraction;
 
 #ifndef PRId64
 // this should really be defined, but some compilers aren't compliant
@@ -91,8 +97,8 @@ typedef struct _EbmInteraction {
 #endif
 
 typedef double FloatEbmType;
-// this needs to be in "e" format, since we internally use that format to generate "interpretable" floating point
-// numbers in text format.   See GetInterpretableCutPointFloat.
+// this needs to be in "le" format, since we internally use that format to generate "interpretable" 
+// floating point numbers in text format.   See Discretization.cpp for details.
 #define FloatEbmTypePrintf "le"
 typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
@@ -106,11 +112,10 @@ const IntEbmType FeatureTypeOrdinal = 0;
 const IntEbmType FeatureTypeNominal = 1;
 
 typedef struct _EbmNativeFeature {
-   IntEbmType featureType; // enums aren't standardized accross languages, so use IntEbmType values
+   // enums and bools aren't standardized accross languages, so use IntEbmType values
+   IntEbmType featureType;
+   // TODO: figure out if hasMissing is still this required now that we put missing in the top bin?
    IntEbmType hasMissing;
-   // TODO make the order (countBins, hasMissing, featureType).  In languages that default values countBins is the only item in this struct that can't 
-   // really be defaulted, so put it at the top, as it will be in our caller's language.  hasMissing is TRUE/FALSE, so the user doesn't need to remember 
-   // much there, make the featureType last since it's the most forgettable in terms of possible values
    IntEbmType countBins;
 } EbmNativeFeature;
 
@@ -118,16 +123,19 @@ typedef struct _EbmNativeFeatureGroup {
    IntEbmType countFeaturesInGroup;
 } EbmNativeFeatureGroup;
 
-const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
+// SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
+const signed char TraceLevelOff = 0; // no messages will be output
 const signed char TraceLevelError = 1; // invalid inputs to the C library or assert failure before exit
 const signed char TraceLevelWarning = 2; // out of memory or other conditions we can't continue after
 const signed char TraceLevelInfo = 3; // odd inputs like features with 1 value or empty feature groups
 const signed char TraceLevelVerbose = 4; // function calls, logging that helps us trace execution in the library
 
-// all our logging messages are pure ASCII (127 values), and therefore also UTF-8
+// all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(
+   LOG_MESSAGE_FUNCTION logMessageFunction
+);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
