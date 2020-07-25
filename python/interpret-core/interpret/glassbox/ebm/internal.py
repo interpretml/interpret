@@ -175,7 +175,7 @@ class Native:
             ct.c_double,
             # int64_t countTreeSplitsMax
             ct.c_longlong,
-            # int64_t countInstancesRequiredForChildSplitMin
+            # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
             # double * trainingWeights
             # ndpointer(dtype=np.float64, ndim=1),
@@ -228,7 +228,7 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countInstances
+            # int64_t countSamples
             ct.c_longlong,
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -247,7 +247,7 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countInstances
+            # int64_t countSamples
             ct.c_longlong,
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -267,7 +267,7 @@ class Native:
             ct.c_longlong,
             # int64_t * featureIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countInstancesRequiredForChildSplitMin
+            # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),

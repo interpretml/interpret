@@ -775,7 +775,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    IntEbmType indexFeatureCombination,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForChildSplitMin,
+   IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * gainReturn
@@ -785,13 +785,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       TraceLevelInfo,
       TraceLevelVerbose,
       "GenerateModelFeatureCombinationUpdate parameters: ebmBoosting=%p, indexFeatureCombination=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf
-      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countInstancesRequiredForChildSplitMin=%" IntEbmTypePrintf
+      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf
       ", trainingWeights=%p, validationWeights=%p, gainReturn=%p",
       static_cast<void *>(ebmBoosting),
       indexFeatureCombination,
       learningRate,
       countTreeSplitsMax,
-      countInstancesRequiredForChildSplitMin,
+      countSamplesRequiredForChildSplitMin,
       static_cast<const void *>(trainingWeights),
       static_cast<const void *>(validationWeights),
       static_cast<void *>(gainReturn)
@@ -862,15 +862,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    }
 
    size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= countInstancesRequiredForChildSplitMin) {
-      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countInstancesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t, IntEbmType>(countInstancesRequiredForChildSplitMin)) {
+   if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
+      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
+      if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
          // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
          cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countInstancesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later

@@ -5,6 +5,8 @@
 #include "PrecompiledHeader.h"
 
 // TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
+// TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
+// TODO: after we've found our splits, generate the best interpretable cut points, then move 1% backwards and forwards to pick the cut points with the lowest numbers of digits that are closest to the original cut points.  Moving 1% either way should be acceptable.  Make it a parameter that can be used from internal python code but we shouldn't export this to the end user since it has limited usefullness
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
@@ -21,14 +23,20 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
 
-IntEbmType k_randomSeed = 42424242;
+// Some general definitions:
+//  - unsplittable range - a long contiguous series of feature values after sorting that have the same value, 
+//    and are therefore not separable by binning.  In order for us to consider the range unsplittable, the number of
+//    identical values in the range needs to be longer than the average number of values in a bin.  Example: if
+//    we are given 15 bins max, and we have 150 values, then an unsplittable range needs to be 10 values at minimum
+//  - SplittingRange - a contiguous series of values after sorting that we can attempt to find SplitPoints within
+//    because there are no long series of unsplittable values within the SplittingRange.
+//  - SplitPoint - the places where we split one bin to annother
+//  - cutPoint - the value we assign to a SplitPoint that separates one bin from annother.  Example:
+//    if we had the values [1, 2, 3, 4] and one SplitPoint, a reasonable cutPoint would be 2.5.
+//  - cut range - the values between two SplitPoint
 
+constexpr IntEbmType k_randomSeed = 42424242;
 constexpr size_t k_SplitExploreDistance = 20;
-
-// keep k_SplitDeleted as -1 since we use this property to make comparisons faster below
-constexpr ptrdiff_t k_SplitDeleted = ptrdiff_t { -1 };
-constexpr ptrdiff_t k_SplitHigher = ptrdiff_t { -2 };
-constexpr ptrdiff_t k_SplitLower = ptrdiff_t { -3 };
 
 constexpr unsigned int k_MiddleSplittingRange = 0x0;
 constexpr unsigned int k_FirstSplittingRange = 0x1;
@@ -53,39 +61,40 @@ static_assert(std::is_pod<NeighbourJump>::value,
 
 struct SplittingRange final {
 
-   SplittingRange() = default; // preserve our POD status
-   ~SplittingRange() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
    // we divide the space into long segments of unsplittable equal values separated by spaces where we can put
    // splits, which we call SplittingRanges.  SplittingRanges can have zero or more items.  If they have zero
-   // splittable items, than the SplittingRange is just there to separate two unsplittable ranges on both sides.
+   // splittable items, then the SplittingRange is just there to separate two unsplittable ranges on both sides.
    // The first and last SplittingRanges are special in that they can either have a long range of unsplittable
    // values on the tail end, or not.  If they have a tail consisting of a long range of unsplitable values, then
    // we'll definetly want to have a split point within the tail SplittingRange, but if there is no unsplitable
    // range on the tail end, then having splits within that range is more optional.
    // 
-   // If the first few or last few values in the list are unequal, and followed by an unsplittable range, then
-   // we put the unequal values into the unsplittable ranger IF there are not enough of them to create a split based
-   // on our countMinimumInstancesPerBin value.
-   // Example: If countMinimumInstancesPerBin == 3 and the avg bin size is 5, and the list is 
+   // If the first few or last few values are unequal, and followed by an unsplittable range, then
+   // we put the unequal values into the unsplittable range IF there are not enough of them to create a split based
+   // on our countSamplesPerBinMin value.
+   // Example: If countSamplesPerBinMin == 3 and the avg bin size is 5, and the list is 
    // (1, 2, 3, 3, 3, 3, 3 | 4, 5, 6 | 7, 7, 7, 7, 7, 8, 9) -> then the only splittable range is (4, 5, 6)
 
-   size_t         m_cSplittableItems; // this can be zero
-   FloatEbmType * m_pSplittableValuesStart;
+   SplittingRange() = default; // preserve our POD status
+   ~SplittingRange() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   size_t         m_cUnsplittablePriorItems;
-   size_t         m_cUnsplittableSubsequentItems;
+   // this can be zero if we're sandwitched between two unsplittable ranges, eg: 0, 0, 0, <SplittingRange here> 1, 1, 1
+   size_t         m_cSplittableValues;
+   FloatEbmType * m_pSplittableValuesFirst;
 
-   size_t         m_cUnsplittableEitherSideMax;
-   size_t         m_cUnsplittableEitherSideMin;
+   size_t         m_cUnsplittableLowValues;
+   size_t         m_cUnsplittableHighValues;
+
+   size_t         m_cUnsplittableEitherSideValuesMax;
+   size_t         m_cUnsplittableEitherSideValuesMin;
 
    size_t         m_uniqueRandom;
 
    size_t         m_cSplitsAssigned;
 
-   FloatEbmType   m_avgRangeWidthAfterAddingOneSplit;
+   FloatEbmType   m_avgSplittableRangeWidthAfterAddingOneSplit;
 
    unsigned int   m_flags;
 };
@@ -2103,9 +2112,9 @@ static bool StuffSplitsIntoSplittingRanges(
          const SplittingRange * const & lhs,
          const SplittingRange * const & rhs
       ) const noexcept {
-         return lhs->m_avgRangeWidthAfterAddingOneSplit == rhs->m_avgRangeWidthAfterAddingOneSplit ?
+         return lhs->m_avgSplittableRangeWidthAfterAddingOneSplit == rhs->m_avgSplittableRangeWidthAfterAddingOneSplit ?
             (lhs->m_uniqueRandom < rhs->m_uniqueRandom) :
-            (lhs->m_avgRangeWidthAfterAddingOneSplit < rhs->m_avgRangeWidthAfterAddingOneSplit);
+            (lhs->m_avgSplittableRangeWidthAfterAddingOneSplit < rhs->m_avgSplittableRangeWidthAfterAddingOneSplit);
       }
    };
 
@@ -2122,7 +2131,7 @@ static bool StuffSplitsIntoSplittingRanges(
             // this SplittingRange to stuff a split into.  If that were to happen, then we'd have 2 ranges.  So,   
             // if we had 2 splits, we'd have 2 ranges.  This is why we don't increment the cSplitsAssigned value here.
             size_t newProposedRanges = pSplittingRangeInit->m_cSplitsAssigned;
-            if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideMin) {
+            if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideValuesMin) {
                // our first and last SplittingRanges can either have a long range of equal items on their tail ends
                // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
                // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
@@ -2131,7 +2140,7 @@ static bool StuffSplitsIntoSplittingRanges(
 
                ++newProposedRanges;
 
-               if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideMax) {
+               if(0 == pSplittingRangeInit->m_cUnsplittableEitherSideValuesMax) {
                   // if there's a max of zero unsplittable values on our sides, then we're the only range AND 
                   // we don't have to put cuts on either of our boundaries, so add 1 more to our ranges since
                   // the cuts that we do have will be interior
@@ -2142,13 +2151,13 @@ static bool StuffSplitsIntoSplittingRanges(
                }
             }
             
-            const size_t cSplittableItems = pSplittingRangeInit->m_cSplittableItems;
+            const size_t cSplittableItems = pSplittingRangeInit->m_cSplittableValues;
             // use more exact integer math here
             if(cMinimumInstancesPerBin <= cSplittableItems / newProposedRanges) {
                const FloatEbmType avgRangeWidthAfterAddingOneSplit =
                   static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
-               pSplittingRangeInit->m_avgRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
+               pSplittingRangeInit->m_avgSplittableRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
                queue.push(pSplittingRangeInit);
             }
 
@@ -2173,7 +2182,7 @@ static bool StuffSplitsIntoSplittingRanges(
                break;
             }
 
-            if(0 == pSplittingRangeAdd->m_cUnsplittableEitherSideMin) {
+            if(0 == pSplittingRangeAdd->m_cUnsplittableEitherSideValuesMin) {
                // our first and last SplittingRanges can either have a long range of equal items on their tail ends
                // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
                // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
@@ -2182,7 +2191,7 @@ static bool StuffSplitsIntoSplittingRanges(
 
                ++newProposedRanges;
 
-               if(0 == pSplittingRangeAdd->m_cUnsplittableEitherSideMax) {
+               if(0 == pSplittingRangeAdd->m_cUnsplittableEitherSideValuesMax) {
                   // if there's a max of zero unsplittable values on our sides, then we're the only range AND 
                   // we don't have to put cuts on either of our boundaries, so add 1 more to our ranges since
                   // the cuts that we do have will be interior
@@ -2193,13 +2202,13 @@ static bool StuffSplitsIntoSplittingRanges(
                }
             }
 
-            const size_t cSplittableItems = pSplittingRangeAdd->m_cSplittableItems;
+            const size_t cSplittableItems = pSplittingRangeAdd->m_cSplittableValues;
             // use more exact integer math here
             if(cMinimumInstancesPerBin <= cSplittableItems / newProposedRanges) {
                const FloatEbmType avgRangeWidthAfterAddingOneSplit =
                   static_cast<FloatEbmType>(cSplittableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
-               pSplittingRangeAdd->m_avgRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
+               pSplittingRangeAdd->m_avgSplittableRangeWidthAfterAddingOneSplit = avgRangeWidthAfterAddingOneSplit;
                queue.push(pSplittingRangeAdd);
             }
          }
@@ -2221,11 +2230,11 @@ INLINE_RELEASE static size_t FillSplittingRangeRemaining(
    SplittingRange * pSplittingRange = aSplittingRange;
    const SplittingRange * const pSplittingRangeEnd = pSplittingRange + cSplittingRanges;
    do {
-      const size_t cUnsplittablePriorItems = pSplittingRange->m_cUnsplittablePriorItems;
-      const size_t cUnsplittableSubsequentItems = pSplittingRange->m_cUnsplittableSubsequentItems;
+      const size_t cUnsplittablePriorItems = pSplittingRange->m_cUnsplittableLowValues;
+      const size_t cUnsplittableSubsequentItems = pSplittingRange->m_cUnsplittableHighValues;
 
-      pSplittingRange->m_cUnsplittableEitherSideMax = std::max(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
-      pSplittingRange->m_cUnsplittableEitherSideMin = std::min(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+      pSplittingRange->m_cUnsplittableEitherSideValuesMax = std::max(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
+      pSplittingRange->m_cUnsplittableEitherSideValuesMin = std::min(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
 
       pSplittingRange->m_flags = k_MiddleSplittingRange;
       pSplittingRange->m_cSplitsAssigned = 1;
@@ -2240,14 +2249,14 @@ INLINE_RELEASE static size_t FillSplittingRangeRemaining(
       EBM_ASSERT(1 == aSplittingRange[0].m_cSplitsAssigned);
    } else {
       aSplittingRange[0].m_flags = k_FirstSplittingRange;
-      if(0 == aSplittingRange[0].m_cUnsplittablePriorItems) {
+      if(0 == aSplittingRange[0].m_cUnsplittableLowValues) {
          aSplittingRange[0].m_cSplitsAssigned = 0;
          --cConsumedSplittingRanges;
       }
 
       --pSplittingRange; // go back to the last one
       pSplittingRange->m_flags = k_LastSplittingRange;
-      if(0 == pSplittingRange->m_cUnsplittableSubsequentItems) {
+      if(0 == pSplittingRange->m_cUnsplittableHighValues) {
          pSplittingRange->m_cSplitsAssigned = 0;
          --cConsumedSplittingRanges;
       }
@@ -2267,26 +2276,26 @@ INLINE_RELEASE static void FillSplittingRangeNeighbours(
    EBM_ASSERT(nullptr != aSplittingRange);
 
    SplittingRange * pSplittingRange = aSplittingRange;
-   size_t cUnsplittablePriorItems = pSplittingRange->m_pSplittableValuesStart - aSingleFeatureValues;
+   size_t cUnsplittablePriorItems = pSplittingRange->m_pSplittableValuesFirst - aSingleFeatureValues;
    const FloatEbmType * const aSingleFeatureValuesEnd = aSingleFeatureValues + cInstances;
    if(1 != cSplittingRanges) {
       const SplittingRange * const pSplittingRangeLast = pSplittingRange + cSplittingRanges - 1; // exit without doing the last one
       do {
          const size_t cUnsplittableSubsequentItems =
-            (pSplittingRange + 1)->m_pSplittableValuesStart - pSplittingRange->m_pSplittableValuesStart - pSplittingRange->m_cSplittableItems;
+            (pSplittingRange + 1)->m_pSplittableValuesFirst - pSplittingRange->m_pSplittableValuesFirst - pSplittingRange->m_cSplittableValues;
 
-         pSplittingRange->m_cUnsplittablePriorItems = cUnsplittablePriorItems;
-         pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
+         pSplittingRange->m_cUnsplittableLowValues = cUnsplittablePriorItems;
+         pSplittingRange->m_cUnsplittableHighValues = cUnsplittableSubsequentItems;
 
          cUnsplittablePriorItems = cUnsplittableSubsequentItems;
          ++pSplittingRange;
       } while(pSplittingRangeLast != pSplittingRange);
    }
    const size_t cUnsplittableSubsequentItems =
-      aSingleFeatureValuesEnd - pSplittingRange->m_pSplittableValuesStart - pSplittingRange->m_cSplittableItems;
+      aSingleFeatureValuesEnd - pSplittingRange->m_pSplittableValuesFirst - pSplittingRange->m_cSplittableValues;
 
-   pSplittingRange->m_cUnsplittablePriorItems = cUnsplittablePriorItems;
-   pSplittingRange->m_cUnsplittableSubsequentItems = cUnsplittableSubsequentItems;
+   pSplittingRange->m_cUnsplittableLowValues = cUnsplittablePriorItems;
+   pSplittingRange->m_cUnsplittableHighValues = cUnsplittableSubsequentItems;
 }
 
 INLINE_RELEASE static void FillSplittingRangeBasics(
@@ -2318,8 +2327,8 @@ INLINE_RELEASE static void FillSplittingRangeBasics(
          if(avgLength <= cEqualRangeItems) {
             if(aSingleFeatureValues != pSplittableValuesStart || cMinimumInstancesPerBin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
                EBM_ASSERT(pSplittingRange < aSplittingRange + cSplittingRanges);
-               pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
-               pSplittingRange->m_cSplittableItems = pStartEqualRange - pSplittableValuesStart;
+               pSplittingRange->m_pSplittableValuesFirst = pSplittableValuesStart;
+               pSplittingRange->m_cSplittableValues = pStartEqualRange - pSplittableValuesStart;
                ++pSplittingRange;
             }
             pSplittableValuesStart = pScan;
@@ -2333,11 +2342,11 @@ INLINE_RELEASE static void FillSplittingRangeBasics(
       // we're not done, so we have one more to go.. this last one
       EBM_ASSERT(pSplittingRange == aSplittingRange + cSplittingRanges - 1);
       EBM_ASSERT(pSplittableValuesStart < pValuesEnd);
-      pSplittingRange->m_pSplittableValuesStart = pSplittableValuesStart;
+      pSplittingRange->m_pSplittableValuesFirst = pSplittableValuesStart;
       EBM_ASSERT(pStartEqualRange < pValuesEnd);
       const size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
       const FloatEbmType * const pSplittableRangeEnd = avgLength <= cEqualRangeItems ? pStartEqualRange : pValuesEnd;
-      pSplittingRange->m_cSplittableItems = pSplittableRangeEnd - pSplittableValuesStart;
+      pSplittingRange->m_cSplittableValues = pSplittableRangeEnd - pSplittableValuesStart;
    }
 }
 
@@ -2590,15 +2599,15 @@ INLINE_RELEASE static size_t GetAvgLength(
 
 INLINE_RELEASE static size_t PossiblyRemoveBinForMissing(
    const bool bMissing, 
-   const IntEbmType countMaximumBins
+   const IntEbmType countBinsMax
 ) noexcept {
-   EBM_ASSERT(IntEbmType { 2 } <= countMaximumBins);
-   size_t cMaximumBins = static_cast<size_t>(countMaximumBins);
+   EBM_ASSERT(IntEbmType { 2 } <= countBinsMax);
+   size_t cMaximumBins = static_cast<size_t>(countBinsMax);
    if(PREDICTABLE(bMissing)) {
       // if there is a missing value, then we use 0 for the missing value bin, and bump up all other values by 1.  This creates a semi-problem
       // if the number of bins was specified as a power of two like 256, because we now have 257 possible values, and instead of consuming 8
       // bits per value, we're consuming 9.  If we're told to have a maximum of a power of two bins though, in most cases it won't hurt to
-      // have one less bin so that we consume less data.  Our countMaximumBins is just a maximum afterall, so we can choose to have less bins.
+      // have one less bin so that we consume less data.  Our countBinsMax is just a maximum afterall, so we can choose to have less bins.
       // BUT, if the user requests 8 bins or less, then don't reduce the number of bins since then we'll be changing the bin size significantly
 
       size_t cBits = (~size_t { 0 }) ^ ((~size_t { 0 }) >> 1);
@@ -2670,26 +2679,26 @@ INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   IntEbmType countMinimumInstancesPerBin,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType countSamplesPerBinMin,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 ) {
-   EBM_ASSERT(0 <= countInstances);
-   EBM_ASSERT(0 == countInstances || nullptr != singleFeatureValues);
-   EBM_ASSERT(0 <= countMaximumBins);
-   EBM_ASSERT(0 == countInstances || 0 < countMaximumBins); // countMaximumBins can only be zero if there are no instances, because otherwise you need a bin
-   EBM_ASSERT(0 <= countMinimumInstancesPerBin);
-   EBM_ASSERT(0 == countInstances || countMaximumBins <= 1 || nullptr != cutPointsLowerBoundInclusive);
-   EBM_ASSERT(nullptr != countCutPoints);
-   EBM_ASSERT(nullptr != isMissing);
-   EBM_ASSERT(nullptr != minValue);
-   EBM_ASSERT(nullptr != maxValue);
+   EBM_ASSERT(0 <= countSamples);
+   EBM_ASSERT(0 == countSamples || nullptr != featureValues);
+   EBM_ASSERT(0 <= countBinsMax);
+   EBM_ASSERT(0 == countSamples || 0 < countBinsMax); // countBinsMax can only be zero if there are no instances, because otherwise you need a bin
+   EBM_ASSERT(0 <= countSamplesPerBinMin);
+   EBM_ASSERT(nullptr != countCutPointsReturn);
+   EBM_ASSERT(0 == countSamples || countBinsMax <= 1 || nullptr != cutPointsLowerBoundInclusiveReturn);
+   EBM_ASSERT(nullptr != isMissingPresentReturn);
+   EBM_ASSERT(nullptr != minValueReturn);
+   EBM_ASSERT(nullptr != maxValueReturn);
 
    // TODO: 
    //   - we shouldn't use randomness unless impossible to do otherwise.  choosing the split points isn't that critical to have
@@ -2705,77 +2714,77 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    //       4) if all the splits are the same from the center, we can use the values given to us to choose a direction
    //       5) if all of these things fail, we can use a random number
 
-   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: countInstances=%" IntEbmTypePrintf 
-      ", singleFeatureValues=%p, countMaximumBins=%" IntEbmTypePrintf ", countMinimumInstancesPerBin=%" IntEbmTypePrintf 
-      ", cutPointsLowerBoundInclusive=%p, countCutPoints=%p, isMissing=%p, minValue=%p, maxValue=%p", 
-      countInstances, 
-      static_cast<void *>(singleFeatureValues), 
-      countMaximumBins, 
-      countMinimumInstancesPerBin, 
-      static_cast<void *>(cutPointsLowerBoundInclusive), 
-      static_cast<void *>(countCutPoints),
-      static_cast<void *>(isMissing),
-      static_cast<void *>(minValue),
-      static_cast<void *>(maxValue)
+   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: countSamples=%" IntEbmTypePrintf 
+      ", featureValues=%p, countBinsMax=%" IntEbmTypePrintf ", countSamplesPerBinMin=%" IntEbmTypePrintf 
+      ", countCutPointsReturn=%p, cutPointsLowerBoundInclusiveReturn=%p, isMissingPresentReturn=%p, minValueReturn=%p, maxValueReturn=%p", 
+      countSamples, 
+      static_cast<void *>(featureValues), 
+      countBinsMax, 
+      countSamplesPerBinMin, 
+      static_cast<void *>(countCutPointsReturn),
+      static_cast<void *>(cutPointsLowerBoundInclusiveReturn),
+      static_cast<void *>(isMissingPresentReturn),
+      static_cast<void *>(minValueReturn),
+      static_cast<void *>(maxValueReturn)
    );
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countInstances)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countSamples)");
       return 1;
    }
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countMaximumBins)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMaximumBins)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countBinsMax)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countBinsMax)");
       return 1;
    }
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countMinimumInstancesPerBin)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countMinimumInstancesPerBin)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesPerBinMin)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countSamplesPerBinMin)");
       return 1;
    }
 
-   const size_t cInstancesIncludingMissingValues = static_cast<size_t>(countInstances);
+   const size_t cInstancesIncludingMissingValues = static_cast<size_t>(countSamples);
 
    if(0 == cInstancesIncludingMissingValues) {
-      *countCutPoints = 0;
-      *isMissing = EBM_FALSE;
-      *minValue = 0;
-      *maxValue = 0;
+      *countCutPointsReturn = 0;
+      *isMissingPresentReturn = EBM_FALSE;
+      *minValueReturn = 0;
+      *maxValueReturn = 0;
    } else {
       const size_t cInstances = RemoveMissingValuesAndReplaceInfinities(
          cInstancesIncludingMissingValues, 
-         singleFeatureValues
+         featureValues
       );
 
       const bool bMissing = cInstancesIncludingMissingValues != cInstances;
-      *isMissing = bMissing ? EBM_TRUE : EBM_FALSE;
+      *isMissingPresentReturn = bMissing ? EBM_TRUE : EBM_FALSE;
 
       if(0 == cInstances) {
-         *countCutPoints = 0;
-         *minValue = 0;
-         *maxValue = 0;
+         *countCutPointsReturn = 0;
+         *minValueReturn = 0;
+         *maxValueReturn = 0;
       } else {
-         FloatEbmType * const pValuesEnd = singleFeatureValues + cInstances;
-         std::sort(singleFeatureValues, pValuesEnd);
-         *minValue = singleFeatureValues[0];
-         *maxValue = pValuesEnd[-1];
-         if(countMaximumBins <= 1) {
+         FloatEbmType * const pValuesEnd = featureValues + cInstances;
+         std::sort(featureValues, pValuesEnd);
+         *minValueReturn = featureValues[0];
+         *maxValueReturn = pValuesEnd[-1];
+         if(countBinsMax <= 1) {
             // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
-            *countCutPoints = 0;
+            *countCutPointsReturn = 0;
          } else {
             const size_t cMinimumInstancesPerBin =
-               countMinimumInstancesPerBin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countMinimumInstancesPerBin);
-            const size_t cMaximumBins = PossiblyRemoveBinForMissing(bMissing, countMaximumBins);
+               countSamplesPerBinMin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countSamplesPerBinMin);
+            const size_t cMaximumBins = PossiblyRemoveBinForMissing(bMissing, countBinsMax);
             EBM_ASSERT(2 <= cMaximumBins); // if we had just one bin then there would be no cuts and we should have exited above
             const size_t avgLength = GetAvgLength(cInstances, cMaximumBins, cMinimumInstancesPerBin);
             EBM_ASSERT(1 <= avgLength);
-            const size_t cSplittingRanges = CountSplittingRanges(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin);
+            const size_t cSplittingRanges = CountSplittingRanges(cInstances, featureValues, avgLength, cMinimumInstancesPerBin);
             // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
             EBM_ASSERT(cSplittingRanges < cMaximumBins);
             if(0 == cSplittingRanges) {
-               *countCutPoints = 0;
+               *countCutPointsReturn = 0;
             } else {
-               NeighbourJump * const aNeighbourJumps = ConstructJumps(cInstances, singleFeatureValues);
+               NeighbourJump * const aNeighbourJumps = ConstructJumps(cInstances, featureValues);
                if(nullptr == aNeighbourJumps) {
                   goto exit_error;
                }
@@ -2823,8 +2832,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
                FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
 
-               FillSplittingRangeBasics(cInstances, singleFeatureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
-               FillSplittingRangeNeighbours(cInstances, singleFeatureValues, cSplittingRanges, aSplittingRange);
+               FillSplittingRangeBasics(cInstances, featureValues, avgLength, cMinimumInstancesPerBin, cSplittingRanges, aSplittingRange);
+               FillSplittingRangeNeighbours(cInstances, featureValues, cSplittingRanges, aSplittingRange);
 
                const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
 
@@ -2842,11 +2851,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   goto exit_error;
                }
 
-               FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusive;
+               FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
                for(size_t i = 0; i < cSplittingRanges; ++i) {
                   SplittingRange * const pSplittingRange = &aSplittingRange[i];
                   size_t cSplits = pSplittingRange->m_cSplitsAssigned;
-                  if(0 == pSplittingRange->m_cUnsplittableEitherSideMin) {
+                  if(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
                      // our first and last SplittingRanges can either have a long range of equal items on their tail ends
                      // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
                      // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
@@ -2854,7 +2863,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // side
 
                      ++cSplits;
-                     if(0 == pSplittingRange->m_cUnsplittableEitherSideMax) {
+                     if(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMax) {
                         // if there's just one range and there are no long ranges on either end, then one split will create
                         // two ranges, so add 1 more.
 
@@ -2902,22 +2911,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         TradeSplitSegment(
                            &bestSplitPoints,
                            cMinimumInstancesPerBin,
-                           pSplittingRange->m_pSplittableValuesStart - singleFeatureValues,
-                           pSplittingRange->m_cSplittableItems,
+                           pSplittingRange->m_pSplittableValuesFirst - featureValues,
+                           pSplittingRange->m_cSplittableValues,
                            aNeighbourJumps,
                            cRanges,
                            // for efficiency we include space for the end point cuts even if they don't exist
                            aSplitPoints
                         );
 
-                        const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesStart;
+                        const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesFirst;
 
-                        if(0 != pSplittingRange->m_cUnsplittablePriorItems) {
+                        if(0 != pSplittingRange->m_cUnsplittableLowValues) {
                            // if it's zero then it's an implicit cut and we shouldn't put one there, 
                            // otherwise put in the cut
                            const FloatEbmType * const pCut = pSplittableValuesStart;
-                           EBM_ASSERT(singleFeatureValues < pCut);
-                           EBM_ASSERT(pCut < singleFeatureValues + countInstances);
+                           EBM_ASSERT(featureValues < pCut);
+                           EBM_ASSERT(pCut < featureValues + countSamples);
                            const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                            *pCutPointsLowerBoundInclusive = cut;
                            ++pCutPointsLowerBoundInclusive;
@@ -2933,8 +2942,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                            const size_t iVal = pSplitPoints->m_iVal;
                            if(k_illegalIndex != iVal) {
                               const FloatEbmType * const pCut = pSplittableValuesStart + iVal;
-                              EBM_ASSERT(singleFeatureValues < pCut);
-                              EBM_ASSERT(pCut < singleFeatureValues + countInstances);
+                              EBM_ASSERT(featureValues < pCut);
+                              EBM_ASSERT(pCut < featureValues + countSamples);
                               const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                               *pCutPointsLowerBoundInclusive = cut;
                               ++pCutPointsLowerBoundInclusive;
@@ -2943,13 +2952,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                            pSplitPoints = pNext;
                         }
 
-                        if(0 != pSplittingRange->m_cUnsplittableSubsequentItems) {
+                        if(0 != pSplittingRange->m_cUnsplittableHighValues) {
                            // if it's zero then it's an implicit cut and we shouldn't put one there, 
                            // otherwise put in the cut
                            const FloatEbmType * const pCut = 
-                              pSplittableValuesStart + pSplittingRange->m_cSplittableItems;
-                           EBM_ASSERT(singleFeatureValues < pCut);
-                           EBM_ASSERT(pCut < singleFeatureValues + countInstances);
+                              pSplittableValuesStart + pSplittingRange->m_cSplittableValues;
+                           EBM_ASSERT(featureValues < pCut);
+                           EBM_ASSERT(pCut < featureValues + countSamples);
                            const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                            *pCutPointsLowerBoundInclusive = cut;
                            ++pCutPointsLowerBoundInclusive;
@@ -2967,23 +2976,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      // we don't have to make any hard decisions, but we do have to be careful of the scenarios
                      // where some of our cuts are implicit
 
-                     if(0 != pSplittingRange->m_cUnsplittablePriorItems) {
+                     if(0 != pSplittingRange->m_cUnsplittableLowValues) {
                         // if it's zero then it's an implicit cut and we shouldn't put one there, 
                         // otherwise put in the cut
-                        const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesStart;
-                        EBM_ASSERT(singleFeatureValues < pCut);
-                        EBM_ASSERT(pCut < singleFeatureValues + countInstances);
+                        const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesFirst;
+                        EBM_ASSERT(featureValues < pCut);
+                        EBM_ASSERT(pCut < featureValues + countSamples);
                         const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                         *pCutPointsLowerBoundInclusive = cut;
                         ++pCutPointsLowerBoundInclusive;
                      }
-                     if(0 != pSplittingRange->m_cUnsplittableSubsequentItems) {
+                     if(0 != pSplittingRange->m_cUnsplittableHighValues) {
                         // if it's zero then it's an implicit cut and we shouldn't put one there, 
                         // otherwise put in the cut
                         const FloatEbmType * const pCut = 
-                           pSplittingRange->m_pSplittableValuesStart + pSplittingRange->m_cSplittableItems;
-                        EBM_ASSERT(singleFeatureValues < pCut);
-                        EBM_ASSERT(pCut < singleFeatureValues + countInstances);
+                           pSplittingRange->m_pSplittableValuesFirst + pSplittingRange->m_cSplittableValues;
+                        EBM_ASSERT(featureValues < pCut);
+                        EBM_ASSERT(pCut < featureValues + countSamples);
                         const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                         *pCutPointsLowerBoundInclusive = cut;
                         ++pCutPointsLowerBoundInclusive;
@@ -2996,18 +3005,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                      // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
                      // be handled above
-                     EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideMax);
+                     EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMax);
 
                      // if one side or the other was an implicit split, then we have zero splits left after
                      // the implicit split is accounted for, so do nothing
-                     if(0 != pSplittingRange->m_cUnsplittableEitherSideMin) {
+                     if(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
                         // even though we could reduce our squared error length more, it probably makes sense to 
                         // include a little bit of our available numbers on one long range and the other, so let's put
                         // the cut in the middle and only make the low/high decision to settle long-ish ranges
                         // in the center
 
-                        const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesStart;
-                        const size_t cSplittableItems = pSplittingRange->m_cSplittableItems;
+                        const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesFirst;
+                        const size_t cSplittableItems = pSplittingRange->m_cSplittableValues;
                         if(0 != cSplittableItems) {
                            // if m_cSplittableItems then we get bumped into the neighbour jumps object for our
                            // unsplittable range above, and the next value is way far away from our current splitting
@@ -3016,23 +3025,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                            pCut += cSplittableItems >> 1;
 
                            const NeighbourJump * const pNeighbourJump =
-                              &aNeighbourJumps[pCut - singleFeatureValues];
+                              &aNeighbourJumps[pCut - featureValues];
 
-                           const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesStart - singleFeatureValues);
-                           const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesStart + 
-                              cSplittableItems - singleFeatureValues - pNeighbourJump->m_iStartNext;
+                           const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesFirst - featureValues);
+                           const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesFirst + 
+                              cSplittableItems - featureValues - pNeighbourJump->m_iStartNext;
 
                            if(cDistanceHigh < cDistanceLow) {
-                              pCut = singleFeatureValues + pNeighbourJump->m_iStartCur;
+                              pCut = featureValues + pNeighbourJump->m_iStartCur;
                            } else if(cDistanceLow < cDistanceHigh) {
-                              pCut = singleFeatureValues + pNeighbourJump->m_iStartNext;
+                              pCut = featureValues + pNeighbourJump->m_iStartNext;
                            } else {
                               EBM_ASSERT(cDistanceHigh == cDistanceLow);
                               // TODO: for now be lazy and just use the low one, but eventually try and get symetry from order
                               // inversion we should next try and use the distance to the outer splitting range border
                               // then if that's still equal to the full array border, and if that's still equal
                               // then pick it randomly
-                              pCut = singleFeatureValues + pNeighbourJump->m_iStartCur;
+                              pCut = featureValues + pNeighbourJump->m_iStartCur;
                            }
                         }
                         const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
@@ -3042,7 +3051,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   }
                }
 
-               *countCutPoints = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusive;
+               *countCutPointsReturn = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
 
                free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
 
@@ -3057,8 +3066,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       }
    }
    LOG_N(TraceLevelInfo, "Exited GenerateQuantileCutPoints countCutPoints=%" IntEbmTypePrintf ", isMissing=%" IntEbmTypePrintf,
-      *countCutPoints,
-      *isMissing
+      *countCutPointsReturn,
+      *isMissingPresentReturn
    );
    return 0;
 
@@ -3068,23 +3077,23 @@ exit_error:;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 ) {
-   UNUSED(countInstances);
-   UNUSED(singleFeatureValues);
-   UNUSED(countMaximumBins);
-   UNUSED(cutPointsLowerBoundInclusive);
-   UNUSED(countCutPoints);
-   UNUSED(isMissing);
-   UNUSED(minValue);
-   UNUSED(maxValue);
+   UNUSED(countSamples);
+   UNUSED(featureValues);
+   UNUSED(countBinsMax);
+   UNUSED(countCutPointsReturn);
+   UNUSED(cutPointsLowerBoundInclusiveReturn);
+   UNUSED(isMissingPresentReturn);
+   UNUSED(minValueReturn);
+   UNUSED(maxValueReturn);
 
    // TODO: IMPLEMENT
 
@@ -3092,23 +3101,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 ) {
-   UNUSED(countInstances);
-   UNUSED(singleFeatureValues);
-   UNUSED(countMaximumBins);
-   UNUSED(cutPointsLowerBoundInclusive);
-   UNUSED(countCutPoints);
-   UNUSED(isMissing);
-   UNUSED(minValue);
-   UNUSED(maxValue);
+   UNUSED(countSamples);
+   UNUSED(featureValues);
+   UNUSED(countBinsMax);
+   UNUSED(countCutPointsReturn);
+   UNUSED(cutPointsLowerBoundInclusiveReturn);
+   UNUSED(isMissingPresentReturn);
+   UNUSED(minValueReturn);
+   UNUSED(maxValueReturn);
 
    // TODO: IMPLEMENT
 
@@ -3116,31 +3125,31 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
+   IntEbmType countSamples,
+   const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType countInstances,
-   const FloatEbmType * singleFeatureValues,
-   IntEbmType * singleFeatureDiscretized
+   IntEbmType * discretizedReturn
 ) {
+   EBM_ASSERT(0 <= countSamples);
+   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(countSamples))); // this needs to point to real memory, otherwise it's invalid
+   EBM_ASSERT(0 == countSamples || nullptr != featureValues);
    EBM_ASSERT(0 <= countCutPoints);
    EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(countCutPoints))); // this needs to point to real memory, otherwise it's invalid
-   EBM_ASSERT(0 == countInstances || 0 == countCutPoints || nullptr != cutPointsLowerBoundInclusive);
-   EBM_ASSERT(0 <= countInstances);
-   EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(countInstances))); // this needs to point to real memory, otherwise it's invalid
-   EBM_ASSERT(0 == countInstances || nullptr != singleFeatureValues);
-   EBM_ASSERT(0 == countInstances || nullptr != singleFeatureDiscretized);
+   EBM_ASSERT(0 == countSamples || 0 == countCutPoints || nullptr != cutPointsLowerBoundInclusive);
+   EBM_ASSERT(0 == countSamples || nullptr != discretizedReturn);
 
-   if(IntEbmType { 0 } < countInstances) {
+   if(IntEbmType { 0 } < countSamples) {
       const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 #ifndef NDEBUG
       for(size_t iDebug = 1; iDebug < cCutPoints; ++iDebug) {
          EBM_ASSERT(cutPointsLowerBoundInclusive[iDebug - 1] < cutPointsLowerBoundInclusive[iDebug]);
       }
 # endif // NDEBUG
-      const size_t cInstances = static_cast<size_t>(countInstances);
-      const FloatEbmType * pValue = singleFeatureValues;
-      const FloatEbmType * const pValueEnd = singleFeatureValues + cInstances;
-      IntEbmType * pDiscretized = singleFeatureDiscretized;
+      const size_t cInstances = static_cast<size_t>(countSamples);
+      const FloatEbmType * pValue = featureValues;
+      const FloatEbmType * const pValueEnd = featureValues + cInstances;
+      IntEbmType * pDiscretized = discretizedReturn;
 
       if(size_t { 0 } == cCutPoints) {
          do {

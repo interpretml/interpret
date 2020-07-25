@@ -842,7 +842,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    IntEbmType indexFeatureCombination,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForChildSplitMin,
+   IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricReturn
@@ -874,7 +874,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       indexFeatureCombination, 
       learningRate, 
       countTreeSplitsMax, 
-      countInstancesRequiredForChildSplitMin, 
+      countSamplesRequiredForChildSplitMin, 
       trainingWeights, 
       validationWeights, 
       &gain

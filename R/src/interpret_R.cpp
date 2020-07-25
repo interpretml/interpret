@@ -798,7 +798,7 @@ SEXP BoostingStep_R(
    SEXP indexFeatureCombination,
    SEXP learningRate,
    SEXP countTreeSplitsMax,
-   SEXP countInstancesRequiredForChildSplitMin,
+   SEXP countSamplesRequiredForChildSplitMin,
    SEXP trainingWeights,
    SEXP validationWeights
 ) {
@@ -806,7 +806,7 @@ SEXP BoostingStep_R(
    EBM_ASSERT(nullptr != indexFeatureCombination);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countTreeSplitsMax);
-   EBM_ASSERT(nullptr != countInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != validationWeights);
 
@@ -854,20 +854,20 @@ SEXP BoostingStep_R(
       cTreeSplitsMax = static_cast<IntEbmType>(doubleCountTreeSplitsMax);
    }
 
-   if(!IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countInstancesRequiredForChildSplitMin)[0];
+   double doubleCountInstancesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
    IntEbmType cInstancesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
    if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) || 
       static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
    ) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForChildSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin overflow");
       cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForChildSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin underflow");
       cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
@@ -1122,7 +1122,7 @@ SEXP InitializeInteractionClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cInstances);
 
    if(IsMultiplyError(cInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cFeatures)");
@@ -1152,7 +1152,7 @@ SEXP InitializeInteractionClassification_R(
       static_cast<IntEbmType>(cTargetClasses), 
       countFeatures, 
       aFeatures, 
-      countInstances, 
+      countSamples, 
       aBinnedData, 
       aTargets, 
       aPredictorScores
@@ -1203,7 +1203,7 @@ SEXP InitializeInteractionRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cInstances);
 
    if(IsMultiplyError(cInstances, cFeatures)) {
       LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
@@ -1225,7 +1225,7 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countSamples, aBinnedData, aTargets, aPredictorScores);
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;
@@ -1243,11 +1243,11 @@ SEXP InitializeInteractionRegression_R(
 SEXP GetInteractionScore_R(
    SEXP ebmInteraction,
    SEXP featureIndexes
-   SEXP countInstancesRequiredForChildSplitMin,
+   SEXP countSamplesRequiredForChildSplitMin,
    ) {
    EBM_ASSERT(nullptr != ebmInteraction); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
-   EBM_ASSERT(nullptr != countInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
    if(EXTPTRSXP != TYPEOF(ebmInteraction)) {
       LOG_0(TraceLevelError, "ERROR GetInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
@@ -1267,20 +1267,20 @@ SEXP GetInteractionScore_R(
    }
    IntEbmType countFeaturesInCombination = static_cast<IntEbmType>(cFeaturesInCombination);
 
-   if(!IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R !IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
+      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countInstancesRequiredForChildSplitMin)[0];
+   double doubleCountInstancesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
    IntEbmType cInstancesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
    if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) ||
       static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
       ) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countInstancesRequiredForChildSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
       cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countInstancesRequiredForChildSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
       cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
