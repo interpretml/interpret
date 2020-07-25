@@ -1179,7 +1179,7 @@ public:
       }
 
       FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
-      const IntEbmType ret = GetInteractionScore(
+      const IntEbmType ret = CalculateInteractionScore(
          m_pEbmInteraction, 
          featuresInGroup.size(), 
          0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0], 
@@ -2739,15 +2739,15 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       exit(1);
    }
 
-   constexpr size_t cMaximumBins = 10;
+   constexpr size_t cBinsMax = 10;
    constexpr IntEbmType countSamplesPerBinMin = 3;
    constexpr size_t cSamples = 100;
    constexpr size_t maxRandomVal = 70;
    const size_t cLongBinLength = static_cast<size_t>(
-      std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cMaximumBins))
+      std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cBinsMax))
    );
    FloatEbmType featureValues[cSamples];
-   FloatEbmType cutPointsLowerBoundInclusive[cMaximumBins - 1];
+   FloatEbmType cutPointsLowerBoundInclusive[cBinsMax - 1];
 
    for(int iIteration = 0; iIteration < 30000; ++iIteration) {
       memset(featureValues, 0, sizeof(featureValues));
@@ -2786,7 +2786,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       IntEbmType ret = GenerateQuantileCutPoints(
          static_cast<IntEbmType>(cSamples),
          featureValues,
-         static_cast<IntEbmType>(cMaximumBins),
+         static_cast<IntEbmType>(cBinsMax),
          countSamplesPerBinMin,
          &countCutPoints,
          cutPointsLowerBoundInclusive,
@@ -2910,21 +2910,21 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
 
 TEST_CASE("null interactionScoreReturn, interaction, regression") {
    PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, binary") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
 TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
-   const IntEbmType ret = GetInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
+   const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }

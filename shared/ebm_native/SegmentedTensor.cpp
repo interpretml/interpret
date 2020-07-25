@@ -269,7 +269,7 @@ bool SegmentedTensor::Expand(const size_t * const acValuesPerDimension) {
       pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
       const size_t cValuesPerDimension = *pcValuesPerDimension;
       // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes 
-      // and in GetInteractionScore for interactions
+      // and in CalculateInteractionScore for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));
       cNewValues *= cValuesPerDimension;
       const size_t cNewDivisions = cValuesPerDimension - 1;
@@ -524,7 +524,7 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
       }
       pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
       // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes and in 
-      // GetInteractionScore for interactions
+      // CalculateInteractionScore for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1));
       cNewValues *= cNewSingleDimensionDivisions + 1;
 

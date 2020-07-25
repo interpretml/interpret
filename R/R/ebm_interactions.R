@@ -38,9 +38,9 @@ get_interaction_score <- function(ebm_interaction, feature_indexes, n_samples_re
    feature_indexes <- as.double(feature_indexes)
    n_samples_required_for_child_split_min <- as.double(n_samples_required_for_child_split_min)
 
-   interaction_score <- .Call(GetInteractionScore_R, ebm_interaction, feature_indexes, n_samples_required_for_child_split_min)
+   interaction_score <- .Call(CalculateInteractionScore_R, ebm_interaction, feature_indexes, n_samples_required_for_child_split_min)
    if(is.null(interaction_score)) {
-      stop("error in GetInteractionScore_R")
+      stop("error in CalculateInteractionScore_R")
    }
    return(interaction_score)
 }

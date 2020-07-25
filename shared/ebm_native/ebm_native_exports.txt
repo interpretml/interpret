@@ -11,7 +11,7 @@
       FreeBoosting;
       InitializeInteractionClassification;
       InitializeInteractionRegression;
-      GetInteractionScore;
+      CalculateInteractionScore;
       FreeInteraction;
       GenerateQuantileCutPoints;
       GenerateImprovedEqualWidthCutPoints;

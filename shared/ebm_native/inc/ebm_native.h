@@ -378,8 +378,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
-// TODO: change this to CalculateInteractionScore because it's more work internally than a "Get"
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    PEbmInteraction ebmInteraction, 
    IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 

@@ -260,7 +260,7 @@ class Native:
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
-        self.lib.GetInteractionScore.argtypes = [
+        self.lib.CalculateInteractionScore.argtypes = [
             # void * ebmInteraction
             ct.c_void_p,
             # int64_t countFeaturesInGroup
@@ -272,7 +272,7 @@ class Native:
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.GetInteractionScore.restype = ct.c_longlong
+        self.lib.CalculateInteractionScore.restype = ct.c_longlong
 
         self.lib.FreeInteraction.argtypes = [
             # void * ebmInteraction
@@ -962,7 +962,7 @@ class NativeEBMInteraction:
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        return_code = self._native.lib.GetInteractionScore(
+        return_code = self._native.lib.CalculateInteractionScore(
             self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
@@ -970,7 +970,7 @@ class NativeEBMInteraction:
             ct.byref(score),
         )
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in GetInteractionScore")
+            raise Exception("Out of memory in CalculateInteractionScore")
 
         log.info("Fast interaction score end")
         return score.value

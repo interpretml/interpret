@@ -1240,7 +1240,7 @@ SEXP InitializeInteractionRegression_R(
    }
 }
 
-SEXP GetInteractionScore_R(
+SEXP CalculateInteractionScore_R(
    SEXP ebmInteraction,
    SEXP featureIndexes
    SEXP countSamplesRequiredForChildSplitMin,
@@ -1250,12 +1250,12 @@ SEXP GetInteractionScore_R(
    EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
    if(EXTPTRSXP != TYPEOF(ebmInteraction)) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
       return R_NilValue;
    }
    EbmInteractionState * pEbmInteraction = static_cast<EbmInteractionState *>(R_ExternalPtrAddr(ebmInteraction));
    if(nullptr == pEbmInteraction) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R nullptr == pEbmInteraction");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pEbmInteraction");
       return R_NilValue;
    }
 
@@ -1268,7 +1268,7 @@ SEXP GetInteractionScore_R(
    IntEbmType countFeaturesInGroup = static_cast<IntEbmType>(cFeaturesInGroup);
 
    if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
    double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
@@ -1277,18 +1277,18 @@ SEXP GetInteractionScore_R(
    if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
       static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
       ) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
       cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
    } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
       cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
       cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
    FloatEbmType interactionScoreReturn;
-   if(0 != GetInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreReturn)) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R GetInteractionScore returned error code");
+   if(0 != CalculateInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreReturn)) {
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
 
@@ -1314,7 +1314,7 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "FreeBoosting_R", (DL_FUNC)& FreeBoosting_R, 1 },
    { "InitializeInteractionClassification_R", (DL_FUNC)&InitializeInteractionClassification_R, 5 },
    { "InitializeInteractionRegression_R", (DL_FUNC)& InitializeInteractionRegression_R, 4 },
-   { "GetInteractionScore_R", (DL_FUNC)& GetInteractionScore_R, 3 },
+   { "CalculateInteractionScore_R", (DL_FUNC)& CalculateInteractionScore_R, 3 },
    { "FreeInteraction_R", (DL_FUNC)& FreeInteraction_R, 1 },
    { NULL, NULL, 0 }
 };
