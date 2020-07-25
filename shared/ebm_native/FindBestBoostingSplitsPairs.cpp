@@ -25,7 +25,7 @@
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses>
 static FloatEbmType SweepMultiDiemensional(
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    size_t * const aiPoint,
    const size_t directionVectorLow,
    const unsigned int iDimensionSweep,
@@ -44,8 +44,8 @@ static FloatEbmType SweepMultiDiemensional(
 
    // TODO : optimize this function
 
-   EBM_ASSERT(1 <= pFeatureCombination->GetCountFeatures());
-   EBM_ASSERT(iDimensionSweep < pFeatureCombination->GetCountFeatures());
+   EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
+   EBM_ASSERT(iDimensionSweep < pFeatureGroup->GetCountFeatures());
    EBM_ASSERT(0 == (directionVectorLow & (size_t { 1 } << iDimensionSweep)));
 
    const ptrdiff_t learningTypeOrCountTargetClasses = GET_LEARNING_TYPE_OR_COUNT_TARGET_CLASSES(
@@ -62,7 +62,7 @@ static FloatEbmType SweepMultiDiemensional(
    *piBin = 0;
    size_t directionVectorHigh = directionVectorLow | size_t { 1 } << iDimensionSweep;
 
-   const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionSweep].m_pFeature->GetCountBins();
+   const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionSweep].m_pFeature->GetCountBins();
    EBM_ASSERT(2 <= cBins);
 
    size_t iBestCut = 0;
@@ -84,7 +84,7 @@ static FloatEbmType SweepMultiDiemensional(
 
       TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets,
          aiPoint,
          directionVectorLow,
@@ -97,7 +97,7 @@ static FloatEbmType SweepMultiDiemensional(
       if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLow->GetCountInstancesInBucket())) {
          TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
             runtimeLearningTypeOrCountTargetClasses,
-            pFeatureCombination,
+            pFeatureGroup,
             aHistogramBuckets,
             aiPoint,
             directionVectorHigh,
@@ -182,7 +182,7 @@ public:
 
    static bool Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
       HistogramBucketBase * const pTotalBase,
@@ -218,8 +218,8 @@ public:
 
       FloatEbmType splittingScore;
 
-      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->GetCountBins();
+      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
       EBM_ASSERT(2 <= cBinsDimension1);
       EBM_ASSERT(2 <= cBinsDimension2);
 
@@ -276,7 +276,7 @@ public:
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 5);
          const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
-            pFeatureCombination,
+            pFeatureGroup,
             aiStart,
             0x0,
             1,
@@ -304,7 +304,7 @@ public:
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 9);
             const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
-               pFeatureCombination,
+               pFeatureGroup,
                aiStart,
                0x1,
                1,
@@ -382,7 +382,7 @@ public:
             GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 17);
          const FloatEbmType splittingScoreNew1 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
             aHistogramBuckets,
-            pFeatureCombination,
+            pFeatureGroup,
             aiStart,
             0x0,
             0,
@@ -410,7 +410,7 @@ public:
                GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 21);
             const FloatEbmType splittingScoreNew2 = SweepMultiDiemensional<compilerLearningTypeOrCountTargetClasses>(
                aHistogramBuckets,
-               pFeatureCombination,
+               pFeatureGroup,
                aiStart,
                0x2,
                0,
@@ -778,7 +778,7 @@ public:
 
    INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const pTotal,
@@ -800,7 +800,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return FindBestBoostingSplitPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             cInstancesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             pTotal,
@@ -815,7 +815,7 @@ public:
       } else {
          return FindBestBoostingSplitPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             cInstancesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             pTotal,
@@ -839,7 +839,7 @@ public:
 
    INLINE_ALWAYS static bool Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const pTotal,
@@ -858,7 +858,7 @@ public:
 
       return FindBestBoostingSplitPairsInternal<k_dynamicClassification>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
@@ -875,7 +875,7 @@ public:
 
 extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const size_t cInstancesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const pTotal,
@@ -892,7 +892,7 @@ extern bool FindBestBoostingSplitPairs(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return FindBestBoostingSplitPairsTarget<2>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
@@ -908,7 +908,7 @@ extern bool FindBestBoostingSplitPairs(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return FindBestBoostingSplitPairsInternal<k_regression>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,

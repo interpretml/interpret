@@ -11,7 +11,7 @@
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "EbmStatisticUtils.h"
-// FeatureCombination.h depends on FeatureInternal.h
+// FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetBoosting.h"
@@ -28,13 +28,13 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
@@ -58,12 +58,12 @@ public:
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
 
-         const FloatEbmType * pValues = aModelFeatureCombinationUpdateTensor;
+         const FloatEbmType * pValues = aModelFeatureGroupUpdateTensor;
          FloatEbmType * pExpVector = aExpVector;
          FloatEbmType sumExp = FloatEbmType { 0 };
          size_t iVector = 0;
          do {
-            // TODO : because there is only one bin for a zero feature feature combination, we could move these values to the stack where the
+            // TODO : because there is only one bin for a zero feature feature group, we could move these values to the stack where the
             // compiler could reason about their visibility and optimize small arrays into registers
             const FloatEbmType smallChangeToPredictorScores = *pValues;
             ++pValues;
@@ -117,9 +117,9 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
@@ -127,7 +127,7 @@ public:
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
       const FloatEbmType * const pPredictorScoresEnd = pPredictorScores + cInstances;
-      const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[0];
+      const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[0];
       do {
          size_t targetData = static_cast<size_t>(*pTargetData);
          ++pTargetData;
@@ -151,15 +151,15 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
-      const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[0];
+      const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[0];
       do {
          // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
          const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
@@ -177,7 +177,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -189,14 +189,14 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingZeroFeatures<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pEbmBoostingState,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureGroupUpdateTensor
          );
       } else {
          ApplyModelUpdateTrainingZeroFeaturesTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pEbmBoostingState,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureGroupUpdateTensor
          );
       }
    }
@@ -210,7 +210,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -219,7 +219,7 @@ public:
 
       ApplyModelUpdateTrainingZeroFeatures<k_dynamicClassification>::Func(
          pEbmBoostingState,
-         aModelFeatureCombinationUpdateTensor
+         aModelFeatureGroupUpdateTensor
       );
    }
 };
@@ -232,14 +232,14 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClasses), "must be classification");
       static_assert(!IsBinaryClassification(compilerLearningTypeOrCountTargetClasses), "must be multiclass");
 
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
       FloatEbmType * const aTempFloatVector = pEbmBoostingState->GetCachedThreadResources()->GetTempFloatVector();
 
       FloatEbmType aLocalExpVector[
@@ -254,11 +254,11 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
+      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
-         pFeatureCombination->GetCountItemsPerBitPackedDataUnit()
+         pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
       );
       EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
       EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -268,7 +268,7 @@ public:
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
 
@@ -296,7 +296,7 @@ public:
             ++pTargetData;
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
-            const FloatEbmType * pValues = &aModelFeatureCombinationUpdateTensor[iTensorBin * cVectorLength];
+            const FloatEbmType * pValues = &aModelFeatureGroupUpdateTensor[iTensorBin * cVectorLength];
             FloatEbmType * pExpVector = aExpVector;
             FloatEbmType sumExp = FloatEbmType { 0 };
             size_t iVector = 0;
@@ -363,15 +363,15 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
 
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
+      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -385,7 +385,7 @@ public:
       const size_t maskBits = std::numeric_limits<size_t>::max() >> (k_cBitsForStorageType - cBitsPerItemMax);
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
       const StorageDataType * pTargetData = pTrainingSet->GetTargetDataPointer();
       FloatEbmType * pPredictorScores = pTrainingSet->GetPredictorScores();
 
@@ -414,7 +414,7 @@ public:
 
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPredictorScores = aModelFeatureCombinationUpdateTensor[iTensorBin];
+            const FloatEbmType smallChangeToPredictorScores = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType predictorScore = *pPredictorScores + smallChangeToPredictorScores;
             *pPredictorScores = predictorScore;
@@ -446,15 +446,15 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
-      DataSetByFeatureCombination * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
+      DataSetByFeatureGroup * const pTrainingSet = pEbmBoostingState->GetTrainingSet();
 
       const size_t cInstances = pTrainingSet->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
-      EBM_ASSERT(0 < pFeatureCombination->GetCountFeatures());
+      EBM_ASSERT(0 < pFeatureGroup->GetCountFeatures());
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
@@ -469,7 +469,7 @@ public:
 
 
       FloatEbmType * pResidualError = pTrainingSet->GetResidualPointer();
-      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureCombination);
+      const StorageDataType * pInputData = pTrainingSet->GetInputDataPointer(pFeatureGroup);
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cInstances;
@@ -493,7 +493,7 @@ public:
          do {
             const size_t iTensorBin = maskBits & iTensorBinCombined;
 
-            const FloatEbmType smallChangeToPrediction = aModelFeatureCombinationUpdateTensor[iTensorBin];
+            const FloatEbmType smallChangeToPrediction = aModelFeatureGroupUpdateTensor[iTensorBin];
             // this will apply a small fix to our existing TrainingPredictorScores, either positive or negative, whichever is needed
             const FloatEbmType residualError = EbmStatistics::ComputeResidualErrorRegression(*pResidualError - smallChangeToPrediction);
 
@@ -521,8 +521,8 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -534,16 +534,16 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       } else {
          ApplyModelUpdateTrainingNormalTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       }
    }
@@ -557,8 +557,8 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -567,8 +567,8 @@ public:
 
       ApplyModelUpdateTrainingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor
+         pFeatureGroup,
+         aModelFeatureGroupUpdateTensor
       );
    }
 };
@@ -581,10 +581,10 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -592,8 +592,8 @@ public:
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       } else {
          ApplyModelUpdateTrainingSIMDPacking<
@@ -601,8 +601,8 @@ public:
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       }
    }
@@ -616,15 +616,15 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
-      EBM_ASSERT(1 <= pFeatureCombination->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureCombination->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       ApplyModelUpdateTrainingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor
+         pFeatureGroup,
+         aModelFeatureGroupUpdateTensor
       );
    }
 };
@@ -637,8 +637,8 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(compilerLearningTypeOrCountTargetClassesPossible), "compilerLearningTypeOrCountTargetClassesPossible needs to be a classification");
       static_assert(compilerLearningTypeOrCountTargetClassesPossible <= k_cCompilerOptimizedTargetClassesMax, "We can't have this many items in a data pack.");
@@ -653,16 +653,16 @@ public:
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       } else {
          ApplyModelUpdateTrainingSIMDTarget<
             compilerLearningTypeOrCountTargetClassesPossible + 1
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
-            aModelFeatureCombinationUpdateTensor
+            pFeatureGroup,
+            aModelFeatureGroupUpdateTensor
          );
       }
    }
@@ -676,8 +676,8 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
-      const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+      const FeatureGroup * const pFeatureGroup,
+      const FloatEbmType * const aModelFeatureGroupUpdateTensor
    ) {
       static_assert(IsClassification(k_cCompilerOptimizedTargetClassesMax), "k_cCompilerOptimizedTargetClassesMax needs to be a classification");
 
@@ -689,32 +689,32 @@ public:
          k_cItemsPerBitPackedDataUnitMax
       >::Func(
          pEbmBoostingState,
-         pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor
+         pFeatureGroup,
+         aModelFeatureGroupUpdateTensor
       );
    }
 };
 
 extern void ApplyModelUpdateTraining(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   const FeatureGroup * const pFeatureGroup,
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor
 ) {
    LOG_0(TraceLevelVerbose, "Entered ApplyModelUpdateTraining");
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   if(0 == pFeatureCombination->GetCountFeatures()) {
+   if(0 == pFeatureGroup->GetCountFeatures()) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          ApplyModelUpdateTrainingZeroFeaturesTarget<2>::Func(
             pEbmBoostingState,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureGroupUpdateTensor
          );
       } else {
          EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
          ApplyModelUpdateTrainingZeroFeatures<k_regression>::Func(
             pEbmBoostingState,
-            aModelFeatureCombinationUpdateTensor
+            aModelFeatureGroupUpdateTensor
          );
       }
    } else {
@@ -734,8 +734,8 @@ extern void ApplyModelUpdateTraining(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             ApplyModelUpdateTrainingSIMDTarget<2>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
-               aModelFeatureCombinationUpdateTensor
+               pFeatureGroup,
+               aModelFeatureGroupUpdateTensor
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
@@ -744,8 +744,8 @@ extern void ApplyModelUpdateTraining(
                k_cItemsPerBitPackedDataUnitMax
             >::Func(
                pEbmBoostingState,
-               pFeatureCombination,
-               aModelFeatureCombinationUpdateTensor
+               pFeatureGroup,
+               aModelFeatureGroupUpdateTensor
             );
          }
       } else {
@@ -758,15 +758,15 @@ extern void ApplyModelUpdateTraining(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             ApplyModelUpdateTrainingNormalTarget<2>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
-               aModelFeatureCombinationUpdateTensor
+               pFeatureGroup,
+               aModelFeatureGroupUpdateTensor
             );
          } else {
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             ApplyModelUpdateTrainingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
-               aModelFeatureCombinationUpdateTensor
+               pFeatureGroup,
+               aModelFeatureGroupUpdateTensor
             );
          }
       }

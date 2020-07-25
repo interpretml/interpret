@@ -12,41 +12,41 @@
 // very independent includes
 #include "Logging.h" // EBM_ASSERT & LOG
 
-// FeatureCombination.h depends on FeatureInternal.h
+// FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 
 #include "Booster.h"
 
 extern void ApplyModelUpdateTraining(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   const FeatureGroup * const pFeatureGroup,
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor
 );
 
 extern FloatEbmType ApplyModelUpdateValidation(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor
+   const FeatureGroup * const pFeatureGroup,
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor
 );
 
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
+static IntEbmType ApplyModelFeatureGroupUpdateInternal(
    EbmBoostingState * const pEbmBoostingState,
-   const size_t iFeatureCombination,
-   const FloatEbmType * const aModelFeatureCombinationUpdateTensor,
+   const size_t iFeatureGroup,
+   const FloatEbmType * const aModelFeatureGroupUpdateTensor,
    FloatEbmType * const pValidationMetricReturn
 ) {
-   LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureCombinationUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Entered ApplyModelFeatureGroupUpdateInternal");
 
-   // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), 
+   // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pEbmBoostingState->GetCurrentModel());
-   // m_apCurrentModel can be null if there are no featureCombinations (but we have an feature combination index), 
+   // m_apCurrentModel can be null if there are no featureGroups (but we have an feature group index), 
    // or if the target has 1 or 0 classes (which we check before calling this function), so it shouldn't be possible to be null
    EBM_ASSERT(nullptr != pEbmBoostingState->GetBestModel());
-   EBM_ASSERT(nullptr != aModelFeatureCombinationUpdateTensor); // aModelFeatureCombinationUpdateTensor is checked for nullptr before calling this function   
+   EBM_ASSERT(nullptr != aModelFeatureGroupUpdateTensor); // aModelFeatureGroupUpdateTensor is checked for nullptr before calling this function   
 
    // our caller can give us one of these bad types of inputs:
    //  1) NaN values
@@ -61,15 +61,15 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
    // overlfows and gets converted to the maximum value which will mean the metric won't be changing or improving after that.
    // This is an acceptable compromise.  We protect our models since the user might want to extract them AFTER we overlfow our measurment metric
    // so we don't want to overflow the values to NaN or +-infinity there, and it's very cheap for us to check for overflows when applying the model
-   pEbmBoostingState->GetCurrentModel()[iFeatureCombination]->AddExpandedWithBadValueProtection(aModelFeatureCombinationUpdateTensor);
+   pEbmBoostingState->GetCurrentModel()[iFeatureGroup]->AddExpandedWithBadValueProtection(aModelFeatureGroupUpdateTensor);
 
-   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
+   const FeatureGroup * const pFeatureGroup = pEbmBoostingState->GetFeatureGroups()[iFeatureGroup];
 
    if(0 != pEbmBoostingState->GetTrainingSet()->GetCountInstances()) {
       ApplyModelUpdateTraining(
          pEbmBoostingState,
-         pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor
+         pFeatureGroup,
+         aModelFeatureGroupUpdateTensor
       );
    }
 
@@ -88,8 +88,8 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
 
       modelMetric = ApplyModelUpdateValidation(
          pEbmBoostingState,
-         pFeatureCombination,
-         aModelFeatureCombinationUpdateTensor
+         pFeatureGroup,
+         aModelFeatureGroupUpdateTensor
       );
 
       EBM_ASSERT(!std::isnan(modelMetric)); // NaNs can happen, but we should have converted them
@@ -106,13 +106,13 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
          // TODO : in the future don't copy over all SegmentedTensors.  We only need to copy the ones that changed, which we can detect if we 
          // use a linked list and array lookup for the same data structure
          size_t iModel = 0;
-         size_t iModelEnd = pEbmBoostingState->GetCountFeatureCombinations();
+         size_t iModelEnd = pEbmBoostingState->GetCountFeatureGroups();
          do {
             if(pEbmBoostingState->GetBestModel()[iModel]->Copy(*pEbmBoostingState->GetCurrentModel()[iModel])) {
                if(nullptr != pValidationMetricReturn) {
                   *pValidationMetricReturn = FloatEbmType { 0 }; // on error set it to something instead of random bits
                }
-               LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdateInternal with memory allocation error in copy");
+               LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureGroupUpdateInternal with memory allocation error in copy");
                return 1;
             }
             ++iModel;
@@ -123,7 +123,7 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
       *pValidationMetricReturn = modelMetric;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureCombinationUpdateInternal");
+   LOG_0(TraceLevelVerbose, "Exited ApplyModelFeatureGroupUpdateInternal");
    return 0;
 }
 
@@ -131,23 +131,23 @@ static IntEbmType ApplyModelFeatureCombinationUpdateInternal(
 // getting the count.  By making this global we can send a log message incase a bad EbmBoostingState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static unsigned int g_cLogApplyModelFeatureCombinationUpdateParametersMessages = 10;
+static unsigned int g_cLogApplyModelFeatureGroupUpdateParametersMessages = 10;
 
-EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination,
-   const FloatEbmType * modelFeatureCombinationUpdateTensor,
+   IntEbmType indexFeatureGroup,
+   const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricReturn
 ) {
    LOG_COUNTED_N(
-      &g_cLogApplyModelFeatureCombinationUpdateParametersMessages,
+      &g_cLogApplyModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "ApplyModelFeatureCombinationUpdate parameters: ebmBoosting=%p, indexFeatureCombination=%" IntEbmTypePrintf
-      ", modelFeatureCombinationUpdateTensor=%p, validationMetricReturn=%p",
+      "ApplyModelFeatureGroupUpdate parameters: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf
+      ", modelFeatureGroupUpdateTensor=%p, validationMetricReturn=%p",
       static_cast<void *>(ebmBoosting),
-      indexFeatureCombination,
-      static_cast<const void *>(modelFeatureCombinationUpdateTensor),
+      indexFeatureGroup,
+      static_cast<const void *>(modelFeatureGroupUpdateTensor),
       static_cast<void *>(validationMetricReturn)
    );
 
@@ -156,53 +156,53 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       if(LIKELY(nullptr != validationMetricReturn)) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate ebmBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate ebmBoosting cannot be nullptr");
       return 1;
    }
-   if(indexFeatureCombination < 0) {
+   if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != validationMetricReturn)) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination must be positive");
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return 1;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != validationMetricReturn)) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination is too high to index");
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup is too high to index");
       return 1;
    }
-   size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
       if(LIKELY(nullptr != validationMetricReturn)) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureCombinationUpdate indexFeatureCombination above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
       return 1;
    }
-   // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
-   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
+   // this is true because 0 < pEbmBoostingState->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureGroups());
 
    LOG_COUNTED_0(
-      pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages(),
+      pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered ApplyModelFeatureCombinationUpdate"
+      "Entered ApplyModelFeatureGroupUpdate"
    );
-   if(nullptr == modelFeatureCombinationUpdateTensor) {
-      // modelFeatureCombinationUpdateTensor can be nullptr (then nothing gets updated).  This could happen for
+   if(nullptr == modelFeatureGroupUpdateTensor) {
+      // modelFeatureGroupUpdateTensor can be nullptr (then nothing gets updated).  This could happen for
       // if there was only 1 class, meaning we would be 100% confident in the outcome and no tensor would be retunred
       // since we can eliminate one class, and if there's only 1 class then we eliminate all logits
       if(nullptr != validationMetricReturn) {
          *validationMetricReturn = FloatEbmType { 0 };
       }
       LOG_COUNTED_0(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureCombinationUpdate from null modelFeatureCombinationUpdateTensor"
+         "Exited ApplyModelFeatureGroupUpdate from null modelFeatureGroupUpdateTensor"
       );
       return 0;
    }
@@ -215,22 +215,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
          *validationMetricReturn = 0;
       }
       LOG_COUNTED_0(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureCombinationUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
+         "Exited ApplyModelFeatureGroupUpdate from runtimeLearningTypeOrCountTargetClasses <= 1"
       );
       return 0;
    }
 
-   IntEbmType ret = ApplyModelFeatureCombinationUpdateInternal(
+   IntEbmType ret = ApplyModelFeatureGroupUpdateInternal(
       pEbmBoostingState,
-      iFeatureCombination,
-      modelFeatureCombinationUpdateTensor,
+      iFeatureGroup,
+      modelFeatureGroupUpdateTensor,
       validationMetricReturn
    );
    if(0 != ret) {
-      LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureCombinationUpdate returned %" IntEbmTypePrintf, ret);
+      LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureGroupUpdate returned %" IntEbmTypePrintf, ret);
    }
 
    if(nullptr != validationMetricReturn) {
@@ -239,17 +239,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
       EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricReturn);
       LOG_COUNTED_N(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureCombinationUpdate %" FloatEbmTypePrintf, *validationMetricReturn
+         "Exited ApplyModelFeatureGroupUpdate %" FloatEbmTypePrintf, *validationMetricReturn
       );
    } else {
       LOG_COUNTED_0(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureCombinationUpdate.  No validation pointer."
+         "Exited ApplyModelFeatureGroupUpdate.  No validation pointer."
       );
    }
    return ret;

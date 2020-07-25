@@ -13,18 +13,18 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureGroup.h"
 
-class DataSetByFeatureCombination final {
+class DataSetByFeatureGroup final {
    FloatEbmType * m_aResidualErrors;
    FloatEbmType * m_aPredictorScores;
    StorageDataType * m_aTargetData;
    StorageDataType * * m_aaInputData;
    size_t m_cInstances;
-   size_t m_cFeatureCombinations;
+   size_t m_cFeatureGroups;
 
 public:
 
-   DataSetByFeatureCombination() = default; // preserve our POD status
-   ~DataSetByFeatureCombination() = default; // preserve our POD status
+   DataSetByFeatureGroup() = default; // preserve our POD status
+   ~DataSetByFeatureGroup() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
@@ -34,7 +34,7 @@ public:
       m_aTargetData = nullptr;
       m_aaInputData = nullptr;
       m_cInstances = 0;
-      m_cFeatureCombinations = 0;
+      m_cFeatureGroups = 0;
    }
 
    void Destruct();
@@ -43,8 +43,8 @@ public:
       const bool bAllocateResidualErrors, 
       const bool bAllocatePredictorScores, 
       const bool bAllocateTargetData, 
-      const size_t cFeatureCombinations, 
-      const FeatureCombination * const * const apFeatureCombination, 
+      const size_t cFeatureGroups, 
+      const FeatureGroup * const * const apFeatureGroup, 
       const size_t cInstances, 
       const IntEbmType * const aInputDataFrom, 
       const void * const aTargets, 
@@ -69,24 +69,24 @@ public:
       return m_aTargetData;
    }
    // TODO: we can change this to take the GetIndexInputData() value directly, which we get from a loop index
-   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureCombination * const pFeatureCombination) const {
-      EBM_ASSERT(nullptr != pFeatureCombination);
-      EBM_ASSERT(pFeatureCombination->GetIndexInputData() < m_cFeatureCombinations);
+   INLINE_ALWAYS const StorageDataType * GetInputDataPointer(const FeatureGroup * const pFeatureGroup) const {
+      EBM_ASSERT(nullptr != pFeatureGroup);
+      EBM_ASSERT(pFeatureGroup->GetIndexInputData() < m_cFeatureGroups);
       EBM_ASSERT(nullptr != m_aaInputData);
-      return m_aaInputData[pFeatureCombination->GetIndexInputData()];
+      return m_aaInputData[pFeatureGroup->GetIndexInputData()];
    }
    INLINE_ALWAYS size_t GetCountInstances() const {
       return m_cInstances;
    }
-   INLINE_ALWAYS size_t GetCountFeatureCombinations() const {
-      return m_cFeatureCombinations;
+   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
+      return m_cFeatureGroups;
    }
 };
-static_assert(std::is_standard_layout<DataSetByFeatureCombination>::value,
+static_assert(std::is_standard_layout<DataSetByFeatureGroup>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<DataSetByFeatureCombination>::value,
+static_assert(std::is_trivial<DataSetByFeatureGroup>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<DataSetByFeatureCombination>::value,
+static_assert(std::is_pod<DataSetByFeatureGroup>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 #endif // DATA_SET_BY_FEATURE_COMBINATION_H

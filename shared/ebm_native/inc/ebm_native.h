@@ -114,9 +114,9 @@ typedef struct _EbmNativeFeature {
    IntEbmType countBins;
 } EbmNativeFeature;
 
-typedef struct _EbmNativeFeatureCombination {
-   IntEbmType countFeaturesInCombination;
-} EbmNativeFeatureCombination;
+typedef struct _EbmNativeFeatureGroup {
+   IntEbmType countFeaturesInGroup;
+} EbmNativeFeatureGroup;
 
 const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
 const signed char TraceLevelError = 1; // invalid inputs to the C library or assert failure before exit
@@ -156,8 +156,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //   - keeping negated logits would be even more confusing since we want to keep non-negated values for regression models
 //   - when calling InitializeBoostingClassification, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
 //     for consistency with the models if we stored the models as negated, so it would be even more confusing
-//   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature combinations" 
-//     and get the logit for that "feature combination" to sum them all together for the combined logit, and that work is going to be far far greater 
+//   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature groups" 
+//     and get the logit for that "feature group" to sum them all together for the combined logit, and that work is going to be far far greater 
 //     than negating a logit at the end, so whether we keep negated or non-negated logits isn't a big deal computationally
 // - shifting logits
 //   - for multiclass, we only require K-1 logits for a K-class prediction problem.  If we use K logits, then we can shift all the logits together at will 
@@ -287,9 +287,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
-   IntEbmType countFeatureCombinations,
-   const EbmNativeFeatureCombination * featureCombinations,
-   const IntEbmType * featureCombinationIndexes,
+   IntEbmType countFeatureGroups,
+   const EbmNativeFeatureGroup * featureGroups,
+   const IntEbmType * featureGroupIndexes,
    IntEbmType countTrainingInstances,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
@@ -305,9 +305,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features,
-   IntEbmType countFeatureCombinations, 
-   const EbmNativeFeatureCombination * featureCombinations,
-   const IntEbmType * featureCombinationIndexes, 
+   IntEbmType countFeatureGroups, 
+   const EbmNativeFeatureGroup * featureGroups,
+   const IntEbmType * featureGroupIndexes, 
    IntEbmType countTrainingInstances, 
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
@@ -320,9 +320,9 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination, 
+   IntEbmType indexFeatureGroup, 
    FloatEbmType learningRate, 
    IntEbmType countTreeSplitsMax, 
    IntEbmType countSamplesRequiredForChildSplitMin, 
@@ -330,15 +330,15 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    const FloatEbmType * validationWeights, 
    FloatEbmType * gainReturn
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination, 
-   const FloatEbmType * modelFeatureCombinationUpdateTensor,
+   IntEbmType indexFeatureGroup, 
+   const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination,
+   IntEbmType indexFeatureGroup,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
    IntEbmType countSamplesRequiredForChildSplitMin,
@@ -346,13 +346,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricReturn
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination
+   IntEbmType indexFeatureGroup
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination
+   IntEbmType indexFeatureGroup
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
    PEbmBoosting ebmBoosting
@@ -381,7 +381,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
 // TODO: change this to CalculateInteractionScore because it's more work internally than a "Get"
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
    PEbmInteraction ebmInteraction, 
-   IntEbmType countFeaturesInCombination, 
+   IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
    IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreReturn
@@ -494,10 +494,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
 //                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
 //   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
-//                  represenation that is just features without feature combinations.  This representation will be compressed per feature.
+//                  represenation that is just features without feature groups.  This representation will be compressed per feature.
 //                  and will include a reverse index to work back to the original unsorted indexes
 //                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation split indexes and 
-//                  the feature_combinations.  We'll also generate train/validation duplicates of this dataset for interaction detection 
+//                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
 //                  (but for interactions we don't need the reverse index lookup)
 //   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
 //                  features should be sparsified in our own dataset
@@ -552,7 +552,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets.  We only 
 //     need these in memory one at a time
 //   - FOR BOOSTING:
-//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_combination definitions (we already have the feature 
+//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_group definitions (we already have the feature 
 //       definitions in the RawArray)
 //     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
 //       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)

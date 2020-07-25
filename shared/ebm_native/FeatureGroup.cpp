@@ -11,43 +11,43 @@
 #include "FeatureAtomic.h"
 #include "FeatureGroup.h"
 
-FeatureCombination * FeatureCombination::Allocate(const size_t cFeatures, const size_t iFeatureCombination) {
-   const size_t cBytes = GetFeatureCombinationCountBytes(cFeatures);
+FeatureGroup * FeatureGroup::Allocate(const size_t cFeatures, const size_t iFeatureGroup) {
+   const size_t cBytes = GetFeatureGroupCountBytes(cFeatures);
    EBM_ASSERT(0 < cBytes);
-   FeatureCombination * const pFeatureCombination = static_cast<FeatureCombination *>(EbmMalloc<void>(cBytes));
-   if(UNLIKELY(nullptr == pFeatureCombination)) {
+   FeatureGroup * const pFeatureGroup = static_cast<FeatureGroup *>(EbmMalloc<void>(cBytes));
+   if(UNLIKELY(nullptr == pFeatureGroup)) {
       return nullptr;
    }
-   pFeatureCombination->Initialize(cFeatures, iFeatureCombination);
-   return pFeatureCombination;
+   pFeatureGroup->Initialize(cFeatures, iFeatureGroup);
+   return pFeatureGroup;
 }
 
-FeatureCombination ** FeatureCombination::AllocateFeatureCombinations(const size_t cFeatureCombinations) {
-   LOG_0(TraceLevelInfo, "Entered FeatureCombination::AllocateFeatureCombinations");
+FeatureGroup ** FeatureGroup::AllocateFeatureGroups(const size_t cFeatureGroups) {
+   LOG_0(TraceLevelInfo, "Entered FeatureGroup::AllocateFeatureGroups");
 
-   EBM_ASSERT(0 < cFeatureCombinations);
-   FeatureCombination ** const apFeatureCombinations = EbmMalloc<FeatureCombination *>(cFeatureCombinations);
-   if(nullptr != apFeatureCombinations) {
-      for(size_t i = 0; i < cFeatureCombinations; ++i) {
-         apFeatureCombinations[i] = nullptr;
+   EBM_ASSERT(0 < cFeatureGroups);
+   FeatureGroup ** const apFeatureGroups = EbmMalloc<FeatureGroup *>(cFeatureGroups);
+   if(nullptr != apFeatureGroups) {
+      for(size_t i = 0; i < cFeatureGroups; ++i) {
+         apFeatureGroups[i] = nullptr;
       }
    }
 
-   LOG_0(TraceLevelInfo, "Exited FeatureCombination::AllocateFeatureCombinations");
-   return apFeatureCombinations;
+   LOG_0(TraceLevelInfo, "Exited FeatureGroup::AllocateFeatureGroups");
+   return apFeatureGroups;
 }
 
-void FeatureCombination::FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations) {
-   LOG_0(TraceLevelInfo, "Entered FeatureCombination::FreeFeatureCombinations");
-   if(nullptr != apFeatureCombinations) {
-      EBM_ASSERT(0 < cFeatureCombinations);
-      for(size_t i = 0; i < cFeatureCombinations; ++i) {
-         if(nullptr != apFeatureCombinations[i]) {
-            FeatureCombination::Free(apFeatureCombinations[i]);
+void FeatureGroup::FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup ** apFeatureGroups) {
+   LOG_0(TraceLevelInfo, "Entered FeatureGroup::FreeFeatureGroups");
+   if(nullptr != apFeatureGroups) {
+      EBM_ASSERT(0 < cFeatureGroups);
+      for(size_t i = 0; i < cFeatureGroups; ++i) {
+         if(nullptr != apFeatureGroups[i]) {
+            FeatureGroup::Free(apFeatureGroups[i]);
          }
       }
-      free(apFeatureCombinations);
+      free(apFeatureGroups);
    }
-   LOG_0(TraceLevelInfo, "Exited FeatureCombination::FreeFeatureCombinations");
+   LOG_0(TraceLevelInfo, "Exited FeatureGroup::FreeFeatureGroups");
 }
 

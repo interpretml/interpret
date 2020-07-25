@@ -443,7 +443,7 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=main_feature_groups,
+            feature_groups=main_feature_groups,
             X_train=X_train,
             y_train=y_train,
             scores_train=None,
@@ -473,11 +473,11 @@ class BaseCoreEBM:
                 X_train, self.feature_groups_, self.model_, self.intercept_
             )
 
-            iter_feature_combinations = combinations(range(len(self.col_types)), 2)
+            iter_feature_groups = combinations(range(len(self.col_types)), 2)
 
             final_indices, final_scores = NativeHelper.get_interactions(
                 n_interactions=self.interactions,
-                iter_feature_combinations=iter_feature_combinations,
+                iter_feature_groups=iter_feature_groups,
                 model_type=self.model_type,
                 n_classes=self.n_classes_,
                 features=self.features_,
@@ -518,7 +518,7 @@ class BaseCoreEBM:
             model_type=self.model_type,
             n_classes=self.n_classes_,
             features=self.features_,
-            feature_combinations=inter_indices,
+            feature_groups=inter_indices,
             X_train=X_train,
             y_train=y_train,
             scores_train=scores_train,
@@ -617,7 +617,7 @@ class BaseEBM(BaseEstimator):
         #             so (3,2,1) would mean 3 pairs, 2 tripples, 1 quadruple
         # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
         #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
-        # TODO PK v.2 exclude -> exclude feature_combinations, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
+        # TODO PK v.2 exclude -> exclude feature_groups, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions,
         validation_size,
         max_rounds,
@@ -802,14 +802,14 @@ class BaseEBM(BaseEstimator):
             for estimator in estimators:
                 # Discard initial interactions
                 new_model = []
-                new_feature_combinations = []
-                for i, feature_combination in enumerate(estimator.feature_groups_):
-                    if len(feature_combination) != 1:
+                new_feature_groups = []
+                for i, feature_group in enumerate(estimator.feature_groups_):
+                    if len(feature_group) != 1:
                         continue
                     new_model.append(estimator.model_[i])
-                    new_feature_combinations.append(estimator.feature_groups_[i])
+                    new_feature_groups.append(estimator.feature_groups_[i])
                 estimator.model_ = new_model
-                estimator.feature_groups_ = new_feature_combinations
+                estimator.feature_groups_ = new_feature_groups
                 estimator.inter_episode_idx_ = 0
 
             if len(pair_indices) != 0:
@@ -887,7 +887,7 @@ class BaseEBM(BaseEstimator):
 
         if n_classes <= 2:
             # Mean center graphs - only for binary classification and regression
-            scores_gen = EBMUtils.scores_by_feature_combination(
+            scores_gen = EBMUtils.scores_by_feature_group(
                 X, self.feature_groups_, self.additive_terms_
             )
             self._original_term_means_ = []
@@ -915,7 +915,7 @@ class BaseEBM(BaseEstimator):
             self.intercept_ = postprocessed["intercepts"]
 
         # Generate overall importance
-        scores_gen = EBMUtils.scores_by_feature_combination(
+        scores_gen = EBMUtils.scores_by_feature_group(
             X, self.feature_groups_, self.additive_terms_
         )
         self.feature_importances_ = []
@@ -933,21 +933,21 @@ class BaseEBM(BaseEstimator):
 
     def _select_merged_pairs(self, estimators, X, y):
         # TODO PK we really need to use purification before here because it's not really legal to elminate
-        #         a feature combination unless it's average contribution value is zero, and for a pair that
-        #         would mean that the intercepts for both features in the combination were zero, hense purified
+        #         a feature group unless it's average contribution value is zero, and for a pair that
+        #         would mean that the intercepts for both features in the group were zero, hense purified
 
         # Select pairs from base models
-        def score_fn(model_type, X, y, feature_combinations, model, intercept):
+        def score_fn(model_type, X, y, feature_groups, model, intercept):
             if model_type == "classification":
                 prob = EBMUtils.classifier_predict_proba(
-                    X, feature_combinations, model, intercept
+                    X, feature_groups, model, intercept
                 )
                 return (
                     0 if len(y) == 0 else log_loss(y, prob)
                 )  # use logloss to conform consistnetly and for multiclass
             elif model_type == "regression":
                 pred = EBMUtils.regressor_predict(
-                    X, feature_combinations, model, intercept
+                    X, feature_groups, model, intercept
                 )
                 return 0 if len(y) == 0 else mean_squared_error(y, pred)
             else:  # pragma: no cover
@@ -985,7 +985,7 @@ class BaseEBM(BaseEstimator):
                 is_train=False,
             )
 
-            n_base_feature_combinations = len(estimator.feature_groups_) - len(
+            n_base_feature_groups = len(estimator.feature_groups_) - len(
                 estimator.inter_indices_
             )
 
@@ -993,8 +993,8 @@ class BaseEBM(BaseEstimator):
                 estimator.model_type,
                 X_val,
                 y_val,
-                estimator.feature_groups_[:n_base_feature_combinations],
-                estimator.model_[:n_base_feature_combinations],
+                estimator.feature_groups_[:n_base_feature_groups],
+                estimator.model_[:n_base_feature_groups],
                 estimator.intercept_,
             )
             base_backward_score = score_fn(
@@ -1006,7 +1006,7 @@ class BaseEBM(BaseEstimator):
                 estimator.intercept_,
             )
             for pair_idx, pair in enumerate(estimator.inter_indices_):
-                n_full_idx = n_base_feature_combinations + pair_idx
+                n_full_idx = n_base_feature_groups + pair_idx
 
                 pair_freq[pair] += 1
 
@@ -1023,9 +1023,9 @@ class BaseEBM(BaseEstimator):
                     estimator.model_type,
                     X_val,
                     y_val,
-                    estimator.feature_groups_[:n_base_feature_combinations]
+                    estimator.feature_groups_[:n_base_feature_groups]
                     + estimator.feature_groups_[n_full_idx : n_full_idx + 1],
-                    estimator.model_[:n_base_feature_combinations]
+                    estimator.model_[:n_base_feature_groups]
                     + estimator.model_[n_full_idx : n_full_idx + 1],
                     estimator.intercept_,
                 )
@@ -1102,9 +1102,9 @@ class BaseEBM(BaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for feature_combination_index, _ in enumerate(self.feature_groups_):
-            errors = self.term_standard_deviations_[feature_combination_index]
-            scores = self.additive_terms_[feature_combination_index]
+        for feature_group_index, _ in enumerate(self.feature_groups_):
+            errors = self.term_standard_deviations_[feature_group_index]
+            scores = self.additive_terms_[feature_group_index]
 
             lower_bound = min(lower_bound, np.min(scores - errors))
             upper_bound = max(upper_bound, np.max(scores + errors))
@@ -1115,13 +1115,13 @@ class BaseEBM(BaseEstimator):
         data_dicts = []
         feature_list = []
         density_list = []
-        for feature_combination_index, feature_indexes in enumerate(
+        for feature_group_index, feature_indexes in enumerate(
             self.feature_groups_
         ):
-            model_graph = self.additive_terms_[feature_combination_index]
+            model_graph = self.additive_terms_[feature_group_index]
 
             # NOTE: This uses stddev. for bounds, consider issue warnings.
-            errors = self.term_standard_deviations_[feature_combination_index]
+            errors = self.term_standard_deviations_[feature_group_index]
 
             if len(feature_indexes) == 1:
                 bin_labels = self.preprocessor_.get_bin_labels(feature_indexes[0])
@@ -1232,7 +1232,7 @@ class BaseEBM(BaseEstimator):
         """
 
         # Produce feature value pairs for each instance.
-        # Values are the model graph score per respective feature combination.
+        # Values are the model graph score per respective feature group.
         if name is None:
             name = gen_name_from_class(self)
 
@@ -1248,7 +1248,7 @@ class BaseEBM(BaseEstimator):
 
         instances = np.ascontiguousarray(instances.T)
 
-        scores_gen = EBMUtils.scores_by_feature_combination(
+        scores_gen = EBMUtils.scores_by_feature_group(
             instances, self.feature_groups_, self.additive_terms_
         )
 
@@ -1277,14 +1277,14 @@ class BaseEBM(BaseEstimator):
                 }
             data_dicts.append(data_dict)
 
-        for set_idx, feature_combination, scores in scores_gen:
+        for set_idx, feature_group, scores in scores_gen:
             for row_idx in range(n_rows):
                 feature_name = self.feature_names[set_idx]
                 data_dicts[row_idx]["names"].append(feature_name)
                 data_dicts[row_idx]["scores"].append(scores[row_idx])
-                if len(feature_combination) == 1:
+                if len(feature_group) == 1:
                     data_dicts[row_idx]["values"].append(
-                        X[row_idx, feature_combination[0]]
+                        X[row_idx, feature_group[0]]
                     )
                 else:
                     data_dicts[row_idx]["values"].append("")

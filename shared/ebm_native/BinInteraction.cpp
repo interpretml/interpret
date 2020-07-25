@@ -29,7 +29,7 @@ public:
 
    static void Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -56,8 +56,8 @@ public:
       const FloatEbmType * pResidualError = pDataSet->GetResidualPointer();
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * pDataSet->GetCountInstances();
 
-      EBM_ASSERT(2 <= pFeatureCombination->GetCountFeatures()); // for interactions, we just return 0 for interactions with zero features
-      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+      EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures()); // for interactions, we just return 0 for interactions with zero features
+      const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
 
       for(size_t iInstance = 0; pResidualErrorEnd != pResidualError; ++iInstance) {
          // this loop gets about twice as slow if you add a single unpredictable branching if statement based on count, even if you still access all the memory
@@ -78,7 +78,7 @@ public:
          size_t iBucket = 0;
          size_t iDimension = 0;
          do {
-            const Feature * const pInputFeature = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature;
+            const Feature * const pInputFeature = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature;
             const size_t cBins = pInputFeature->GetCountBins();
             const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
             pInputData += iInstance;
@@ -148,7 +148,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -157,14 +157,14 @@ public:
       static_assert(2 <= compilerCountDimensionsPossible, "can't have less than 2 dimensions for interactions");
       static_assert(compilerCountDimensionsPossible <= k_cDimensionsMax, "can't have more than the max dimensions");
 
-      const size_t runtimeCountDimensions = pFeatureCombination->GetCountFeatures();
+      const size_t runtimeCountDimensions = pFeatureGroup->GetCountFeatures();
 
       EBM_ASSERT(2 <= runtimeCountDimensions);
       EBM_ASSERT(runtimeCountDimensions <= k_cDimensionsMax);
       if(compilerCountDimensionsPossible == runtimeCountDimensions) {
          BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
@@ -173,7 +173,7 @@ public:
       } else {
          BinInteractionDimensions<compilerLearningTypeOrCountTargetClasses, compilerCountDimensionsPossible + 1>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
@@ -191,17 +191,17 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(2 <= pFeatureCombination->GetCountFeatures());
-      EBM_ASSERT(pFeatureCombination->GetCountFeatures() <= k_cDimensionsMax);
+      EBM_ASSERT(2 <= pFeatureGroup->GetCountFeatures());
+      EBM_ASSERT(pFeatureGroup->GetCountFeatures() <= k_cDimensionsMax);
       BinInteractionInternal<compilerLearningTypeOrCountTargetClasses, k_dynamicDimensions>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
@@ -218,7 +218,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -234,7 +234,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinInteractionDimensions<compilerLearningTypeOrCountTargetClassesPossible, 2>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
@@ -243,7 +243,7 @@ public:
       } else {
          BinInteractionTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             aHistogramBuckets
 #ifndef NDEBUG
             , aHistogramBucketsEndDebug
@@ -261,7 +261,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
@@ -274,7 +274,7 @@ public:
 
       BinInteractionDimensions<k_dynamicClassification, 2>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
@@ -285,7 +285,7 @@ public:
 
 extern void BinInteraction(
    EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
@@ -296,7 +296,7 @@ extern void BinInteraction(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       BinInteractionTarget<2>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug
@@ -306,7 +306,7 @@ extern void BinInteraction(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       BinInteractionDimensions<k_regression, 2>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets
 #ifndef NDEBUG
          , aHistogramBucketsEndDebug

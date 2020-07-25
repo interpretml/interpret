@@ -16,20 +16,20 @@
 #include "DataSetBoosting.h"
 
 INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cInstances, const size_t cVectorLength) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cInstances);
    EBM_ASSERT(1 <= cVectorLength);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cInstances * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructResidualErrors");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructResidualErrors");
    return aResidualErrors;
 }
 
@@ -38,21 +38,21 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructPredictorScores");
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(0 < cVectorLength);
    EBM_ASSERT(nullptr != aPredictorScoresFrom);
 
    if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores IsMultiplyError(cInstances, cVectorLength)");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores IsMultiplyError(cInstances, cVectorLength)");
       return nullptr;
    }
 
    const size_t cElements = cInstances * cVectorLength;
    FloatEbmType * const aPredictorScoresTo = EbmMalloc<FloatEbmType>(cElements);
    if(nullptr == aPredictorScoresTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructPredictorScores nullptr == aPredictorScoresTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructPredictorScores nullptr == aPredictorScoresTo");
       return nullptr;
    }
 
@@ -74,7 +74,7 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
       } while(pScoreExteriorEnd != pScore);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructPredictorScores");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructPredictorScores");
    return aPredictorScoresTo;
 }
 
@@ -83,7 +83,7 @@ INLINE_RELEASE static StorageDataType * ConstructTargetData(
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructTargetData");
 
    EBM_ASSERT(0 < cInstances);
    EBM_ASSERT(nullptr != aTargets);
@@ -102,27 +102,27 @@ INLINE_RELEASE static StorageDataType * ConstructTargetData(
    do {
       const IntEbmType data = *pTargetFrom;
       if(data < 0) {
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData target value cannot be negative");
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData target value cannot be negative");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<StorageDataType, IntEbmType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       if(!IsNumberConvertable<size_t, IntEbmType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData data target too big to reference memory");
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
       const StorageDataType iData = static_cast<StorageDataType>(data);
       if(countTargetClasses <= static_cast<size_t>(iData)) {
-         LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructTargetData target value larger than number of classes");
+         LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData target value larger than number of classes");
          free(aTargetData);
          return nullptr;
       }
@@ -131,7 +131,7 @@ INLINE_RELEASE static StorageDataType * ConstructTargetData(
       ++pTargetFrom;
    } while(pTargetFromEnd != pTargetFrom);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructTargetData");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructTargetData");
    return aTargetData;
 }
 
@@ -153,37 +153,37 @@ static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 INLINE_RELEASE static StorageDataType * * ConstructInputData(
-   const size_t cFeatureCombinations, 
-   const FeatureCombination * const * const apFeatureCombination, 
+   const size_t cFeatureGroups, 
+   const FeatureGroup * const * const apFeatureGroup, 
    const size_t cInstances, 
    const IntEbmType * const aInputDataFrom
 ) {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructInputData");
 
-   EBM_ASSERT(0 < cFeatureCombinations);
-   EBM_ASSERT(nullptr != apFeatureCombination);
+   EBM_ASSERT(0 < cFeatureGroups);
+   EBM_ASSERT(nullptr != apFeatureGroup);
    EBM_ASSERT(0 < cInstances);
-   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureCombinations && 0 < cInstances IF the featureCombinations are all empty, 
+   // aInputDataFrom can be nullptr EVEN if 0 < cFeatureGroups && 0 < cInstances IF the featureGroups are all empty, 
    // which makes none of them refer to features, so the aInputDataFrom pointer isn't necessary
 
-   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureCombinations);
+   StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatureGroups);
    if(nullptr == aaInputDataTo) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == aaInputDataTo");
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructInputData nullptr == aaInputDataTo");
       return nullptr;
    }
 
    StorageDataType ** paInputDataTo = aaInputDataTo;
-   const FeatureCombination * const * ppFeatureCombination = apFeatureCombination;
-   const FeatureCombination * const * const ppFeatureCombinationEnd = apFeatureCombination + cFeatureCombinations;
+   const FeatureGroup * const * ppFeatureGroup = apFeatureGroup;
+   const FeatureGroup * const * const ppFeatureGroupEnd = apFeatureGroup + cFeatureGroups;
    do {
-      const FeatureCombination * const pFeatureCombination = *ppFeatureCombination;
-      EBM_ASSERT(nullptr != pFeatureCombination);
-      const size_t cFeatures = pFeatureCombination->GetCountFeatures();
+      const FeatureGroup * const pFeatureGroup = *ppFeatureGroup;
+      EBM_ASSERT(nullptr != pFeatureGroup);
+      const size_t cFeatures = pFeatureGroup->GetCountFeatures();
       if(0 == cFeatures) {
          *paInputDataTo = nullptr; // free will skip over these later
          ++paInputDataTo;
       } else {
-         const size_t cItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+         const size_t cItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
          // for a 32/64 bit storage item, we can't have more than 32/64 bit packed items stored
          EBM_ASSERT(cItemsPerBitPackedDataUnit <= CountBitsRequiredPositiveMax<StorageDataType>());
          const size_t cBitsPerItemMax = GetCountBits(cItemsPerBitPackedDataUnit);
@@ -195,7 +195,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
 
          StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cDataUnits);
          if(nullptr == pInputDataTo) {
-            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureCombination::ConstructInputData nullptr == pInputDataTo");
+            LOG_0(TraceLevelWarning, "WARNING DataSetByFeatureGroup::ConstructInputData nullptr == pInputDataTo");
             goto free_all;
          }
          *paInputDataTo = pInputDataTo;
@@ -209,16 +209,16 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
 
          EBM_ASSERT(nullptr != aInputDataFrom);
 
-         const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
+         const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
          InputDataPointerAndCountBins dimensionInfo[k_cDimensionsMax];
          InputDataPointerAndCountBins * pDimensionInfo = &dimensionInfo[0];
          EBM_ASSERT(0 < cFeatures);
          const InputDataPointerAndCountBins * const pDimensionInfoEnd = &dimensionInfo[cFeatures];
          do {
-            const Feature * const pFeature = pFeatureCombinationEntry->m_pFeature;
+            const Feature * const pFeature = pFeatureGroupEntry->m_pFeature;
             pDimensionInfo->m_pInputData = &aInputDataFrom[pFeature->GetIndexFeatureData() * cInstances];
             pDimensionInfo->m_cBins = pFeature->GetCountBins();
-            ++pFeatureCombinationEntry;
+            ++pFeatureGroupEntry;
             ++pDimensionInfo;
          } while(pDimensionInfoEnd != pDimensionInfo);
 
@@ -243,20 +243,20 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
                   const IntEbmType inputData = *pInputData;
                   pDimensionInfo->m_pInputData = pInputData + 1;
                   if(inputData < 0) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData inputData value cannot be negative");
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value cannot be negative");
                      goto free_all;
                   }
                   if(!IsNumberConvertable<size_t, IntEbmType>(inputData)) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData inputData value too big to reference memory");
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value too big to reference memory");
                      goto free_all;
                   }
                   const size_t iData = static_cast<size_t>(inputData);
 
                   if(pDimensionInfo->m_cBins <= iData) {
-                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureCombination::ConstructInputData iData value must be less than the number of bins");
+                     LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData iData value must be less than the number of bins");
                      goto free_all;
                   }
-                  // we check for overflows during FeatureCombination construction, but let's check here again
+                  // we check for overflows during FeatureGroup construction, but let's check here again
                   EBM_ASSERT(!IsMultiplyError(tensorMultiple, pDimensionInfo->m_cBins));
 
                   // this can't overflow if the multiplication below doesn't overflow, and we checked for that above
@@ -284,10 +284,10 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
             goto one_last_loop;
          }
       }
-      ++ppFeatureCombination;
-   } while(ppFeatureCombinationEnd != ppFeatureCombination);
+      ++ppFeatureGroup;
+   } while(ppFeatureGroupEnd != ppFeatureGroup);
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::ConstructInputData");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::ConstructInputData");
    return aaInputDataTo;
 
 free_all:
@@ -299,12 +299,12 @@ free_all:
    return nullptr;
 }
 
-bool DataSetByFeatureCombination::Initialize(
+bool DataSetByFeatureGroup::Initialize(
    const bool bAllocateResidualErrors, 
    const bool bAllocatePredictorScores, 
    const bool bAllocateTargetData, 
-   const size_t cFeatureCombinations, 
-   const FeatureCombination * const * const apFeatureCombination, 
+   const size_t cFeatureGroups, 
+   const FeatureGroup * const * const apFeatureGroup, 
    const size_t cInstances, 
    const IntEbmType * const aInputDataFrom, 
    const void * const aTargets, 
@@ -316,7 +316,7 @@ bool DataSetByFeatureCombination::Initialize(
    EBM_ASSERT(nullptr == m_aTargetData);
    EBM_ASSERT(nullptr == m_aaInputData);
 
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::Initialize");
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::Initialize");
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
 
    if(0 != cInstances) {
@@ -324,7 +324,7 @@ bool DataSetByFeatureCombination::Initialize(
       if(bAllocateResidualErrors) {
          aResidualErrors = ConstructResidualErrors(cInstances, cVectorLength);
          if(nullptr == aResidualErrors) {
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aResidualErrors");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aResidualErrors");
             return true;
          }
       }
@@ -333,7 +333,7 @@ bool DataSetByFeatureCombination::Initialize(
          aPredictorScores = ConstructPredictorScores(cInstances, cVectorLength, aPredictorScoresFrom);
          if(nullptr == aPredictorScores) {
             free(aResidualErrors);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aPredictorScores");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aPredictorScores");
             return true;
          }
       }
@@ -343,18 +343,18 @@ bool DataSetByFeatureCombination::Initialize(
          if(nullptr == aTargetData) {
             free(aResidualErrors);
             free(aPredictorScores);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aTargetData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aTargetData");
             return true;
          }
       }
       StorageDataType ** aaInputData = nullptr;
-      if(0 != cFeatureCombinations) {
-         aaInputData = ConstructInputData(cFeatureCombinations, apFeatureCombination, cInstances, aInputDataFrom);
+      if(0 != cFeatureGroups) {
+         aaInputData = ConstructInputData(cFeatureGroups, apFeatureGroup, cInstances, aInputDataFrom);
          if(nullptr == aaInputData) {
             free(aResidualErrors);
             free(aPredictorScores);
             free(aTargetData);
-            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureCombination::Initialize nullptr == aaInputData");
+            LOG_0(TraceLevelWarning, "WARNING Exited DataSetByFeatureGroup::Initialize nullptr == aaInputData");
             return true;
          }
       }
@@ -364,27 +364,27 @@ bool DataSetByFeatureCombination::Initialize(
       m_aTargetData = aTargetData;
       m_aaInputData = aaInputData;
       m_cInstances = cInstances;
-      m_cFeatureCombinations = cFeatureCombinations;
+      m_cFeatureGroups = cFeatureGroups;
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::Initialize");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::Initialize");
 
    return false;
 }
 
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void DataSetByFeatureCombination::Destruct() {
-   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureCombination::Destruct");
+void DataSetByFeatureGroup::Destruct() {
+   LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::Destruct");
 
    free(m_aResidualErrors);
    free(m_aPredictorScores);
    free(m_aTargetData);
 
    if(nullptr != m_aaInputData) {
-      EBM_ASSERT(0 < m_cFeatureCombinations);
+      EBM_ASSERT(0 < m_cFeatureGroups);
       StorageDataType * * paInputData = m_aaInputData;
-      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureCombinations;
+      const StorageDataType * const * const paInputDataEnd = m_aaInputData + m_cFeatureGroups;
       do {
          free(*paInputData);
          ++paInputData;
@@ -392,6 +392,6 @@ void DataSetByFeatureCombination::Destruct() {
       free(m_aaInputData);
    }
 
-   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureCombination::Destruct");
+   LOG_0(TraceLevelInfo, "Exited DataSetByFeatureGroup::Destruct");
 }
 WARNING_POP

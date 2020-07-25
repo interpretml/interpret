@@ -2,40 +2,40 @@
 # Licensed under the MIT license.
 # Author: Paul Koch <code@koch.ninja>
 
-ebm_feature_combination_c <- function(n_features = 1) {
+ebm_feature_group_c <- function(n_features = 1) {
    n_features <- as.double(n_features)
-   ret <- structure(list(n_features = n_features), class = "ebm_feature_combination_c")
+   ret <- structure(list(n_features = n_features), class = "ebm_feature_group_c")
    return(ret)
 }
 
-convert_feature_combinations_to_c <- function(feature_combinations) {
+convert_feature_groups_to_c <- function(feature_groups) {
    n_feature_indexes <- 0
-   for (feature_combination in feature_combinations) {
-      n_feature_indexes <- n_feature_indexes + length(feature_combination$feature_indexes)
+   for (feature_group in feature_groups) {
+      n_feature_indexes <- n_feature_indexes + length(feature_group$feature_indexes)
    }
 
-   feature_combination_indexes <- vector(mode = "list", n_feature_indexes)
-   feature_combinations_c <- vector(mode = "list", length(feature_combinations))
+   feature_group_indexes <- vector(mode = "list", n_feature_indexes)
+   feature_groups_c <- vector(mode = "list", length(feature_groups))
    index_indexes <- 1
 
-   for (index_feature_combination in seq_along(feature_combinations)) {
-      feature_combination <- feature_combinations[[index_feature_combination]]
-      feature_indexes_in_combination <- feature_combination$feature_indexes
-      feature_combinations_c[[index_feature_combination]] <- ebm_feature_combination_c(length(feature_indexes_in_combination))
+   for (index_feature_group in seq_along(feature_groups)) {
+      feature_group <- feature_groups[[index_feature_group]]
+      feature_indexes_in_group <- feature_group$feature_indexes
+      feature_groups_c[[index_feature_group]] <- ebm_feature_group_c(length(feature_indexes_in_group))
 
-      for(feature_index in feature_indexes_in_combination) {
-         feature_combination_indexes[[index_indexes]] <- feature_index - 1
+      for(feature_index in feature_indexes_in_group) {
+         feature_group_indexes[[index_indexes]] <- feature_index - 1
          index_indexes <- index_indexes + 1
       }
    }
-   return(list(feature_combinations_c = feature_combinations_c, feature_combination_indexes = feature_combination_indexes))
+   return(list(feature_groups_c = feature_groups_c, feature_group_indexes = feature_group_indexes))
 }
 
 initialize_boosting_classification <- function(
    n_classes, 
    features, 
-   feature_combinations, 
-   feature_combination_indexes, 
+   feature_groups, 
+   feature_group_indexes, 
    training_binned_data, 
    training_targets, 
    training_predictor_scores, 
@@ -47,8 +47,8 @@ initialize_boosting_classification <- function(
 ) {
    n_classes <- as.double(n_classes)
    features <- as.list(features)
-   feature_combinations <- as.list(feature_combinations)
-   feature_combination_indexes <- as.double(feature_combination_indexes)
+   feature_groups <- as.list(feature_groups)
+   feature_group_indexes <- as.double(feature_group_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
@@ -66,8 +66,8 @@ initialize_boosting_classification <- function(
       InitializeBoostingClassification_R, 
       n_classes, 
       features, 
-      feature_combinations, 
-      feature_combination_indexes, 
+      feature_groups, 
+      feature_group_indexes, 
       training_binned_data, 
       training_targets, 
       training_predictor_scores, 
@@ -85,8 +85,8 @@ initialize_boosting_classification <- function(
 
 initialize_boosting_regression <- function(
    features, 
-   feature_combinations, 
-   feature_combination_indexes, 
+   feature_groups, 
+   feature_group_indexes, 
    training_binned_data, 
    training_targets, 
    training_predictor_scores, 
@@ -97,8 +97,8 @@ initialize_boosting_regression <- function(
    random_seed
 ) {
    features <- as.list(features)
-   feature_combinations <- as.list(feature_combinations)
-   feature_combination_indexes <- as.double(feature_combination_indexes)
+   feature_groups <- as.list(feature_groups)
+   feature_group_indexes <- as.double(feature_group_indexes)
    training_binned_data <- as.double(training_binned_data)
    training_targets <- as.double(training_targets)
    if(!is.null(training_predictor_scores)) {
@@ -115,8 +115,8 @@ initialize_boosting_regression <- function(
    ebm_boosting <- .Call(
       InitializeBoostingRegression_R, 
       features, 
-      feature_combinations, 
-      feature_combination_indexes, 
+      feature_groups, 
+      feature_group_indexes, 
       training_binned_data, 
       training_targets, 
       training_predictor_scores, 
@@ -139,7 +139,7 @@ native_ebm_boosting_free <- function(native_ebm_boosting) {
 
 boosting_step <- function(
    ebm_boosting, 
-   index_feature_combination, 
+   index_feature_group, 
    learning_rate, 
    n_tree_splits_max, 
    n_instances_required_for_child_split_min, 
@@ -147,7 +147,7 @@ boosting_step <- function(
    validation_weights
 ) {
    stopifnot(class(ebm_boosting) == "externalptr")
-   index_feature_combination <- as.double(index_feature_combination)
+   index_feature_group <- as.double(index_feature_group)
    learning_rate <- as.double(learning_rate)
    n_tree_splits_max <- as.double(n_tree_splits_max)
    n_instances_required_for_child_split_min <- as.double(n_instances_required_for_child_split_min)
@@ -161,7 +161,7 @@ boosting_step <- function(
    validation_metric <- .Call(
       BoostingStep_R, 
       ebm_boosting, 
-      index_feature_combination, 
+      index_feature_group, 
       learning_rate, 
       n_tree_splits_max, 
       n_instances_required_for_child_split_min, 
@@ -174,40 +174,40 @@ boosting_step <- function(
    return(validation_metric)
 }
 
-get_best_model_feature_combination <- function(ebm_boosting, index_feature_combination) {
+get_best_model_feature_group <- function(ebm_boosting, index_feature_group) {
    stopifnot(class(ebm_boosting) == "externalptr")
-   index_feature_combination <- as.double(index_feature_combination)
+   index_feature_group <- as.double(index_feature_group)
 
-   model_feature_combination_tensor <- .Call(GetBestModelFeatureCombination_R, ebm_boosting, index_feature_combination)
-   if(is.null(model_feature_combination_tensor)) {
-      stop("error in GetBestModelFeatureCombination_R")
+   model_feature_group_tensor <- .Call(GetBestModelFeatureGroup_R, ebm_boosting, index_feature_group)
+   if(is.null(model_feature_group_tensor)) {
+      stop("error in GetBestModelFeatureGroup_R")
    }
-   return(model_feature_combination_tensor)
+   return(model_feature_group_tensor)
 }
 
-get_current_model_feature_combination <- function(ebm_boosting, index_feature_combination) {
+get_current_model_feature_group <- function(ebm_boosting, index_feature_group) {
    stopifnot(class(ebm_boosting) == "externalptr")
-   index_feature_combination <- as.double(index_feature_combination)
+   index_feature_group <- as.double(index_feature_group)
 
-   model_feature_combination_tensor <- .Call(GetCurrentModelFeatureCombination_R, ebm_boosting, index_feature_combination)
-   if(is.null(model_feature_combination_tensor)) {
-      stop("error in GetCurrentModelFeatureCombination_R")
+   model_feature_group_tensor <- .Call(GetCurrentModelFeatureGroup_R, ebm_boosting, index_feature_group)
+   if(is.null(model_feature_group_tensor)) {
+      stop("error in GetCurrentModelFeatureGroup_R")
    }
-   return(model_feature_combination_tensor)
+   return(model_feature_group_tensor)
 }
 
 get_best_model <- function(native_ebm_boosting) {
    model <- lapply(
-      seq_along(native_ebm_boosting$feature_combinations), 
-      function(i) { get_best_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) }
+      seq_along(native_ebm_boosting$feature_groups), 
+      function(i) { get_best_model_feature_group(native_ebm_boosting$booster_pointer, i - 1) }
    )
    return(model)
 }
 
 get_current_model <- function(native_ebm_boosting) {
    model <- lapply(
-      seq_along(native_ebm_boosting$feature_combinations), 
-      function(i) { get_current_model_feature_combination(native_ebm_boosting$booster_pointer, i - 1) }
+      seq_along(native_ebm_boosting$feature_groups), 
+      function(i) { get_current_model_feature_group(native_ebm_boosting$booster_pointer, i - 1) }
    )
    return(model)
 }
@@ -216,7 +216,7 @@ native_ebm_boosting <- function(
    model_type,
    n_classes,
    features,
-   feature_combinations,
+   feature_groups,
    X_train,
    y_train,
    scores_train,
@@ -226,14 +226,14 @@ native_ebm_boosting <- function(
    n_inner_bags,
    random_state
 ) {
-   c_structs <- convert_feature_combinations_to_c(feature_combinations)
+   c_structs <- convert_feature_groups_to_c(feature_groups)
 
    if(model_type == "classification") {
       booster_pointer <- initialize_boosting_classification(
          n_classes, 
          features, 
-         c_structs$feature_combinations_c, 
-         c_structs$feature_combination_indexes, 
+         c_structs$feature_groups_c, 
+         c_structs$feature_group_indexes, 
          X_train, 
          y_train, 
          scores_train, 
@@ -246,8 +246,8 @@ native_ebm_boosting <- function(
    } else if(model_type == "regression") {
       booster_pointer <- initialize_boosting_regression(
          features, 
-         c_structs$feature_combinations_c, 
-         c_structs$feature_combination_indexes, 
+         c_structs$feature_groups_c, 
+         c_structs$feature_group_indexes, 
          X_train, 
          y_train, 
          scores_train, 
@@ -264,7 +264,7 @@ native_ebm_boosting <- function(
    self <- structure(list(
       model_type = model_type, 
       n_classes = n_classes, 
-      feature_combinations = feature_combinations, 
+      feature_groups = feature_groups, 
       booster_pointer = booster_pointer
       ), class = "native_ebm_boosting")
    return(self)
@@ -274,7 +274,7 @@ cyclic_gradient_boost <- function(
    model_type,
    n_classes,
    features,
-   feature_combinations,
+   feature_groups,
    X_train,
    y_train,
    scores_train,
@@ -297,7 +297,7 @@ cyclic_gradient_boost <- function(
       model_type,
       n_classes,
       features,
-      feature_combinations,
+      feature_groups,
       X_train,
       y_train,
       scores_train,
@@ -312,10 +312,10 @@ cyclic_gradient_boost <- function(
       bp_metric <- Inf
 
       for(episode_index in 1:data_n_episodes) {
-         for(feature_combination_index in seq_along(feature_combinations)) {
+         for(feature_group_index in seq_along(feature_groups)) {
             validation_metric <- boosting_step(
                ebm_booster$booster_pointer, 
-               feature_combination_index - 1, 
+               feature_group_index - 1, 
                learning_rate, 
                n_tree_splits_max, 
                n_instances_required_for_child_split_min, 

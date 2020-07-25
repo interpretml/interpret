@@ -11,66 +11,66 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "FeatureAtomic.h"
 
-struct FeatureCombinationEntry final {
-   FeatureCombinationEntry() = default; // preserve our POD status
-   ~FeatureCombinationEntry() = default; // preserve our POD status
+struct FeatureGroupEntry final {
+   FeatureGroupEntry() = default; // preserve our POD status
+   ~FeatureGroupEntry() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
    // TODO : we can copy the entire Feature data into this location instead of using a pointer
    const Feature * m_pFeature;
 };
-static_assert(std::is_standard_layout<FeatureCombinationEntry>::value,
+static_assert(std::is_standard_layout<FeatureGroupEntry>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<FeatureCombinationEntry>::value,
+static_assert(std::is_trivial<FeatureGroupEntry>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<FeatureCombinationEntry>::value,
+static_assert(std::is_pod<FeatureGroupEntry>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-class FeatureCombination final {
+class FeatureGroup final {
    size_t m_cItemsPerBitPackedDataUnit;
    size_t m_cFeatures;
    size_t m_iInputData;
-   unsigned int m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
-   unsigned int m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
-   unsigned int m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
-   unsigned int m_cLogExitApplyModelFeatureCombinationUpdateMessages;
+   unsigned int m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
+   unsigned int m_cLogExitGenerateModelFeatureGroupUpdateMessages;
+   unsigned int m_cLogEnterApplyModelFeatureGroupUpdateMessages;
+   unsigned int m_cLogExitApplyModelFeatureGroupUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
-   // m_FeatureCombinationEntry must be the last item in this struct
+   // m_FeatureGroupEntry must be the last item in this struct
    // AND this class must be "is_standard_layout" since otherwise we can't guarantee that this item is placed at the bottom
    // standard layout classes have some additional odd restrictions like all the member data must be in a single class 
    // (either the parent or child) if the class is derrived
-   FeatureCombinationEntry m_FeatureCombinationEntry[1];
+   FeatureGroupEntry m_FeatureGroupEntry[1];
 
 public:
 
-   FeatureCombination() = default; // preserve our POD status
-   ~FeatureCombination() = default; // preserve our POD status
+   FeatureGroup() = default; // preserve our POD status
+   ~FeatureGroup() = default; // preserve our POD status
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS static constexpr size_t GetFeatureCombinationCountBytes(const size_t cFeatures) {
-      return sizeof(FeatureCombination) - sizeof(FeatureCombinationEntry) +
-         sizeof(FeatureCombinationEntry) * cFeatures;
+   INLINE_ALWAYS static constexpr size_t GetFeatureGroupCountBytes(const size_t cFeatures) {
+      return sizeof(FeatureGroup) - sizeof(FeatureGroupEntry) +
+         sizeof(FeatureGroupEntry) * cFeatures;
    }
 
-   INLINE_ALWAYS static void Free(FeatureCombination * const pFeatureCombination) {
-      free(pFeatureCombination);
+   INLINE_ALWAYS static void Free(FeatureGroup * const pFeatureGroup) {
+      free(pFeatureGroup);
    }
 
-   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureCombination) {
+   INLINE_ALWAYS void Initialize(const size_t cFeatures, const size_t iFeatureGroup) {
       m_cFeatures = cFeatures;
-      m_iInputData = iFeatureCombination;
-      m_cLogEnterGenerateModelFeatureCombinationUpdateMessages = 2;
-      m_cLogExitGenerateModelFeatureCombinationUpdateMessages = 2;
-      m_cLogEnterApplyModelFeatureCombinationUpdateMessages = 2;
-      m_cLogExitApplyModelFeatureCombinationUpdateMessages = 2;
+      m_iInputData = iFeatureGroup;
+      m_cLogEnterGenerateModelFeatureGroupUpdateMessages = 2;
+      m_cLogExitGenerateModelFeatureGroupUpdateMessages = 2;
+      m_cLogEnterApplyModelFeatureGroupUpdateMessages = 2;
+      m_cLogExitApplyModelFeatureGroupUpdateMessages = 2;
    }
 
-   static FeatureCombination * Allocate(const size_t cFeatures, const size_t iFeatureCombination);
-   static FeatureCombination ** AllocateFeatureCombinations(const size_t cFeatureCombinations);
-   static void FreeFeatureCombinations(const size_t cFeatureCombinations, FeatureCombination ** apFeatureCombinations);
+   static FeatureGroup * Allocate(const size_t cFeatures, const size_t iFeatureGroup);
+   static FeatureGroup ** AllocateFeatureGroups(const size_t cFeatureGroups);
+   static void FreeFeatureGroups(const size_t cFeatureGroups, FeatureGroup ** apFeatureGroups);
 
    INLINE_ALWAYS void SetCountItemsPerBitPackedDataUnit(const size_t cItemsPerBitPackedDataUnit) {
       m_cItemsPerBitPackedDataUnit = cItemsPerBitPackedDataUnit;
@@ -88,34 +88,34 @@ public:
       return m_cFeatures;
    }
 
-   INLINE_ALWAYS const FeatureCombinationEntry * GetFeatureCombinationEntries() const {
-      return ArrayToPointer(m_FeatureCombinationEntry);
+   INLINE_ALWAYS const FeatureGroupEntry * GetFeatureGroupEntries() const {
+      return ArrayToPointer(m_FeatureGroupEntry);
    }
-   INLINE_ALWAYS FeatureCombinationEntry * GetFeatureCombinationEntries() {
-      return ArrayToPointer(m_FeatureCombinationEntry);
-   }
-
-   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages() {
-      return &m_cLogEnterGenerateModelFeatureCombinationUpdateMessages;
+   INLINE_ALWAYS FeatureGroupEntry * GetFeatureGroupEntries() {
+      return ArrayToPointer(m_FeatureGroupEntry);
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages() {
-      return &m_cLogExitGenerateModelFeatureCombinationUpdateMessages;
+   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages() {
+      return &m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterApplyModelFeatureCombinationUpdateMessages() {
-      return &m_cLogEnterApplyModelFeatureCombinationUpdateMessages;
+   INLINE_ALWAYS unsigned int * GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages() {
+      return &m_cLogExitGenerateModelFeatureGroupUpdateMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogExitApplyModelFeatureCombinationUpdateMessages() {
-      return &m_cLogExitApplyModelFeatureCombinationUpdateMessages;
+   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages() {
+      return &m_cLogEnterApplyModelFeatureGroupUpdateMessages;
+   }
+
+   INLINE_ALWAYS unsigned int * GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages() {
+      return &m_cLogExitApplyModelFeatureGroupUpdateMessages;
    }
 };
-static_assert(std::is_standard_layout<FeatureCombination>::value,
+static_assert(std::is_standard_layout<FeatureGroup>::value,
    "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<FeatureCombination>::value,
+static_assert(std::is_trivial<FeatureGroup>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<FeatureCombination>::value,
+static_assert(std::is_pod<FeatureGroup>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 

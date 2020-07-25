@@ -20,7 +20,7 @@
 
 extern void TensorTotalsBuild(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    HistogramBucketBase * pBucketAuxiliaryBuildZone,
    HistogramBucketBase * const aHistogramBuckets
 #ifndef NDEBUG
@@ -34,13 +34,13 @@ extern void TensorTotalsBuild(
 template<bool bClassification>
 void TensorTotalsSumDebugSlow(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const HistogramBucket<bClassification> * const aHistogramBuckets,
    const size_t * const aiStart,
    const size_t * const aiLast,
    HistogramBucket<bClassification> * const pRet
 ) {
-   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
    EBM_ASSERT(1 <= cDimensions); // why bother getting totals if we just have 1 bin
    size_t aiDimensions[k_cDimensionsMax];
 
@@ -48,7 +48,7 @@ void TensorTotalsSumDebugSlow(
    size_t valueMultipleInitialize = 1;
    size_t iDimensionInitialize = 0;
    do {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionInitialize].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionInitialize].m_pFeature->GetCountBins();
       EBM_ASSERT(aiStart[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiLast[iDimensionInitialize] < cBins);
       EBM_ASSERT(aiStart[iDimensionInitialize] <= aiLast[iDimensionInitialize]);
@@ -81,7 +81,7 @@ void TensorTotalsSumDebugSlow(
          EBM_ASSERT(!IsMultiplyError(aiLast[iDimension] - aiStart[iDimension], valueMultipleLoop));
          iTensorBin -= (aiLast[iDimension] - aiStart[iDimension]) * valueMultipleLoop;
 
-         const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
+         const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
          EBM_ASSERT(!IsMultiplyError(cBins, valueMultipleLoop)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          valueMultipleLoop *= cBins;
 
@@ -99,7 +99,7 @@ void TensorTotalsSumDebugSlow(
 template<bool bClassification>
 void TensorTotalsCompareDebug(
    const HistogramBucket<bClassification> * const aHistogramBuckets,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const size_t * const aiPoint,
    const size_t directionVector,
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
@@ -112,8 +112,8 @@ void TensorTotalsCompareDebug(
    size_t aiStart[k_cDimensionsMax];
    size_t aiLast[k_cDimensionsMax];
    size_t directionVectorDestroy = directionVector;
-   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureCombination->GetCountFeatures(); ++iDimensionDebug) {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
+   for(size_t iDimensionDebug = 0; iDimensionDebug < pFeatureGroup->GetCountFeatures(); ++iDimensionDebug) {
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->GetCountBins();
       if(UNPREDICTABLE(0 != (1 & directionVectorDestroy))) {
          aiStart[iDimensionDebug] = aiPoint[iDimensionDebug] + 1;
          aiLast[iDimensionDebug] = cBins - 1;
@@ -129,7 +129,7 @@ void TensorTotalsCompareDebug(
       // if we can't obtain the memory, then don't do the comparison and exit
       TensorTotalsSumDebugSlow<bClassification>(
          runtimeLearningTypeOrCountTargetClasses,
-         pFeatureCombination,
+         pFeatureGroup,
          aHistogramBuckets,
          aiStart,
          aiLast,
@@ -145,7 +145,7 @@ void TensorTotalsCompareDebug(
 template<ptrdiff_t compilerLearningTypeOrCountTargetClasses, size_t compilerCountDimensions>
 void TensorTotalsSum(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const HistogramBucket<IsClassification(compilerLearningTypeOrCountTargetClasses)> * const aHistogramBuckets,
    const size_t * const aiPoint,
    const size_t directionVector,
@@ -165,7 +165,7 @@ void TensorTotalsSum(
    // don't LOG this!  It would create way too much chatter!
 
    static_assert(k_cDimensionsMax < k_cBitsForSizeT, "reserve the highest bit for bit manipulation space");
-   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureCombination->GetCountFeatures());
+   const size_t cDimensions = GET_ATTRIBUTE_COMBINATION_DIMENSIONS(compilerCountDimensions, pFeatureGroup->GetCountFeatures());
    EBM_ASSERT(1 <= cDimensions);
    EBM_ASSERT(cDimensions < k_cBitsForSizeT);
 
@@ -179,15 +179,15 @@ void TensorTotalsSum(
 
    size_t multipleTotalInitialize = 1;
    size_t startingOffset = 0;
-   const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
-   const FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cDimensions];
+   const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
+   const FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cDimensions];
    const size_t * piPointInitialize = aiPoint;
 
    if(0 == directionVector) {
-      // we would require a check in our inner loop below to handle the case of zero FeatureCombinationEntry items, so let's handle it separetly here instead
+      // we would require a check in our inner loop below to handle the case of zero FeatureGroupEntry items, so let's handle it separetly here instead
       EBM_ASSERT(1 <= cDimensions);
       do {
-         size_t cBins = pFeatureCombinationEntry->m_pFeature->GetCountBins();
+         size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
          // (dimensions with 1 bin don't contribute anything since they always have the same value)
          EBM_ASSERT(1 <= cBins);
@@ -198,9 +198,9 @@ void TensorTotalsSum(
          startingOffset += addValue;
          EBM_ASSERT(!IsMultiplyError(cBins, multipleTotalInitialize)); // we're accessing allocated memory, so this needs to multiply
          multipleTotalInitialize *= cBins;
-         ++pFeatureCombinationEntry;
+         ++pFeatureGroupEntry;
          ++piPointInitialize;
-      } while(LIKELY(pFeatureCombinationEntryEnd != pFeatureCombinationEntry));
+      } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
       const HistogramBucket<bClassification> * const pHistogramBucket =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, aHistogramBuckets, startingOffset);
       ASSERT_BINNED_BUCKET_OK(cBytesPerHistogramBucket, pRet, aHistogramBucketsEndDebug);
@@ -226,7 +226,7 @@ void TensorTotalsSum(
       size_t directionVectorDestroy = directionVector;
       EBM_ASSERT(0 < cDimensions);
       do {
-         size_t cBins = pFeatureCombinationEntry->m_pFeature->GetCountBins();
+         size_t cBins = pFeatureGroupEntry->m_pFeature->GetCountBins();
          // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
          // (dimensions with 1 bin don't contribute anything since they always have the same value)
          EBM_ASSERT(1 <= cBins);
@@ -245,10 +245,10 @@ void TensorTotalsSum(
             startingOffset += addValue;
             multipleTotalInitialize *= cBins;
          }
-         ++pFeatureCombinationEntry;
+         ++pFeatureGroupEntry;
          ++piPointInitialize;
          directionVectorDestroy >>= 1;
-      } while(LIKELY(pFeatureCombinationEntryEnd != pFeatureCombinationEntry));
+      } while(LIKELY(pFeatureGroupEntryEnd != pFeatureGroupEntry));
    }
    const unsigned int cAllBits = static_cast<unsigned int>(pTotalsDimensionEnd - totalsDimension);
    EBM_ASSERT(cAllBits < k_cBitsForSizeT);
@@ -294,7 +294,7 @@ void TensorTotalsSum(
    if(nullptr != aHistogramBucketsDebugCopy) {
       TensorTotalsCompareDebug<bClassification>(
          aHistogramBucketsDebugCopy,
-         pFeatureCombination,
+         pFeatureGroup,
          aiPoint,
          directionVector,
          runtimeLearningTypeOrCountTargetClasses,

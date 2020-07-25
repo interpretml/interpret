@@ -251,8 +251,8 @@ static_assert(
 //   either a positive or negative logit, BUT after a few updates the gain will tend towards zero since it so well predicts these
 //   homogenious bins.  It won't focus on such bins and will then swtich to better cut points, unless it's a binary feature or similar where it's
 //   required to make the cut if we're using round robin cycling boosting
-// - in the future we're going to only update a feature_combination update when it improves the log loss, so bins with low counts of a class
-//   won't be able to hijack the algorithm as a whole since the algorithm will just turn off feature_combinations with bad predictions for the validation set
+// - in the future we're going to only update a feature_group update when it improves the log loss, so bins with low counts of a class
+//   won't be able to hijack the algorithm as a whole since the algorithm will just turn off feature_groups with bad predictions for the validation set
 // - useful resources:
 //   - comparing floats -> https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 //   - details on float representations -> https://www.volkerschatz.com/science/float.html
@@ -506,7 +506,7 @@ public:
    WARNING_POP
 
    INLINE_ALWAYS static FloatEbmType ComputeSmallChangeForOneSegmentRegression(const FloatEbmType sumResidualError, const FloatEbmType cInstances) {
-      // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_combination boost
+      // this is NOT a performance critical call.  It only gets called AFTER we've decided where to split, so only a few times per feature_group boost
 
       // sumResidualError can be NaN -> if the user gives us regression targets (either positive or negative) with values below but close to
       //   +-std::numeric_limits<FloatEbmType>::max(), the sumResidualError can reach +-infinity since they are a sum.

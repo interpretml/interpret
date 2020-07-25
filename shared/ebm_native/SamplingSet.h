@@ -11,14 +11,14 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
-class DataSetByFeatureCombination;
+class DataSetByFeatureGroup;
 
 class SamplingSet final {
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 
    // we need to keep a count of the number of times each instance is selected in the dataset.  
    // Sampling without replacement would require 1 bit per case, so it can be faster.
 
-   const DataSetByFeatureCombination * m_pOriginDataSet;
+   const DataSetByFeatureGroup * m_pOriginDataSet;
 
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
@@ -29,9 +29,9 @@ class SamplingSet final {
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataSetByFeatureCombination * const pOriginDataSet
+      const DataSetByFeatureGroup * const pOriginDataSet
    );
-   static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);
+   static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureGroup * const pOriginDataSet);
 
 public:
 
@@ -53,7 +53,7 @@ public:
       return cTotalCountInstanceOccurrences;
    }
 
-   const DataSetByFeatureCombination * GetDataSetByFeatureCombination() const {
+   const DataSetByFeatureGroup * GetDataSetByFeatureGroup() const {
       return m_pOriginDataSet;
    }
 
@@ -64,7 +64,7 @@ public:
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
-      const DataSetByFeatureCombination * const pOriginDataSet, 
+      const DataSetByFeatureGroup * const pOriginDataSet, 
       const size_t cSamplingSets
    );
 };

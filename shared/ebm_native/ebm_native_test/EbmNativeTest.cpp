@@ -277,7 +277,7 @@ static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntE
 
 class TestApi {
    enum class Stage {
-      Beginning, FeaturesAdded, FeatureCombinationsAdded, TrainingAdded, ValidationAdded, InitializedBoosting, InteractionAdded, InitializedInteraction
+      Beginning, FeaturesAdded, FeatureGroupsAdded, TrainingAdded, ValidationAdded, InitializedBoosting, InteractionAdded, InitializedInteraction
    };
 
    Stage m_stage;
@@ -285,10 +285,10 @@ class TestApi {
    const ptrdiff_t m_iZeroClassificationLogit;
 
    std::vector<EbmNativeFeature> m_features;
-   std::vector<EbmNativeFeatureCombination> m_featureCombinations;
-   std::vector<IntEbmType> m_featureCombinationIndexes;
+   std::vector<EbmNativeFeatureGroup> m_featureGroups;
+   std::vector<IntEbmType> m_featureGroupIndexes;
 
-   std::vector<std::vector<size_t>> m_countBinsByFeatureCombination;
+   std::vector<std::vector<size_t>> m_countBinsByFeatureGroup;
 
    std::vector<FloatEbmType> m_trainingRegressionTargets;
    std::vector<IntEbmType> m_trainingClassificationTargets;
@@ -313,8 +313,8 @@ class TestApi {
    PEbmInteraction m_pEbmInteraction;
 
    const FloatEbmType * GetPredictorScores(
-      const size_t iFeatureCombination, 
-      const FloatEbmType * const pModelFeatureCombination, 
+      const size_t iFeatureGroup, 
+      const FloatEbmType * const pModelFeatureGroup, 
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures) 
    const {
       if(Stage::InitializedBoosting != m_stage) {
@@ -322,10 +322,10 @@ class TestApi {
       }
       const size_t cVectorLength = GetVectorLength(m_learningTypeOrCountTargetClasses);
 
-      if(m_countBinsByFeatureCombination.size() <= iFeatureCombination) {
+      if(m_countBinsByFeatureGroup.size() <= iFeatureGroup) {
          exit(1);
       }
-      const std::vector<size_t> countBins = m_countBinsByFeatureCombination[iFeatureCombination];
+      const std::vector<size_t> countBins = m_countBinsByFeatureGroup[iFeatureGroup];
 
       const size_t cDimensions = perDimensionIndexArrayForBinnedFeatures.size();
       if(cDimensions != countBins.size()) {
@@ -340,16 +340,16 @@ class TestApi {
          iValue += perDimensionIndexArrayForBinnedFeatures[iDimension] * multiple;
          multiple *= countBins[iDimension];
       }
-      return &pModelFeatureCombination[iValue];
+      return &pModelFeatureGroup[iValue];
    }
 
    FloatEbmType GetPredictorScore(
-      const size_t iFeatureCombination, 
-      const FloatEbmType * const pModelFeatureCombination, 
+      const size_t iFeatureGroup, 
+      const FloatEbmType * const pModelFeatureGroup, 
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, 
       const size_t iTargetClassOrZero) 
    const {
-      const FloatEbmType * const aScores = GetPredictorScores(iFeatureCombination, pModelFeatureCombination, perDimensionIndexArrayForBinnedFeatures);
+      const FloatEbmType * const aScores = GetPredictorScores(iFeatureGroup, pModelFeatureGroup, perDimensionIndexArrayForBinnedFeatures);
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
          if(0 != iTargetClassOrZero) {
             exit(1);
@@ -445,8 +445,8 @@ public:
       }
    }
 
-   size_t GetFeatureCombinationsCount() const {
-      return m_featureCombinations.size();
+   size_t GetFeatureGroupsCount() const {
+      return m_featureGroups.size();
    }
 
    void AddFeatures(const std::vector<FeatureTest> features) {
@@ -465,31 +465,31 @@ public:
       m_stage = Stage::FeaturesAdded;
    }
 
-   void AddFeatureCombinations(const std::vector<std::vector<size_t>> featureCombinations) {
+   void AddFeatureGroups(const std::vector<std::vector<size_t>> featureGroups) {
       if(Stage::FeaturesAdded != m_stage) {
          exit(1);
       }
 
-      for(const std::vector<size_t> oneFeatureCombination : featureCombinations) {
-         EbmNativeFeatureCombination featureCombination;
-         featureCombination.countFeaturesInCombination = oneFeatureCombination.size();
-         m_featureCombinations.push_back(featureCombination);
+      for(const std::vector<size_t> oneFeatureGroup : featureGroups) {
+         EbmNativeFeatureGroup featureGroup;
+         featureGroup.countFeaturesInGroup = oneFeatureGroup.size();
+         m_featureGroups.push_back(featureGroup);
          std::vector<size_t> countBins;
-         for(const size_t oneIndex : oneFeatureCombination) {
+         for(const size_t oneIndex : oneFeatureGroup) {
             if(m_features.size() <= oneIndex) {
                exit(1);
             }
-            m_featureCombinationIndexes.push_back(oneIndex);
+            m_featureGroupIndexes.push_back(oneIndex);
             countBins.push_back(static_cast<size_t>(m_features[oneIndex].countBins));
          }
-         m_countBinsByFeatureCombination.push_back(countBins);
+         m_countBinsByFeatureGroup.push_back(countBins);
       }
 
-      m_stage = Stage::FeatureCombinationsAdded;
+      m_stage = Stage::FeatureGroupsAdded;
    }
 
    void AddTrainingInstances(const std::vector<RegressionInstance> instances) {
-      if(Stage::FeatureCombinationsAdded != m_stage) {
+      if(Stage::FeatureGroupsAdded != m_stage) {
          exit(1);
       }
       if(k_learningTypeRegression != m_learningTypeOrCountTargetClasses) {
@@ -545,7 +545,7 @@ public:
    }
 
    void AddTrainingInstances(const std::vector<ClassificationInstance> instances) {
-      if(Stage::FeatureCombinationsAdded != m_stage) {
+      if(Stage::FeatureGroupsAdded != m_stage) {
          exit(1);
       }
       if(!IsClassification(m_learningTypeOrCountTargetClasses)) {
@@ -820,9 +820,9 @@ public:
             m_learningTypeOrCountTargetClasses, 
             m_features.size(), 
             0 == m_features.size() ? nullptr : &m_features[0], 
-            m_featureCombinations.size(), 
-            0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 
-            0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], 
+            m_featureGroups.size(), 
+            0 == m_featureGroups.size() ? nullptr : &m_featureGroups[0], 
+            0 == m_featureGroupIndexes.size() ? nullptr : &m_featureGroupIndexes[0], 
             m_trainingClassificationTargets.size(), 
             0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 
             0 == m_trainingClassificationTargets.size() ? nullptr : &m_trainingClassificationTargets[0], 
@@ -845,9 +845,9 @@ public:
          m_pEbmBoosting = InitializeBoostingRegression(
             m_features.size(), 
             0 == m_features.size() ? nullptr : &m_features[0], 
-            m_featureCombinations.size(), 
-            0 == m_featureCombinations.size() ? nullptr : &m_featureCombinations[0], 
-            0 == m_featureCombinationIndexes.size() ? nullptr : &m_featureCombinationIndexes[0], 
+            m_featureGroups.size(), 
+            0 == m_featureGroups.size() ? nullptr : &m_featureGroups[0], 
+            0 == m_featureGroupIndexes.size() ? nullptr : &m_featureGroupIndexes[0], 
             m_trainingRegressionTargets.size(), 
             0 == m_trainingBinnedData.size() ? nullptr : &m_trainingBinnedData[0], 
             0 == m_trainingRegressionTargets.size() ? nullptr : &m_trainingRegressionTargets[0], 
@@ -871,14 +871,14 @@ public:
       m_stage = Stage::InitializedBoosting;
    }
 
-   FloatEbmType Boost(const IntEbmType indexFeatureCombination, const std::vector<FloatEbmType> trainingWeights = {}, const std::vector<FloatEbmType> validationWeights = {}, const FloatEbmType learningRate = k_learningRateDefault, const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault) {
+   FloatEbmType Boost(const IntEbmType indexFeatureGroup, const std::vector<FloatEbmType> trainingWeights = {}, const std::vector<FloatEbmType> validationWeights = {}, const FloatEbmType learningRate = k_learningRateDefault, const IntEbmType countTreeSplitsMax = k_countTreeSplitsMaxDefault, const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault) {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(indexFeatureCombination < IntEbmType { 0 }) {
+      if(indexFeatureGroup < IntEbmType { 0 }) {
          exit(1);
       }
-      if(m_featureCombinations.size() <= static_cast<size_t>(indexFeatureCombination)) {
+      if(m_featureGroups.size() <= static_cast<size_t>(indexFeatureGroup)) {
          exit(1);
       }
       if(std::isnan(learningRate)) {
@@ -897,7 +897,7 @@ public:
       FloatEbmType validationMetricReturn = FloatEbmType { 0 };
       const IntEbmType ret = BoostingStep(
          m_pEbmBoosting, 
-         indexFeatureCombination, 
+         indexFeatureGroup, 
          learningRate, 
          countTreeSplitsMax, 
          countSamplesRequiredForChildSplitMin,
@@ -911,58 +911,58 @@ public:
       return validationMetricReturn;
    }
 
-   FloatEbmType GetBestModelPredictorScore(const size_t iFeatureCombination, const std::vector<size_t> indexes, const size_t iScore) const {
+   FloatEbmType GetBestModelPredictorScore(const size_t iFeatureGroup, const std::vector<size_t> indexes, const size_t iScore) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
+      if(m_featureGroups.size() <= iFeatureGroup) {
          exit(1);
       }
-      FloatEbmType * pModelFeatureCombination = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
-      FloatEbmType predictorScore = GetPredictorScore(iFeatureCombination, pModelFeatureCombination, indexes, iScore);
+      FloatEbmType * pModelFeatureGroup = GetBestModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
+      FloatEbmType predictorScore = GetPredictorScore(iFeatureGroup, pModelFeatureGroup, indexes, iScore);
       return predictorScore;
    }
 
-   const FloatEbmType * GetBestModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+   const FloatEbmType * GetBestModelFeatureGroupRaw(const size_t iFeatureGroup) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
+      if(m_featureGroups.size() <= iFeatureGroup) {
          exit(1);
       }
-      FloatEbmType * pModel = GetBestModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType * pModel = GetBestModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
       return pModel;
    }
 
    FloatEbmType GetCurrentModelPredictorScore(
-      const size_t iFeatureCombination, 
+      const size_t iFeatureGroup, 
       const std::vector<size_t> perDimensionIndexArrayForBinnedFeatures, 
       const size_t iTargetClassOrZero)
    const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
+      if(m_featureGroups.size() <= iFeatureGroup) {
          exit(1);
       }
-      FloatEbmType * pModelFeatureCombination = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType * pModelFeatureGroup = GetCurrentModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
       FloatEbmType predictorScore = GetPredictorScore(
-         iFeatureCombination, 
-         pModelFeatureCombination, 
+         iFeatureGroup, 
+         pModelFeatureGroup, 
          perDimensionIndexArrayForBinnedFeatures, 
          iTargetClassOrZero
       );
       return predictorScore;
    }
 
-   const FloatEbmType * GetCurrentModelFeatureCombinationRaw(const size_t iFeatureCombination) const {
+   const FloatEbmType * GetCurrentModelFeatureGroupRaw(const size_t iFeatureGroup) const {
       if(Stage::InitializedBoosting != m_stage) {
          exit(1);
       }
-      if(m_featureCombinations.size() <= iFeatureCombination) {
+      if(m_featureGroups.size() <= iFeatureGroup) {
          exit(1);
       }
-      FloatEbmType * pModel = GetCurrentModelFeatureCombination(m_pEbmBoosting, iFeatureCombination);
+      FloatEbmType * pModel = GetCurrentModelFeatureGroup(m_pEbmBoosting, iFeatureGroup);
       return pModel;
    }
 
@@ -1165,11 +1165,11 @@ public:
       m_stage = Stage::InitializedInteraction;
    }
 
-   FloatEbmType InteractionScore(const std::vector<IntEbmType> featuresInCombination, const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault) const {
+   FloatEbmType InteractionScore(const std::vector<IntEbmType> featuresInGroup, const IntEbmType countSamplesRequiredForChildSplitMin = k_countSamplesRequiredForChildSplitMinDefault) const {
       if(Stage::InitializedInteraction != m_stage) {
          exit(1);
       }
-      for(const IntEbmType oneFeatureIndex : featuresInCombination) {
+      for(const IntEbmType oneFeatureIndex : featuresInGroup) {
          if(oneFeatureIndex < IntEbmType { 0 }) {
             exit(1);
          }
@@ -1181,8 +1181,8 @@ public:
       FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
       const IntEbmType ret = GetInteractionScore(
          m_pEbmInteraction, 
-         featuresInCombination.size(), 
-         0 == featuresInCombination.size() ? nullptr : &featuresInCombination[0], 
+         featuresInGroup.size(), 
+         0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0], 
          countSamplesRequiredForChildSplitMin,
          &interactionScoreReturn
       );
@@ -1196,7 +1196,7 @@ public:
 TEST_CASE("test random number generator equivalency") {
    TestApi test = TestApi(2);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
 
    std::vector<ClassificationInstance> instances;
    for(int i = 0; i < 1000; ++i) {
@@ -1209,8 +1209,8 @@ TEST_CASE("test random number generator equivalency") {
    test.InitializeBoosting(2);
 
    for(int iEpoch = 0; iEpoch < 100; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         test.Boost(iFeatureCombination);
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         test.Boost(iFeatureGroup);
       }
    }
 
@@ -2799,14 +2799,14 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
 }
 
 TEST_CASE("null validationMetricReturn, boosting, regression") {
-   EbmNativeFeatureCombination combinations[1];
-   combinations->countFeaturesInCombination = 0;
+   EbmNativeFeatureGroup groups[1];
+   groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
       0, 
       nullptr, 
       1, 
-      combinations, 
+      groups, 
       nullptr, 
       0, 
       nullptr, 
@@ -2835,15 +2835,15 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
 }
 
 TEST_CASE("null validationMetricReturn, boosting, binary") {
-   EbmNativeFeatureCombination combinations[1];
-   combinations->countFeaturesInCombination = 0;
+   EbmNativeFeatureGroup groups[1];
+   groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
       2, 
       0, 
       nullptr, 
       1, 
-      combinations, 
+      groups, 
       nullptr, 
       0, 
       nullptr, 
@@ -2872,15 +2872,15 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
 }
 
 TEST_CASE("null validationMetricReturn, boosting, multiclass") {
-   EbmNativeFeatureCombination combinations[1];
-   combinations->countFeaturesInCombination = 0;
+   EbmNativeFeatureGroup groups[1];
+   groups->countFeaturesInGroup = 0;
 
    PEbmBoosting pEbmBoosting = InitializeBoostingClassification(
       3, 
       0, 
       nullptr, 
       1, 
-      combinations, 
+      groups, 
       nullptr, 
       0, 
       nullptr, 
@@ -2932,7 +2932,7 @@ TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
 TEST_CASE("zero learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
@@ -2940,13 +2940,13 @@ TEST_CASE("zero learning rate, boosting, regression") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
          CHECK_APPROX(validationMetric, 144);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
 
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
       }
    }
@@ -2955,7 +2955,7 @@ TEST_CASE("zero learning rate, boosting, regression") {
 TEST_CASE("zero learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -2963,17 +2963,17 @@ TEST_CASE("zero learning rate, boosting, binary") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
          CHECK_APPROX(validationMetric, 0.69314718055994529);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
          CHECK_APPROX(modelValue, 0);
 
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 1);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 1);
          CHECK_APPROX(modelValue, 0);
       }
    }
@@ -2982,7 +2982,7 @@ TEST_CASE("zero learning rate, boosting, binary") {
 TEST_CASE("zero learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -2990,21 +2990,21 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, 0);
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, 0);
          CHECK_APPROX(validationMetric, 1.0986122886681098);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+         modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
          CHECK_APPROX(modelValue, 0);
 
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 0);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 0);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 1);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 1);
          CHECK_APPROX(modelValue, 0);
-         modelValue = test.GetBestModelPredictorScore(iFeatureCombination, {}, 2);
+         modelValue = test.GetBestModelPredictorScore(iFeatureGroup, {}, 2);
          CHECK_APPROX(modelValue, 0);
       }
    }
@@ -3013,7 +3013,7 @@ TEST_CASE("zero learning rate, boosting, multiclass") {
 TEST_CASE("negative learning rate, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
@@ -3021,16 +3021,16 @@ TEST_CASE("negative learning rate, boosting, regression") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 146.41);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, -0.1000000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 148.864401);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, -0.2010000000000000);
          }
       }
@@ -3043,7 +3043,7 @@ TEST_CASE("negative learning rate, boosting, regression") {
 TEST_CASE("negative learning rate, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -3051,20 +3051,20 @@ TEST_CASE("negative learning rate, boosting, binary") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 50; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.70319717972663420);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, 0.020000000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.71345019889199235);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, 0.040202013400267564);
          }
       }
@@ -3080,7 +3080,7 @@ TEST_CASE("negative learning rate, boosting, binary") {
 TEST_CASE("negative learning rate, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -3088,24 +3088,24 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 20; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination, {}, {}, -k_learningRateDefault);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup, {}, {}, -k_learningRateDefault);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.1288361512023379);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, -0.03000000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, 0.01500000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
             CHECK_APPROX(modelValue, 0.01500000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.1602122411839852);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, -0.060920557198174352);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, 0.030112481019468545);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
             CHECK_APPROX(modelValue, 0.030112481019468545);
          }
       }
@@ -3125,7 +3125,7 @@ TEST_CASE("zero countSamplesRequiredForChildSplitMin, boosting, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({
       RegressionInstance(10, { 0 }),
       RegressionInstance(10, { 1 }),
@@ -3147,7 +3147,7 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({ 
       RegressionInstance(10, { 0 }),
       RegressionInstance(10, { 1 }),
@@ -3168,7 +3168,7 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 //TEST_CASE("infinite target training set, boosting, regression") {
 //   TestApi test = TestApi(k_learningTypeRegression);
 //   test.AddFeatures({ Feature(2) });
-//   test.AddFeatureCombinations({ { 0 } });
+//   test.AddFeatureGroups({ { 0 } });
 //   test.AddTrainingInstances({ RegressionInstance(FloatEbmType { std::numeric_limits<FloatEbmType>::infinity() }, { 1 }) });
 //   test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
 //   test.InitializeBoosting();
@@ -3186,7 +3186,7 @@ TEST_CASE("zero countTreeSplitsMax, boosting, regression") {
 TEST_CASE("Zero training instances, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances(std::vector<RegressionInstance> {});
    test.AddValidationInstances({ RegressionInstance(12, { 1 }) });
    test.InitializeBoosting();
@@ -3204,7 +3204,7 @@ TEST_CASE("Zero training instances, boosting, regression") {
 TEST_CASE("Zero training instances, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeBoosting();
@@ -3226,7 +3226,7 @@ TEST_CASE("Zero training instances, boosting, binary") {
 TEST_CASE("Zero training instances, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeBoosting();
@@ -3251,7 +3251,7 @@ TEST_CASE("Zero training instances, boosting, multiclass") {
 TEST_CASE("Zero validation instances, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
    test.AddValidationInstances(std::vector<RegressionInstance> {});
    test.InitializeBoosting();
@@ -3280,7 +3280,7 @@ TEST_CASE("Zero validation instances, boosting, regression") {
 TEST_CASE("Zero validation instances, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
    test.InitializeBoosting();
@@ -3318,7 +3318,7 @@ TEST_CASE("Zero validation instances, boosting, binary") {
 TEST_CASE("Zero validation instances, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
    test.InitializeBoosting();
@@ -3397,7 +3397,7 @@ TEST_CASE("features with 0 states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(0) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances(std::vector<RegressionInstance> {});
    test.AddValidationInstances(std::vector<RegressionInstance> {});
    test.InitializeBoosting();
@@ -3407,8 +3407,8 @@ TEST_CASE("features with 0 states, boosting") {
 
    // we're not sure what we'd get back since we aren't allowed to access it, so don't do anything with the return value.  We just want to make sure 
    // calling to get the models doesn't crash
-   test.GetBestModelFeatureCombinationRaw(0);
-   test.GetCurrentModelFeatureCombinationRaw(0);
+   test.GetBestModelFeatureGroupRaw(0);
+   test.GetCurrentModelFeatureGroupRaw(0);
 }
 
 TEST_CASE("features with 0 states, interaction") {
@@ -3425,19 +3425,19 @@ TEST_CASE("classification with 0 possible target states, boosting") {
    // for there to be zero states, there can't be an training data or testing data since then those would be required to have a value for the state
    TestApi test = TestApi(0);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances(std::vector<ClassificationInstance> {});
    test.AddValidationInstances(std::vector<ClassificationInstance> {});
    test.InitializeBoosting();
 
-   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
 
    FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
 }
 
 TEST_CASE("classification with 0 possible target states, interaction") {
@@ -3453,19 +3453,19 @@ TEST_CASE("classification with 0 possible target states, interaction") {
 TEST_CASE("classification with 1 possible target, boosting") {
    TestApi test = TestApi(1);
    test.AddFeatures({ FeatureTest(2) });
-   test.AddFeatureCombinations({ { 0 } });
+   test.AddFeatureGroups({ { 0 } });
    test.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    test.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    test.InitializeBoosting();
 
-   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
 
    FloatEbmType validationMetric = test.Boost(0);
    CHECK(0 == validationMetric);
 
-   CHECK(nullptr == test.GetBestModelFeatureCombinationRaw(0));
-   CHECK(nullptr == test.GetCurrentModelFeatureCombinationRaw(0));
+   CHECK(nullptr == test.GetBestModelFeatureGroupRaw(0));
+   CHECK(nullptr == test.GetCurrentModelFeatureGroupRaw(0));
 }
 
 TEST_CASE("classification with 1 possible target, interaction") {
@@ -3485,7 +3485,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2),
       FeatureTest(2)
       });
-   test0.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
+   test0.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
    test0.AddTrainingInstances({ RegressionInstance(10, { 0, 1, 1 }) });
    test0.AddValidationInstances({ RegressionInstance(12, { 0, 1, 1 }) });
    test0.InitializeBoosting();
@@ -3496,7 +3496,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(1),
       FeatureTest(2)
       });
-   test1.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
+   test1.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
    test1.AddTrainingInstances({ RegressionInstance(10, { 1, 0, 1 }) });
    test1.AddValidationInstances({ RegressionInstance(12, { 1, 0, 1 }) });
    test1.InitializeBoosting();
@@ -3507,7 +3507,7 @@ TEST_CASE("features with 1 state in various positions, boosting") {
       FeatureTest(2),
       FeatureTest(1)
       });
-   test2.AddFeatureCombinations({ { 0 }, { 1 }, { 2 } });
+   test2.AddFeatureGroups({ { 0 }, { 1 }, { 2 } });
    test2.AddTrainingInstances({ RegressionInstance(10, { 1, 1, 0 }) });
    test2.AddValidationInstances({ RegressionInstance(12, { 1, 1, 0 }) });
    test2.InitializeBoosting();
@@ -3561,46 +3561,46 @@ TEST_CASE("features with 1 state in various positions, boosting") {
    }
 }
 
-TEST_CASE("zero FeatureCombinations, boosting, regression") {
+TEST_CASE("zero FeatureGroups, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureCombinations({});
+   test.AddFeatureGroups({});
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureGroup index
 }
 
-TEST_CASE("zero FeatureCombinations, boosting, binary") {
+TEST_CASE("zero FeatureGroups, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureCombinations({});
+   test.AddFeatureGroups({});
    test.AddTrainingInstances({ ClassificationInstance(1, {}) });
    test.AddValidationInstances({ ClassificationInstance(1, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureGroup index
 }
 
-TEST_CASE("zero FeatureCombinations, boosting, multiclass") {
+TEST_CASE("zero FeatureGroups, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
-   test.AddFeatureCombinations({});
+   test.AddFeatureGroups({});
    test.AddTrainingInstances({ ClassificationInstance(2, {}) });
    test.AddValidationInstances({ ClassificationInstance(2, {}) });
    test.InitializeBoosting();
 
    UNUSED(testCaseHidden); // this is a hidden parameter from TEST_CASE, but we don't test anything here.. we would just crash/assert if there was a problem
-   // boosting isn't legal since we'd need to specify an featureCombination index
+   // boosting isn't legal since we'd need to specify an featureGroup index
 }
 
-TEST_CASE("FeatureCombination with zero features, boosting, regression") {
+TEST_CASE("FeatureGroup with zero features, boosting, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ RegressionInstance(10, {}) });
    test.AddValidationInstances({ RegressionInstance(12, {}) });
    test.InitializeBoosting();
@@ -3608,16 +3608,16 @@ TEST_CASE("FeatureCombination with zero features, boosting, regression") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 141.61);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0.1000000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 139.263601);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0.1990000000000000);
          }
       }
@@ -3627,10 +3627,10 @@ TEST_CASE("FeatureCombination with zero features, boosting, regression") {
    CHECK_APPROX(modelValue, 9.9995682875258822);
 }
 
-TEST_CASE("FeatureCombination with zero features, boosting, binary") {
+TEST_CASE("FeatureGroup with zero features, boosting, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -3638,20 +3638,20 @@ TEST_CASE("FeatureCombination with zero features, boosting, binary") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.68319717972663419);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, -0.020000000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 0.67344419889200957);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, -0.039801986733067563);
          }
       }
@@ -3663,10 +3663,10 @@ TEST_CASE("FeatureCombination with zero features, boosting, binary") {
    CHECK_APPROX(modelValue, -10.696601122148364);
 }
 
-TEST_CASE("FeatureCombination with zero features, boosting, multiclass") {
+TEST_CASE("FeatureGroup with zero features, boosting, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ });
-   test.AddFeatureCombinations({ {} });
+   test.AddFeatureGroups({ {} });
    test.AddTrainingInstances({ ClassificationInstance(0, {}) });
    test.AddValidationInstances({ ClassificationInstance(0, {}) });
    test.InitializeBoosting();
@@ -3674,24 +3674,24 @@ TEST_CASE("FeatureCombination with zero features, boosting, multiclass") {
    FloatEbmType validationMetric = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    FloatEbmType modelValue = FloatEbmType { std::numeric_limits<FloatEbmType>::quiet_NaN() };
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         validationMetric = test.Boost(iFeatureCombination);
-         if(0 == iFeatureCombination && 0 == iEpoch) {
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         validationMetric = test.Boost(iFeatureGroup);
+         if(0 == iFeatureGroup && 0 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.0688384008227103);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0.03000000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, -0.01500000000000000);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
             CHECK_APPROX(modelValue, -0.01500000000000000);
          }
-         if(0 == iFeatureCombination && 1 == iEpoch) {
+         if(0 == iFeatureGroup && 1 == iEpoch) {
             CHECK_APPROX(validationMetric, 1.0401627411809615);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
             CHECK_APPROX(modelValue, 0.059119949636662006);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
             CHECK_APPROX(modelValue, -0.029887518980531450);
-            modelValue = test.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
+            modelValue = test.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
             CHECK_APPROX(modelValue, -0.029887518980531450);
          }
       }
@@ -3705,7 +3705,7 @@ TEST_CASE("FeatureCombination with zero features, boosting, multiclass") {
    CHECK_APPROX(modelValue, -10.232489007525166);
 }
 
-TEST_CASE("FeatureCombination with zero features, interaction, regression") {
+TEST_CASE("FeatureGroup with zero features, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({});
    test.AddInteractionInstances({ RegressionInstance(10, {}) });
@@ -3714,7 +3714,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, regression") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with zero features, interaction, binary") {
+TEST_CASE("FeatureGroup with zero features, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({});
    test.AddInteractionInstances({ ClassificationInstance(0, {}) });
@@ -3723,7 +3723,7 @@ TEST_CASE("FeatureCombination with zero features, interaction, binary") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with zero features, interaction, multiclass") {
+TEST_CASE("FeatureGroup with zero features, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({});
    test.AddInteractionInstances({ ClassificationInstance(0, {}) });
@@ -3732,151 +3732,151 @@ TEST_CASE("FeatureCombination with zero features, interaction, multiclass") {
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, regression") {
-   TestApi testZeroFeaturesInCombination = TestApi(k_learningTypeRegression);
-   testZeroFeaturesInCombination.AddFeatures({});
-   testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
-   testZeroFeaturesInCombination.AddTrainingInstances({ RegressionInstance(10, {}) });
-   testZeroFeaturesInCombination.AddValidationInstances({ RegressionInstance(12, {}) });
-   testZeroFeaturesInCombination.InitializeBoosting();
+TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, regression") {
+   TestApi testZeroFeaturesInGroup = TestApi(k_learningTypeRegression);
+   testZeroFeaturesInGroup.AddFeatures({});
+   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
+   testZeroFeaturesInGroup.AddTrainingInstances({ RegressionInstance(10, {}) });
+   testZeroFeaturesInGroup.AddValidationInstances({ RegressionInstance(12, {}) });
+   testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(k_learningTypeRegression);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureCombinations({ { 0 } });
+   testOneState.AddFeatureGroups({ { 0 } });
    testOneState.AddTrainingInstances({ RegressionInstance(10, { 0 }) });
    testOneState.AddValidationInstances({ RegressionInstance(12, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(k_learningTypeRegression);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureCombinations({ { 0 } });
+   testTwoStates.AddFeatureGroups({ { 0 } });
    testTwoStates.AddTrainingInstances({ RegressionInstance(10, { 1 }) });
    testTwoStates.AddValidationInstances({ RegressionInstance(12, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
-      for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInCombination = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FloatEbmType modelValueOneState = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueOneState);
-         FloatEbmType modelValueTwoStates = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination, modelValueTwoStates);
+         FloatEbmType modelValueZeroFeaturesInGroup = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueOneState = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup, modelValueOneState);
+         FloatEbmType modelValueTwoStates = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup, modelValueTwoStates);
       }
    }
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, binary") {
-   TestApi testZeroFeaturesInCombination = TestApi(2, 0);
-   testZeroFeaturesInCombination.AddFeatures({});
-   testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
-   testZeroFeaturesInCombination.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.InitializeBoosting();
+TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, binary") {
+   TestApi testZeroFeaturesInGroup = TestApi(2, 0);
+   testZeroFeaturesInGroup.AddFeatures({});
+   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
+   testZeroFeaturesInGroup.AddTrainingInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(2, 0);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureCombinations({ { 0 } });
+   testOneState.AddFeatureGroups({ { 0 } });
    testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(2, 0);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureCombinations({ { 0 } });
+   testTwoStates.AddFeatureGroups({ { 0 } });
    testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
-      for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
-         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
+         FloatEbmType modelValueZeroFeaturesInGroup0 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueOneState0);
+         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueTwoStates0);
 
-         FloatEbmType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
-         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
-         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
+         FloatEbmType modelValueZeroFeaturesInGroup1 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
+         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueOneState1);
+         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueTwoStates1);
       }
    }
 }
 
-TEST_CASE("FeatureCombination with one feature with one or two states is the exact same as zero FeatureCombinations, boosting, multiclass") {
-   TestApi testZeroFeaturesInCombination = TestApi(3);
-   testZeroFeaturesInCombination.AddFeatures({});
-   testZeroFeaturesInCombination.AddFeatureCombinations({ {} });
-   testZeroFeaturesInCombination.AddTrainingInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.AddValidationInstances({ ClassificationInstance(0, {}) });
-   testZeroFeaturesInCombination.InitializeBoosting();
+TEST_CASE("FeatureGroup with one feature with one or two states is the exact same as zero FeatureGroups, boosting, multiclass") {
+   TestApi testZeroFeaturesInGroup = TestApi(3);
+   testZeroFeaturesInGroup.AddFeatures({});
+   testZeroFeaturesInGroup.AddFeatureGroups({ {} });
+   testZeroFeaturesInGroup.AddTrainingInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.AddValidationInstances({ ClassificationInstance(0, {}) });
+   testZeroFeaturesInGroup.InitializeBoosting();
 
    TestApi testOneState = TestApi(3);
    testOneState.AddFeatures({ FeatureTest(1) });
-   testOneState.AddFeatureCombinations({ { 0 } });
+   testOneState.AddFeatureGroups({ { 0 } });
    testOneState.AddTrainingInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.AddValidationInstances({ ClassificationInstance(0, { 0 }) });
    testOneState.InitializeBoosting();
 
    TestApi testTwoStates = TestApi(3);
    testTwoStates.AddFeatures({ FeatureTest(2) });
-   testTwoStates.AddFeatureCombinations({ { 0 } });
+   testTwoStates.AddFeatureGroups({ { 0 } });
    testTwoStates.AddTrainingInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.AddValidationInstances({ ClassificationInstance(0, { 1 }) });
    testTwoStates.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testOneState.GetFeatureCombinationsCount());
-      assert(testZeroFeaturesInCombination.GetFeatureCombinationsCount() == testTwoStates.GetFeatureCombinationsCount());
-      for(size_t iFeatureCombination = 0; iFeatureCombination < testZeroFeaturesInCombination.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FloatEbmType validationMetricZeroFeaturesInCombination = testZeroFeaturesInCombination.Boost(iFeatureCombination);
-         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricOneState);
-         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureCombination);
-         CHECK_APPROX(validationMetricZeroFeaturesInCombination, validationMetricTwoStates);
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testOneState.GetFeatureGroupsCount());
+      assert(testZeroFeaturesInGroup.GetFeatureGroupsCount() == testTwoStates.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < testZeroFeaturesInGroup.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetricZeroFeaturesInGroup = testZeroFeaturesInGroup.Boost(iFeatureGroup);
+         FloatEbmType validationMetricOneState = testOneState.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricOneState);
+         FloatEbmType validationMetricTwoStates = testTwoStates.Boost(iFeatureGroup);
+         CHECK_APPROX(validationMetricZeroFeaturesInGroup, validationMetricTwoStates);
 
-         FloatEbmType modelValueZeroFeaturesInCombination0 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 0);
-         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueOneState0);
-         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 0);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination0, modelValueTwoStates0);
+         FloatEbmType modelValueZeroFeaturesInGroup0 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 0);
+         FloatEbmType modelValueOneState0 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueOneState0);
+         FloatEbmType modelValueTwoStates0 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 0);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup0, modelValueTwoStates0);
 
-         FloatEbmType modelValueZeroFeaturesInCombination1 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 1);
-         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueOneState1);
-         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 1);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination1, modelValueTwoStates1);
+         FloatEbmType modelValueZeroFeaturesInGroup1 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 1);
+         FloatEbmType modelValueOneState1 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 1);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueOneState1);
+         FloatEbmType modelValueTwoStates1 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 1);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup1, modelValueTwoStates1);
 
-         FloatEbmType modelValueZeroFeaturesInCombination2 = testZeroFeaturesInCombination.GetCurrentModelPredictorScore(iFeatureCombination, {}, 2);
-         FloatEbmType modelValueOneState2 = testOneState.GetCurrentModelPredictorScore(iFeatureCombination, { 0 }, 2);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueOneState2);
-         FloatEbmType modelValueTwoStates2 = testTwoStates.GetCurrentModelPredictorScore(iFeatureCombination, { 1 }, 2);
-         CHECK_APPROX(modelValueZeroFeaturesInCombination2, modelValueTwoStates2);
+         FloatEbmType modelValueZeroFeaturesInGroup2 = testZeroFeaturesInGroup.GetCurrentModelPredictorScore(iFeatureGroup, {}, 2);
+         FloatEbmType modelValueOneState2 = testOneState.GetCurrentModelPredictorScore(iFeatureGroup, { 0 }, 2);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup2, modelValueOneState2);
+         FloatEbmType modelValueTwoStates2 = testTwoStates.GetCurrentModelPredictorScore(iFeatureGroup, { 1 }, 2);
+         CHECK_APPROX(modelValueZeroFeaturesInGroup2, modelValueTwoStates2);
       }
    }
 }
 
-TEST_CASE("3 dimensional featureCombination with one dimension reduced in different ways, boosting, regression") {
+TEST_CASE("3 dimensional featureGroup with one dimension reduced in different ways, boosting, regression") {
    TestApi test0 = TestApi(k_learningTypeRegression);
    test0.AddFeatures({ FeatureTest(1), FeatureTest(2), FeatureTest(2) });
-   test0.AddFeatureCombinations({ { 0, 1, 2 } });
+   test0.AddFeatureGroups({ { 0, 1, 2 } });
    test0.AddTrainingInstances({ 
       RegressionInstance(9, { 0, 0, 0 }),
       RegressionInstance(10, { 0, 1, 0 }),
@@ -3888,7 +3888,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
 
    TestApi test1 = TestApi(k_learningTypeRegression);
    test1.AddFeatures({ FeatureTest(2), FeatureTest(1), FeatureTest(2) });
-   test1.AddFeatureCombinations({ { 0, 1, 2 } });
+   test1.AddFeatureGroups({ { 0, 1, 2 } });
    test1.AddTrainingInstances({
       RegressionInstance(9, { 0, 0, 0 }),
       RegressionInstance(10, { 0, 0, 1 }),
@@ -3900,7 +3900,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
 
    TestApi test2 = TestApi(k_learningTypeRegression);
    test2.AddFeatures({ FeatureTest(2), FeatureTest(2), FeatureTest(1) });
-   test2.AddFeatureCombinations({ { 0, 1, 2 } });
+   test2.AddFeatureGroups({ { 0, 1, 2 } });
    test2.AddTrainingInstances({
       RegressionInstance(9, { 0, 0, 0 }),
       RegressionInstance(10, { 1, 0, 0 }),
@@ -3911,33 +3911,33 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
    test2.InitializeBoosting();
 
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      assert(test0.GetFeatureCombinationsCount() == test1.GetFeatureCombinationsCount());
-      assert(test0.GetFeatureCombinationsCount() == test2.GetFeatureCombinationsCount());
-      for(size_t iFeatureCombination = 0; iFeatureCombination < test0.GetFeatureCombinationsCount(); ++iFeatureCombination) {
-         FloatEbmType validationMetric0 = test0.Boost(iFeatureCombination);
-         FloatEbmType validationMetric1 = test1.Boost(iFeatureCombination);
+      assert(test0.GetFeatureGroupsCount() == test1.GetFeatureGroupsCount());
+      assert(test0.GetFeatureGroupsCount() == test2.GetFeatureGroupsCount());
+      for(size_t iFeatureGroup = 0; iFeatureGroup < test0.GetFeatureGroupsCount(); ++iFeatureGroup) {
+         FloatEbmType validationMetric0 = test0.Boost(iFeatureGroup);
+         FloatEbmType validationMetric1 = test1.Boost(iFeatureGroup);
          CHECK_APPROX(validationMetric0, validationMetric1);
-         FloatEbmType validationMetric2 = test2.Boost(iFeatureCombination);
+         FloatEbmType validationMetric2 = test2.Boost(iFeatureGroup);
          CHECK_APPROX(validationMetric0, validationMetric2);
 
-         FloatEbmType modelValue01 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FloatEbmType modelValue02 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
-         FloatEbmType modelValue03 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
-         FloatEbmType modelValue04 = test0.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 1 }, 0);
+         FloatEbmType modelValue01 = test0.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue02 = test0.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 0, 1 }, 0);
+         FloatEbmType modelValue03 = test0.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 1, 0 }, 0);
+         FloatEbmType modelValue04 = test0.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 1, 1 }, 0);
 
-         FloatEbmType modelValue11 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FloatEbmType modelValue12 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
-         FloatEbmType modelValue13 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 1 }, 0);
-         FloatEbmType modelValue14 = test1.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 1 }, 0);
+         FloatEbmType modelValue11 = test1.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue12 = test1.GetCurrentModelPredictorScore(iFeatureGroup, { 1, 0, 0 }, 0);
+         FloatEbmType modelValue13 = test1.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 0, 1 }, 0);
+         FloatEbmType modelValue14 = test1.GetCurrentModelPredictorScore(iFeatureGroup, { 1, 0, 1 }, 0);
          CHECK_APPROX(modelValue11, modelValue01);
          CHECK_APPROX(modelValue12, modelValue02);
          CHECK_APPROX(modelValue13, modelValue03);
          CHECK_APPROX(modelValue14, modelValue04);
 
-         FloatEbmType modelValue21 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 0, 0 }, 0);
-         FloatEbmType modelValue22 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 0, 1, 0 }, 0);
-         FloatEbmType modelValue23 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 0, 0 }, 0);
-         FloatEbmType modelValue24 = test2.GetCurrentModelPredictorScore(iFeatureCombination, { 1, 1, 0 }, 0);
+         FloatEbmType modelValue21 = test2.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 0, 0 }, 0);
+         FloatEbmType modelValue22 = test2.GetCurrentModelPredictorScore(iFeatureGroup, { 0, 1, 0 }, 0);
+         FloatEbmType modelValue23 = test2.GetCurrentModelPredictorScore(iFeatureGroup, { 1, 0, 0 }, 0);
+         FloatEbmType modelValue24 = test2.GetCurrentModelPredictorScore(iFeatureGroup, { 1, 1, 0 }, 0);
          CHECK_APPROX(modelValue21, modelValue01);
          CHECK_APPROX(modelValue22, modelValue02);
          CHECK_APPROX(modelValue23, modelValue03);
@@ -3946,7 +3946,7 @@ TEST_CASE("3 dimensional featureCombination with one dimension reduced in differ
    }
 }
 
-TEST_CASE("FeatureCombination with one feature with one state, interaction, regression") {
+TEST_CASE("FeatureGroup with one feature with one state, interaction, regression") {
    TestApi test = TestApi(k_learningTypeRegression);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ RegressionInstance(10, { 0 }) });
@@ -3955,7 +3955,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, regr
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with one feature with one state, interaction, binary") {
+TEST_CASE("FeatureGroup with one feature with one state, interaction, binary") {
    TestApi test = TestApi(2, 0);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
@@ -3964,7 +3964,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, bina
    CHECK(0 == metricReturn);
 }
 
-TEST_CASE("FeatureCombination with one feature with one state, interaction, multiclass") {
+TEST_CASE("FeatureGroup with one feature with one state, interaction, multiclass") {
    TestApi test = TestApi(3);
    test.AddFeatures({ FeatureTest(1) });
    test.AddInteractionInstances({ ClassificationInstance(0, { 0 }) });
@@ -3976,7 +3976,7 @@ TEST_CASE("FeatureCombination with one feature with one state, interaction, mult
 TEST_CASE("Test Rehydration, boosting, regression") {
    TestApi testContinuous = TestApi(k_learningTypeRegression);
    testContinuous.AddFeatures({});
-   testContinuous.AddFeatureCombinations({ {} });
+   testContinuous.AddFeatureGroups({ {} });
    testContinuous.AddTrainingInstances({ RegressionInstance(10, {}) });
    testContinuous.AddValidationInstances({ RegressionInstance(12, {}) });
    testContinuous.InitializeBoosting();
@@ -3989,7 +3989,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(k_learningTypeRegression);
       testRestart.AddFeatures({});
-      testRestart.AddFeatureCombinations({ {} });
+      testRestart.AddFeatureGroups({ {} });
       testRestart.AddTrainingInstances({ RegressionInstance(10, {}, model0) });
       testRestart.AddValidationInstances({ RegressionInstance(12, {}, model0) });
       testRestart.InitializeBoosting();
@@ -4007,7 +4007,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
 TEST_CASE("Test Rehydration, boosting, binary") {
    TestApi testContinuous = TestApi(2, 0);
    testContinuous.AddFeatures({});
-   testContinuous.AddFeatureCombinations({ {} });
+   testContinuous.AddFeatureGroups({ {} });
    testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
    testContinuous.InitializeBoosting();
@@ -4021,7 +4021,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(2, 0);
       testRestart.AddFeatures({});
-      testRestart.AddFeatureCombinations({ {} });
+      testRestart.AddFeatureGroups({ {} });
       testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
       testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1 }) });
       testRestart.InitializeBoosting();
@@ -4043,7 +4043,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
 TEST_CASE("Test Rehydration, boosting, multiclass") {
    TestApi testContinuous = TestApi(3);
    testContinuous.AddFeatures({});
-   testContinuous.AddFeatureCombinations({ {} });
+   testContinuous.AddFeatureGroups({ {} });
    testContinuous.AddTrainingInstances({ ClassificationInstance(0, {}) });
    testContinuous.AddValidationInstances({ ClassificationInstance(0, {}) });
    testContinuous.InitializeBoosting();
@@ -4058,7 +4058,7 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestApi testRestart = TestApi(3);
       testRestart.AddFeatures({});
-      testRestart.AddFeatureCombinations({ {} });
+      testRestart.AddFeatureGroups({ {} });
       testRestart.AddTrainingInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
       testRestart.AddValidationInstances({ ClassificationInstance(0, {}, { model0, model1, model2 }) });
       testRestart.InitializeBoosting();
@@ -4092,7 +4092,7 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(k_learningTypeRegression);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureCombinations({ { 0 } });
+            test.AddFeatureGroups({ { 0 } });
 
             std::vector<RegressionInstance> trainingInstances;
             std::vector<RegressionInstance> validationInstances;
@@ -4124,7 +4124,7 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          for(size_t cInstances = 1; cInstances < 66; ++cInstances) {
             TestApi test = TestApi(2, 0);
             test.AddFeatures({ FeatureTest(cBins) });
-            test.AddFeatureCombinations({ { 0 } });
+            test.AddFeatureGroups({ { 0 } });
 
             std::vector<ClassificationInstance> trainingInstances;
             std::vector<ClassificationInstance> validationInstances;

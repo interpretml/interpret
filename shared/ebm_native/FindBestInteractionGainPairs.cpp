@@ -29,7 +29,7 @@ public:
 
    static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZoneBase,
       HistogramBucketBase * const aHistogramBucketsBase
@@ -68,8 +68,8 @@ public:
       HistogramBucket<bClassification> * pTotalsHighHigh =
          GetHistogramBucketByIndex<bClassification>(cBytesPerHistogramBucket, pAuxiliaryBucketZone, 3);
 
-      const size_t cBinsDimension1 = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
-      const size_t cBinsDimension2 = pFeatureCombination->GetFeatureCombinationEntries()[1].m_pFeature->GetCountBins();
+      const size_t cBinsDimension1 = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
+      const size_t cBinsDimension2 = pFeatureGroup->GetFeatureGroupEntries()[1].m_pFeature->GetCountBins();
       // this function can handle 1 == cBins even though that's a degenerate case that shouldn't be boosted on 
       // (dimensions with 1 bin don't contribute anything since they always have the same value)
       EBM_ASSERT(1 <= cBinsDimension1);
@@ -95,7 +95,7 @@ public:
 
             TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                learningTypeOrCountTargetClasses,
-               pFeatureCombination,
+               pFeatureGroup,
                aHistogramBuckets,
                aiStart,
                0x00,
@@ -108,7 +108,7 @@ public:
             if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowLow->GetCountInstancesInBucket())) {
                TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                   learningTypeOrCountTargetClasses,
-                  pFeatureCombination,
+                  pFeatureGroup,
                   aHistogramBuckets,
                   aiStart,
                   0x02,
@@ -121,7 +121,7 @@ public:
                if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsLowHigh->GetCountInstancesInBucket())) {
                   TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                      learningTypeOrCountTargetClasses,
-                     pFeatureCombination,
+                     pFeatureGroup,
                      aHistogramBuckets,
                      aiStart,
                      0x01,
@@ -134,7 +134,7 @@ public:
                   if(LIKELY(cInstancesRequiredForChildSplitMin <= pTotalsHighLow->GetCountInstancesInBucket())) {
                      TensorTotalsSum<compilerLearningTypeOrCountTargetClasses, 2>(
                         learningTypeOrCountTargetClasses,
-                        pFeatureCombination,
+                        pFeatureGroup,
                         aHistogramBuckets,
                         aiStart,
                         0x03,
@@ -216,7 +216,7 @@ public:
 
    INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const aHistogramBuckets
@@ -235,7 +235,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          return FindBestInteractionGainPairsInternal<compilerLearningTypeOrCountTargetClassesPossible>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             cInstancesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             aHistogramBuckets
@@ -247,7 +247,7 @@ public:
       } else {
          return FindBestInteractionGainPairsTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmInteractionState,
-            pFeatureCombination,
+            pFeatureGroup,
             cInstancesRequiredForChildSplitMin,
             pAuxiliaryBucketZone,
             aHistogramBuckets
@@ -268,7 +268,7 @@ public:
 
    INLINE_ALWAYS static FloatEbmType Func(
       EbmInteractionState * const pEbmInteractionState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const size_t cInstancesRequiredForChildSplitMin,
       HistogramBucketBase * pAuxiliaryBucketZone,
       HistogramBucketBase * const aHistogramBuckets
@@ -284,7 +284,7 @@ public:
 
       return FindBestInteractionGainPairsInternal<k_dynamicClassification>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
@@ -298,7 +298,7 @@ public:
 
 extern FloatEbmType FindBestInteractionGainPairs(
    EbmInteractionState * const pEbmInteractionState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const size_t cInstancesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const aHistogramBuckets
@@ -312,7 +312,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
    if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
       return FindBestInteractionGainPairsTarget<2>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets
@@ -325,7 +325,7 @@ extern FloatEbmType FindBestInteractionGainPairs(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       return FindBestInteractionGainPairsInternal<k_regression>::Func(
          pEbmInteractionState,
-         pFeatureCombination,
+         pFeatureGroup,
          cInstancesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          aHistogramBuckets

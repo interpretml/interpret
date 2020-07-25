@@ -48,11 +48,11 @@ public:
       const size_t cVectorLength = GetVectorLength(learningTypeOrCountTargetClasses);
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
 
-      const size_t cInstances = pTrainingSet->GetDataSetByFeatureCombination()->GetCountInstances();
+      const size_t cInstances = pTrainingSet->GetDataSetByFeatureGroup()->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureCombination()->GetResidualPointer();
+      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorEnd = pResidualError + cVectorLength * cInstances;
 
@@ -189,7 +189,7 @@ public:
 
    static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -213,7 +213,7 @@ public:
 
       const size_t cItemsPerBitPackedDataUnit = GET_COUNT_ITEMS_PER_BIT_PACKED_DATA_UNIT(
          compilerCountItemsPerBitPackedDataUnit,
-         pFeatureCombination->GetCountItemsPerBitPackedDataUnit()
+         pFeatureGroup->GetCountItemsPerBitPackedDataUnit()
       );
       EBM_ASSERT(1 <= cItemsPerBitPackedDataUnit);
       EBM_ASSERT(cItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -224,12 +224,12 @@ public:
       EBM_ASSERT(!GetHistogramBucketSizeOverflow(bClassification, cVectorLength)); // we're accessing allocated memory
       const size_t cBytesPerHistogramBucket = GetHistogramBucketSize(bClassification, cVectorLength);
 
-      const size_t cInstances = pTrainingSet->GetDataSetByFeatureCombination()->GetCountInstances();
+      const size_t cInstances = pTrainingSet->GetDataSetByFeatureGroup()->GetCountInstances();
       EBM_ASSERT(0 < cInstances);
 
       const size_t * pCountOccurrences = pTrainingSet->GetCountOccurrences();
-      const StorageDataType * pInputData = pTrainingSet->GetDataSetByFeatureCombination()->GetInputDataPointer(pFeatureCombination);
-      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureCombination()->GetResidualPointer();
+      const StorageDataType * pInputData = pTrainingSet->GetDataSetByFeatureGroup()->GetInputDataPointer(pFeatureGroup);
+      const FloatEbmType * pResidualError = pTrainingSet->GetDataSetByFeatureGroup()->GetResidualPointer();
 
       // this shouldn't overflow since we're accessing existing memory
       const FloatEbmType * const pResidualErrorTrueEnd = pResidualError + cVectorLength * cInstances;
@@ -358,7 +358,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -375,7 +375,7 @@ public:
       if(compilerLearningTypeOrCountTargetClassesPossible == runtimeLearningTypeOrCountTargetClasses) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClassesPossible, k_cItemsPerBitPackedDataUnitDynamic>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -385,7 +385,7 @@ public:
       } else {
          BinBoostingNormalTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -404,7 +404,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -418,7 +418,7 @@ public:
 
       BinBoostingInternal<k_dynamicClassification, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
 #ifndef NDEBUG
@@ -436,14 +436,14 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureCombination->GetCountItemsPerBitPackedDataUnit();
+      const size_t runtimeCountItemsPerBitPackedDataUnit = pFeatureGroup->GetCountItemsPerBitPackedDataUnit();
 
       EBM_ASSERT(1 <= runtimeCountItemsPerBitPackedDataUnit);
       EBM_ASSERT(runtimeCountItemsPerBitPackedDataUnit <= k_cBitsForStorageType);
@@ -451,7 +451,7 @@ public:
       if(compilerCountItemsPerBitPackedDataUnitPossible == runtimeCountItemsPerBitPackedDataUnit) {
          BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, compilerCountItemsPerBitPackedDataUnitPossible>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -464,7 +464,7 @@ public:
             GetNextCountItemsBitPacked(compilerCountItemsPerBitPackedDataUnitPossible)
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -483,18 +483,18 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
       , const unsigned char * const aHistogramBucketsEndDebug
 #endif // NDEBUG
    ) {
-      EBM_ASSERT(1 <= pFeatureCombination->GetCountItemsPerBitPackedDataUnit());
-      EBM_ASSERT(pFeatureCombination->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountItemsPerBitPackedDataUnit());
+      EBM_ASSERT(pFeatureGroup->GetCountItemsPerBitPackedDataUnit() <= k_cBitsForStorageType);
       BinBoostingInternal<compilerLearningTypeOrCountTargetClasses, k_cItemsPerBitPackedDataUnitDynamic>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
 #ifndef NDEBUG
@@ -512,7 +512,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -532,7 +532,7 @@ public:
             k_cItemsPerBitPackedDataUnitMax
          >::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -542,7 +542,7 @@ public:
       } else {
          BinBoostingSIMDTarget<compilerLearningTypeOrCountTargetClassesPossible + 1>::Func(
             pEbmBoostingState,
-            pFeatureCombination,
+            pFeatureGroup,
             pTrainingSet,
             aHistogramBucketBase
 #ifndef NDEBUG
@@ -561,7 +561,7 @@ public:
 
    INLINE_ALWAYS static void Func(
       EbmBoostingState * const pEbmBoostingState,
-      const FeatureCombination * const pFeatureCombination,
+      const FeatureGroup * const pFeatureGroup,
       const SamplingSet * const pTrainingSet,
       HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -575,7 +575,7 @@ public:
 
       BinBoostingSIMDPacking<k_dynamicClassification, k_cItemsPerBitPackedDataUnitMax>::Func(
          pEbmBoostingState,
-         pFeatureCombination,
+         pFeatureGroup,
          pTrainingSet,
          aHistogramBucketBase
 #ifndef NDEBUG
@@ -587,7 +587,7 @@ public:
 
 extern void BinBoosting(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -598,7 +598,7 @@ extern void BinBoosting(
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
 
-   if(nullptr == pFeatureCombination) {
+   if(nullptr == pFeatureGroup) {
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          BinBoostingZeroDimensionsTarget<2>::Func(
             pEbmBoostingState,
@@ -614,7 +614,7 @@ extern void BinBoosting(
          );
       }
    } else {
-      EBM_ASSERT(1 <= pFeatureCombination->GetCountFeatures());
+      EBM_ASSERT(1 <= pFeatureGroup->GetCountFeatures());
       if(k_bUseSIMD) {
          // TODO : enable SIMD(AVX-512) to work
 
@@ -631,7 +631,7 @@ extern void BinBoosting(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingSIMDTarget<2>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
 #ifndef NDEBUG
@@ -642,7 +642,7 @@ extern void BinBoosting(
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingSIMDPacking<k_regression, k_cItemsPerBitPackedDataUnitMax>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
 #ifndef NDEBUG
@@ -660,7 +660,7 @@ extern void BinBoosting(
          if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
             BinBoostingNormalTarget<2>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
 #ifndef NDEBUG
@@ -671,7 +671,7 @@ extern void BinBoosting(
             EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
             BinBoostingInternal<k_regression, k_cItemsPerBitPackedDataUnitDynamic>::Func(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pTrainingSet,
                aHistogramBucketBase
 #ifndef NDEBUG

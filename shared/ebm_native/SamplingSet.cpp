@@ -15,7 +15,7 @@
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    RandomStream * const pRandomStream, 
-   const DataSetByFeatureCombination * const pOriginDataSet
+   const DataSetByFeatureGroup * const pOriginDataSet
 ) {
    LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
@@ -53,7 +53,7 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    return pRet;
 }
 
-SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet) {
+SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureGroup * const pOriginDataSet) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
@@ -105,7 +105,7 @@ WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
    RandomStream * const pRandomStream, 
-   const DataSetByFeatureCombination * const pOriginDataSet, 
+   const DataSetByFeatureGroup * const pOriginDataSet, 
    const size_t cSamplingSets
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
