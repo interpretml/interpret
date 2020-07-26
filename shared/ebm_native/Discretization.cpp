@@ -6,7 +6,16 @@
 
 // TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
 // TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
-// TODO: after we've found our splits, generate the best interpretable cut points, then move 1% backwards and forwards to pick the cut points with the lowest numbers of digits that are closest to the original cut points.  Moving 1% either way should be acceptable.  Make it a parameter that can be used from internal python code but we shouldn't export this to the end user since it has limited usefullness
+// TODO: after we've found our splits, generate the best interpretable cut points, then move 1% backwards and forwards
+//       to pick the cut points with the lowest numbers of digits that are closest to the original cut points.  
+//       Moving 1% either way should be acceptable.  Make it a parameter that can be used from internal python code 
+//       but we shouldn't export this to the end user since it has limited usefullness.  We can do this efficiently
+//       by moving to the 1% end points directly, calculating the best split text split points between the 1% up and
+//       1% down boundaries.  Then we'll know how many digits we need.  The problem is that the number retunred
+//       will be the numeric mid-point, but not the low digit text median.  So, we find out if our new point is
+//       above or below our previous text number, then we increment or decrement our number by one at the least
+//       significant bit, so our result has the same number of digits as the best one, but it is closest to the
+//       best bin divisor in terms of # of samples that go into each of our low and high side bins
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
@@ -22,6 +31,26 @@
 #include "EbmInternal.h"
 #include "Logging.h" // EBM_ASSERT & LOG
 #include "RandomStream.h"
+
+// TODO: Next steps:
+// 0) Review slicer API and take note that the current visualization code seems to include the min and max into
+//    the bin cuts, but we don't want that.  We want clean min and max values because we don't cut on those
+// 1) write a DEBUG function in the test program that shows where the splits would go in a nice way
+// 2) visually check out some longer split runs and see if I disagree with any of them.
+// 3) Possibly, also write a python split visualizer and look how some real data gets cut (just using the bare 
+//    GenerateQuantileCutPoints function)
+// 4) Ok, once we're sure the algorithm isn't completely off base, let's add automated tests for almost every path we
+//    can put a breakpoint on below or that we can think is important
+// 5) Do a complete review top to bottom review of this entire file.  Which is just the GenerateQuantileCutPoints 
+//    system, and the the Discretize function.  Don't expand our already complex functionality unless necessary
+// 6) Implement GenerateImprovedEqualWidthCutPoints and GenerateEqualWidthCutPoints
+// 7) expose everything in python and clean up the preprocessor stuff there and make the cut points per
+//    additive_term all work, look at how this changes the visualization objects, and continue along the path of 
+//    implementing the python changes we agreed on including generational binning, etc..
+// 8) Run tests against the 200 datasets to see if we degraded performance in any detectable way
+// 9) Put out a version in python with all of these changes.  Wait a few months
+// 10) Come back later and improve on this algorithm per the TODOs in this file
+
 
 // Some general definitions:
 //  - unsplittable range - a long contiguous series of feature values after sorting that have the same value, 
@@ -1055,14 +1084,6 @@ static size_t SplitSegment(
    // TODO: someday, for performance, it might make sense to use a non-allocating tree, like:
    //       https://github.com/attractivechaos/klib/blob/master/kavl.h
 
-   // TODO: try to use integer math for indexes instead of floating point numbers which introduce inexactness, and they break down above 2^52 where
-   //   // individual integers can no longer be represented by a double
-   //   // use integer math and integer based fractions (this is also slighly faster)
-
-   // this function assumes that there will either be splits on either sides of the ranges OR that we're 
-   // at the end of a range.  We don't handle the special case of there only being 1 split in a range that needs
-   // to be chosen.  That's a special case handled elsewhere
-
    try {
       while(!pBestSplitPoints->empty()) {
          // We've located our desired split points previously.  Sometimes those desired split points
@@ -1092,7 +1113,7 @@ static size_t SplitSegment(
          // numbers like 255 it might be fine, but our user could choose much larger numbers of splits, and then 
          // it would become intractable.
          //
-         // Instead of re-calculating all remaining 255 split points though, maybe we can instead choose a window 
+         // Instead of re-calculating all remaining 255 split points though, we instead choose a window 
          // of influence.  So, if our influence window was set to 50 split points, then even if we had to move one 
          // split point by a large amount of almost a complete split range, we'd only impact the neighboring 50 ranges 
          // by 2% (1/50).
@@ -1114,48 +1135,14 @@ static size_t SplitSegment(
          // affected, so we only need to update items within a four time range of our window size, 
          // two on the left and two on the right.
          //
-         // Initially we place all our desired split points equidistant from each other within a splitting range.  
-         // After one split has been actualized though, we find that there are different distances between desired 
-         // split point, which is a consequence of our choosing a tractable algorithm that uses windows of influence. 
-         // Let's say our next split point that we extract from the priority queue was at the previous influence boundary
-         // split point.  In this case, the ranges to the left and right are sized differently.  Let's say that our influence
-         // windows for this new split point are 50 in both directions.  We have two options for choosing where to
-         // actualize our split point.  We could equally divide up the space between our influence window boundaries
-         // such that our actualized split point is as close to the center as possible, BUT then we'd be radically
-         // departing from the priority that we inserted ourselves into the priority queue with.  We also couldn't
-         // have inserted ourselves into the priority queue with equidistant ranges on our sides, since then we'd need
-         // to cascade the range lengths all the way to the ends, thus giving up the non N^2 nature of of our window
-         // of influence algorithm.  I think we need to proportionally move our desired split point to the actual split
-         // point such that we don't radically change the location beyond the edges of the range that we fall inside
-         // if we alllowed more radical departures in location then our priority queue would loose meaning.
-         // 
-         // By using proportional adjustment we keep our proposed split point within the range that it fell under 
-         // when we generated a priority score, since ottherwise we'd randomize the scores too much and be pulling 
-         // out bad choices.  We therefore
-         // need to keep the proportions of the ranges relative to their sizes at any given time.  If we re-computed
-         // where the split point should be based on a new 50 item window, then it could very well be placed
-         // well outside of the range that it was originally suposed to be inside.  It seems like getting that far out
-         // of the priority queue score would be bad, so we preseve the relative lengths of the ranges and always
-         // find ourselves falling into the range we were considering.
-         //
          // If we have our window set to larger than the number of splits, then we'll effectively be re-doing all
          // the splits, which might be ok for small N.  In that case all the splits would always have the same width
-         // In our modified world, we get divergence over time, but since we're limiiting our change to a small
+         // In our modified world, we get divergence over time, but since we're limiting our change to a small
          // percentage, we shouldn't get too far out of whack.  Also, we'll quickly put down actualized splitting points such
          // that afer a few we'll probably find ourselves close to a previous split point and we'll proceed by
          // updating all the priority scores exactly since we'll hit the already decided splits before the 
          // influence window length
          //
-         // Our priority score will probably depend on the smallest range in our range window, but then we'd need to
-         // maintain a sliding window that knows the smallest range within it.  This requries a tree to hold
-         // the lengths, and we'd maintain the window as we move, so if we were moving to the left, we'd add one
-         // item to the window from the left, and remove the item to the right.  But if the item to the right is
-         // the lowest value, we'd need to scan the remaining items, unless we use a tree to keep track.
-         // It's probably reasonably effective though to just use the average smallest range that we calculate from 
-         // the right side minus the left divided by the number of ranges.  It isn't perfect, but it shouldn't get too
-         // bad, and the complexity is lower so it would allow us to do our calculations faster, and therefore allows
-         // more exploratory forays in our caller above before we hit time limits.
-
          // initially, we have pre-calculated which direction each split should go, and we've calculated how many
          // cut points should move between our right and left sides, and we also previously calculated a priority for
          // making decisions. When we pull one potential split point off the queue, we need to nuke all our decisions
@@ -1165,96 +1152,13 @@ static size_t SplitSegment(
          // At this point we're re-doing our cuts within the 50 item cut window and we need to decide two things:
          //   1) calculate the direction we'd go for each new cut point, and how many cuts we'd move from our right 
          //      and left to the other side
-         //   2) Calculate the priority of making the decions
-         //
-         // For each range we can go either left or right and we need to choose.  We should try and make decions
-         // based on our local neighbourhood, so what we can do is start by assuming we go left, and then chop
-         // up the spaces to our left boundary equally.  We can then know our desired step distance so we can go and
-         // examine what our close neighbours look like within a smaller window.  We can try going left and right for each
-         // of our close neighbours and see if we'll need to make hard decisions.  We can try out the combinations by
-         // using a 32 bit number (provided we're exploring less than 2^32 options) and then let each bit represent
-         // going left or right for a position at the index.  We can then increment the number and re-simulate various
-         // nearby options until we find the one that has the best outcome (the one with the biggest smallest range with
-         // the least dropage of cuts).  This represents a possible/reasonable outcome.  We know our neighbours will
-         // do the same.  Even though they won't end up with the same cut points they'll at least have an available reasonable
-         // choice if we make one available to them.
-         //
-         // Ok, so each cut point we've examined our neighbours and selected a right/left decison that we can live with
-         // for ourselves.  Each cut point does this independently.  We can then maybe do an analysis to see if our
-         // ideas for the neighbours match up with theirs and do some jiggering if the outcome within a window is bad
-         //
-         // Ok, so now we've computed our aspirational cut points, and decided where we'd go for each cut point if we
-         // were forced to select a cut point now.  We now need to calculate the PRIORITY for all our cut points
-         // 
-         // Initially we have a lot of options when deciding cuts.  As time goes on, we get less options.  We want our
-         // first cut to minimize the danger that later cuts will force us into a bad position.  
-
-         // When calculating the pririty of a cut point a couple of things come to mind:
-         //   - if we have a large open space of many un-materialized cuts, an aspiration cut in the middle that falls 
-         //     into a big range is not a threat yet since we can deftly avoid it by changing by small amounts the
-         //     aspirational cuts on both ends, BUT if someone puts down a ham-fisted cut right down next to it then
-         //     we'll have a problem
-         //   - even if the cuts in the center are good, a cut in the center next to a large range of equal values could
-         //     create a problem for us easily
-         //   - our cut materializer needs to be smart and examine the local space before it finalizes a cut, so that
-         //     we avoid the largest risks around putting down ham-fisted cuts.  So, with this combination we can relax
-         //     and not worry about the asipirational cuts in the middle of a large un-materialized section, whether
-         //     they fall onto a currently bad cut or not
-         //   - the asipirational cuts near the boundaries of materialized cuts are the most problematic, especially
-         //     if they currently happen to be hard decision cuts.  We probably want to make the hard decisions early
-         //     when we have the most flexibility to address them
-         //   - so, our algorithm will tend to first materialize the cuts near existing boundaries and move inwards as
-         //     spaces that were previously not problems become more constrained
-         //   - we might or might not want to include results from our decisions about where we'll put cuts.  For
-         //     instance, let's say a potential cut point has one good option and one terrible option.  We may want
-         //     to materialize the good option so that a neighbour cut doesn't force us to take the terrible option
-         //     But this issue is reduced if before we materialize cuts we do an exploration of of the local space to
-         //     avoid hurting neighbours.
-         //   - in general, because cuts tend to disrupt many other aspirational cuts, we should probably weigh the exact
-         //     cut plan less and concentrate of making the most disruptive cuts first.  We might find that our carefully
-         //     crafted plan for future cuts is irrelevant and we no longer even make cuts on ranges that we thought
-         //     were important previously.
-         //   - by choosing the most disruptive cuts first, we'll probably get to a point quickly were most of our
-         //     remaining potential cuts are non-conrovertial.  All the hard decisions will be made early and we'll be
-         //     left with the cuts that jiggle the remaining cuts less.
+         //   2) Calculate the priority of making the decision
          //
          // If we do a full local exploration of where we're going to do our cuts for any single cut, then we can
          // do a better job at calculating the priority, since we'll know how many cuts will be moved from right to left
          //
-         // When doing a local exploration, examine going right left on each N segments to each side (2^N explorations)
-         // and then re-calculate the average cut point length on the remaining open space beyond the last cut
+         // When doing a local exploration, examine going right left on each N segments to each side
          //
-         // When we're making a cut decision, we recalculate the aspirational position and intended direction of N cuts
-         // within a window, but we make NO changes to aspiration cuts OR intended direction outside of that window
-         // since those changes might change the priority, and we want to limit the number of cuts we modify
-         // we still need to travel 2 * N cuts from our position.  The first N are ones we change, and the next N can
-         // see the changes that we made within our window
-
-         // If we push aspirational cuts from our left to right, we don't change the window bounds when that happens
-         // because if we did, then there would be no bounds on where we can 100% guarantee that no changes will affect
-         // outside regions
-         //
-         // Ok, so our last step should be to re-calcluate all the priorities.  We do this since we might have a
-         // non-linear step in between where we harmonize through a non-sinlge-individual cut process where cuts will
-         // happen.  Our non-single-individual cut process should happen after a single pass where we place the cuts
-         // without detailed information about where are neighbours want to cut (although we can examine distances in that
-         // round
-         //
-         // I think we pretty much need to pre-calcluate which direction we're going to split the split point BEFORE
-         // calculating the priority, since we can't otherwise decide whether to use the best or worst case left/right
-         // decision.  If you have a hard to decide small range of values where a cut fall in the middle near one of the
-         // tails, then we shouldn't choose the inwards decision for priority calculation if that leaves us with too small
-         // a range for putting a split based on our minimum length, so I think this means we need to calculate the
-         // splits that we would acualize before calculating priority
-         //
-         // If for our priority score, we wanted to first materialize the items with the highest tidal disruption, then
-         // we need to know which direction we'll be going from an aspirational split point.  We can choose the best
-         // case or worst case side but at the time we're computing it we have the same amount of info that we'll have
-         // in the future if we decide to split one of them, so we can compute which direction we'll prefer at this
-         // point and we can use either the high cost minus the low cost if we think we want to first materialize the
-         // options that don't screw us, or if we want to first work on the splits with the highest tidal disruption
-         // after we've carefullly decided which way we'll split
-         // 
          // So, our process is:
          //    1) Pull a high priority item from the queue (which has a pre-calculated direction to split and all other
          //       splitting decisions already calculated beforehand)
@@ -1287,16 +1191,6 @@ static size_t SplitSegment(
          // we can't move past our outer boundaries
          EBM_ASSERT(-ptrdiff_t { k_SplitExploreDistance } < pSplitBest->m_cPredeterminedMovementOnSplit &&
             pSplitBest->m_cPredeterminedMovementOnSplit < ptrdiff_t { k_SplitExploreDistance });
-
-         // TODO: 
-         //   We can also write a pre - checker that finds the maximum possible cuts between two materialized bounds and removes cuts that won't work.. this
-         //   is useful in that we might more quickly / earlier find impossible cuts that we can prune and move to other locations
-         //   TO do this, when we pull a cut point from the priority queue, we check if our left and right boundaries are materialized
-         //   and if they are we find how many cuts we are allowed at maximum and we prune any that can't happen
-         //   This probably won't be too useful in the general sense, but it will be important to handle the final condition
-         //   where we have enough room on both sides to make cuts in theory but we have a long-ish range that 
-         //   is just big enough that it doesn't leave enough room to make cuts at cSamplesPerBinMin apart
-
 
          // find our visibility window region
          SplitPoint * pSplitLowBoundary = pSplitBest;
@@ -1344,6 +1238,11 @@ static size_t SplitSegment(
          EBM_ASSERT(1 <= cHighRangesBoundary);
 
          if(0 != cPredeterminedMovementOnSplit) {
+
+            // If we push aspirational cuts from our left to right, we don't change the window bounds when that happens
+            // because if we did, then there would be no bounds on where we can 100% guarantee that no changes will affect
+            // outside regions
+
             if(cPredeterminedMovementOnSplit < 0) {
                do {
                   pSplitCur = pSplitCur->m_pPrev;
@@ -1447,6 +1346,7 @@ static size_t SplitSegment(
          //  2) We want to know how many potential cuts there are on each side of each aspirational cut that we're
          //     we're considering.  Since we're processing like 20-50 of these, we can slide the value window
          //     with cSamplesPerBinMin as we slide the visiblility windows to the left or right
+
 
          // TODO : improve this if our boundary is a size_t
          FloatEbmType stepPoint = pSplitLowBoundary->m_iValAspirationalFloat;
@@ -1590,6 +1490,13 @@ static size_t SplitSegment(
             );
          }
 
+         // TODO: Ok, so each cut point we've examined our neighbours and selected a right/left decison that we can live with
+         // for ourselves.  Each cut point does this independently.  We can then maybe do an analysis to see if our
+         // ideas for the neighbours match up with theirs and do some jiggering if the outcome within a window is bad
+         // this allows us to see a bigger area, so we have to be careful that we don't look beyond our visibility
+         // window.  Perhaps we allow changes to ASPIRATIONAL cuts within our hard change boundary, but don't
+         // change things outside of this window.
+
          EBM_ASSERT(pBestSplitPoints->end() != pBestSplitPoints->find(pSplitCur));
          pBestSplitPoints->erase(pSplitCur);
 
@@ -1597,6 +1504,64 @@ static size_t SplitSegment(
          SplitPoint * pSplitLowHighPriorityWindow = pSplitCur;
          size_t cLowHighRangesPriorityWindow = 0;
          SplitPoint * pSplitLowPriorityCur = pSplitCur;
+
+         // Ok, so now we've computed our aspirational cut points, and decided where we'd go for each cut point if we
+         // were forced to select a cut point now.  We now need to calculate the PRIORITY for all our cut points
+         // 
+         // Initially we have a lot of options when deciding cuts.  As time goes on, we get less options.  We want our
+         // first cut to minimize the danger that later cuts will force us into a bad position.  
+
+         // When calculating the pririty of a cut point a couple of things come to mind:
+         //   - if we have a large open space of many un-materialized cuts, an aspiration cut in the middle that falls 
+         //     into a big range is not a threat yet since we can deftly avoid it by changing by small amounts the
+         //     aspirational cuts on both ends, BUT if someone puts down a ham-fisted cut right down next to it then
+         //     we'll have a problem
+         //   - even if the cuts in the center are good, a cut in the center next to a large range of equal values could
+         //     create a problem for us easily (so we should include metrics on the goodness of cuts)
+         //   - our cut materializer needs to be smart and examine the local space before it finalizes a cut, so that
+         //     we avoid the largest risks around putting down ham-fisted cuts.  So, with this combination we can relax
+         //     and not worry about the asipirational cuts in the middle of a large un-materialized section, whether
+         //     they fall onto a currently bad cut or not
+         //   - the asipirational cuts near the boundaries of materialized cuts are the most problematic, especially
+         //     if they currently happen to be hard decision cuts.  We probably want to make the hard decisions early
+         //     when we have the most flexibility to address them
+         //   - so, our algorithm will tend to first materialize the cuts near existing boundaries and move inwards as
+         //     spaces that were previously not problems become more constrained
+         //   - we might or might not want to include results from our decisions about where we'll put cuts.  For
+         //     instance, let's say a potential cut point has one good option and one terrible option.  We may want
+         //     to materialize the good option so that a neighbour cut doesn't force us to take the terrible option
+         //     But this issue is reduced if before we materialize cuts we do an exploration of of the local space to
+         //     avoid hurting neighbours.
+         //   - in general, because cuts tend to disrupt many other aspirational cuts, we should probably weigh the exact
+         //     cut plan less and concentrate of making the most disruptive cuts first.  We might find that our carefully
+         //     crafted plan for future cuts is irrelevant and we no longer even make cuts on ranges that we thought
+         //     were important previously.
+         //   - by choosing the most disruptive cuts first, we'll probably get to a point quickly were most of our
+         //     remaining potential cuts are non-conrovertial.  All the hard decisions will be made early and we'll be
+         //     left with the cuts that jiggle the remaining cuts less.
+         //
+         //
+         //
+         // TODO: CONSIDER (very tentatively) incorporating how bad it would be if we were forced to choose the worse side to cut on
+         // if that's a bad scenario, we should probably try increasing our priority for our aspirational cut point
+         // since we want that one to be materialized first. 
+         // There are a lot of metrics we might use.  Three ideas:
+         //   1) Look at how bad the best solution for any particular split is.. if it's bad it's probably because the
+         //      alternatives were worse
+         //   2) Look at how bad the worst solution for any particular split is.. we don't want to be forced to take the
+         //      worst
+         //   3) * take the aspirational split, take the best matrialized split, calculate what percentage we need to
+         //      stretch from either boundary (the low boundary and the high boundary).  Take the one that has the highest
+         //      percentage stretch
+         //
+         // I like #3 (it's the one we have implemented now), because after we choose each split everything (within the windows) get re-shuffed.  We might not
+         // even fall on some of the problematic ranges anymore.  Choosing the splits with the highest "tension" causes
+         // us to decide the longest ranges that are the closest to one of our existing imovable boundaries thus
+         // we're nailing down the ones that'll cause the most movement first while we have the most room, and it also
+         // captures the idea that these are bad ones that need to be selected.  It'll tend to try deciding splits
+         // near our existing edge boundaries first instead of the ones in the center.  This is good since the ones at
+         // the boundaries are more critical.  As we materialize cuts we'll get closer to the center and those will start
+         // to want attention
 
          while(true) {
             if(PREDICTABLE(k_SplitExploreDistance == cLowHighRangesPriorityWindow)) {
@@ -1686,34 +1651,6 @@ static size_t SplitSegment(
    }
 
 
-   // TODO : we have an optional phase here were we try and reduce the tension between neighbours and improve
-   // the tentative plans of each m_iVal
-
-
-   // TODO: after we have our final m_iVal for each potential split given all our information, we then find
-   // the split that needs to screw everything up the most and start with that one since it's the most constrained
-   // and we want to handle it while we have the most flexibility
-   // 
-   // there are a lot of metrics we might use.  Two ideas:
-   //   1) Look at how bad the best solution for any particular split is.. if it's bad it's probably because the
-   //      alternatives were worse
-   //   2) Look at how bad the worst solution for any particular split is.. we don't want to be forced to take the
-   //      worst
-   //   3) * take the aspirational split, take the best matrialized split, calculate what percentage we need to
-   //      stretch from either boundary (the low boundary and the high boundary).  Take the one that has the highest
-   //      percentage stretch
-   //
-   // I like #3, because after we choose each split everything (within the windows) get re-shuffed.  We might not
-   // even fall on some of the problematic ranges anymore.  Choosing the splits with the highest "tension" causes
-   // us to decide the longest ranges that are the closest to one of our existing imovable boundaries thus
-   // we're nailing down the ones that'll cause the most movement first while we have the most room, and it also
-   // captures the idea that these are bad ones that need to be selected.  It'll tend to try deciding splits
-   // near our existing edge boundaries first instead of the ones in the center.  This is good since the ones at
-   // the boundaries are more critical.  As we materialize cuts we'll get closer to the center and those will start
-   // to want attention
-
-
-
    IronSplits();
 
    return 0;
@@ -1744,12 +1681,17 @@ static size_t TreeSearchSplitSegment(
       EBM_ASSERT(nullptr != aSplitsWithENDPOINTS);
 
       // - TODO: EXPLORING BOTH SIDES
-      //   - first strategy is to divide the region into floating point divisions, and find the single worst split where going both left or right is bad (using floating point distance)
-      //   - then go left and go right, re - divide the entire set base on the left choice and the right choice
-      //   - but this grows at 2 ^ N, so we need annother one that makes a decision without going down two paths.It needs to check the left and right and make a decion on the spot
-      //
+      //   - this function calls SplitSegment, which greedily materializes cuts, so when it's unsure about a cut
+      //     it needs to be conservative and pick the least likley cut to cause problems down the road
+      //   - at this higher level, we can try cutting both low AND high AND skip the cut.  We use SplitSegment to
+      //     do the full exploration of both options and then we pick the better one.
+      //   - we can also explore N steps in the future to pick the best first step, then delete the worst 1st step
+      //     and keep all the work we did along the choice that we made (the remaining 128 options) then we can pick
+      //     the best step from all those 128 options and continue this way.  Since we do a complete recalculation
+      //     of all the SplitPoints we can only do this several times, but it allows us to have 2 levels of fallback
+
       //   - we can design an algorithm that divides into 255 and chooses the worst one and then does a complete fit on either direction.Best fit is recorded
-      //     then we re-do all 254 other cuts on BOTH sides.We can only do a set number of these, so after 8 levels we'd have 256 attempts.  That might be acceptable
+      //     then we re-do all 254 other cuts on BOTH sides.  We can only do a set number of these, so after 8 levels we'd have 256 attempts.  That might be acceptable
       //   - the algorithm that we have below plays it safe since it needs to live with it's decions.  This more spectlative algorithm above can be more
       //     risky since it plays both directions a bad play won't undermine it.  As such, we should try and chose the worst decion without regard to position
       //     so in other words, try to choose the range that we have a drop point in in the middle where we need to move the most to get away from the 
@@ -1885,6 +1827,9 @@ static bool StuffSplitsIntoSplittingRanges(
    EBM_ASSERT(1 <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
    EBM_ASSERT(1 <= cSamplesPerBinMin);
+
+   // TODO : before executing this, we can determine what the maximum numbers of splits based on the cSamplesPerBinMin
+   // parameter and walking between the low to high value and always doing the minimum jumps.
 
    // generally, having small bins with insufficient data is more dangerous for overfitting
    // than the lost opportunity from not cutting big bins down.  So, what we want to avoid is having
@@ -2222,6 +2167,7 @@ INLINE_RELEASE static void FillSplitPointRandom(
    }
 }
 
+// TODO : we construct this early on in our process, so we might want to use it when building SplittingRanges
 INLINE_RELEASE static NeighbourJump * ConstructJumps(
    const size_t cSamples, 
    const FloatEbmType * const aValues
@@ -2590,7 +2536,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                // to avoid memory fragmentation.
                const size_t cSplitPointsMax = cBinsMax - 1;
 
-               // TODO: review if we still require these extra split point endpoints or not
                const size_t cSplitPointsWithEndpointsMax = cSplitPointsMax + 2; // include storage for the end points
                SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint>(cSplitPointsWithEndpointsMax);
 
