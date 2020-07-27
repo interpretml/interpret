@@ -33,23 +33,17 @@
 #include "RandomStream.h"
 
 // TODO: Next steps:
-// 0) Review slicer API and take note that the current visualization code seems to include the min and max into
-//    the bin cuts, but we don't want that.  We want clean min and max values because we don't cut on those
-// 1) write a DEBUG function in the test program that shows where the splits would go in a nice way
-// 2) visually check out some longer split runs and see if I disagree with any of them.
-// 3) Possibly, also write a python split visualizer and look how some real data gets cut (just using the bare 
-//    GenerateQuantileCutPoints function)
-// 4) Ok, once we're sure the algorithm isn't completely off base, let's add automated tests for almost every path we
+// 1) Ok, once we're sure the algorithm isn't completely off base, let's add automated tests for almost every path we
 //    can put a breakpoint on below or that we can think is important
-// 5) Do a complete review top to bottom review of this entire file.  Which is just the GenerateQuantileCutPoints 
+// 2) Do a complete review top to bottom review of this entire file.  Which is just the GenerateQuantileCutPoints 
 //    system, and the the Discretize function.  Don't expand our already complex functionality unless necessary
-// 6) Implement GenerateImprovedEqualWidthCutPoints and GenerateEqualWidthCutPoints
-// 7) expose everything in python and clean up the preprocessor stuff there and make the cut points per
+// 3) Implement GenerateImprovedEqualWidthCutPoints and GenerateEqualWidthCutPoints
+// 4) expose everything in python and clean up the preprocessor stuff there and make the cut points per
 //    additive_term all work, look at how this changes the visualization objects, and continue along the path of 
 //    implementing the python changes we agreed on including generational binning, etc..
-// 8) Run tests against the 200 datasets to see if we degraded performance in any detectable way
-// 9) Put out a version in python with all of these changes.  Wait a few months
-// 10) Come back later and improve on this algorithm per the TODOs in this file
+// 5) Run tests against the 200 datasets to see if we degraded performance in any detectable way
+// 6) Put out a version in python with all of these changes.  Wait a few months
+// 7) Come back later and improve on this algorithm per the TODOs in this file
 
 
 // Some general definitions:
