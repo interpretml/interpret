@@ -1210,7 +1210,7 @@ void DisplayCuts(
 
    std::vector<FloatEbmType> samples(featureValues, featureValues + countSamples);
    samples.erase(std::remove_if(samples.begin(), samples.end(),
-      [](const auto & value) { return std::isnan(value); }), samples.end());
+      [](const FloatEbmType & value) { return std::isnan(value); }), samples.end());
    std::sort(samples.begin(), samples.end());
 
    std::cout << std::endl << std::endl;
