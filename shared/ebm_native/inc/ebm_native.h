@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-// to minimize confusion, we try whenever possible to use common terms with scikit-learn -> https://scikit-learn.org/stable/glossary.html
+// to minimize confusion, we try whenever possible to use common terms with scikit-learn:
+// https://scikit-learn.org/stable/glossary.html
 
 #ifndef EBM_NATIVE_H
 #define EBM_NATIVE_H
@@ -23,8 +24,9 @@ extern "C" {
 #if defined(__clang__) || defined(__GNUC__) || defined(__SUNPRO_CC)
 
 #ifdef EBM_NATIVE_R
-// R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   
-// Also, we export R specific functions rather than the generic ones that we can consume from other languages
+// R has it's own way of exporting functions.  There is a single entry point that describes to 
+// R how to call our functions.  Also, we export R specific functions rather than the generic 
+// ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
@@ -37,18 +39,21 @@ extern "C" {
 #elif defined(_MSC_VER) // compiler type
 
 #ifdef EBM_NATIVE_R 
-// R has it's own way of exporting functions.  There is a single entry point that describes to R how to call our functions.   
-// Also, we export R specific functions rather than the generic ones that we can consume from other languages
+// R has it's own way of exporting functions.  There is a single entry point that describes to 
+// R how to call our functions.  Also, we export R specific functions rather than the generic 
+// ones that we can consume from other languages
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_R
 
 #ifdef EBM_NATIVE_EXPORTS
-// we use a .def file in Visual Studio because we can remove the C name mangling entirely (in addition to C++ name mangling), unlike __declspec(dllexport)
+// we use a .def file in Visual Studio because we can remove the C name mangling entirely, 
+// in addition to C++ name mangling, unlike __declspec(dllexport)
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #else // EBM_NATIVE_EXPORTS
-// __declspec(dllimport) is optional, but having it allows the compiler to make the resulting code more efficient when imported
+// __declspec(dllimport) is optional, but having it allows the compiler to make the 
+// resulting code more efficient when imported
 #define EBM_NATIVE_IMPORT_EXPORT_INCLUDE extern __declspec(dllimport)
 #define EBM_NATIVE_IMPORT_EXPORT_BODY extern
 #endif // EBM_NATIVE_EXPORTS
@@ -57,12 +62,13 @@ extern "C" {
 
 #ifdef _WIN64
 // _WIN32 is defined even for 64 bit compilations for compatibility, so use _WIN64
-// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for future compatibility 
-// (not specifying it means it can be the new default if somehting new comes along later)
+// in Windows, __fastcall is used for x64 always.  We don't need to define it, so let's leave it blank for 
+// future compatibility.  Not specifying it means it can be the new default if somehting new comes along later
 #define EBM_NATIVE_CALLING_CONVENTION
 #else // _WIN64
-// in Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined by Windows and all languages essentially 
-// support it within the Windows ecosystem since they all need to call win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
+// In Windows, __stdcall (otherwise known as WINAPI) is used for the Win32 OS functions.  It is precicely defined 
+// by Windows and all languages essentially support it within the Windows ecosystem since they all need to call 
+// win32 functions.  Not all languages support CDECL since that's a C/C++ specification.
 #define EBM_NATIVE_CALLING_CONVENTION __stdcall
 #endif // _WIN64
 
@@ -71,15 +77,15 @@ extern "C" {
 #endif // compiler type
 
 typedef struct _EbmBoosting {
-   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if 
-   // they try to mix these pointer types.
+   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} *PEbmBoosting;
+} * PEbmBoosting;
 typedef struct _EbmInteraction {
-   // this struct is to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  In C/C++ languages the caller will get an error if 
-   // they try to mix these pointer types.
+   // this struct exists to enforce that our caller doesn't mix EbmBoosting and EbmInteraction pointers.  
+   // In C/C++ languages the caller will get an error if they try to mix these pointer types.
    char unused;
-} *PEbmInteraction;
+} * PEbmInteraction;
 
 #ifndef PRId64
 // this should really be defined, but some compilers aren't compliant
@@ -91,8 +97,8 @@ typedef struct _EbmInteraction {
 #endif
 
 typedef double FloatEbmType;
-// this needs to be in "e" format, since we internally use that format to generate "interpretable" floating point
-// numbers in text format.   See GetInterpretableCutPointFloat.
+// this needs to be in "le" format, since we internally use that format to generate "interpretable" 
+// floating point numbers in text format.   See Discretization.cpp for details.
 #define FloatEbmTypePrintf "le"
 typedef int64_t IntEbmType;
 #define IntEbmTypePrintf PRId64
@@ -106,28 +112,30 @@ const IntEbmType FeatureTypeOrdinal = 0;
 const IntEbmType FeatureTypeNominal = 1;
 
 typedef struct _EbmNativeFeature {
-   IntEbmType featureType; // enums aren't standardized accross languages, so use IntEbmType values
+   // enums and bools aren't standardized accross languages, so use IntEbmType values
+   IntEbmType featureType;
+   // TODO: figure out if hasMissing is still this required now that we put missing in the top bin?
    IntEbmType hasMissing;
-   // TODO make the order (countBins, hasMissing, featureType).  In languages that default values countBins is the only item in this struct that can't 
-   // really be defaulted, so put it at the top, as it will be in our caller's language.  hasMissing is TRUE/FALSE, so the user doesn't need to remember 
-   // much there, make the featureType last since it's the most forgettable in terms of possible values
    IntEbmType countBins;
 } EbmNativeFeature;
 
-typedef struct _EbmNativeFeatureCombination {
-   IntEbmType countFeaturesInCombination;
-} EbmNativeFeatureCombination;
+typedef struct _EbmNativeFeatureGroup {
+   IntEbmType countFeaturesInGroup;
+} EbmNativeFeatureGroup;
 
-const signed char TraceLevelOff = 0; // no messages will be output.  SetLogMessageFunction doesn't need to be called if the level is left at this value
+// SetLogMessageFunction does not need to be called if the level is left at TraceLevelOff
+const signed char TraceLevelOff = 0; // no messages will be output
 const signed char TraceLevelError = 1; // invalid inputs to the C library or assert failure before exit
 const signed char TraceLevelWarning = 2; // out of memory or other conditions we can't continue after
 const signed char TraceLevelInfo = 3; // odd inputs like features with 1 value or empty feature groups
 const signed char TraceLevelVerbose = 4; // function calls, logging that helps us trace execution in the library
 
-// all our logging messages are pure ASCII (127 values), and therefore also UTF-8
+// all our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void (EBM_NATIVE_CALLING_CONVENTION * LOG_MESSAGE_FUNCTION)(signed char traceLevel, const char * message);
 
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(LOG_MESSAGE_FUNCTION logMessageFunction);
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetLogMessageFunction(
+   LOG_MESSAGE_FUNCTION logMessageFunction
+);
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLevel(signed char traceLevel);
 
 // BINARY VS MULTICLASS AND LOGIT REDUCTION
@@ -156,14 +164,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //   - keeping negated logits would be even more confusing since we want to keep non-negated values for regression models
 //   - when calling InitializeBoostingClassification, the trainingPredictorScores and validationPredictorScores values would logically need to be negated 
 //     for consistency with the models if we stored the models as negated, so it would be even more confusing
-//   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature combinations" 
-//     and get the logit for that "feature combination" to sum them all together for the combined logit, and that work is going to be far far greater 
+//   - even if it were better to keep negated logits, in order to calculate a probabily from a model, you need to loop over all the "feature groups" 
+//     and get the logit for that "feature group" to sum them all together for the combined logit, and that work is going to be far far greater 
 //     than negating a logit at the end, so whether we keep negated or non-negated logits isn't a big deal computationally
 // - shifting logits
 //   - for multiclass, we only require K-1 logits for a K-class prediction problem.  If we use K logits, then we can shift all the logits together at will 
-//     in any particular instance/bin WITHOUT changing the intercept by adding a constant accross all logits within the bin.  If we have K-1 logits, then 
+//     in any particular sample/bin WITHOUT changing the intercept by adding a constant accross all logits within the bin.  If we have K-1 logits, then 
 //     one of the logits is implicitly zero and the others are forced into the only values that make sense relative to the zero by having shifted all the 
-//     logits so that one of the bins/instances is zero
+//     logits so that one of the bins/samples is zero
 //   - we can also shift all the logits together (even after reduction to K-1 logits) for any feature by shifting the model's intercept 
 //     (this allows us to move the graphs up and down)
 //   - we center the binary classification graphs by creating/moving an intercept term.  This helps us visually compare different graphs
@@ -287,14 +295,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
-   IntEbmType countFeatureCombinations,
-   const EbmNativeFeatureCombination * featureCombinations,
-   const IntEbmType * featureCombinationIndexes,
-   IntEbmType countTrainingInstances,
+   IntEbmType countFeatureGroups,
+   const EbmNativeFeatureGroup * featureGroups,
+   const IntEbmType * featureGroupIndexes,
+   IntEbmType countTrainingSamples,
    const IntEbmType * trainingBinnedData,
    const IntEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances,
+   IntEbmType countValidationSamples,
    const IntEbmType * validationBinnedData,
    const IntEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -305,14 +313,14 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingRegression(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features,
-   IntEbmType countFeatureCombinations, 
-   const EbmNativeFeatureCombination * featureCombinations,
-   const IntEbmType * featureCombinationIndexes, 
-   IntEbmType countTrainingInstances, 
+   IntEbmType countFeatureGroups, 
+   const EbmNativeFeatureGroup * featureGroups,
+   const IntEbmType * featureGroupIndexes, 
+   IntEbmType countTrainingSamples, 
    const IntEbmType * trainingBinnedData, 
    const FloatEbmType * trainingTargets,
    const FloatEbmType * trainingPredictorScores,
-   IntEbmType countValidationInstances, 
+   IntEbmType countValidationSamples, 
    const IntEbmType * validationBinnedData, 
    const FloatEbmType * validationTargets,
    const FloatEbmType * validationPredictorScores,
@@ -320,39 +328,39 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType randomSeed,
    const FloatEbmType * optionalTempParams
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination, 
+   IntEbmType indexFeatureGroup, 
    FloatEbmType learningRate, 
    IntEbmType countTreeSplitsMax, 
-   IntEbmType countInstancesRequiredForChildSplitMin, 
+   IntEbmType countSamplesRequiredForChildSplitMin, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
    FloatEbmType * gainReturn
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination, 
-   const FloatEbmType * modelFeatureCombinationUpdateTensor,
+   IntEbmType indexFeatureGroup, 
+   const FloatEbmType * modelFeatureGroupUpdateTensor,
    FloatEbmType * validationMetricReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination,
+   IntEbmType indexFeatureGroup,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForChildSplitMin,
+   IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * validationMetricReturn
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    PEbmBoosting ebmBoosting, 
-   IntEbmType indexFeatureCombination
+   IntEbmType indexFeatureGroup
 );
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureCombination(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCurrentModelFeatureGroup(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination
+   IntEbmType indexFeatureGroup
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeBoosting(
    PEbmBoosting ebmBoosting
@@ -363,7 +371,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
-   IntEbmType countInstances,
+   IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
    const FloatEbmType * predictorScores,
@@ -372,18 +380,17 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION I
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features,
-   IntEbmType countInstances, 
+   IntEbmType countSamples, 
    const IntEbmType * binnedData, 
    const FloatEbmType * targets,
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 );
-// TODO: change this to CalculateInteractionScore because it's more work internally than a "Get"
-EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GetInteractionScore(
+EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION CalculateInteractionScore(
    PEbmInteraction ebmInteraction, 
-   IntEbmType countFeaturesInCombination, 
+   IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
-   IntEbmType countInstancesRequiredForChildSplitMin,
+   IntEbmType countSamplesRequiredForChildSplitMin,
    FloatEbmType * interactionScoreReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
@@ -391,42 +398,42 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 );
 
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   IntEbmType countMinimumInstancesPerBin,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType countSamplesPerBinMin,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
-   IntEbmType countInstances,
-   FloatEbmType * singleFeatureValues,
-   IntEbmType countMaximumBins,
-   FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * countCutPoints,
-   IntEbmType * isMissing,
-   FloatEbmType * minValue,
-   FloatEbmType * maxValue
+   IntEbmType countSamples,
+   FloatEbmType * featureValues,
+   IntEbmType countBinsMax,
+   IntEbmType * countCutPointsReturn,
+   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
+   IntEbmType * isMissingPresentReturn,
+   FloatEbmType * minValueReturn,
+   FloatEbmType * maxValueReturn
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
+   IntEbmType countSamples,
+   const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType countInstances,
-   const FloatEbmType * singleFeatureValues,
-   IntEbmType * singleFeatureDiscretized
+   IntEbmType * discretizedReturn
 );
 
 
@@ -441,7 +448,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  memory if there are long segments with just a single value
 //   - OBSERVATION: our boosting algorithm is position independent, so we can sort the data by the target feature, which
 //   -              helps us because we can move the class number into a loop count and not fetch the memory, and it allows
-//                  us to elimiante a branch when calculating statistics since all instances will have the same target within a loop
+//                  us to elimiante a branch when calculating statistics since all samples will have the same target within a loop
 //   - OBSERVATION: we'll be sorting on the target, so we can't sort primarily on intput features (secondary sort ok)
 //                  So, sparse input features are not typically expected to clump into ranges of non - default parameters
 //                  So, we won't use ranges in our representation, so our sparse feature representation will be
@@ -494,10 +501,10 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  number of sparse features will determine it, BUT we can have python give us the complete memory representation and then we can calcualte 
 //                  the size, then return that to pyhton, have python allocate it, then pass us in the memory for a second pass at filling it
 //   - OBSERVATION: since sorting this data by target is so expensive (and the transpose to get it there), we'll create a special "all feature" data 
-//                  represenation that is just features without feature combinations.  This representation will be compressed per feature.
+//                  represenation that is just features without feature groups.  This representation will be compressed per feature.
 //                  and will include a reverse index to work back to the original unsorted indexes
 //                  We'll generate the main/interaction training dataset from that directly when python passes us the train/validation split indexes and 
-//                  the feature_combinations.  We'll also generate train/validation duplicates of this dataset for interaction detection 
+//                  the feature_groups.  We'll also generate train/validation duplicates of this dataset for interaction detection 
 //                  (but for interactions we don't need the reverse index lookup)
 //   - OBSERVATION: We should be able to completely preserve sparse data representations without expanding them, although we can also detect when dense 
 //                  features should be sparsified in our own dataset
@@ -505,8 +512,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //                  they did and pay the cost if they didn't.  Even if they didn't, we'll only go back to the original twice, so it's not that bad
 // 
 // STEPS :
-//   - We receive the data from the user in the cache inefficient format X[instances, features], or alternatively in a cache efficient format 
-//     X[features, instances] if we're luck
+//   - We receive the data from the user in the cache inefficient format X[samples, features], or alternatively in a cache efficient format 
+//     X[features, samples] if we're luck
 //   - If our caller get the data from a file/database where the columns are adjacent, then it's probably better for us to process it since we only 
 //     do 2 transpose operations (efficiently) and we don't allocate more than 3% more memory.  If the user transposed the data themselves, then 
 //     they'd double the memory useage
@@ -515,21 +522,21 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //   - allocate a sizing object in C (potentially we don't need to allocate anything IF we can return a size per feature, and we can calculate the 
 //     target + header when passed info on those)
 //   - Loop over M:
-//     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
 //     - Loop over N:
 //       - take 1 single feature's data from the correctly ordered X_partial
 //       - bin the feature, if needed.  For strings and other categoricals we use hashtables, for continuous numerics we pass to C for sorting and bin 
 //         edge determining, and then again for discritization
 //       - we now have a binned single feature array.  Pass that into C for sizing
 //   - after all features have been binned and sized, pass in the target feature.  C calculates the final memory size and returns it.  Don't free the 
-//     memory sizing object since we want to have a separate function for that in case we need to exit early, for instance if we get an out of memory error
+//     memory sizing object since we want to have a separate function for that in case we need to exit early, for sample if we get an out of memory error
 //   - free the sizing object in C
 //   - python allocates the exact sized RawArray
 //   - call InitializeData in C passing it whatever we need to initialize the data header of the RawArray class
 //   - NOTE: this transposes the matrix twice (once for preprocessing/sizing, and once for filling the buffer with data),
 //     but this is expected to be a small amount of time compared to training, and we care more about memory size at this point
 //   - Loop over M:
-//     - Take N features and all the instances from the original X and transpose them into X_partial[features_N, instances]
+//     - Take N features and all the samples from the original X and transpose them into X_partial[features_N, samples]
 //     - Loop over N:
 //       - take 1 single feature's data from the correctly ordered X_partial
 //       - re-discritize the feature using the bin cuts or hashstables from our previous loop above
@@ -552,7 +559,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //   - first generate the mains train/validation boosting datasets, then create the interaction sets, then create the pair boosting datasets.  We only 
 //     need these in memory one at a time
 //   - FOR BOOSTING:
-//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_combination definitions (we already have the feature 
+//     - pass the process shared read only RawArray, and the train/validation bools AND the feature_group definitions (we already have the feature 
 //       definitions in the RawArray)
 //     - C takes the bool list, then uses the mapping indexes in the RawArray dataset to reverse the bool index into our internal C sorted order.
 //       This way we only need to do a cache inefficient reordering once per entire dataset, and it's on a bool array (compressed to bits?)
@@ -561,7 +568,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //     - C will allocate the memory for the boosting dataset
 //     - C will do a second pass to fill the boosting data structure and return that to python (no need for a RawArray this time since it isn't shared)
 //     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements to 
-//       select whether each instance for that feature goes into the train or validation set, and handling increments
+//       select whether each sample for that feature goes into the train or validation set, and handling increments
 //   - FOR INTERACTIONS:
 //     - pass the process shared read only RawArray, and the train/validation bools (we already have all feature definitions in the RawArray)
 //     - C will do a first pass to determine how much memory it will need (sparse features can be divided unequally per train/validation splits, so the 
@@ -571,7 +578,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION Discretize(
 //     - per the notes above, we will bit pack each feature by it's best fit size, and keep sparse features.  We're pretty much just copying data for 
 //       interactions into the train/validations splits
 //     - After re-ordering the bool lists to the original feature order, we process each feature using the bool to do a non-branching if statements 
-//       to select whether each instance for that feature goes into the train or validation set, and handling increments
+//       to select whether each sample for that feature goes into the train or validation set, and handling increments
 
 
 #ifdef __cplusplus

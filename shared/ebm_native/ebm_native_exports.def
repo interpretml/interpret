@@ -5,15 +5,15 @@ EXPORTS
   SetTraceLevel
   InitializeBoostingClassification
   InitializeBoostingRegression
-  GenerateModelFeatureCombinationUpdate
-  ApplyModelFeatureCombinationUpdate
+  GenerateModelFeatureGroupUpdate
+  ApplyModelFeatureGroupUpdate
   BoostingStep
-  GetBestModelFeatureCombination
-  GetCurrentModelFeatureCombination
+  GetBestModelFeatureGroup
+  GetCurrentModelFeatureGroup
   FreeBoosting
   InitializeInteractionClassification
   InitializeInteractionRegression
-  GetInteractionScore
+  CalculateInteractionScore
   FreeInteraction
   GenerateQuantileCutPoints
   GenerateImprovedEqualWidthCutPoints

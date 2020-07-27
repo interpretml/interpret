@@ -11,14 +11,14 @@
 #include "Logging.h" // EBM_ASSERT & LOG
 
 class RandomStream;
-class DataSetByFeatureCombination;
+class DataSetByFeatureGroup;
 
 class SamplingSet final {
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that 
-   // we need to keep a count of the number of times each instance is selected in the dataset.  
+   // we need to keep a count of the number of times each sample is selected in the dataset.  
    // Sampling without replacement would require 1 bit per case, so it can be faster.
 
-   const DataSetByFeatureCombination * m_pOriginDataSet;
+   const DataSetByFeatureGroup * m_pOriginDataSet;
 
    // TODO : make this a struct of FractionalType and size_t counts and use MACROS to have either size_t or 
    // FractionalType or both, and perf how this changes things.  We don't get a benefit anywhere by storing 
@@ -29,9 +29,9 @@ class SamplingSet final {
    // SamplingSet objects will refer to the original one
    static SamplingSet * GenerateSingleSamplingSet(
       RandomStream * const pRandomStream, 
-      const DataSetByFeatureCombination * const pOriginDataSet
+      const DataSetByFeatureGroup * const pOriginDataSet
    );
-   static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet);
+   static SamplingSet * GenerateFlatSamplingSet(const DataSetByFeatureGroup * const pOriginDataSet);
 
 public:
 
@@ -40,20 +40,20 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   size_t GetTotalCountInstanceOccurrences() const {
-      // for SamplingSet (bootstrap sampling), we have the same number of instances as our original dataset
-      size_t cTotalCountInstanceOccurrences = m_pOriginDataSet->GetCountInstances();
+   size_t GetTotalCountSampleOccurrences() const {
+      // for SamplingSet (bootstrap sampling), we have the same number of samples as our original dataset
+      size_t cTotalCountSampleOccurrences = m_pOriginDataSet->GetCountSamples();
 #ifndef NDEBUG
-      size_t cTotalCountInstanceOccurrencesDebug = 0;
-      for(size_t i = 0; i < m_pOriginDataSet->GetCountInstances(); ++i) {
-         cTotalCountInstanceOccurrencesDebug += m_aCountOccurrences[i];
+      size_t cTotalCountSampleOccurrencesDebug = 0;
+      for(size_t i = 0; i < m_pOriginDataSet->GetCountSamples(); ++i) {
+         cTotalCountSampleOccurrencesDebug += m_aCountOccurrences[i];
       }
-      EBM_ASSERT(cTotalCountInstanceOccurrencesDebug == cTotalCountInstanceOccurrences);
+      EBM_ASSERT(cTotalCountSampleOccurrencesDebug == cTotalCountSampleOccurrences);
 #endif // NDEBUG
-      return cTotalCountInstanceOccurrences;
+      return cTotalCountSampleOccurrences;
    }
 
-   const DataSetByFeatureCombination * GetDataSetByFeatureCombination() const {
+   const DataSetByFeatureGroup * GetDataSetByFeatureGroup() const {
       return m_pOriginDataSet;
    }
 
@@ -64,7 +64,7 @@ public:
    static void FreeSamplingSets(const size_t cSamplingSets, SamplingSet ** const apSamplingSets);
    static SamplingSet ** GenerateSamplingSets(
       RandomStream * const pRandomStream, 
-      const DataSetByFeatureCombination * const pOriginDataSet, 
+      const DataSetByFeatureGroup * const pOriginDataSet, 
       const size_t cSamplingSets
    );
 };

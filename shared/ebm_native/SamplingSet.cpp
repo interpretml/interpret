@@ -15,27 +15,27 @@
 
 SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    RandomStream * const pRandomStream, 
-   const DataSetByFeatureCombination * const pOriginDataSet
+   const DataSetByFeatureGroup * const pOriginDataSet
 ) {
    LOG_0(TraceLevelVerbose, "Entered SamplingSet::GenerateSingleSamplingSet");
 
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(nullptr != pOriginDataSet);
 
-   const size_t cInstances = pOriginDataSet->GetCountInstances();
-   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
+   const size_t cSamples = pOriginDataSet->GetCountSamples();
+   EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSingleSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
-   for(size_t i = 0; i < cInstances; ++i) {
+   for(size_t i = 0; i < cSamples; ++i) {
       aCountOccurrences[i] = size_t { 0 };
    }
 
-   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-      const size_t iCountOccurrences = pRandomStream->Next(cInstances);
+   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+      const size_t iCountOccurrences = pRandomStream->Next(cSamples);
       ++aCountOccurrences[iCountOccurrences];
    }
 
@@ -53,22 +53,22 @@ SamplingSet * SamplingSet::GenerateSingleSamplingSet(
    return pRet;
 }
 
-SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureCombination * const pOriginDataSet) {
+SamplingSet * SamplingSet::GenerateFlatSamplingSet(const DataSetByFeatureGroup * const pOriginDataSet) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateFlatSamplingSet");
 
    // TODO: someday eliminate the need for generating this flat set by specially handling the case of no internal bagging
    EBM_ASSERT(nullptr != pOriginDataSet);
-   const size_t cInstances = pOriginDataSet->GetCountInstances();
-   EBM_ASSERT(0 < cInstances); // if there were no instances, we wouldn't be called
+   const size_t cSamples = pOriginDataSet->GetCountSamples();
+   EBM_ASSERT(0 < cSamples); // if there were no samples, we wouldn't be called
 
-   size_t * const aCountOccurrences = EbmMalloc<size_t>(cInstances);
+   size_t * const aCountOccurrences = EbmMalloc<size_t>(cSamples);
    if(nullptr == aCountOccurrences) {
       LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateFlatSamplingSet nullptr == aCountOccurrences");
       return nullptr;
    }
 
-   for(size_t iInstance = 0; iInstance < cInstances; ++iInstance) {
-      aCountOccurrences[iInstance] = 1;
+   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+      aCountOccurrences[iSample] = 1;
    }
 
    SamplingSet * pRet = EbmMalloc<SamplingSet>();
@@ -105,7 +105,7 @@ WARNING_POP
 
 SamplingSet ** SamplingSet::GenerateSamplingSets(
    RandomStream * const pRandomStream, 
-   const DataSetByFeatureCombination * const pOriginDataSet, 
+   const DataSetByFeatureGroup * const pOriginDataSet, 
    const size_t cSamplingSets
 ) {
    LOG_0(TraceLevelInfo, "Entered SamplingSet::GenerateSamplingSets");
@@ -125,7 +125,7 @@ SamplingSet ** SamplingSet::GenerateSamplingSets(
    }
 
    if(0 == cSamplingSets) {
-      // zero is a special value that really means allocate one set that contains all instances.
+      // zero is a special value that really means allocate one set that contains all samples.
       SamplingSet * const pSingleSamplingSet = GenerateFlatSamplingSet(pOriginDataSet);
       if(UNLIKELY(nullptr == pSingleSamplingSet)) {
          LOG_0(TraceLevelWarning, "WARNING SamplingSet::GenerateSamplingSets nullptr == pSingleSamplingSet");

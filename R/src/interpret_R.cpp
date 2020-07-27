@@ -228,106 +228,106 @@ EbmNativeFeature * ConvertFeatures(const SEXP features, size_t * const pcFeature
    return aFeatures;
 }
 
-EbmNativeFeatureCombination * ConvertFeatureCombinations(const SEXP featureCombinations, size_t * const pcFeatureCombinations) {
-   if(VECSXP != TYPEOF(featureCombinations)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations VECSXP != TYPEOF(featureCombinations)");
+EbmNativeFeatureGroup * ConvertFeatureGroups(const SEXP featureGroups, size_t * const pcFeatureGroups) {
+   if(VECSXP != TYPEOF(featureGroups)) {
+      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups VECSXP != TYPEOF(featureGroups)");
       return nullptr;
    }
 
-   const R_xlen_t countFeatureCombinationsR = xlength(featureCombinations);
-   if(!IsNumberConvertable<size_t, R_xlen_t>(countFeatureCombinationsR)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsNumberConvertable<size_t, R_xlen_t>(countFeatureCombinationsR)");
+   const R_xlen_t countFeatureGroupsR = xlength(featureGroups);
+   if(!IsNumberConvertable<size_t, R_xlen_t>(countFeatureGroupsR)) {
+      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsNumberConvertable<size_t, R_xlen_t>(countFeatureGroupsR)");
       return nullptr;
    }
-   const size_t cFeatureCombinations = static_cast<size_t>(countFeatureCombinationsR);
-   if(!IsNumberConvertable<IntEbmType, size_t>(cFeatureCombinations)) {
-      LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsNumberConvertable<IntEbmType, size_t>(cFeatureCombinations)");
+   const size_t cFeatureGroups = static_cast<size_t>(countFeatureGroupsR);
+   if(!IsNumberConvertable<IntEbmType, size_t>(cFeatureGroups)) {
+      LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsNumberConvertable<IntEbmType, size_t>(cFeatureGroups)");
       return nullptr;
    }
-   *pcFeatureCombinations = cFeatureCombinations;
+   *pcFeatureGroups = cFeatureGroups;
 
-   EbmNativeFeatureCombination * const aFeatureCombinations = reinterpret_cast<EbmNativeFeatureCombination *>(
-      R_alloc(cFeatureCombinations, static_cast<int>(sizeof(EbmNativeFeatureCombination))));
-   // R_alloc doesn't return nullptr, so we don't need to check aFeatureCombinations
-   EbmNativeFeatureCombination * pFeatureCombination = aFeatureCombinations;
-   for(size_t iFeatureCombination = 0; iFeatureCombination < cFeatureCombinations; ++iFeatureCombination) {
-      const SEXP oneFeatureCombination = VECTOR_ELT(featureCombinations, iFeatureCombination);
-      EBM_ASSERT(nullptr != oneFeatureCombination);
-      if(VECSXP != TYPEOF(oneFeatureCombination)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations VECSXP != TYPEOF(oneFeatureCombination)");
+   EbmNativeFeatureGroup * const aFeatureGroups = reinterpret_cast<EbmNativeFeatureGroup *>(
+      R_alloc(cFeatureGroups, static_cast<int>(sizeof(EbmNativeFeatureGroup))));
+   // R_alloc doesn't return nullptr, so we don't need to check aFeatureGroups
+   EbmNativeFeatureGroup * pFeatureGroup = aFeatureGroups;
+   for(size_t iFeatureGroup = 0; iFeatureGroup < cFeatureGroups; ++iFeatureGroup) {
+      const SEXP oneFeatureGroup = VECTOR_ELT(featureGroups, iFeatureGroup);
+      EBM_ASSERT(nullptr != oneFeatureGroup);
+      if(VECSXP != TYPEOF(oneFeatureGroup)) {
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups VECSXP != TYPEOF(oneFeatureGroup)");
          return nullptr;
       }
 
       constexpr size_t cItems = 1;
-      if(R_xlen_t { cItems } != xlength(oneFeatureCombination)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations R_xlen_t { cItems } != xlength(oneFeatureCombination)");
+      if(R_xlen_t { cItems } != xlength(oneFeatureGroup)) {
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups R_xlen_t { cItems } != xlength(oneFeatureGroup)");
          return nullptr;
       }
-      const SEXP fieldNames = getAttrib(oneFeatureCombination, R_NamesSymbol);
+      const SEXP fieldNames = getAttrib(oneFeatureGroup, R_NamesSymbol);
       EBM_ASSERT(nullptr != fieldNames);
       if(STRSXP != TYPEOF(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations STRSXP != TYPEOF(fieldNames)");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups STRSXP != TYPEOF(fieldNames)");
          return nullptr;
       }
       if(R_xlen_t { cItems } != xlength(fieldNames)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations R_xlen_t { cItems } != xlength(fieldNames)");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups R_xlen_t { cItems } != xlength(fieldNames)");
          return nullptr;
       }
 
       const SEXP nameR = STRING_ELT(fieldNames, 0);
       if(CHARSXP != TYPEOF(nameR)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations CHARSXP != TYPEOF(nameR)");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups CHARSXP != TYPEOF(nameR)");
          return nullptr;
       }
       const char * pName = CHAR(nameR);
       if(0 != strcmp("n_features", pName)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations 0 != strcmp(\"n_features\", pName");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups 0 != strcmp(\"n_features\", pName");
          return nullptr;
       }
 
-      SEXP val = VECTOR_ELT(oneFeatureCombination, 0);
+      SEXP val = VECTOR_ELT(oneFeatureGroup, 0);
       if(REALSXP != TYPEOF(val)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations REALSXP != TYPEOF(value)");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups REALSXP != TYPEOF(value)");
          return nullptr;
       }
       if(1 != xlength(val)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations 1 != xlength(val)");
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups 1 != xlength(val)");
          return nullptr;
       }
 
-      double countFeaturesInCombinationDouble = REAL(val)[0];
-      if(!IsDoubleToIntEbmTypeIndexValid(countFeaturesInCombinationDouble)) {
-         LOG_0(TraceLevelError, "ERROR ConvertFeatureCombinations !IsDoubleToIntEbmTypeIndexValid(countFeaturesInCombinationDouble)");
+      double countFeaturesInGroupDouble = REAL(val)[0];
+      if(!IsDoubleToIntEbmTypeIndexValid(countFeaturesInGroupDouble)) {
+         LOG_0(TraceLevelError, "ERROR ConvertFeatureGroups !IsDoubleToIntEbmTypeIndexValid(countFeaturesInGroupDouble)");
          return nullptr;
       }
-      pFeatureCombination->countFeaturesInCombination = static_cast<IntEbmType>(countFeaturesInCombinationDouble);
+      pFeatureGroup->countFeaturesInGroup = static_cast<IntEbmType>(countFeaturesInGroupDouble);
 
-      ++pFeatureCombination;
+      ++pFeatureGroup;
    }
-   return aFeatureCombinations;
+   return aFeatureGroups;
 }
 
-size_t CountFeatureCombinationsIndexes(const size_t cFeatureCombinations, const EbmNativeFeatureCombination * const aFeatureCombinations) {
-   size_t cFeatureCombinationsIndexes = 0;
-   if(0 != cFeatureCombinations) {
-      const EbmNativeFeatureCombination * pFeatureCombination = aFeatureCombinations;
-      const EbmNativeFeatureCombination * const pFeatureCombinationEnd = aFeatureCombinations + cFeatureCombinations;
+size_t CountFeatureGroupsIndexes(const size_t cFeatureGroups, const EbmNativeFeatureGroup * const aFeatureGroups) {
+   size_t cFeatureGroupsIndexes = 0;
+   if(0 != cFeatureGroups) {
+      const EbmNativeFeatureGroup * pFeatureGroup = aFeatureGroups;
+      const EbmNativeFeatureGroup * const pFeatureGroupEnd = aFeatureGroups + cFeatureGroups;
       do {
-         const IntEbmType countFeaturesInCombination = pFeatureCombination->countFeaturesInCombination;
-         if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureCombinationsIndexes !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInCombination)");
+         const IntEbmType countFeaturesInGroup = pFeatureGroup->countFeaturesInGroup;
+         if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInGroup)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsIndexes !IsNumberConvertable<size_t, IntEbmType>(countFeaturesInGroup)");
             return SIZE_MAX;
          }
-         const size_t cFeaturesInCombination = static_cast<size_t>(countFeaturesInCombination);
-         if(IsAddError(cFeatureCombinationsIndexes, cFeaturesInCombination)) {
-            LOG_0(TraceLevelError, "ERROR CountFeatureCombinationsIndexes IsAddError(cFeatureCombinationsIndexes, cFeaturesInCombination)");
+         const size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
+         if(IsAddError(cFeatureGroupsIndexes, cFeaturesInGroup)) {
+            LOG_0(TraceLevelError, "ERROR CountFeatureGroupsIndexes IsAddError(cFeatureGroupsIndexes, cFeaturesInGroup)");
             return SIZE_MAX;
          }
-         cFeatureCombinationsIndexes += cFeaturesInCombination;
-         ++pFeatureCombination;
-      } while(pFeatureCombinationEnd != pFeatureCombination);
+         cFeatureGroupsIndexes += cFeaturesInGroup;
+         ++pFeatureGroup;
+      } while(pFeatureGroupEnd != pFeatureGroup);
    }
-   return cFeatureCombinationsIndexes;
+   return cFeatureGroupsIndexes;
 }
 
 bool ConvertDoublesToIndexes(const SEXP items, size_t * const pcItems, const IntEbmType * * const pRet) {
@@ -411,8 +411,8 @@ bool ConvertDoublesToDoubles(const SEXP items, size_t * const pcItems, const Flo
 SEXP InitializeBoostingClassification_R(
    SEXP countTargetClasses,
    SEXP features,
-   SEXP featureCombinations,
-   SEXP featureCombinationIndexes,
+   SEXP featureGroups,
+   SEXP featureGroupIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingPredictorScores,
@@ -424,8 +424,8 @@ SEXP InitializeBoostingClassification_R(
 ) {
    EBM_ASSERT(nullptr != countTargetClasses);
    EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != featureCombinations);
-   EBM_ASSERT(nullptr != featureCombinationIndexes);
+   EBM_ASSERT(nullptr != featureGroups);
+   EBM_ASSERT(nullptr != featureGroupIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingPredictorScores);
@@ -459,29 +459,29 @@ SEXP InitializeBoostingClassification_R(
    }
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
-   size_t cFeatureCombinations;
-   EbmNativeFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
-   if(nullptr == aFeatureCombinations) {
+   size_t cFeatureGroups;
+   EbmNativeFeatureGroup * const aFeatureGroups = ConvertFeatureGroups(featureGroups, &cFeatureGroups);
+   if(nullptr == aFeatureGroups) {
       // we've already logged any errors
       return R_NilValue;
    }
-   // the validity of this conversion was checked in ConvertFeatureCombinations(...)
-   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations);
+   // the validity of this conversion was checked in ConvertFeatureGroups(...)
+   const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
-   if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
+   const size_t cFeatureGroupsIndexesCheck = CountFeatureGroupsIndexes(cFeatureGroups, aFeatureGroups);
+   if(SIZE_MAX == cFeatureGroupsIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureCombinationsIndexesActual;
-   const IntEbmType * aFeatureCombinationIndexes;
-   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
+   size_t cFeatureGroupsIndexesActual;
+   const IntEbmType * aFeatureGroupIndexes;
+   if(ConvertDoublesToIndexes(featureGroupIndexes, &cFeatureGroupsIndexesActual, &aFeatureGroupIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck");
+   if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
       return R_NilValue;
    }
 
@@ -492,20 +492,20 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   size_t cTrainingInstances;
+   size_t cTrainingSamples;
    const IntEbmType * aTrainingTargets;
-   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
+   if(ConvertDoublesToIndexes(trainingTargets, &cTrainingSamples, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
+   const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cTrainingInstances * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -515,12 +515,12 @@ SEXP InitializeBoostingClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cTrainingInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingInstances, cVectorLength)");
+   if(IsMultiplyError(cTrainingSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cTrainingSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cTrainingInstances != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingInstances != cTrainingPredictorScores");
+   if(cVectorLength * cTrainingSamples != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -531,20 +531,20 @@ SEXP InitializeBoostingClassification_R(
       return R_NilValue;
    }
 
-   size_t cValidationInstances;
+   size_t cValidationSamples;
    const IntEbmType * aValidationTargets;
-   if(ConvertDoublesToIndexes(validationTargets, &cValidationInstances, &aValidationTargets)) {
+   if(ConvertDoublesToIndexes(validationTargets, &cValidationSamples, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
+   const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationInstances * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cValidationInstances * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -554,12 +554,12 @@ SEXP InitializeBoostingClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cValidationInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationInstances, cVectorLength)");
+   if(IsMultiplyError(cValidationSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R IsMultiplyError(cValidationSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cValidationInstances != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationInstances != cValidationPredictorScores");
+   if(cVectorLength * cValidationSamples != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification_R cVectorLength * cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
@@ -586,14 +586,14 @@ SEXP InitializeBoostingClassification_R(
       static_cast<IntEbmType>(cTargetClasses), 
       countFeatures, 
       aFeatures, 
-      countFeatureCombinations, 
-      aFeatureCombinations, 
-      aFeatureCombinationIndexes, 
-      countTrainingInstances, 
+      countFeatureGroups, 
+      aFeatureGroups, 
+      aFeatureGroupIndexes, 
+      countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
@@ -616,8 +616,8 @@ SEXP InitializeBoostingClassification_R(
 
 SEXP InitializeBoostingRegression_R(
    SEXP features,
-   SEXP featureCombinations,
-   SEXP featureCombinationIndexes,
+   SEXP featureGroups,
+   SEXP featureGroupIndexes,
    SEXP trainingBinnedData,
    SEXP trainingTargets,
    SEXP trainingPredictorScores,
@@ -628,8 +628,8 @@ SEXP InitializeBoostingRegression_R(
    SEXP randomSeed
 ) {
    EBM_ASSERT(nullptr != features);
-   EBM_ASSERT(nullptr != featureCombinations);
-   EBM_ASSERT(nullptr != featureCombinationIndexes);
+   EBM_ASSERT(nullptr != featureGroups);
+   EBM_ASSERT(nullptr != featureGroupIndexes);
    EBM_ASSERT(nullptr != trainingBinnedData);
    EBM_ASSERT(nullptr != trainingTargets);
    EBM_ASSERT(nullptr != trainingPredictorScores);
@@ -647,29 +647,29 @@ SEXP InitializeBoostingRegression_R(
    }
    const IntEbmType countFeatures = static_cast<IntEbmType>(cFeatures); // the validity of this conversion was checked in ConvertFeatures(...)
 
-   size_t cFeatureCombinations;
-   EbmNativeFeatureCombination * const aFeatureCombinations = ConvertFeatureCombinations(featureCombinations, &cFeatureCombinations);
-   if(nullptr == aFeatureCombinations) {
+   size_t cFeatureGroups;
+   EbmNativeFeatureGroup * const aFeatureGroups = ConvertFeatureGroups(featureGroups, &cFeatureGroups);
+   if(nullptr == aFeatureGroups) {
       // we've already logged any errors
       return R_NilValue;
    }
-   // the validity of this conversion was checked in ConvertFeatureCombinations(...)
-   const IntEbmType countFeatureCombinations = static_cast<IntEbmType>(cFeatureCombinations);
+   // the validity of this conversion was checked in ConvertFeatureGroups(...)
+   const IntEbmType countFeatureGroups = static_cast<IntEbmType>(cFeatureGroups);
 
-   const size_t cFeatureCombinationsIndexesCheck = CountFeatureCombinationsIndexes(cFeatureCombinations, aFeatureCombinations);
-   if(SIZE_MAX == cFeatureCombinationsIndexesCheck) {
+   const size_t cFeatureGroupsIndexesCheck = CountFeatureGroupsIndexes(cFeatureGroups, aFeatureGroups);
+   if(SIZE_MAX == cFeatureGroupsIndexesCheck) {
       // we've already logged any errors
       return R_NilValue;
    }
 
-   size_t cFeatureCombinationsIndexesActual;
-   const IntEbmType * aFeatureCombinationIndexes;
-   if(ConvertDoublesToIndexes(featureCombinationIndexes, &cFeatureCombinationsIndexesActual, &aFeatureCombinationIndexes)) {
+   size_t cFeatureGroupsIndexesActual;
+   const IntEbmType * aFeatureGroupIndexes;
+   if(ConvertDoublesToIndexes(featureGroupIndexes, &cFeatureGroupsIndexesActual, &aFeatureGroupIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cFeatureCombinationsIndexesActual != cFeatureCombinationsIndexesCheck");
+   if(cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cFeatureGroupsIndexesActual != cFeatureGroupsIndexesCheck");
       return R_NilValue;
    }
 
@@ -680,20 +680,20 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   size_t cTrainingInstances;
+   size_t cTrainingSamples;
    const FloatEbmType * aTrainingTargets;
-   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingInstances, &aTrainingTargets)) {
+   if(ConvertDoublesToDoubles(trainingTargets, &cTrainingSamples, &aTrainingTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countTrainingInstances = static_cast<IntEbmType>(cTrainingInstances);
+   const IntEbmType countTrainingSamples = static_cast<IntEbmType>(cTrainingSamples);
 
-   if(IsMultiplyError(cTrainingInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingInstances, cFeatures)");
+   if(IsMultiplyError(cTrainingSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cTrainingSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cTrainingInstances * cFeatures != cTrainingBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances * cFeatures != cTrainingBinnedData");
+   if(cTrainingSamples * cFeatures != cTrainingBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples * cFeatures != cTrainingBinnedData");
       return R_NilValue;
    }
 
@@ -703,8 +703,8 @@ SEXP InitializeBoostingRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cTrainingInstances != cTrainingPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingInstances != cTrainingPredictorScores");
+   if(cTrainingSamples != cTrainingPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cTrainingSamples != cTrainingPredictorScores");
       return R_NilValue;
    }
 
@@ -715,20 +715,20 @@ SEXP InitializeBoostingRegression_R(
       return R_NilValue;
    }
 
-   size_t cValidationInstances;
+   size_t cValidationSamples;
    const FloatEbmType * aValidationTargets;
-   if(ConvertDoublesToDoubles(validationTargets, &cValidationInstances, &aValidationTargets)) {
+   if(ConvertDoublesToDoubles(validationTargets, &cValidationSamples, &aValidationTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countValidationInstances = static_cast<IntEbmType>(cValidationInstances);
+   const IntEbmType countValidationSamples = static_cast<IntEbmType>(cValidationSamples);
 
-   if(IsMultiplyError(cValidationInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationInstances, cFeatures)");
+   if(IsMultiplyError(cValidationSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R IsMultiplyError(cValidationSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cValidationInstances * cFeatures != cValidationBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances * cFeatures != cValidationBinnedData");
+   if(cValidationSamples * cFeatures != cValidationBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples * cFeatures != cValidationBinnedData");
       return R_NilValue;
    }
 
@@ -738,8 +738,8 @@ SEXP InitializeBoostingRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cValidationInstances != cValidationPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationInstances != cValidationPredictorScores");
+   if(cValidationSamples != cValidationPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeBoostingRegression_R cValidationSamples != cValidationPredictorScores");
       return R_NilValue;
    }
 
@@ -765,14 +765,14 @@ SEXP InitializeBoostingRegression_R(
    PEbmBoosting pEbmBoosting = InitializeBoostingRegression(
       countFeatures, 
       aFeatures, 
-      countFeatureCombinations, 
-      aFeatureCombinations, 
-      aFeatureCombinationIndexes, 
-      countTrainingInstances, 
+      countFeatureGroups, 
+      aFeatureGroups, 
+      aFeatureGroupIndexes, 
+      countTrainingSamples, 
       aTrainingBinnedData, 
       aTrainingTargets, 
       aTrainingPredictorScores, 
-      countValidationInstances, 
+      countValidationSamples, 
       aValidationBinnedData, 
       aValidationTargets, 
       aValidationPredictorScores, 
@@ -795,18 +795,18 @@ SEXP InitializeBoostingRegression_R(
 
 SEXP BoostingStep_R(
    SEXP ebmBoosting,
-   SEXP indexFeatureCombination,
+   SEXP indexFeatureGroup,
    SEXP learningRate,
    SEXP countTreeSplitsMax,
-   SEXP countInstancesRequiredForChildSplitMin,
+   SEXP countSamplesRequiredForChildSplitMin,
    SEXP trainingWeights,
    SEXP validationWeights
 ) {
    EBM_ASSERT(nullptr != ebmBoosting);
-   EBM_ASSERT(nullptr != indexFeatureCombination);
+   EBM_ASSERT(nullptr != indexFeatureGroup);
    EBM_ASSERT(nullptr != learningRate);
    EBM_ASSERT(nullptr != countTreeSplitsMax);
-   EBM_ASSERT(nullptr != countInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
    EBM_ASSERT(nullptr != trainingWeights);
    EBM_ASSERT(nullptr != validationWeights);
 
@@ -820,16 +820,16 @@ SEXP BoostingStep_R(
       return R_NilValue;
    }
 
-   if(!IsSingleDoubleVector(indexFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(indexFeatureCombination)");
+   if(!IsSingleDoubleVector(indexFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
-   double doubleIndex = REAL(indexFeatureCombination)[0];
+   double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
       LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
+   IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
 
    if(!IsSingleDoubleVector(learningRate)) {
       LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(learningRate)");
@@ -854,23 +854,23 @@ SEXP BoostingStep_R(
       cTreeSplitsMax = static_cast<IntEbmType>(doubleCountTreeSplitsMax);
    }
 
-   if(!IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
+      LOG_0(TraceLevelError, "ERROR BoostingStep_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countInstancesRequiredForChildSplitMin)[0];
-   IntEbmType cInstancesRequiredForChildSplitMin;
+   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
+   IntEbmType cSamplesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) || 
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
+   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) || 
+      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
    ) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForChildSplitMin overflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countInstancesRequiredForChildSplitMin underflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin overflow");
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
+      LOG_0(TraceLevelWarning, "WARNING BoostingStep_R countSamplesRequiredForChildSplitMin underflow");
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
    double * pTrainingWeights = nullptr;
@@ -886,8 +886,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cTrainingWeights = static_cast<size_t>(trainingWeightsLength);
-      if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountInstances()");
+      if(cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cTrainingWeights != pEbmBoosting->m_pTrainingSet->GetCountSamples()");
          return R_NilValue;
       }
       pTrainingWeights = REAL(trainingWeights);
@@ -902,8 +902,8 @@ SEXP BoostingStep_R(
          return R_NilValue;
       }
       size_t cValidationWeights = static_cast<size_t>(validationWeightsLength);
-      if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()) {
-         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountInstances()");
+      if(cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()) {
+         LOG_0(TraceLevelError, "ERROR BoostingStep_R cValidationWeights != pEbmBoosting->m_pValidationSet->GetCountSamples()");
          return R_NilValue;
       }
       pValidationWeights = REAL(validationWeights);
@@ -912,10 +912,10 @@ SEXP BoostingStep_R(
    FloatEbmType validationMetricReturn;
    if(0 != BoostingStep(
       reinterpret_cast<PEbmBoosting>(pEbmBoosting), 
-      iFeatureCombination, 
+      iFeatureGroup, 
       learningRateLocal, 
       cTreeSplitsMax, 
-      cInstancesRequiredForChildSplitMin, 
+      cSamplesRequiredForChildSplitMin, 
       pTrainingWeights, 
       pValidationWeights, 
       &validationMetricReturn
@@ -930,136 +930,136 @@ SEXP BoostingStep_R(
    return ret;
 }
 
-SEXP GetBestModelFeatureCombination_R(
+SEXP GetBestModelFeatureGroup_R(
    SEXP ebmBoosting,
-   SEXP indexFeatureCombination
+   SEXP indexFeatureGroup
 ) {
    EBM_ASSERT(nullptr != ebmBoosting); // shouldn't be possible
-   EBM_ASSERT(nullptr != indexFeatureCombination); // shouldn't be possible
+   EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
 
    if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R EXTPTRSXP != TYPEOF(ebmBoosting)");
       return R_NilValue;
    }
    EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
    if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R nullptr == pEbmBoosting");
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R nullptr == pEbmBoosting");
       return R_NilValue;
    }
 
-   if(!IsSingleDoubleVector(indexFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R !IsSingleDoubleVector(indexFeatureCombination)");
+   if(!IsSingleDoubleVector(indexFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
-   double doubleIndex = REAL(indexFeatureCombination)[0];
+   double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
-   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureCombination_R pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
+   IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
+   // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
+   if(pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup_R pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
-   FloatEbmType * pModelFeatureCombinationTensor = GetBestModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
-   if(nullptr == pModelFeatureCombinationTensor) {
-      // if nullptr == pModelFeatureCombinationTensor then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
-      //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+   FloatEbmType * pModelFeatureGroupTensor = GetBestModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
+   if(nullptr == pModelFeatureGroupTensor) {
+      // if nullptr == pModelFeatureGroupTensor then either:
+      //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
+      //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), 
       //       which is legal, which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
-      LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
+      LOG_0(TraceLevelWarning, "WARNING GetBestModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
    size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureCombination * const pFeatureCombination = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
-   const size_t cFeatures = pFeatureCombination->m_cFeatures;
+   const FeatureGroup * const pFeatureGroup = pEbmBoosting->m_apFeatureGroups[static_cast<size_t>(iFeatureGroup)];
+   const size_t cFeatures = pFeatureGroup->m_cFeatures;
    if(0 != cFeatures) {
-      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
-      const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
+      const FeatureGroup::FeatureGroupEntry * pFeatureGroupEntry = &pFeatureGroup->m_FeatureGroupEntry[0];
+      const FeatureGroup::FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
       do {
-         const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
-         ++pFeatureCombinationEntry;
-      } while(pFeatureCombinationEntryEnd != pFeatureCombinationEntry);
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
    if(!IsNumberConvertable<R_xlen_t, size_t>(cValues)) {
       return R_NilValue;
    }
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   memcpy(REAL(ret), pModelFeatureCombinationTensor, sizeof(double) * cValues);
+   memcpy(REAL(ret), pModelFeatureGroupTensor, sizeof(double) * cValues);
    UNPROTECT(1);
    return ret;
 }
 
-SEXP GetCurrentModelFeatureCombination_R(
+SEXP GetCurrentModelFeatureGroup_R(
    SEXP ebmBoosting,
-   SEXP indexFeatureCombination
+   SEXP indexFeatureGroup
 ) {
    EBM_ASSERT(nullptr != ebmBoosting); // shouldn't be possible
-   EBM_ASSERT(nullptr != indexFeatureCombination); // shouldn't be possible
+   EBM_ASSERT(nullptr != indexFeatureGroup); // shouldn't be possible
 
    if(EXTPTRSXP != TYPEOF(ebmBoosting)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R EXTPTRSXP != TYPEOF(ebmBoosting)");
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R EXTPTRSXP != TYPEOF(ebmBoosting)");
       return R_NilValue;
    }
    EbmBoostingState * pEbmBoosting = static_cast<EbmBoostingState *>(R_ExternalPtrAddr(ebmBoosting));
    if(nullptr == pEbmBoosting) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R nullptr == pEbmBoosting");
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R nullptr == pEbmBoosting");
       return R_NilValue;
    }
 
-   if(!IsSingleDoubleVector(indexFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsSingleDoubleVector(indexFeatureCombination)");
+   if(!IsSingleDoubleVector(indexFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R !IsSingleDoubleVector(indexFeatureGroup)");
       return R_NilValue;
    }
-   double doubleIndex = REAL(indexFeatureCombination)[0];
+   double doubleIndex = REAL(indexFeatureGroup)[0];
    if(!IsDoubleToIntEbmTypeIndexValid(doubleIndex)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R !IsDoubleToIntEbmTypeIndexValid(doubleIndex)");
       return R_NilValue;
    }
-   IntEbmType iFeatureCombination = static_cast<IntEbmType>(doubleIndex);
-   // we check that iFeatureCombination can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
-   if(pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)) {
-      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureCombination_R pEbmBoosting->m_cFeatureCombinations <= static_cast<size_t>(iFeatureCombination)");
+   IntEbmType iFeatureGroup = static_cast<IntEbmType>(doubleIndex);
+   // we check that iFeatureGroup can be converted to size_t in IsDoubleToIntEbmTypeIndexValid
+   if(pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)) {
+      LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup_R pEbmBoosting->m_cFeatureGroups <= static_cast<size_t>(iFeatureGroup)");
       return R_NilValue;
    }
 
-   FloatEbmType * pModelFeatureCombinationTensor = GetCurrentModelFeatureCombination(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureCombination);
-   if(nullptr == pModelFeatureCombinationTensor) {
-      // if nullptr == pModelFeatureCombinationTensor then either:
-      //    1) m_cFeatureCombinations was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
-      //       indexFeatureCombination, which is impossible, so we can do anything we like, include the below actions.
+   FloatEbmType * pModelFeatureGroupTensor = GetCurrentModelFeatureGroup(reinterpret_cast<PEbmBoosting>(pEbmBoosting), iFeatureGroup);
+   if(nullptr == pModelFeatureGroupTensor) {
+      // if nullptr == pModelFeatureGroupTensor then either:
+      //    1) m_cFeatureGroups was 0, in which case this function would have undefined behavior since the caller needs to indicate a valid 
+      //       indexFeatureGroup, which is impossible, so we can do anything we like, include the below actions.
       //    2) m_runtimeLearningTypeOrCountTargetClasses was either 1 or 0 (and the learning type is classification), which is legal, 
       //       which we need to handle here
       SEXP ret = allocVector(REALSXP, R_xlen_t { 0 });
-      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureCombination_R nullptr == pModelFeatureCombinationTensor");
+      LOG_0(TraceLevelWarning, "WARNING GetCurrentModelFeatureGroup_R nullptr == pModelFeatureGroupTensor");
       return ret;
    }
    size_t cValues = GetVectorLengthFlat(pEbmBoosting->m_runtimeLearningTypeOrCountTargetClasses);
-   const FeatureCombination * const pFeatureCombination = pEbmBoosting->m_apFeatureCombinations[static_cast<size_t>(iFeatureCombination)];
-   const size_t cFeatures = pFeatureCombination->m_cFeatures;
+   const FeatureGroup * const pFeatureGroup = pEbmBoosting->m_apFeatureGroups[static_cast<size_t>(iFeatureGroup)];
+   const size_t cFeatures = pFeatureGroup->m_cFeatures;
    if(0 != cFeatures) {
-      const FeatureCombination::FeatureCombinationEntry * pFeatureCombinationEntry = &pFeatureCombination->m_FeatureCombinationEntry[0];
-      const FeatureCombination::FeatureCombinationEntry * const pFeatureCombinationEntryEnd = &pFeatureCombinationEntry[cFeatures];
+      const FeatureGroup::FeatureGroupEntry * pFeatureGroupEntry = &pFeatureGroup->m_FeatureGroupEntry[0];
+      const FeatureGroup::FeatureGroupEntry * const pFeatureGroupEntryEnd = &pFeatureGroupEntry[cFeatures];
       do {
-         const size_t cBins = pFeatureCombinationEntry->m_pFeature->m_cBins;
+         const size_t cBins = pFeatureGroupEntry->m_pFeature->m_cBins;
          EBM_ASSERT(!IsMultiplyError(cBins, cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
          cValues *= cBins;
-         ++pFeatureCombinationEntry;
-      } while(pFeatureCombinationEntryEnd != pFeatureCombinationEntry);
+         ++pFeatureGroupEntry;
+      } while(pFeatureGroupEntryEnd != pFeatureGroupEntry);
    }
    if(!IsNumberConvertable<R_xlen_t, size_t>(cValues)) {
       return R_NilValue;
    }
    SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cValues)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cValues)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
-   memcpy(REAL(ret), pModelFeatureCombinationTensor, sizeof(double) * cValues);
+   memcpy(REAL(ret), pModelFeatureGroupTensor, sizeof(double) * cValues);
    UNPROTECT(1);
    return ret;
 }
@@ -1116,20 +1116,20 @@ SEXP InitializeInteractionClassification_R(
       return R_NilValue;
    }
 
-   size_t cInstances;
+   size_t cSamples;
    const IntEbmType * aTargets;
-   if(ConvertDoublesToIndexes(targets, &cInstances, &aTargets)) {
+   if(ConvertDoublesToIndexes(targets, &cSamples, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cInstances * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cInstances * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1139,12 +1139,12 @@ SEXP InitializeInteractionClassification_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cInstances, cVectorLength)");
+   if(IsMultiplyError(cSamples, cVectorLength)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R IsMultiplyError(cSamples, cVectorLength)");
       return R_NilValue;
    }
-   if(cVectorLength * cInstances != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cInstances != cPredictorScores");
+   if(cVectorLength * cSamples != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification_R cVectorLength * cSamples != cPredictorScores");
       return R_NilValue;
    }
 
@@ -1152,7 +1152,7 @@ SEXP InitializeInteractionClassification_R(
       static_cast<IntEbmType>(cTargetClasses), 
       countFeatures, 
       aFeatures, 
-      countInstances, 
+      countSamples, 
       aBinnedData, 
       aTargets, 
       aPredictorScores
@@ -1197,20 +1197,20 @@ SEXP InitializeInteractionRegression_R(
       return R_NilValue;
    }
 
-   size_t cInstances;
+   size_t cSamples;
    const FloatEbmType * aTargets;
-   if(ConvertDoublesToDoubles(targets, &cInstances, &aTargets)) {
+   if(ConvertDoublesToDoubles(targets, &cSamples, &aTargets)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   const IntEbmType countInstances = static_cast<IntEbmType>(cInstances);
+   const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-   if(IsMultiplyError(cInstances, cFeatures)) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cInstances, cFeatures)");
+   if(IsMultiplyError(cSamples, cFeatures)) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R IsMultiplyError(cSamples, cFeatures)");
       return R_NilValue;
    }
-   if(cInstances * cFeatures != cBinnedData) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances * cFeatures != cBinnedData");
+   if(cSamples * cFeatures != cBinnedData) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples * cFeatures != cBinnedData");
       return R_NilValue;
    }
 
@@ -1220,12 +1220,12 @@ SEXP InitializeInteractionRegression_R(
       // we've already logged any errors
       return R_NilValue;
    }
-   if(cInstances != cPredictorScores) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cInstances != cPredictorScores");
+   if(cSamples != cPredictorScores) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionRegression_R cSamples != cPredictorScores");
       return R_NilValue;
    }
 
-   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countInstances, aBinnedData, aTargets, aPredictorScores);
+   PEbmInteraction pEbmInteraction = InitializeInteractionRegression(countFeatures, aFeatures, countSamples, aBinnedData, aTargets, aPredictorScores);
 
    if(nullptr == pEbmInteraction) {
       return R_NilValue;
@@ -1240,55 +1240,55 @@ SEXP InitializeInteractionRegression_R(
    }
 }
 
-SEXP GetInteractionScore_R(
+SEXP CalculateInteractionScore_R(
    SEXP ebmInteraction,
    SEXP featureIndexes
-   SEXP countInstancesRequiredForChildSplitMin,
+   SEXP countSamplesRequiredForChildSplitMin,
    ) {
    EBM_ASSERT(nullptr != ebmInteraction); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
-   EBM_ASSERT(nullptr != countInstancesRequiredForChildSplitMin);
+   EBM_ASSERT(nullptr != countSamplesRequiredForChildSplitMin);
 
    if(EXTPTRSXP != TYPEOF(ebmInteraction)) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R EXTPTRSXP != TYPEOF(ebmInteraction)");
       return R_NilValue;
    }
    EbmInteractionState * pEbmInteraction = static_cast<EbmInteractionState *>(R_ExternalPtrAddr(ebmInteraction));
    if(nullptr == pEbmInteraction) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R nullptr == pEbmInteraction");
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R nullptr == pEbmInteraction");
       return R_NilValue;
    }
 
-   size_t cFeaturesInCombination;
+   size_t cFeaturesInGroup;
    const IntEbmType * aFeatureIndexes;
-   if(ConvertDoublesToIndexes(featureIndexes, &cFeaturesInCombination, &aFeatureIndexes)) {
+   if(ConvertDoublesToIndexes(featureIndexes, &cFeaturesInGroup, &aFeatureIndexes)) {
       // we've already logged any errors
       return R_NilValue;
    }
-   IntEbmType countFeaturesInCombination = static_cast<IntEbmType>(cFeaturesInCombination);
+   IntEbmType countFeaturesInGroup = static_cast<IntEbmType>(cFeaturesInGroup);
 
-   if(!IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)) {
-      LOG_0(TraceLevelError, "ERROR GetInteractionScore_R !IsSingleDoubleVector(countInstancesRequiredForChildSplitMin)");
+   if(!IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)) {
+      LOG_0(TraceLevelError, "ERROR CalculateInteractionScore_R !IsSingleDoubleVector(countSamplesRequiredForChildSplitMin)");
       return R_NilValue;
    }
-   double doubleCountInstancesRequiredForChildSplitMin = REAL(countInstancesRequiredForChildSplitMin)[0];
-   IntEbmType cInstancesRequiredForChildSplitMin;
+   double doubleCountSamplesRequiredForChildSplitMin = REAL(countSamplesRequiredForChildSplitMin)[0];
+   IntEbmType cSamplesRequiredForChildSplitMin;
    static_assert(std::numeric_limits<double>::is_iec559, "we need is_iec559 to know that comparisons to infinity and -infinity to normal numbers work");
-   if(std::isnan(doubleCountInstancesRequiredForChildSplitMin) ||
-      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountInstancesRequiredForChildSplitMin
+   if(std::isnan(doubleCountSamplesRequiredForChildSplitMin) ||
+      static_cast<double>(std::numeric_limits<IntEbmType>::max()) < doubleCountSamplesRequiredForChildSplitMin
       ) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countInstancesRequiredForChildSplitMin overflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
-   } else if(doubleCountInstancesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R countInstancesRequiredForChildSplitMin underflow");
-      cInstancesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin overflow");
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::max();
+   } else if(doubleCountSamplesRequiredForChildSplitMin < static_cast<double>(std::numeric_limits<IntEbmType>::lowest())) {
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R countSamplesRequiredForChildSplitMin underflow");
+      cSamplesRequiredForChildSplitMin = std::numeric_limits<IntEbmType>::lowest();
    } else {
-      cInstancesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountInstancesRequiredForChildSplitMin);
+      cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
    FloatEbmType interactionScoreReturn;
-   if(0 != GetInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInCombination, aFeatureIndexes, cInstancesRequiredForChildSplitMin, &interactionScoreReturn)) {
-      LOG_0(TraceLevelWarning, "WARNING GetInteractionScore_R GetInteractionScore returned error code");
+   if(0 != CalculateInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreReturn)) {
+      LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
 
@@ -1309,12 +1309,12 @@ static const R_CallMethodDef g_exposedFunctions[] = {
    { "InitializeBoostingClassification_R", (DL_FUNC)&InitializeBoostingClassification_R, 12 },
    { "InitializeBoostingRegression_R", (DL_FUNC)& InitializeBoostingRegression_R, 11 },
    { "BoostingStep_R", (DL_FUNC)& BoostingStep_R, 7 },
-   { "GetBestModelFeatureCombination_R", (DL_FUNC)&GetBestModelFeatureCombination_R, 2 },
-   { "GetCurrentModelFeatureCombination_R", (DL_FUNC)& GetCurrentModelFeatureCombination_R, 2 },
+   { "GetBestModelFeatureGroup_R", (DL_FUNC)&GetBestModelFeatureGroup_R, 2 },
+   { "GetCurrentModelFeatureGroup_R", (DL_FUNC)& GetCurrentModelFeatureGroup_R, 2 },
    { "FreeBoosting_R", (DL_FUNC)& FreeBoosting_R, 1 },
    { "InitializeInteractionClassification_R", (DL_FUNC)&InitializeInteractionClassification_R, 5 },
    { "InitializeInteractionRegression_R", (DL_FUNC)& InitializeInteractionRegression_R, 4 },
-   { "GetInteractionScore_R", (DL_FUNC)& GetInteractionScore_R, 3 },
+   { "CalculateInteractionScore_R", (DL_FUNC)& CalculateInteractionScore_R, 3 },
    { "FreeInteraction_R", (DL_FUNC)& FreeInteraction_R, 1 },
    { NULL, NULL, 0 }
 };

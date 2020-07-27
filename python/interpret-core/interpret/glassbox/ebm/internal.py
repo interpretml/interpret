@@ -57,10 +57,10 @@ class Native:
             ("countBins", ct.c_longlong),
         ]
 
-    class EbmNativeFeatureCombination(ct.Structure):
+    class EbmNativeFeatureGroup(ct.Structure):
         _fields_ = [
-            # int64_t countFeaturesInCombination;
-            ("countFeaturesInCombination", ct.c_longlong)
+            # int64_t countFeaturesInGroup;
+            ("countFeaturesInGroup", ct.c_longlong)
         ]
 
     # const signed char TraceLevelOff = 0;
@@ -85,10 +85,26 @@ class Native:
             # void (* fn)(signed char traceLevel, const char * message) logMessageFunction
             self._LogFuncType
         ]
+        self.lib.SetLogMessageFunction.restype = None
         self.lib.SetTraceLevel.argtypes = [
             # signed char traceLevel
             ct.c_char
         ]
+        self.lib.SetTraceLevel.restype = None
+
+        self.lib.Discretize.argtypes = [
+            # int64_t countSamples
+            ct.c_longlong,
+            # double * featureValues
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t countCutPoints
+            ct.c_longlong,
+            # double * cutPointsLowerBoundInclusive
+            ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
+            # int64_t * discretizedReturn
+            ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
+        ]
+        self.lib.Discretize.restype = None
 
         self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
@@ -97,13 +113,13 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countFeatureCombinations
+            # int64_t countFeatureGroups
             ct.c_longlong,
-            # EbmNativeFeatureCombination * featureCombinations
-            ct.POINTER(self.EbmNativeFeatureCombination),
-            # int64_t * featureCombinationIndexes
+            # EbmNativeFeatureGroup * featureGroups
+            ct.POINTER(self.EbmNativeFeatureGroup),
+            # int64_t * featureGroupIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countTrainingInstances
+            # int64_t countTrainingSamples
             ct.c_longlong,
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -112,7 +128,7 @@ class Native:
             # double * trainingPredictorScores
             # scores can either be 1 or 2 dimensional
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
-            # int64_t countValidationInstances
+            # int64_t countValidationSamples
             ct.c_longlong,
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -135,13 +151,13 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countFeatureCombinations
+            # int64_t countFeatureGroups
             ct.c_longlong,
-            # EbmNativeFeatureCombination * featureCombinations
-            ct.POINTER(self.EbmNativeFeatureCombination),
-            # int64_t * featureCombinationIndexes
+            # EbmNativeFeatureGroup * featureGroups
+            ct.POINTER(self.EbmNativeFeatureGroup),
+            # int64_t * featureGroupIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countTrainingInstances
+            # int64_t countTrainingSamples
             ct.c_longlong,
             # int64_t * trainingBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -149,7 +165,7 @@ class Native:
             ndpointer(dtype=np.float64, ndim=1),
             # double * trainingPredictorScores
             ndpointer(dtype=np.float64, ndim=1),
-            # int64_t countValidationInstances
+            # int64_t countValidationSamples
             ct.c_longlong,
             # int64_t * validationBinnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -166,16 +182,16 @@ class Native:
         ]
         self.lib.InitializeBoostingRegression.restype = ct.c_void_p
 
-        self.lib.GenerateModelFeatureCombinationUpdate.argtypes = [
+        self.lib.GenerateModelFeatureGroupUpdate.argtypes = [
             # void * ebmBoosting
             ct.c_void_p,
-            # int64_t indexFeatureCombination
+            # int64_t indexFeatureGroup
             ct.c_longlong,
             # double learningRate
             ct.c_double,
             # int64_t countTreeSplitsMax
             ct.c_longlong,
-            # int64_t countInstancesRequiredForChildSplitMin
+            # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
             # double * trainingWeights
             # ndpointer(dtype=np.float64, ndim=1),
@@ -186,40 +202,41 @@ class Native:
             # double * gainReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.GenerateModelFeatureCombinationUpdate.restype = ct.POINTER(ct.c_double)
+        self.lib.GenerateModelFeatureGroupUpdate.restype = ct.POINTER(ct.c_double)
 
-        self.lib.ApplyModelFeatureCombinationUpdate.argtypes = [
+        self.lib.ApplyModelFeatureGroupUpdate.argtypes = [
             # void * ebmBoosting
             ct.c_void_p,
-            # int64_t indexFeatureCombination
+            # int64_t indexFeatureGroup
             ct.c_longlong,
-            # double * modelFeatureCombinationUpdateTensor
+            # double * modelFeatureGroupUpdateTensor
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
             # double * validationMetricReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.ApplyModelFeatureCombinationUpdate.restype = ct.c_longlong
+        self.lib.ApplyModelFeatureGroupUpdate.restype = ct.c_longlong
 
-        self.lib.GetBestModelFeatureCombination.argtypes = [
+        self.lib.GetBestModelFeatureGroup.argtypes = [
             # void * ebmBoosting
             ct.c_void_p,
-            # int64_t indexFeatureCombination
+            # int64_t indexFeatureGroup
             ct.c_longlong,
         ]
-        self.lib.GetBestModelFeatureCombination.restype = ct.POINTER(ct.c_double)
+        self.lib.GetBestModelFeatureGroup.restype = ct.POINTER(ct.c_double)
 
-        self.lib.GetCurrentModelFeatureCombination.argtypes = [
+        self.lib.GetCurrentModelFeatureGroup.argtypes = [
             # void * ebmBoosting
             ct.c_void_p,
-            # int64_t indexFeatureCombination
+            # int64_t indexFeatureGroup
             ct.c_longlong,
         ]
-        self.lib.GetCurrentModelFeatureCombination.restype = ct.POINTER(ct.c_double)
+        self.lib.GetCurrentModelFeatureGroup.restype = ct.POINTER(ct.c_double)
 
         self.lib.FreeBoosting.argtypes = [
             # void * ebmBoosting
             ct.c_void_p
         ]
+        self.lib.FreeBoosting.restype = None
 
         self.lib.InitializeInteractionClassification.argtypes = [
             # int64_t countTargetClasses
@@ -228,7 +245,7 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countInstances
+            # int64_t countSamples
             ct.c_longlong,
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -247,7 +264,7 @@ class Native:
             ct.c_longlong,
             # EbmNativeFeature * features
             ct.POINTER(self.EbmNativeFeature),
-            # int64_t countInstances
+            # int64_t countSamples
             ct.c_longlong,
             # int64_t * binnedData
             ndpointer(dtype=np.int64, ndim=2, flags="C_CONTIGUOUS"),
@@ -260,24 +277,25 @@ class Native:
         ]
         self.lib.InitializeInteractionRegression.restype = ct.c_void_p
 
-        self.lib.GetInteractionScore.argtypes = [
+        self.lib.CalculateInteractionScore.argtypes = [
             # void * ebmInteraction
             ct.c_void_p,
-            # int64_t countFeaturesInCombination
+            # int64_t countFeaturesInGroup
             ct.c_longlong,
             # int64_t * featureIndexes
             ndpointer(dtype=np.int64, ndim=1),
-            # int64_t countInstancesRequiredForChildSplitMin
+            # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
             # double * interactionScoreReturn
             ct.POINTER(ct.c_double),
         ]
-        self.lib.GetInteractionScore.restype = ct.c_longlong
+        self.lib.CalculateInteractionScore.restype = ct.c_longlong
 
         self.lib.FreeInteraction.argtypes = [
             # void * ebmInteraction
             ct.c_void_p
         ]
+        self.lib.FreeInteraction.restype = None
 
     def _set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -409,26 +427,26 @@ class Native:
         return feature_ar
 
     @staticmethod
-    def convert_feature_combinations_to_c(feature_combinations):
-        # Create C form of feature_combinations
+    def convert_feature_groups_to_c(feature_groups):
+        # Create C form of feature_groups
 
-        feature_combination_indexes = []
-        feature_combinations_ar = (
-            Native.EbmNativeFeatureCombination * len(feature_combinations)
+        feature_group_indexes = []
+        feature_groups_ar = (
+            Native.EbmNativeFeatureGroup * len(feature_groups)
         )()
-        for idx, features_in_combination in enumerate(feature_combinations):
-            feature_combinations_ar[idx].countFeaturesInCombination = len(
-                features_in_combination
+        for idx, features_in_group in enumerate(feature_groups):
+            feature_groups_ar[idx].countFeaturesInGroup = len(
+                features_in_group
             )
 
-            for feature_idx in features_in_combination:
-                feature_combination_indexes.append(feature_idx)
+            for feature_idx in features_in_group:
+                feature_group_indexes.append(feature_idx)
 
-        feature_combination_indexes = np.array(
-            feature_combination_indexes, dtype=np.int64
+        feature_group_indexes = np.array(
+            feature_group_indexes, dtype=np.int64
         )
 
-        return feature_combinations_ar, feature_combination_indexes
+        return feature_groups_ar, feature_group_indexes
 
 
 class NativeEBMBoosting:
@@ -440,7 +458,7 @@ class NativeEBMBoosting:
         model_type,
         n_classes,
         features,
-        feature_combinations,
+        feature_groups,
         X_train,
         y_train,
         scores_train,
@@ -460,19 +478,19 @@ class NativeEBMBoosting:
                 number of unique classes.
             features: List of features represented individually as
                 dictionary of keys ('type', 'has_missing', 'n_bins').
-            feature_combinations: List of feature combinations represented as
+            feature_groups: List of feature groups represented as
                 a dictionary of keys ("features")
             X_train: Training design matrix as 2-D ndarray.
             y_train: Training response as 1-D ndarray.
             scores_train: training predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
             X_val: Validation design matrix as 2-D ndarray.
             y_val: Validation response as 1-D ndarray.
             scores_val: Validation predictions from a prior predictor
                 that this class will boost on top of.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
             n_inner_bags: number of inner bags.
             random_state: Random seed as integer.
@@ -485,8 +503,8 @@ class NativeEBMBoosting:
         if not isinstance(features, list):  # pragma: no cover
             raise ValueError("features should be a list")
 
-        if not isinstance(feature_combinations, list):  # pragma: no cover
-            raise ValueError("feature_combinations should be a list")
+        if not isinstance(feature_groups, list):  # pragma: no cover
+            raise ValueError("feature_groups should be a list")
 
         if X_train.ndim != 2:  # pragma: no cover
             raise ValueError("X_train should have exactly 2 dimensions")
@@ -501,7 +519,7 @@ class NativeEBMBoosting:
 
         if X_train.shape[1] != len(y_train):  # pragma: no cover
             raise ValueError(
-                "X_train does not have the same number of instances as y_train"
+                "X_train does not have the same number of samples as y_train"
             )
 
         if X_val.ndim != 2:  # pragma: no cover
@@ -517,7 +535,7 @@ class NativeEBMBoosting:
 
         if X_val.shape[1] != len(y_val):  # pragma: no cover
             raise ValueError(
-                "X_val does not have the same number of instances as y_val"
+                "X_val does not have the same number of samples as y_val"
             )
 
         self._native = Native.get_native_singleton()
@@ -531,11 +549,11 @@ class NativeEBMBoosting:
         self._features = features
         feature_array = Native.convert_features_to_c(features)
 
-        self._feature_groups = feature_combinations
+        self._feature_groups = feature_groups
         (
-            feature_combinations_array,
-            feature_combination_indexes,
-        ) = Native.convert_feature_combinations_to_c(feature_combinations)
+            feature_groups_array,
+            feature_group_indexes,
+        ) = Native.convert_feature_groups_to_c(feature_groups)
 
         n_scores = EBMUtils.get_count_scores_c(n_classes)
         if scores_train is None:
@@ -545,7 +563,7 @@ class NativeEBMBoosting:
         else:
             if scores_train.shape[0] != len(y_train):  # pragma: no cover
                 raise ValueError(
-                    "scores_train does not have the same number of instances as y_train"
+                    "scores_train does not have the same number of samples as y_train"
                 )
             if n_scores == 1:
                 if scores_train.ndim != 1:  # pragma: no cover
@@ -567,7 +585,7 @@ class NativeEBMBoosting:
         else:
             if scores_val.shape[0] != len(y_val):  # pragma: no cover
                 raise ValueError(
-                    "scores_val does not have the same number of instances as y_val"
+                    "scores_val does not have the same number of samples as y_val"
                 )
             if n_scores == 1:
                 if scores_val.ndim != 1:  # pragma: no cover
@@ -595,9 +613,9 @@ class NativeEBMBoosting:
                 n_classes,
                 len(feature_array),
                 feature_array,
-                len(feature_combinations_array),
-                feature_combinations_array,
-                feature_combination_indexes,
+                len(feature_groups_array),
+                feature_groups_array,
+                feature_group_indexes,
                 len(y_train),
                 X_train,
                 y_train,
@@ -616,9 +634,9 @@ class NativeEBMBoosting:
             self._booster_pointer = self._native.lib.InitializeBoostingRegression(
                 len(feature_array),
                 feature_array,
-                len(feature_combinations_array),
-                feature_combinations_array,
-                feature_combination_indexes,
+                len(feature_groups_array),
+                feature_groups_array,
+                feature_group_indexes,
                 len(y_train),
                 X_train,
                 y_train,
@@ -645,14 +663,14 @@ class NativeEBMBoosting:
         log.info("Deallocation boosting end")
 
     def boosting_step(
-        self, feature_combination_index, learning_rate, max_leaves, min_samples_leaf,
+        self, feature_group_index, learning_rate, max_leaves, min_samples_leaf,
     ):
 
         """ Conducts a boosting step per feature
             by growing a shallow decision tree.
 
         Args:
-            feature_combination_index: The index for the feature combination
+            feature_group_index: The index for the feature group
                 to boost on.
             learning_rate: Learning rate as a float.
             max_leaves: Max leaf nodes on feature step.
@@ -667,9 +685,9 @@ class NativeEBMBoosting:
         # for a classification problem with only 1 target value, we will always predict the answer perfectly
         if self._model_type != "classification" or 2 <= self._n_classes:
             gain = ct.c_double(0.0)
-            model_update_tensor_pointer = self._native.lib.GenerateModelFeatureCombinationUpdate(
+            model_update_tensor_pointer = self._native.lib.GenerateModelFeatureGroupUpdate(
                 self._booster_pointer,
-                feature_combination_index,
+                feature_group_index,
                 learning_rate,
                 max_leaves - 1,
                 min_samples_leaf,
@@ -679,34 +697,34 @@ class NativeEBMBoosting:
             )
             if not model_update_tensor_pointer:  # pragma: no cover
                 raise MemoryError(
-                    "Out of memory in GenerateModelFeatureCombinationUpdate"
+                    "Out of memory in GenerateModelFeatureGroupUpdate"
                 )
 
-            shape = self._get_feature_combination_shape(feature_combination_index)
-            # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureCombinationUpdate
+            shape = self._get_feature_group_shape(feature_group_index)
+            # TODO PK verify that we aren't copying data while making the view and/or passing to ApplyModelFeatureGroupUpdate
             model_update_tensor = Native.make_ndarray(
                 model_update_tensor_pointer, shape, dtype=np.double, copy_data=False
             )
 
-            return_code = self._native.lib.ApplyModelFeatureCombinationUpdate(
+            return_code = self._native.lib.ApplyModelFeatureGroupUpdate(
                 self._booster_pointer,
-                feature_combination_index,
+                feature_group_index,
                 model_update_tensor,
                 ct.byref(metric_output),
             )
             if return_code != 0:  # pragma: no cover
-                raise Exception("Out of memory in ApplyModelFeatureCombinationUpdate")
+                raise Exception("Out of memory in ApplyModelFeatureGroupUpdate")
 
         # log.debug("Boosting step end")
         return metric_output.value
 
-    def _get_feature_combination_shape(self, feature_combination_index):
+    def _get_feature_group_shape(self, feature_group_index):
         # TODO PK do this once during construction so that we don't have to do it again
         #         and so that we don't have to store self._features & self._feature_groups
 
         # Retrieve dimensions of log odds tensor
         dimensions = []
-        feature_indexes = self._feature_groups[feature_combination_index]
+        feature_indexes = self._feature_groups[feature_group_index]
         for _, feature_idx in enumerate(feature_indexes):
             n_bins = self._features[feature_idx]["n_bins"]
             dimensions.append(n_bins)
@@ -721,12 +739,12 @@ class NativeEBMBoosting:
         shape = tuple(dimensions)
         return shape
 
-    def _get_best_model_feature_combination(self, feature_combination_index):
+    def _get_best_model_feature_group(self, feature_group_index):
         """ Returns best model/function according to validation set
-            for a given feature combination.
+            for a given feature group.
 
         Args:
-            feature_combination_index: The index for the feature combination.
+            feature_group_index: The index for the feature group.
 
         Returns:
             An ndarray that represents the model.
@@ -737,13 +755,13 @@ class NativeEBMBoosting:
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
             # after we expand the model for our caller, the tensor's dimensions should match
-            # the features for the feature_combination, but the last class_index should have a dimension
+            # the features for the feature_group, but the last class_index should have a dimension
             # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
             # a None value here for now and handle in the upper levels
             #
-            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # If we were to allow datasets with zero samples, then it would also be legal for there
             # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any instances in any evaluations need to have a state
+            # any samples in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
             return None
@@ -756,17 +774,17 @@ class NativeEBMBoosting:
         #             see in a multiclass problem with very few cases other than the 0th and 1th
         #             cases.  Do we want to do the same for conformance and in graphing
 
-        array_p = self._native.lib.GetBestModelFeatureCombination(
-            self._booster_pointer, feature_combination_index
+        array_p = self._native.lib.GetBestModelFeatureGroup(
+            self._booster_pointer, feature_group_index
         )
 
         if not array_p:  # pragma: no cover
-            raise MemoryError("Out of memory in GetBestModelFeatureCombination")
+            raise MemoryError("Out of memory in GetBestModelFeatureGroup")
 
-        shape = self._get_feature_combination_shape(feature_combination_index)
+        shape = self._get_feature_group_shape(feature_group_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_groups[feature_combination_index]) == 2:
+        if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -777,17 +795,17 @@ class NativeEBMBoosting:
     def get_best_model(self):
         model = []
         for index in range(len(self._feature_groups)):
-            model_feature_combination = self._get_best_model_feature_combination(index)
-            model.append(model_feature_combination)
+            model_feature_group = self._get_best_model_feature_group(index)
+            model.append(model_feature_group)
 
         return model
 
-    def _get_current_model_feature_combination(self, feature_combination_index):
+    def _get_current_model_feature_group(self, feature_group_index):
         """ Returns current model/function according to validation set
-            for a given feature combination.
+            for a given feature group.
 
         Args:
-            feature_combination_index: The index for the feature combination.
+            feature_group_index: The index for the feature group.
 
         Returns:
             An ndarray that represents the model.
@@ -798,28 +816,28 @@ class NativeEBMBoosting:
             # certainty what the result will be, and our logits for that result should be infinity
             # since we reduce the number of logits by 1, we would get back an empty array from the C code
             # after we expand the model for our caller, the tensor's dimensions should match
-            # the features for the feature_combination, but the last class_index should have a dimension
+            # the features for the feature_group, but the last class_index should have a dimension
             # of 1 for the infinities.  This all needs to be special cased anyways, so we can just return
             # a None value here for now and handle in the upper levels
             #
-            # If we were to allow datasets with zero instances, then it would also be legal for there
+            # If we were to allow datasets with zero samples, then it would also be legal for there
             # to be 0 states.  We can probably handle this the same as having 1 state though since
-            # any instances in any evaluations need to have a state
+            # any samples in any evaluations need to have a state
 
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        array_p = self._native.lib.GetCurrentModelFeatureCombination(
-            self._booster_pointer, feature_combination_index
+        array_p = self._native.lib.GetCurrentModelFeatureGroup(
+            self._booster_pointer, feature_group_index
         )
 
         if not array_p:  # pragma: no cover
-            raise MemoryError("Out of memory in GetCurrentModelFeatureCombination")
+            raise MemoryError("Out of memory in GetCurrentModelFeatureGroup")
 
-        shape = self._get_feature_combination_shape(feature_combination_index)
+        shape = self._get_feature_group_shape(feature_group_index)
 
         array = Native.make_ndarray(array_p, shape, dtype=np.double)
-        if len(self._feature_groups[feature_combination_index]) == 2:
+        if len(self._feature_groups[feature_group_index]) == 2:
             if 2 < self._n_classes:
                 array = np.ascontiguousarray(np.transpose(array, (1, 0, 2)))
             else:
@@ -831,10 +849,10 @@ class NativeEBMBoosting:
     def get_current_model(self):
         model = []
         for index in range(len(self._feature_groups)):
-            model_feature_combination = self._get_current_model_feature_combination(
+            model_feature_group = self._get_current_model_feature_group(
                 index
             )
-            model.append(model_feature_combination)
+            model.append(model_feature_group)
 
         return model
 
@@ -858,7 +876,7 @@ class NativeEBMInteraction:
             X: Training design matrix as 2-D ndarray.
             y: Training response as 1-D ndarray.
             scores: predictions from a prior predictor.  For regression
-                there is 1 prediction per instance.  For binary classification
+                there is 1 prediction per sample.  For binary classification
                 there is one logit.  For multiclass there are n_classes logits
 
         """
@@ -882,7 +900,7 @@ class NativeEBMInteraction:
             )
 
         if X.shape[1] != len(y):  # pragma: no cover
-            raise ValueError("X does not have the same number of instances as y")
+            raise ValueError("X does not have the same number of samples as y")
 
         self._native = Native.get_native_singleton()
 
@@ -897,7 +915,7 @@ class NativeEBMInteraction:
         else:
             if scores.shape[0] != len(y):  # pragma: no cover
                 raise ValueError(
-                    "scores does not have the same number of instances as y"
+                    "scores does not have the same number of samples as y"
                 )
             if n_scores == 1:
                 if scores.ndim != 1:  # pragma: no cover
@@ -962,7 +980,7 @@ class NativeEBMInteraction:
         """ Provides score for an feature interaction. Higher is better."""
         log.info("Fast interaction score start")
         score = ct.c_double(0.0)
-        return_code = self._native.lib.GetInteractionScore(
+        return_code = self._native.lib.CalculateInteractionScore(
             self._interaction_pointer,
             len(feature_index_tuple),
             np.array(feature_index_tuple, dtype=np.int64),
@@ -970,7 +988,7 @@ class NativeEBMInteraction:
             ct.byref(score),
         )
         if return_code != 0:  # pragma: no cover
-            raise Exception("Out of memory in GetInteractionScore")
+            raise Exception("Out of memory in CalculateInteractionScore")
 
         log.info("Fast interaction score end")
         return score.value
@@ -982,7 +1000,7 @@ class NativeHelper:
         model_type,
         n_classes,
         features,
-        feature_combinations,
+        feature_groups,
         X_train,
         y_train,
         scores_train,
@@ -1008,7 +1026,7 @@ class NativeHelper:
                 model_type,
                 n_classes,
                 features,
-                feature_combinations,
+                feature_groups,
                 X_train,
                 y_train,
                 scores_train,
@@ -1028,9 +1046,9 @@ class NativeHelper:
                     log.debug("Sweep Index for {0}: {1}".format(name, episode_index))
                     log.debug("Metric: {0}".format(min_metric))
 
-                for feature_combination_index in range(len(feature_combinations)):
+                for feature_group_index in range(len(feature_groups)):
                     curr_metric = native_ebm_boosting.boosting_step(
-                        feature_combination_index=feature_combination_index,
+                        feature_group_index=feature_group_index,
                         learning_rate=learning_rate,
                         max_leaves=max_leaves,
                         min_samples_leaf=min_samples_leaf,
@@ -1072,7 +1090,7 @@ class NativeHelper:
     @staticmethod
     def get_interactions(
         n_interactions,
-        iter_feature_combinations,
+        iter_feature_groups,
         model_type,
         n_classes,
         features,
@@ -1089,11 +1107,11 @@ class NativeHelper:
                 model_type, n_classes, features, X, y, scores, optional_temp_params
             )
         ) as native_ebm_interactions:
-            for feature_combination in iter_feature_combinations:
+            for feature_group in iter_feature_groups:
                 score = native_ebm_interactions.get_interaction_score(
-                    feature_combination, min_samples_leaf,
+                    feature_group, min_samples_leaf,
                 )
-                interaction_scores.append((feature_combination, score))
+                interaction_scores.append((feature_group, score))
 
         ranked_scores = list(
             sorted(interaction_scores, key=lambda x: x[1], reverse=True)

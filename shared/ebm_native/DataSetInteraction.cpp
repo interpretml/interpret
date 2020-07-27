@@ -15,7 +15,7 @@
 
 extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cInstances,
+   const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
    FloatEbmType * const aTempFloatVector,
@@ -23,28 +23,28 @@ extern void InitializeResiduals(
 );
 
 INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
-   const size_t cInstances, 
+   const size_t cSamples, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructResidualErrors");
 
-   EBM_ASSERT(1 <= cInstances);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aTargetData);
    EBM_ASSERT(nullptr != aPredictorScores);
-   // runtimeLearningTypeOrCountTargetClasses can only be zero if there are zero instances and we shouldn't get here
+   // runtimeLearningTypeOrCountTargetClasses can only be zero if there are zero samples and we shouldn't get here
    EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
 
    const size_t cVectorLength = GetVectorLength(runtimeLearningTypeOrCountTargetClasses);
    EBM_ASSERT(1 <= cVectorLength);
 
-   if(IsMultiplyError(cInstances, cVectorLength)) {
-      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cInstances, cVectorLength)");
+   if(IsMultiplyError(cSamples, cVectorLength)) {
+      LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructResidualErrors IsMultiplyError(cSamples, cVectorLength)");
       return nullptr;
    }
 
-   const size_t cElements = cInstances * cVectorLength;
+   const size_t cElements = cSamples * cVectorLength;
    FloatEbmType * aResidualErrors = EbmMalloc<FloatEbmType>(cElements);
 
    FloatEbmType * aTempFloatVector = nullptr;
@@ -58,10 +58,10 @@ INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
          }
       }
    }
-   if(0 != cInstances) {
+   if(0 != cSamples) {
       InitializeResiduals(
          runtimeLearningTypeOrCountTargetClasses,
-         cInstances,
+         cSamples,
          aTargetData,
          aPredictorScores,
          aTempFloatVector,
@@ -77,14 +77,14 @@ INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
 INLINE_RELEASE static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
-   const size_t cInstances, 
+   const size_t cSamples, 
    const IntEbmType * const aBinnedData
 ) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::ConstructInputData");
 
    EBM_ASSERT(0 < cFeatures);
    EBM_ASSERT(nullptr != aFeatures);
-   EBM_ASSERT(0 < cInstances);
+   EBM_ASSERT(0 < cSamples);
    EBM_ASSERT(nullptr != aBinnedData);
 
    StorageDataType ** const aaInputDataTo = EbmMalloc<StorageDataType *>(cFeatures);
@@ -97,7 +97,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
    const Feature * pFeature = aFeatures;
    const Feature * const pFeatureEnd = aFeatures + cFeatures;
    do {
-      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cInstances);
+      StorageDataType * pInputDataTo = EbmMalloc<StorageDataType>(cSamples);
       if(nullptr == pInputDataTo) {
          LOG_0(TraceLevelWarning, "WARNING DataSetByFeature::ConstructInputData nullptr == pInputDataTo");
          goto free_all;
@@ -105,8 +105,8 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
       *paInputDataTo = pInputDataTo;
       ++paInputDataTo;
 
-      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cInstances];
-      const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cInstances];
+      const IntEbmType * pInputDataFrom = &aBinnedData[pFeature->GetIndexFeatureData() * cSamples];
+      const IntEbmType * pInputDataFromEnd = &pInputDataFrom[cSamples];
       do {
          const IntEbmType inputData = *pInputDataFrom;
          if(inputData < 0) {
@@ -171,7 +171,7 @@ WARNING_POP
 bool DataSetByFeature::Initialize(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
-   const size_t cInstances, 
+   const size_t cSamples, 
    const IntEbmType * const aBinnedData, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
@@ -179,21 +179,21 @@ bool DataSetByFeature::Initialize(
 ) {
    EBM_ASSERT(nullptr == m_aResidualErrors); // we expect to start with zeroed values
    EBM_ASSERT(nullptr == m_aaInputData); // we expect to start with zeroed values
-   EBM_ASSERT(0 == m_cInstances); // we expect to start with zeroed values
+   EBM_ASSERT(0 == m_cSamples); // we expect to start with zeroed values
 
    LOG_0(TraceLevelInfo, "Entered DataSetByFeature::Initialize");
 
-   if(0 != cInstances) {
+   if(0 != cSamples) {
       // runtimeLearningTypeOrCountTargetClasses can only be zero if 
-      // there are zero instances and we shouldn't get past this point
+      // there are zero samples and we shouldn't get past this point
       EBM_ASSERT(0 != runtimeLearningTypeOrCountTargetClasses);
 
-      // if cInstances is zero, then we don't need to allocate anything since we won't use them anyways
+      // if cSamples is zero, then we don't need to allocate anything since we won't use them anyways
 
       // check our targets since we don't use them other than for initializing residuals
       if(IsClassification(runtimeLearningTypeOrCountTargetClasses)) {
          const IntEbmType * pTargetFrom = static_cast<const IntEbmType *>(aTargetData);
-         const IntEbmType * const pTargetFromEnd = pTargetFrom + cInstances;
+         const IntEbmType * const pTargetFromEnd = pTargetFrom + cSamples;
          const size_t countTargetClasses = static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses);
          do {
             const IntEbmType data = *pTargetFrom;
@@ -218,12 +218,12 @@ bool DataSetByFeature::Initialize(
          } while(pTargetFromEnd != pTargetFrom);
       }
 
-      FloatEbmType * aResidualErrors = ConstructResidualErrors(cInstances, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
+      FloatEbmType * aResidualErrors = ConstructResidualErrors(cSamples, aTargetData, aPredictorScores, runtimeLearningTypeOrCountTargetClasses);
       if(nullptr == aResidualErrors) {
          goto exit_error;
       }
       if(0 != cFeatures) {
-         StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cInstances, aBinnedData);
+         StorageDataType ** const aaInputData = ConstructInputData(cFeatures, aFeatures, cSamples, aBinnedData);
          if(nullptr == aaInputData) {
             free(aResidualErrors);
             goto exit_error;
@@ -231,7 +231,7 @@ bool DataSetByFeature::Initialize(
          m_aaInputData = aaInputData;
       }
       m_aResidualErrors = aResidualErrors;
-      m_cInstances = cInstances;
+      m_cSamples = cSamples;
    }
    m_cFeatures = cFeatures;
 

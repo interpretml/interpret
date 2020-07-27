@@ -19,7 +19,7 @@
 #include "CachedThreadResourcesBoosting.h"
 // feature includes
 #include "FeatureAtomic.h"
-// FeatureCombination.h depends on FeatureInternal.h
+// FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetBoosting.h"
@@ -32,11 +32,11 @@ class EbmBoostingState final {
    size_t m_cFeatures;
    Feature * m_aFeatures;
 
-   size_t m_cFeatureCombinations;
-   FeatureCombination ** m_apFeatureCombinations;
+   size_t m_cFeatureGroups;
+   FeatureGroup ** m_apFeatureGroups;
 
-   DataSetByFeatureCombination m_trainingSet;
-   DataSetByFeatureCombination m_validationSet;
+   DataSetByFeatureGroup m_trainingSet;
+   DataSetByFeatureGroup m_validationSet;
 
    size_t m_cSamplingSets;
    SamplingSet ** m_apSamplingSets;
@@ -55,11 +55,11 @@ class EbmBoostingState final {
 
    RandomStream m_randomStream;
 
-   static void DeleteSegmentedTensors(const size_t cFeatureCombinations, SegmentedTensor ** const apSegmentedTensors);
+   static void DeleteSegmentedTensors(const size_t cFeatureGroups, SegmentedTensor ** const apSegmentedTensors);
 
    static SegmentedTensor ** InitializeSegmentedTensors(
-      const size_t cFeatureCombinations,
-      const FeatureCombination * const * const apFeatureCombinations,
+      const size_t cFeatureGroups,
+      const FeatureGroup * const * const apFeatureGroups,
       const size_t cVectorLength
    );
 
@@ -76,8 +76,8 @@ public:
       m_cFeatures = 0;
       m_aFeatures = nullptr;
 
-      m_cFeatureCombinations = 0;
-      m_apFeatureCombinations = nullptr;
+      m_cFeatureGroups = 0;
+      m_apFeatureGroups = nullptr;
 
       m_trainingSet.InitializeZero();
       m_validationSet.InitializeZero();
@@ -100,19 +100,19 @@ public:
       return m_runtimeLearningTypeOrCountTargetClasses;
    }
 
-   INLINE_ALWAYS size_t GetCountFeatureCombinations() const {
-      return m_cFeatureCombinations;
+   INLINE_ALWAYS size_t GetCountFeatureGroups() const {
+      return m_cFeatureGroups;
    }
 
-   INLINE_ALWAYS FeatureCombination * const * GetFeatureCombinations() const {
-      return m_apFeatureCombinations;
+   INLINE_ALWAYS FeatureGroup * const * GetFeatureGroups() const {
+      return m_apFeatureGroups;
    }
 
-   INLINE_ALWAYS DataSetByFeatureCombination * GetTrainingSet() {
+   INLINE_ALWAYS DataSetByFeatureGroup * GetTrainingSet() {
       return &m_trainingSet;
    }
 
-   INLINE_ALWAYS DataSetByFeatureCombination * GetValidationSet() {
+   INLINE_ALWAYS DataSetByFeatureGroup * GetValidationSet() {
       return &m_validationSet;
    }
 
@@ -161,17 +161,17 @@ public:
    static EbmBoostingState * Allocate(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
       const size_t cFeatures,
-      const size_t cFeatureCombinations,
+      const size_t cFeatureGroups,
       const size_t cSamplingSets,
       const FloatEbmType * const optionalTempParams,
       const EbmNativeFeature * const aFeatures,
-      const EbmNativeFeatureCombination * const aFeatureCombinations, 
-      const IntEbmType * featureCombinationIndexes, 
-      const size_t cTrainingInstances, 
+      const EbmNativeFeatureGroup * const aFeatureGroups, 
+      const IntEbmType * featureGroupIndexes, 
+      const size_t cTrainingSamples, 
       const void * const aTrainingTargets, 
       const IntEbmType * const aTrainingBinnedData, 
       const FloatEbmType * const aTrainingPredictorScores, 
-      const size_t cValidationInstances, 
+      const size_t cValidationSamples, 
       const void * const aValidationTargets, 
       const IntEbmType * const aValidationBinnedData, 
       const FloatEbmType * const aValidationPredictorScores,

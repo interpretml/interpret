@@ -223,6 +223,7 @@ bool SegmentedTensor::MultiplyAndCheckForIssues(const FloatEbmType v) {
       // TODO: these can be done with bitwise operators, which would be good for SIMD.  Check to see what assembly this turns into.
       // since both NaN and +-infinity have the exponential as FF, and no other values do, the best optimized assembly would test the exponential 
       // bits for FF and then OR a 1 if the test is true and 0 if the test is false
+      // TODO: another issue is that isnan and isinf don't work on some compilers with some compiler settings
       bBad |= std::isnan(val) || std::isinf(val);
       *pCur = val;
       ++pCur;
@@ -267,8 +268,8 @@ bool SegmentedTensor::Expand(const size_t * const acValuesPerDimension) {
 
       pDimensionInfoStackFirst->m_pDivision1 = &pDimensionFirst1->m_aDivisions[cDivisions1];
       const size_t cValuesPerDimension = *pcValuesPerDimension;
-      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes 
-      // and in GetInteractionScore for interactions
+      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes 
+      // and in CalculateInteractionScore for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cValuesPerDimension));
       cNewValues *= cValuesPerDimension;
       const size_t cNewDivisions = cValuesPerDimension - 1;
@@ -426,9 +427,13 @@ void SegmentedTensor::AddExpandedWithBadValueProtection(const FloatEbmType * con
       val = std::isnan(val) ? FloatEbmType { 0 } : val;
       val = *pToValue + val;
       // this is a check for -infinity, without the -infinity value since some compilers make that illegal
-      val = val < std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
+      // even so far as to make isinf always FALSE with some compiler flags
+      // include the equals case so that the compiler is less likely to optimize that out
+      val = val <= std::numeric_limits<FloatEbmType>::lowest() ? std::numeric_limits<FloatEbmType>::lowest() : val;
       // this is a check for +infinity, without the +infinity value since some compilers make that illegal
-      val = std::numeric_limits<FloatEbmType>::max() < val ? std::numeric_limits<FloatEbmType>::max() : val;
+      // even so far as to make isinf always FALSE with some compiler flags
+      // include the equals case so that the compiler is less likely to optimize that out
+      val = std::numeric_limits<FloatEbmType>::max() <= val ? std::numeric_limits<FloatEbmType>::max() : val;
       *pToValue = val;
       ++pFromValue;
       ++pToValue;
@@ -518,8 +523,8 @@ bool SegmentedTensor::Add(const SegmentedTensor & rhs) {
          p2Cur = UNPREDICTABLE(d2 <= d1) ? p2Cur + 1 : p2Cur;
       }
       pDimensionInfoStackFirst->m_cNewDivisions = cNewSingleDimensionDivisions;
-      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes and in 
-      // GetInteractionScore for interactions
+      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes and in 
+      // CalculateInteractionScore for interactions
       EBM_ASSERT(!IsMultiplyError(cNewValues, cNewSingleDimensionDivisions + 1));
       cNewValues *= cNewSingleDimensionDivisions + 1;
 

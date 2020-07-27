@@ -18,7 +18,7 @@ struct HistogramBucket;
 template<bool bClassification>
 struct SweepTreeNode final {
 private:
-   size_t m_cBestInstancesLeft;
+   size_t m_cBestSamplesLeft;
    const HistogramBucket<bClassification> * m_pBestHistogramBucketEntry;
 
    // use the "struct hack" since Flexible array member method is not available in C++
@@ -35,12 +35,12 @@ public:
    void * operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete (void *) = delete; // we only use malloc/free in this library
 
-   INLINE_ALWAYS size_t GetCountBestInstancesLeft() {
-      return m_cBestInstancesLeft;
+   INLINE_ALWAYS size_t GetCountBestSamplesLeft() {
+      return m_cBestSamplesLeft;
    }
 
-   INLINE_ALWAYS void SetCountBestInstancesLeft(size_t cBestInstancesLeft) {
-      m_cBestInstancesLeft = cBestInstancesLeft;
+   INLINE_ALWAYS void SetCountBestSamplesLeft(size_t cBestSamplesLeft) {
+      m_cBestSamplesLeft = cBestSamplesLeft;
    }
 
    INLINE_ALWAYS const HistogramBucket<bClassification> * GetBestHistogramBucketEntry() {

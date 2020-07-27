@@ -134,19 +134,19 @@ class EBMUtils:
         return features
 
     @staticmethod
-    def scores_by_feature_combination(X, feature_combinations, model):
-        for set_idx, feature_combination in enumerate(feature_combinations):
+    def scores_by_feature_group(X, feature_groups, model):
+        for set_idx, feature_group in enumerate(feature_groups):
             tensor = model[set_idx]
 
             # Get the current column(s) to process
-            feature_idxs = feature_combination
+            feature_idxs = feature_group
             sliced_X = X[feature_idxs, :]
             scores = tensor[tuple(sliced_X)]
 
-            yield set_idx, feature_combination, scores
+            yield set_idx, feature_group, scores
 
     @staticmethod
-    def decision_function(X, feature_combinations, model, intercept):
+    def decision_function(X, feature_groups, model, intercept):
         if X.ndim == 1:
             X = X.reshape(X.shape[0], 1)
 
@@ -158,8 +158,8 @@ class EBMUtils:
 
         np.copyto(score_vector, intercept)
 
-        scores_gen = EBMUtils.scores_by_feature_combination(
-            X, feature_combinations, model
+        scores_gen = EBMUtils.scores_by_feature_group(
+            X, feature_groups, model
         )
         for _, _, scores in scores_gen:
             score_vector += scores
@@ -172,9 +172,9 @@ class EBMUtils:
         return score_vector
 
     @staticmethod
-    def classifier_predict_proba(X, feature_combinations, model, intercept):
+    def classifier_predict_proba(X, feature_groups, model, intercept):
         log_odds_vector = EBMUtils.decision_function(
-            X, feature_combinations, model, intercept
+            X, feature_groups, model, intercept
         )
 
         # Handle binary classification case -- softmax only works with 0s appended
@@ -184,9 +184,9 @@ class EBMUtils:
         return softmax(log_odds_vector)
 
     @staticmethod
-    def classifier_predict(X, feature_combinations, model, intercept, classes):
+    def classifier_predict(X, feature_groups, model, intercept, classes):
         log_odds_vector = EBMUtils.decision_function(
-            X, feature_combinations, model, intercept
+            X, feature_groups, model, intercept
         )
         if log_odds_vector.ndim == 1:
             log_odds_vector = np.c_[np.zeros(log_odds_vector.shape), log_odds_vector]
@@ -194,8 +194,8 @@ class EBMUtils:
         return classes[np.argmax(log_odds_vector, axis=1)]
 
     @staticmethod
-    def regressor_predict(X, feature_combinations, model, intercept):
-        scores = EBMUtils.decision_function(X, feature_combinations, model, intercept)
+    def regressor_predict(X, feature_groups, model, intercept):
+        scores = EBMUtils.decision_function(X, feature_groups, model, intercept)
         return scores
 
     @staticmethod

@@ -37,7 +37,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    const size_t cFeatures,
    const FloatEbmType * const optionalTempParams,
    const EbmNativeFeature * const aNativeFeatures,
-   const size_t cInstances,
+   const size_t cSamples,
    const void * const aTargets,
    const IntEbmType * const aBinnedData,
    const FloatEbmType * const aPredictorScores
@@ -80,8 +80,8 @@ EbmInteractionState * EbmInteractionState::Allocate(
             free(aFeatures);
             return nullptr;
          }
-         if(0 == countBins && 0 != cInstances) {
-            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cInstances");
+         if(0 == countBins && 0 != cSamples) {
+            LOG_0(TraceLevelError, "ERROR EbmInteractionState::Allocate countBins cannot be zero if 0 < cSamples");
             free(aFeatures);
             return nullptr;
          }
@@ -135,7 +135,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
    if(pRet->m_dataSet.Initialize(
       cFeatures,
       aFeatures,
-      cInstances,
+      cSamples,
       aBinnedData,
       aTargets,
       aPredictorScores,
@@ -157,7 +157,7 @@ static EbmInteractionState * AllocateInteraction(
    IntEbmType countFeatures, 
    const EbmNativeFeature * features, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses, 
-   IntEbmType countInstances, 
+   IntEbmType countSamples, 
    const void * targets, 
    const IntEbmType * binnedData, 
    const FloatEbmType * predictorScores,
@@ -173,40 +173,40 @@ static EbmInteractionState * AllocateInteraction(
       LOG_0(TraceLevelError, "ERROR AllocateInteraction features cannot be nullptr if 0 < countFeatures");
       return nullptr;
    }
-   if(countInstances < 0) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction countInstances must be positive");
+   if(countSamples < 0) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction countSamples must be positive");
       return nullptr;
    }
-   if(0 != countInstances && nullptr == targets) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction targets cannot be nullptr if 0 < countInstances");
+   if(0 != countSamples && nullptr == targets) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction targets cannot be nullptr if 0 < countSamples");
       return nullptr;
    }
-   if(0 != countInstances && 0 != countFeatures && nullptr == binnedData) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction binnedData cannot be nullptr if 0 < countInstances AND 0 < countFeatures");
+   if(0 != countSamples && 0 != countFeatures && nullptr == binnedData) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction binnedData cannot be nullptr if 0 < countSamples AND 0 < countFeatures");
       return nullptr;
    }
-   if(0 != countInstances && nullptr == predictorScores) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction predictorScores cannot be nullptr if 0 < countInstances");
+   if(0 != countSamples && nullptr == predictorScores) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction predictorScores cannot be nullptr if 0 < countSamples");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
       LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countInstances)) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countInstances)");
+   if(!IsNumberConvertable<size_t, IntEbmType>(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countSamples)");
       return nullptr;
    }
 
    size_t cFeatures = static_cast<size_t>(countFeatures);
-   size_t cInstances = static_cast<size_t>(countInstances);
+   size_t cSamples = static_cast<size_t>(countSamples);
 
    EbmInteractionState * const pEbmInteractionState = EbmInteractionState::Allocate(
       runtimeLearningTypeOrCountTargetClasses,
       cFeatures,
       optionalTempParams,
       features,
-      cInstances,
+      cSamples,
       targets,
       binnedData,
       predictorScores
@@ -222,7 +222,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
-   IntEbmType countInstances,
+   IntEbmType countSamples,
    const IntEbmType * binnedData,
    const IntEbmType * targets,
    const FloatEbmType * predictorScores,
@@ -231,11 +231,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
    LOG_N(
       TraceLevelInfo, 
       "Entered InitializeInteractionClassification: countTargetClasses=%" IntEbmTypePrintf ", countFeatures=%" IntEbmTypePrintf 
-      ", features=%p, countInstances=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
+      ", features=%p, countSamples=%" IntEbmTypePrintf ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countTargetClasses, 
       countFeatures, 
       static_cast<const void *>(features), 
-      countInstances, 
+      countSamples, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
       static_cast<const void *>(predictorScores),
@@ -245,8 +245,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be negative");
       return nullptr;
    }
-   if(0 == countTargetClasses && 0 != countInstances) {
-      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no instances");
+   if(0 == countTargetClasses && 0 != countSamples) {
+      LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no samples");
       return nullptr;
    }
    if(!IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)) {
@@ -258,7 +258,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       countFeatures, 
       features, 
       runtimeLearningTypeOrCountTargetClasses, 
-      countInstances, 
+      countSamples, 
       targets, 
       binnedData, 
       predictorScores,
@@ -271,17 +271,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
 EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION InitializeInteractionRegression(
    IntEbmType countFeatures,
    const EbmNativeFeature * features,
-   IntEbmType countInstances,
+   IntEbmType countSamples,
    const IntEbmType * binnedData,
    const FloatEbmType * targets,
    const FloatEbmType * predictorScores,
    const FloatEbmType * optionalTempParams
 ) {
-   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countInstances=%" IntEbmTypePrintf 
+   LOG_N(TraceLevelInfo, "Entered InitializeInteractionRegression: countFeatures=%" IntEbmTypePrintf ", features=%p, countSamples=%" IntEbmTypePrintf 
       ", binnedData=%p, targets=%p, predictorScores=%p, optionalTempParams=%p",
       countFeatures, 
       static_cast<const void *>(features), 
-      countInstances, 
+      countSamples, 
       static_cast<const void *>(binnedData), 
       static_cast<const void *>(targets), 
       static_cast<const void *>(predictorScores),
@@ -291,7 +291,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       countFeatures, 
       features, 
       k_regression, 
-      countInstances, 
+      countSamples, 
       targets, 
       binnedData, 
       predictorScores,

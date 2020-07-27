@@ -77,7 +77,7 @@ public:
       const size_t cFeatures,
       const FloatEbmType * const optionalTempParams,
       const EbmNativeFeature * const aNativeFeatures,
-      const size_t cInstances,
+      const size_t cSamples,
       const void * const aTargets,
       const IntEbmType * const aBinnedData,
       const FloatEbmType * const aPredictorScores

@@ -21,7 +21,7 @@ public:
 
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cInstances,
+      const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * const aTempFloatVector,
@@ -36,7 +36,7 @@ public:
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
-      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
       EBM_ASSERT(nullptr != pResidualError);
@@ -54,7 +54,7 @@ public:
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances * cVectorLength;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples * cVectorLength;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -122,7 +122,7 @@ public:
 
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cInstances,
+      const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * const aTempFloatVector,
@@ -136,14 +136,14 @@ public:
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
-      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
       EBM_ASSERT(nullptr != pResidualError);
 
       const IntEbmType * pTargetData = static_cast<const IntEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
 
       do {
          const IntEbmType targetOriginal = *pTargetData;
@@ -172,7 +172,7 @@ public:
 
    static void Func(
       const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-      const size_t cInstances,
+      const size_t cSamples,
       const void * const aTargetData,
       const FloatEbmType * const aPredictorScores,
       FloatEbmType * const aTempFloatVector,
@@ -186,16 +186,16 @@ public:
       //   and does it affect any calculations below like sumExp += std::exp(predictionScore) and the equivalent.  Should we use cVectorLength or 
       //   runtimeLearningTypeOrCountTargetClasses for some of the addition
       // TODO : !!! re-examine the idea of zeroing one of the residuals with iZeroResidual after we have the ability to test large numbers of datasets
-      EBM_ASSERT(0 < cInstances);
+      EBM_ASSERT(0 < cSamples);
       EBM_ASSERT(nullptr != aTargetData);
       EBM_ASSERT(nullptr != aPredictorScores);
       EBM_ASSERT(nullptr != pResidualError);
 
       const FloatEbmType * pTargetData = static_cast<const FloatEbmType *>(aTargetData);
       const FloatEbmType * pPredictorScores = aPredictorScores;
-      const FloatEbmType * const pResidualErrorEnd = pResidualError + cInstances;
+      const FloatEbmType * const pResidualErrorEnd = pResidualError + cSamples;
       do {
-         // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that instance 
+         // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which means we should delete that sample 
          //   from the input data
 
          // if data is NaN, we pass this along and NaN propagation will ensure that we stop boosting immediately.
@@ -203,7 +203,7 @@ public:
 
          const FloatEbmType data = *pTargetData;
          ++pTargetData;
-         // TODO: NaN target values essentially mean missing, so we should be filtering those instances out, but our caller should do that so 
+         // TODO: NaN target values essentially mean missing, so we should be filtering those samples out, but our caller should do that so 
          //   that we don't need to do the work here per outer bag.  Our job in C++ is just not to crash or return inexplicable values.
          const FloatEbmType predictionScore = *pPredictorScores;
          ++pPredictorScores;
@@ -217,7 +217,7 @@ public:
 
 extern void InitializeResiduals(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses,
-   const size_t cInstances,
+   const size_t cSamples,
    const void * const aTargetData,
    const FloatEbmType * const aPredictorScores,
    FloatEbmType * const aTempFloatVector,
@@ -227,7 +227,7 @@ extern void InitializeResiduals(
       if(IsBinaryClassification(runtimeLearningTypeOrCountTargetClasses)) {
          InitializeResidualsInternal<2>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            cInstances,
+            cSamples,
             aTargetData,
             aPredictorScores,
             aTempFloatVector,
@@ -236,7 +236,7 @@ extern void InitializeResiduals(
       } else {
          InitializeResidualsInternal<k_dynamicClassification>::Func(
             runtimeLearningTypeOrCountTargetClasses,
-            cInstances,
+            cSamples,
             aTargetData,
             aPredictorScores,
             aTempFloatVector,
@@ -247,7 +247,7 @@ extern void InitializeResiduals(
       EBM_ASSERT(IsRegression(runtimeLearningTypeOrCountTargetClasses));
       InitializeResidualsInternal<k_regression>::Func(
          runtimeLearningTypeOrCountTargetClasses,
-         cInstances,
+         cSamples,
          aTargetData,
          aPredictorScores,
          aTempFloatVector,

@@ -66,9 +66,9 @@
 //   - if the tensor is purely for internal consumption, we don't even need to allocate the EXTERIOR_STRUCTURE and 
 //     offset_to_MAIN_DATA_STRUCTURE_in_big_endian_format, 
 //     so our allocator should have a flag to indicate if these are required or not
-//   - the maximum number of cuts is part of the feature_combination definition, so we don't need to store that and pass that reduntant information arround
+//   - the maximum number of cuts is part of the feature_group definition, so we don't need to store that and pass that reduntant information arround
 //     We do store the current number of cuts because that changes.  This data structure should therefore have a dependency on the 
-//     feature_combination definition since we'll need to read the maximum number of cuts.  The pointer to the feature_combination class can be passed 
+//     feature_group definition since we'll need to read the maximum number of cuts.  The pointer to the feature_group class can be passed 
 //     in via the stack to any function that needs that information
 //   - use 64 bit values for all offsets, since nobody will ever need more than 64 bits 
 //     (you need a non-trivial amount of mass even if you store one bit per atom) and
@@ -189,7 +189,7 @@ public:
    // to a direct indexable tensor until after recieved by the nodes.  We'll NEED to keep the entire strucutre
    // as a single continuous chunk of memory.  At the very start will be our regular struct (containing the
    // full size of the data region at the top (64 bit since we don't know what processor we'll be on)
-   // We know the number of dimensions for an feature combination at allocation, so we can put the values right below
+   // We know the number of dimensions for an feature group at allocation, so we can put the values right below
    // that.  When we find ourselves expanding dimensions, we can first figure out how much all the values and dimension
    // need to grow and then we can directly move each dimension pointed to object without needing to move the full
    // values array.

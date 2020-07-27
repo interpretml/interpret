@@ -29,15 +29,15 @@ ebm_feature <- function(n_bins, has_missing = FALSE, feature_type = "ordinal") {
    return(ret)
 }
 
-ebm_feature_combination <- function(feature_indexes) {
+ebm_feature_group <- function(feature_indexes) {
    feature_indexes <- as.double(feature_indexes)
-   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_combination")
+   ret <- structure(list(feature_indexes = feature_indexes), class = "ebm_feature_group")
    return(ret)
 }
 
-create_main_feature_combinations <- function(features) {
-   feature_combinations <- lapply(seq_along(features), function(i) { ebm_feature_combination(i) })
-   return(feature_combinations)
+create_main_feature_groups <- function(features) {
+   feature_groups <- lapply(seq_along(features), function(i) { ebm_feature_group(i) })
+   return(feature_groups)
 }
 
 ebm_classify <- function(
@@ -49,7 +49,7 @@ ebm_classify <- function(
    num_early_stopping_run_length = 50, 
    learning_rate = 0.01, 
    max_tree_splits = 2, 
-   min_instances_for_split = 2, 
+   min_samples_for_split = 2, 
    random_state = 42
 ) {
    col_names = colnames(X)
@@ -60,7 +60,7 @@ ebm_classify <- function(
    for(col_name in col_names) bin_edges[[col_name]] <- bin_edges[[col_name]][2:(length(bin_edges[[col_name]])-1)]
    for(col_name in col_names) X[[col_name]] <- as.integer(findInterval(X[[col_name]], bin_edges[[col_name]]))
    features <- lapply(col_names, function(col_name) { ebm_feature(n_bins = length(bin_edges[[col_name]]) + 1) })
-   feature_combinations <- create_main_feature_combinations(features)
+   feature_groups <- create_main_feature_groups(features)
    
    set.seed(random_state)
    val_indexes = sample(1:length(y), ceiling(length(y) * validation_size))
@@ -85,7 +85,7 @@ ebm_classify <- function(
       "classification",
       n_classes,
       features,
-      feature_combinations,
+      feature_groups,
       X_train_vec,
       y_train,
       scores_train,
@@ -96,7 +96,7 @@ ebm_classify <- function(
       random_state,
       learning_rate,
       max_tree_splits, 
-      min_instances_for_split, 
+      min_samples_for_split, 
       max_epochs,
       num_early_stopping_run_length
    )

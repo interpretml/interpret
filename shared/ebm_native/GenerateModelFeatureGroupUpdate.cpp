@@ -16,7 +16,7 @@
 #include "EbmStatisticUtils.h"
 // feature includes
 #include "FeatureAtomic.h"
-// FeatureCombination.h depends on FeatureInternal.h
+// FeatureGroup.h depends on FeatureInternal.h
 #include "FeatureGroup.h"
 // dataset depends on features
 #include "DataSetBoosting.h"
@@ -31,7 +31,7 @@
 
 extern void BinBoosting(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    HistogramBucketBase * const aHistogramBucketBase
 #ifndef NDEBUG
@@ -46,7 +46,7 @@ extern void SumHistogramBuckets(
    HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase
 #ifndef NDEBUG
    , const unsigned char * const aHistogramBucketsEndDebug
-   , const size_t cInstancesTotal
+   , const size_t cSamplesTotal
 #endif // NDEBUG
 );
 
@@ -54,10 +54,10 @@ extern bool GrowDecisionTree(
    EbmBoostingState * const pEbmBoostingState,
    const size_t cHistogramBuckets,
    const HistogramBucketBase * const aHistogramBucketBase,
-   const size_t cInstancesTotal,
+   const size_t cSamplesTotal,
    const HistogramBucketVectorEntryBase * const aSumHistogramBucketVectorEntryBase,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 #ifndef NDEBUG
@@ -67,8 +67,8 @@ extern bool GrowDecisionTree(
 
 extern bool FindBestBoostingSplitPairs(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const FeatureGroup * const pFeatureGroup,
+   const size_t cSamplesRequiredForChildSplitMin,
    HistogramBucketBase * pAuxiliaryBucketZone,
    HistogramBucketBase * const pTotal,
    HistogramBucketBase * const aHistogramBuckets,
@@ -144,7 +144,7 @@ static bool BoostZeroDimensional(
          pHistogramBucketLocal->GetHistogramBucketVectorEntry();
       const FloatEbmType smallChangeToModel = EbmStatistics::ComputeSmallChangeForOneSegmentRegression(
          aSumHistogramBucketVectorEntry[0].m_sumResidualError,
-         static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountInstancesInBucket())
+         static_cast<FloatEbmType>(pHistogramBucketLocal->GetCountSamplesInBucket())
       );
       aValues[0] = smallChangeToModel;
    }
@@ -155,17 +155,17 @@ static bool BoostZeroDimensional(
 
 static bool BoostSingleDimensional(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(1 == pFeatureCombination->GetCountFeatures());
-   size_t cTotalBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
+   EBM_ASSERT(1 == pFeatureGroup->GetCountFeatures());
+   size_t cTotalBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
@@ -226,7 +226,7 @@ static bool BoostSingleDimensional(
 
    BinBoosting(
       pEbmBoostingState,
-      pFeatureCombination,
+      pFeatureGroup,
       pTrainingSet,
       aHistogramBuckets
 #ifndef NDEBUG
@@ -234,7 +234,7 @@ static bool BoostSingleDimensional(
 #endif // NDEBUG
    );
 
-   size_t cHistogramBuckets = pFeatureCombination->GetFeatureCombinationEntries()[0].m_pFeature->GetCountBins();
+   size_t cHistogramBuckets = pFeatureGroup->GetFeatureGroupEntries()[0].m_pFeature->GetCountBins();
    // dimensions with 1 bin don't contribute anything since they always have the same value, 
    // so we pre-filter these out and handle them separately
    EBM_ASSERT(2 <= cHistogramBuckets);
@@ -245,21 +245,21 @@ static bool BoostSingleDimensional(
       aSumHistogramBucketVectorEntry
 #ifndef NDEBUG
       , aHistogramBucketsEndDebug
-      , pTrainingSet->GetTotalCountInstanceOccurrences()
+      , pTrainingSet->GetTotalCountSampleOccurrences()
 #endif // NDEBUG
    );
 
-   const size_t cInstancesTotal = pTrainingSet->GetTotalCountInstanceOccurrences();
-   EBM_ASSERT(1 <= cInstancesTotal);
+   const size_t cSamplesTotal = pTrainingSet->GetTotalCountSampleOccurrences();
+   EBM_ASSERT(1 <= cSamplesTotal);
 
    bool bRet = GrowDecisionTree(
       pEbmBoostingState,
       cHistogramBuckets,
       aHistogramBuckets,
-      cInstancesTotal,
+      cSamplesTotal,
       aSumHistogramBucketVectorEntry,
       cTreeSplitsMax,
-      cInstancesRequiredForChildSplitMin,
+      cSamplesRequiredForChildSplitMin,
       pSmallChangeToModelOverwriteSingleSamplingSet,
       pTotalGain
 #ifndef NDEBUG
@@ -276,21 +276,21 @@ static bool BoostSingleDimensional(
 //    go back to our original tensor after splits to determine the denominator
 static bool BoostMultiDimensional(
    EbmBoostingState * const pEbmBoostingState,
-   const FeatureCombination * const pFeatureCombination,
+   const FeatureGroup * const pFeatureGroup,
    const SamplingSet * const pTrainingSet,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    SegmentedTensor * const pSmallChangeToModelOverwriteSingleSamplingSet,
    FloatEbmType * const pTotalGain
 ) {
    LOG_0(TraceLevelVerbose, "Entered BoostMultiDimensional");
 
-   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
    EBM_ASSERT(2 <= cDimensions);
 
    size_t cAuxillaryBucketsForBuildFastTotals = 0;
    size_t cTotalBucketsMainSpace = 1;
    for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimension].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimension].m_pFeature->GetCountBins();
       // we filer out 1 == cBins in allocation.  If cBins could be 1, then we'd need to check at runtime for overflow of cAuxillaryBucketsForBuildFastTotals
       EBM_ASSERT(2 <= cBins);
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -299,7 +299,7 @@ static bool BoostMultiDimensional(
       // allocation that cTotalBucketsMainSpace would not overflow
       EBM_ASSERT(!IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace));
       cAuxillaryBucketsForBuildFastTotals += cTotalBucketsMainSpace;
-      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureCombinationIndexes
+      // we check for simple multiplication overflow from m_cBins in EbmBoostingState->Initialize when we unpack featureGroupIndexes
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsMainSpace, cBins));
       cTotalBucketsMainSpace *= cBins;
       // if this wasn't true then we'd have to check IsAddError(cAuxillaryBucketsForBuildFastTotals, cTotalBucketsMainSpace) at runtime
@@ -370,7 +370,7 @@ static bool BoostMultiDimensional(
 
    BinBoosting(
       pEbmBoostingState,
-      pFeatureCombination,
+      pFeatureGroup,
       pTrainingSet,
       aHistogramBuckets
 #ifndef NDEBUG
@@ -382,7 +382,7 @@ static bool BoostMultiDimensional(
    // make a copy of the original binned buckets for debugging purposes
    size_t cTotalBucketsDebug = 1;
    for(size_t iDimensionDebug = 0; iDimensionDebug < cDimensions; ++iDimensionDebug) {
-      const size_t cBins = pFeatureCombination->GetFeatureCombinationEntries()[iDimensionDebug].m_pFeature->GetCountBins();
+      const size_t cBins = pFeatureGroup->GetFeatureGroupEntries()[iDimensionDebug].m_pFeature->GetCountBins();
       EBM_ASSERT(!IsMultiplyError(cTotalBucketsDebug, cBins)); // we checked this above
       cTotalBucketsDebug *= cBins;
    }
@@ -399,7 +399,7 @@ static bool BoostMultiDimensional(
 
    TensorTotalsBuild(
       runtimeLearningTypeOrCountTargetClasses,
-      pFeatureCombination,
+      pFeatureGroup,
       pAuxiliaryBucketZone,
       aHistogramBuckets
 #ifndef NDEBUG
@@ -491,7 +491,7 @@ static bool BoostMultiDimensional(
    //      while(true) {
    //         ++aiDimension[iDimension];
    //         if(aiDimension[iDimension] != 
-   //               pFeatureCombinations->GetFeatureCombinationEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
+   //               pFeatureGroups->GetFeatureGroupEntries()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
    //         aiDimension[iDimension] = 0;
@@ -518,8 +518,8 @@ static bool BoostMultiDimensional(
 
       bool bError = FindBestBoostingSplitPairs(
          pEbmBoostingState,
-         pFeatureCombination,
-         cInstancesRequiredForChildSplitMin,
+         pFeatureGroup,
+         cSamplesRequiredForChildSplitMin,
          pAuxiliaryBucketZone,
          pTotal,
          aHistogramBuckets,
@@ -568,12 +568,12 @@ static bool BoostMultiDimensional(
 // a*PredictorScores = logOdds for binary classification
 // a*PredictorScores = logWeights for multiclass classification
 // a*PredictorScores = predictedValue for regression
-static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
+static FloatEbmType * GenerateModelFeatureGroupUpdateInternal(
    EbmBoostingState * const pEbmBoostingState,
-   const size_t iFeatureCombination,
+   const size_t iFeatureGroup,
    const FloatEbmType learningRate,
    const size_t cTreeSplitsMax,
-   const size_t cInstancesRequiredForChildSplitMin,
+   const size_t cSamplesRequiredForChildSplitMin,
    const FloatEbmType * const aTrainingWeights,
    const FloatEbmType * const aValidationWeights,
    FloatEbmType * const pGainReturn
@@ -581,20 +581,20 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses();
    const bool bClassification = IsClassification(runtimeLearningTypeOrCountTargetClasses);
 
-   // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureCombinationUpdatePerTargetClasses function
+   // TODO remove this after we use aTrainingWeights and aValidationWeights into the GenerateModelFeatureGroupUpdatePerTargetClasses function
    UNUSED(aTrainingWeights);
    UNUSED(aValidationWeights);
 
-   LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureCombinationUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Entered GenerateModelFeatureGroupUpdatePerTargetClasses");
 
    const size_t cSamplingSetsAfterZero = (0 == pEbmBoostingState->GetCountSamplingSets()) ? 1 : pEbmBoostingState->GetCountSamplingSets();
-   const FeatureCombination * const pFeatureCombination = pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination];
-   const size_t cDimensions = pFeatureCombination->GetCountFeatures();
+   const FeatureGroup * const pFeatureGroup = pEbmBoostingState->GetFeatureGroups()[iFeatureGroup];
+   const size_t cDimensions = pFeatureGroup->GetCountFeatures();
 
    pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
    pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
 
-   // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training instances
+   // if pEbmBoostingState->m_apSamplingSets is nullptr, then we should have zero training samples
    // we can't be partially constructed here since then we wouldn't have returned our state pointer to our caller
 
    FloatEbmType totalGain = FloatEbmType { 0 };
@@ -603,7 +603,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
 
       for(size_t iSamplingSet = 0; iSamplingSet < cSamplingSetsAfterZero; ++iSamplingSet) {
          FloatEbmType gain = FloatEbmType { 0 };
-         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureCombination->GetCountFeatures()))) {
+         if(UNLIKELY(UNLIKELY(0 == cTreeSplitsMax) || UNLIKELY(0 == pFeatureGroup->GetCountFeatures()))) {
             if(BoostZeroDimensional(
                pEbmBoostingState,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
@@ -614,13 +614,13 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
                }
                return nullptr;
             }
-         } else if(1 == pFeatureCombination->GetCountFeatures()) {
+         } else if(1 == pFeatureGroup->GetCountFeatures()) {
             if(BoostSingleDimensional(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
                cTreeSplitsMax,
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -632,9 +632,9 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
          } else {
             if(BoostMultiDimensional(
                pEbmBoostingState,
-               pFeatureCombination,
+               pFeatureGroup,
                pEbmBoostingState->GetSamplingSets()[iSamplingSet],
-               cInstancesRequiredForChildSplitMin,
+               cSamplesRequiredForChildSplitMin,
                pEbmBoostingState->GetSmallChangeToModelOverwriteSingleSamplingSet(),
                &gain
             )) {
@@ -662,7 +662,7 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
       // See ExamineNodeForPossibleFutureSplittingAndDetermineBestSplitPoint for details, and the equivalent interaction function
       EBM_ASSERT(std::isnan(totalGain) || (!bClassification) && std::isinf(totalGain) || k_epsilonNegativeGainAllowed <= totalGain);
 
-      LOG_0(TraceLevelVerbose, "GenerateModelFeatureCombinationUpdatePerTargetClasses done sampling set loop");
+      LOG_0(TraceLevelVerbose, "GenerateModelFeatureGroupUpdatePerTargetClasses done sampling set loop");
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
@@ -702,7 +702,13 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
       }
 
       // handle the case where totalGain is either +infinity or -infinity (very rare, see above), or NaN
-      if(UNLIKELY(UNLIKELY(bBad) || UNLIKELY(std::isnan(totalGain)) || UNLIKELY(std::isinf(totalGain)))) {
+      // don't use std::inf because with some compiler flags on some compilers that isn't reliable
+      if(UNLIKELY(
+         UNLIKELY(bBad) || 
+         UNLIKELY(std::isnan(totalGain)) || 
+         UNLIKELY(totalGain <= std::numeric_limits<FloatEbmType>::lowest()) ||
+         UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= totalGain)
+      )) {
          pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->SetCountDimensions(cDimensions);
          pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Reset();
          // declare there is no gain, so that our caller will think there is no benefit in splitting us, which there isn't since we're zeroed.
@@ -713,14 +719,14 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
    }
 
    if(0 != cDimensions) {
-      const FeatureCombinationEntry * pFeatureCombinationEntry = pFeatureCombination->GetFeatureCombinationEntries();
+      const FeatureGroupEntry * pFeatureGroupEntry = pFeatureGroup->GetFeatureGroupEntries();
 
       // pEbmBoostingState->m_pSmallChangeToModelAccumulatedFromSamplingSets was reset above, so it isn't expanded.  We want to expand it before 
       // calling ValidationSetInputFeatureLoop so that we can more efficiently lookup the results by index rather than do a binary search
       size_t acDivisionIntegersEnd[k_cDimensionsMax];
       size_t iDimension = 0;
       do {
-         acDivisionIntegersEnd[iDimension] = pFeatureCombinationEntry[iDimension].m_pFeature->GetCountBins();
+         acDivisionIntegersEnd[iDimension] = pFeatureGroupEntry[iDimension].m_pFeature->GetCountBins();
          ++iDimension;
       } while(iDimension < cDimensions);
       if(pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->Expand(acDivisionIntegersEnd)) {
@@ -735,14 +741,14 @@ static FloatEbmType * GenerateModelFeatureCombinationUpdateInternal(
       *pGainReturn = totalGain;
    }
 
-   LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureCombinationUpdatePerTargetClasses");
+   LOG_0(TraceLevelVerbose, "Exited GenerateModelFeatureGroupUpdatePerTargetClasses");
    return pEbmBoostingState->GetSmallChangeToModelAccumulatedFromSamplingSets()->GetValues();
 }
 
 // we made this a global because if we had put this variable inside the EbmBoostingState object, then we would need to dereference that before getting 
 // the count.  By making this global we can send a log message incase a bad EbmBoostingState object is sent into us we only decrease the count if the 
 // count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
-static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessages = 10;
+static unsigned int g_cLogGenerateModelFeatureGroupUpdateParametersMessages = 10;
 
 // TODO : change this so that our caller allocates the memory that contains the update, but this is complicated in various ways
 //        we don't want to just copy the internal tensor into the memory region that our caller provides, and we want to work with
@@ -750,42 +756,42 @@ static unsigned int g_cLogGenerateModelFeatureCombinationUpdateParametersMessage
 //        provides, but that means we'll potentially need more memory than the full tensor, and we'll need to put some header info
 //        at the start, so the caller can't treat this memory as a pure tensor.
 //        So:
-//          1) provide a function that returns the maximum memory needed.  A smart caller will call this once on each feature_combination, 
+//          1) provide a function that returns the maximum memory needed.  A smart caller will call this once on each feature_group, 
 //             choose the max and allocate it once
 //          2) return a compressed complete SegmentedTensor to the caller inside an opaque memory region 
 //             (return the exact size that we require to the caller for copying)
 //          3) if caller wants a simplified tensor, then they call a separate function that expands the tensor 
 //             and returns a pointer to the memory inside the opaque object
-//          4) ApplyModelFeatureCombinationUpdate will take an opaque SegmentedTensor, and expand it if needed
+//          4) ApplyModelFeatureGroupUpdate will take an opaque SegmentedTensor, and expand it if needed
 //        The benefit of returning a compressed object is that we don't have to do the work of expanding it if the caller decides not to use it 
 //        (which might happen in greedy algorithms)
 //        The other benefit of returning a compressed object is that our caller can store/copy it faster
 //        The other benefit of returning a compressed object is that it can be copied from process to process faster
-//        Lastly, with the memory allocated by our caller, we can call GenerateModelFeatureCombinationUpdate in parallel on multiple feature_combinations.  
+//        Lastly, with the memory allocated by our caller, we can call GenerateModelFeatureGroupUpdate in parallel on multiple feature_groups.  
 //        Right now you can't call it in parallel since we're updating our internal single tensor
 
-EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureCombinationUpdate(
+EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GenerateModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting,
-   IntEbmType indexFeatureCombination,
+   IntEbmType indexFeatureGroup,
    FloatEbmType learningRate,
    IntEbmType countTreeSplitsMax,
-   IntEbmType countInstancesRequiredForChildSplitMin,
+   IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
    FloatEbmType * gainReturn
 ) {
    LOG_COUNTED_N(
-      &g_cLogGenerateModelFeatureCombinationUpdateParametersMessages,
+      &g_cLogGenerateModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "GenerateModelFeatureCombinationUpdate parameters: ebmBoosting=%p, indexFeatureCombination=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf
-      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countInstancesRequiredForChildSplitMin=%" IntEbmTypePrintf
+      "GenerateModelFeatureGroupUpdate parameters: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf
+      ", countTreeSplitsMax=%" IntEbmTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf
       ", trainingWeights=%p, validationWeights=%p, gainReturn=%p",
       static_cast<void *>(ebmBoosting),
-      indexFeatureCombination,
+      indexFeatureGroup,
       learningRate,
       countTreeSplitsMax,
-      countInstancesRequiredForChildSplitMin,
+      countSamplesRequiredForChildSplitMin,
       static_cast<const void *>(trainingWeights),
       static_cast<const void *>(validationWeights),
       static_cast<void *>(gainReturn)
@@ -796,57 +802,57 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       if(LIKELY(nullptr != gainReturn)) {
          *gainReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate ebmBoosting cannot be nullptr");
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate ebmBoosting cannot be nullptr");
       return nullptr;
    }
-   if(indexFeatureCombination < 0) {
+   if(indexFeatureGroup < 0) {
       if(LIKELY(nullptr != gainReturn)) {
          *gainReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination must be positive");
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureCombination)) {
+   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != gainReturn)) {
          *gainReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination is too high to index");
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup is too high to index");
       return nullptr;
    }
-   size_t iFeatureCombination = static_cast<size_t>(indexFeatureCombination);
-   if(pEbmBoostingState->GetCountFeatureCombinations() <= iFeatureCombination) {
+   size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
+   if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
       if(LIKELY(nullptr != gainReturn)) {
          *gainReturn = FloatEbmType { 0 };
       }
-      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureCombinationUpdate indexFeatureCombination above the number of feature groups that we have");
+      LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
       return nullptr;
    }
-   // this is true because 0 < pEbmBoostingState->m_cFeatureCombinations since our caller needs to pass in a valid indexFeatureCombination to this function
-   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureCombinations());
+   // this is true because 0 < pEbmBoostingState->m_cFeatureGroups since our caller needs to pass in a valid indexFeatureGroup to this function
+   EBM_ASSERT(nullptr != pEbmBoostingState->GetFeatureGroups());
 
    LOG_COUNTED_0(
-      pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogEnterGenerateModelFeatureCombinationUpdateMessages(),
+      pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages(),
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Entered GenerateModelFeatureCombinationUpdate"
+      "Entered GenerateModelFeatureGroupUpdate"
    );
 
    if(std::isnan(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is NaN");
    } else if(std::isinf(learningRate)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is NaN");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is infinity");
    } else if(0 == learningRate) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is zero");
-   } else if(learningRate < 0) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate learningRate is negative");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is zero");
+   } else if(learningRate < FloatEbmType { 0 }) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate learningRate is negative");
    }
 
    if(countTreeSplitsMax < 0) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countTreeSplitsMax is negative.  Adjusting to zero.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countTreeSplitsMax is negative.  Adjusting to zero.");
       countTreeSplitsMax = 0;
    } else if(0 == countTreeSplitsMax) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countTreeSplitsMax is zero.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countTreeSplitsMax is zero.");
    }
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
    if(!IsNumberConvertable<size_t, IntEbmType>(countTreeSplitsMax)) {
@@ -855,16 +861,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   size_t cInstancesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
-   if(IntEbmType { 1 } <= countInstancesRequiredForChildSplitMin) {
-      cInstancesRequiredForChildSplitMin = static_cast<size_t>(countInstancesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t, IntEbmType>(countInstancesRequiredForChildSplitMin)) {
-         // we can never exceed a size_t number of instances, so let's just set it to the maximum if we were going to overflow because it will generate 
+   size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
+   if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
+      cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
+      if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
+         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
-         cInstancesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
+         cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate countInstancesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countSamplesRequiredForChildSplitMin can't be less than 1.  Adjusting to 1.");
    }
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
@@ -880,17 +886,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       }
       LOG_0(
          TraceLevelWarning,
-         "WARNING GenerateModelFeatureCombinationUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
+         "WARNING GenerateModelFeatureGroupUpdate pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }"
       );
       return nullptr;
    }
 
-   FloatEbmType * aModelFeatureCombinationUpdateTensor = GenerateModelFeatureCombinationUpdateInternal(
+   FloatEbmType * aModelFeatureGroupUpdateTensor = GenerateModelFeatureGroupUpdateInternal(
       pEbmBoostingState,
-      iFeatureCombination,
+      iFeatureGroup,
       learningRate,
       cTreeSplitsMax,
-      cInstancesRequiredForChildSplitMin,
+      cSamplesRequiredForChildSplitMin,
       trainingWeights,
       validationWeights,
       gainReturn
@@ -902,23 +908,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
       EBM_ASSERT(FloatEbmType { 0 } <= *gainReturn);
       LOG_COUNTED_N(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelFeatureCombinationUpdate %" FloatEbmTypePrintf,
+         "Exited GenerateModelFeatureGroupUpdate %" FloatEbmTypePrintf,
          *gainReturn
       );
    } else {
       LOG_COUNTED_0(
-         pEbmBoostingState->GetFeatureCombinations()[iFeatureCombination]->GetPointerCountLogExitGenerateModelFeatureCombinationUpdateMessages(),
+         pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited GenerateModelFeatureCombinationUpdate no gain"
+         "Exited GenerateModelFeatureGroupUpdate no gain"
       );
    }
-   if(nullptr == aModelFeatureCombinationUpdateTensor) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureCombinationUpdate returned nullptr");
+   if(nullptr == aModelFeatureGroupUpdateTensor) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate returned nullptr");
    }
-   return aModelFeatureCombinationUpdateTensor;
+   return aModelFeatureGroupUpdateTensor;
 }
 

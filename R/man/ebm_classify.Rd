@@ -14,7 +14,7 @@ ebm_classify(
   num_early_stopping_run_length = 50, 
   learning_rate = 0.01, 
   max_tree_splits = 2, 
-  min_instances_for_split = 2, 
+  min_samples_for_split = 2, 
   random_state = 42
 )
 }
@@ -27,7 +27,7 @@ ebm_classify(
   \item{num_early_stopping_run_length}{how many rounds without improvement before we quit}
   \item{learning_rate}{learning rate}
   \item{max_tree_splits}{how many splits allowed}
-  \item{min_instances_for_split}{number of instances required for a split}
+  \item{min_samples_for_split}{number of samples required for a split}
   \item{random_state}{random seed}
 }
 \value{
