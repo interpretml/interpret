@@ -77,9 +77,14 @@ def _detect_azure_notebook():
     return "AZURE_NOTEBOOKS_HOST" in os.environ
 
 
-def _detect_azureml_notebook_vm():
+def _detect_azureml():
+    # AzureML seems to have multiple ways to render a notebook or lab.
+    # If any of the following succeed, consider it within AzureML
     nbvm_file_path = "/mnt/azmnt/.nbvm"
-    return os.path.exists(nbvm_file_path) and os.path.isfile(nbvm_file_path)
+    azml_notebook_vm_check = os.path.exists(nbvm_file_path) and os.path.isfile(nbvm_file_path)
+    azml_notebook_check = "AZUREML_NB_PATH" in os.environ
+    azml_lab_check = "LOGNAME" in os.environ and os.environ["LOGNAME"] == "azureuser"
+    return azml_notebook_vm_check or azml_notebook_check or azml_lab_check
 
 
 def _detect_vscode():
@@ -94,7 +99,7 @@ def is_cloud_env(detected):
     cloud_env = [
         "databricks",
         "azure",
-        "azureml_vm",
+        "azureml",
         "kaggle",
         "sagemaker",
         "binder",
@@ -112,7 +117,7 @@ class EnvironmentDetector:
             "databricks": _detect_databricks,
             "vscode": _detect_vscode,
             "azure": _detect_azure_notebook,
-            "azureml_vm": _detect_azureml_notebook_vm,
+            "azureml": _detect_azureml,
             "kaggle": _detect_kaggle,
             "sagemaker": _detect_sagemaker,
             "binder": _detect_binder,
