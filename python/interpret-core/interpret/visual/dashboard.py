@@ -74,10 +74,10 @@ class AppRunner:
             sock.bind(("127.0.0.1", port))
             sock.listen(backlog)
             sock.close()
-            sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-            sock.bind(("::1", port))
-            sock.listen(backlog)
-            sock.close()
+            # sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            # sock.bind(("::1", port))
+            # sock.listen(backlog)
+            # sock.close()
         except socket.error:  # pragma: no cover
             if rais:
                 raise RuntimeError(

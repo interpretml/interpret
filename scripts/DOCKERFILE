@@ -4,16 +4,19 @@ FROM python:3.7-slim-buster
 RUN mkdir -p /usr/staging
 WORKDIR /usr/staging
 
-# Install interpret related dependencies
+# Install dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends bash curl git build-essential && \
+    apt-get install -y --no-install-recommends sudo bash curl git build-essential valgrind g++-multilib rsync && \
+    pip install interpret-core[testing,debug] && \
     pip install interpret && \
     pip uninstall -y interpret && \
     pip uninstall -y interpret-core
 
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
     apt-get update && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \ 
+    npm install -g @interpretml/interpret-inline && \
+    npm uninstall -g @interpretml/interpret-inline
 
 # Install orca (needed for saving images via Plotly)
 RUN apt-get update && \
