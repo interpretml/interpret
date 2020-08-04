@@ -17,8 +17,8 @@ jobs:
       Windows:
         image.name: 'windows-2019'
     maxParallel: 4
-  ${{ if startsWith( variables['containerImage'], 'interpretml' ) }}:
-    container: $[ variables['containerImage'] ]
+${{ if startsWith( variables['containerImage'], 'interpretml' ) }}:
+  container: $[ variables['containerImage'] ]
   pool:
     vmImage: '$(image.name)'
   variables:
