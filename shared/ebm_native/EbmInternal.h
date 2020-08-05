@@ -77,6 +77,12 @@
 
 // disable constexpr warning, since GetVectorLength is meant to be ambiguous and it's used everywhere
 #pragma warning(disable : 26498)
+// disable dereferencing NULL pointer, since the static analysis seems to think any access of a pointer is 
+// dereferencing a NULL pointer potentially.
+#pragma warning(disable : 6011)
+// disable dereferencing NULL pointer (same pointer), since the static analysis seems to think any access 
+// of a pointer is dereferencing a NULL pointer potentially.
+#pragma warning(disable : 28182)
 
 #else  // compiler type
 #error compiler not recognized

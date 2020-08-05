@@ -528,9 +528,10 @@ INLINE_ALWAYS static int IntToString(const int val, char * const str, const int 
 
    constexpr static char g_pPrintfLongInt[] = "%d";
 
+   const int cRemainingChars = k_cCharsFloatPrint - index;
    int cCharsWithoutNullTerminator = snprintf(
       &str[index],
-      k_cCharsFloatPrint - index,
+      cRemainingChars,
       g_pPrintfLongInt,
       val
    );

@@ -238,8 +238,10 @@ EXIT /B 0
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="EbmNativeTest.cpp" />
+    <ClCompile Include="RandomNumberEquivalency.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EbmNativeTest.h" />
     <ClInclude Include="PrecompiledHeaderEbmNativeTest.h" />
     <ClInclude Include="RandomStream.h" />
   </ItemGroup>

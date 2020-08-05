@@ -2,17 +2,15 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef RANDOM_STREAM_H
-#define RANDOM_STREAM_H
+#ifndef RANDOM_STREAM_TEST_H
+#define RANDOM_STREAM_TEST_H
 
 #include <inttypes.h> // uint32_t seed
 #include <random>
 #include <stddef.h> // size_t, ptrdiff_t
 #include <assert.h>
 
-//#include "ebm_native.h" // IntEbmType
-
-class RandomStream final {
+class RandomStreamTest final {
    static constexpr uint_fast64_t k_max = std::mt19937_64::max();
    static constexpr uint_fast64_t k_min = std::mt19937_64::min();
 
@@ -41,7 +39,7 @@ class RandomStream final {
 public:
    // in case you were wondering, this odd syntax of putting a try outside the function is called "Function try blocks" and it's the best way of handling 
    // exception in initialization
-   RandomStream(const IntEbmType seed) try
+   RandomStreamTest(const IntEbmType seed) try
       : m_bSuccess(false)
       , randomRemainingMax(0)
       , randomRemaining(0)
@@ -103,4 +101,4 @@ public:
    }
 };
 
-#endif // RANDOM_STREAM_H
+#endif // RANDOM_STREAM_TEST_H
