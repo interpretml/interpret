@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="EbmNativeTest.cpp">
+      <Filter>non_tests</Filter>
+    </ClCompile>
+    <ClCompile Include="PrecompiledHeaderEbmNativeTest.cpp">
+      <Filter>non_tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="EbmNativeTest.h">
+      <Filter>non_tests</Filter>
+    </ClInclude>
+    <ClInclude Include="PrecompiledHeaderEbmNativeTest.h">
+      <Filter>non_tests</Filter>
+    </ClInclude>
+    <ClInclude Include="RandomStreamTest.h">
+      <Filter>non_tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ebm_native_test.bat">
+      <Filter>non_tests</Filter>
+    </None>
+    <None Include="ebm_native_test.sh">
+      <Filter>non_tests</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="non_tests">
+      <UniqueIdentifier>{84b2958e-0438-486e-bd4e-5cd6c8baf903}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

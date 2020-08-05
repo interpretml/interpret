@@ -6,7 +6,6 @@
 .vs/
 enc_temp_folder/
 *.user
-*.vcxproj.filters
 /TestResults/
 
 # Visual Studio Code
