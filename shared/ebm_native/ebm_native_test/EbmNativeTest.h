@@ -9,7 +9,12 @@
 
 enum class TestPriority {
    RandomNumberEquivalency,
-   priority2
+   Discretize,
+   GenerateQuantileCutPoints,
+   BoostingUnusualInputs,
+   InteractionUnusualInputs,
+   Rehydration,
+   BitPackingExtremes
 };
 
 class TestCaseHidden;
@@ -34,12 +39,7 @@ constexpr inline bool AlwaysFalse() {
    return false;
 }
 
-extern std::vector<TestCaseHidden> g_allTestsHidden;
-
-inline int RegisterTestHidden(const TestCaseHidden & testCaseHidden) {
-   g_allTestsHidden.push_back(testCaseHidden);
-   return 0;
-}
+int RegisterTestHidden(const TestCaseHidden & testCaseHidden);
 
 #define CONCATENATE_STRINGS(t1, t2) t1##t2
 #define CONCATENATE_TOKENS(t1, t2) CONCATENATE_STRINGS(t1, t2)
@@ -49,61 +49,9 @@ inline int RegisterTestHidden(const TestCaseHidden & testCaseHidden) {
    RegisterTestHidden(TestCaseHidden(&CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__), description, k_filePriority)); \
    static void CONCATENATE_TOKENS(TEST_FUNCTION_HIDDEN_, __LINE__)(TestCaseHidden& testCaseHidden)
 
-extern void FAILED(TestCaseHidden * const pTestCaseHidden);
+void FAILED(TestCaseHidden * const pTestCaseHidden);
 
-extern int g_countEqualityFailures;
-
-inline bool IsApproxEqual(const double value, const double expected, const double percentage) {
-   bool isEqual = false;
-   if(!std::isnan(value)) {
-      if(!std::isnan(expected)) {
-         if(!std::isinf(value)) {
-            if(!std::isinf(expected)) {
-               const double smaller = double { 1 } - percentage;
-               const double bigger = double { 1 } + percentage;
-               if(0 < value) {
-                  if(0 < expected) {
-                     if(value <= expected) {
-                        // expected is the bigger number in absolute terms
-                        if(expected * smaller <= value && value <= expected * bigger) {
-                           isEqual = true;
-                        }
-                     } else {
-                        // value is the bigger number in absolute terms
-                        if(value * smaller <= expected && expected <= value * bigger) {
-                           isEqual = true;
-                        }
-                     }
-                  }
-               } else if(value < 0) {
-                  if(expected < 0) {
-                     if(expected <= value) {
-                        // expected is the bigger number in absolute terms (the biggest negative number)
-                        if(expected * bigger <= value && value <= expected * smaller) {
-                           isEqual = true;
-                        }
-                     } else {
-                        // value is the bigger number in absolute terms (the biggest negative number)
-                        if(value * bigger <= expected && expected <= value * smaller) {
-                           isEqual = true;
-                        }
-                     }
-                  }
-               } else {
-                  if(0 == expected) {
-                     isEqual = true;
-                  }
-               }
-            }
-         }
-      }
-   }
-   if(!isEqual) {
-      // we're going to fail!
-      ++g_countEqualityFailures; // this doesn't do anything useful but gives us something to break on
-   }
-   return isEqual;
-}
+bool IsApproxEqual(const double value, const double expected, const double percentage);
 
 // this will ONLY work if used inside the root TEST_CASE function.  The testCaseHidden variable comes from TEST_CASE and should be visible inside the 
 // function where CHECK(expression) is called
@@ -145,19 +93,25 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasse
 #else // REDUCE_MULTICLASS_LOGITS
 
    // EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
+   return learningTypeOrCountTargetClasses <= ptrdiff_t { 1 } ? 
+      size_t { 1 } : 
+      static_cast<size_t>(learningTypeOrCountTargetClasses);
 
 #endif // REDUCE_MULTICLASS_LOGITS
 #else // EXPAND_BINARY_LOGITS
 #ifdef REDUCE_MULTICLASS_LOGITS
 
    // !EXPAND_BINARY_LOGITS && REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses) - size_t { 1 };
+   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
+      size_t { 1 } : 
+      static_cast<size_t>(learningTypeOrCountTargetClasses) - size_t { 1 };
 
 #else // REDUCE_MULTICLASS_LOGITS
 
    // !EXPAND_BINARY_LOGITS && !REDUCE_MULTICLASS_LOGITS
-   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(learningTypeOrCountTargetClasses);
+   return learningTypeOrCountTargetClasses <= ptrdiff_t { 2 } ? 
+      size_t { 1 } : 
+      static_cast<size_t>(learningTypeOrCountTargetClasses);
 
 #endif // REDUCE_MULTICLASS_LOGITS
 #endif // EXPAND_BINARY_LOGITS
@@ -175,7 +129,11 @@ public:
    const bool m_hasMissing;
    const IntEbmType m_countBins;
 
-   inline FeatureTest(const IntEbmType countBins, const FeatureType featureType = FeatureType::Ordinal, const bool hasMissing = false) :
+   inline FeatureTest(
+      const IntEbmType countBins, 
+      const FeatureType featureType = FeatureType::Ordinal, 
+      const bool hasMissing = false
+   ) :
       m_featureType(featureType),
       m_hasMissing(hasMissing),
       m_countBins(countBins) {
@@ -199,7 +157,11 @@ public:
       m_bNullPredictionScores(true) {
    }
 
-   inline RegressionSample(const FloatEbmType target, const std::vector<IntEbmType> binnedDataPerFeatureArray, const FloatEbmType priorPredictorPrediction) :
+   inline RegressionSample(
+      const FloatEbmType target, 
+      const std::vector<IntEbmType> binnedDataPerFeatureArray, 
+      const FloatEbmType priorPredictorPrediction
+   ) :
       m_target(target),
       m_binnedDataPerFeatureArray(binnedDataPerFeatureArray),
       m_priorPredictorPrediction(priorPredictorPrediction),
@@ -237,7 +199,6 @@ static constexpr IntEbmType k_countInnerBagsDefault = IntEbmType { 0 };
 static constexpr FloatEbmType k_learningRateDefault = FloatEbmType { 0.01 };
 static constexpr IntEbmType k_countTreeSplitsMaxDefault = IntEbmType { 4 };
 static constexpr IntEbmType k_countSamplesRequiredForChildSplitMinDefault = IntEbmType { 1 };
-
 
 class TestApi {
    enum class Stage {
@@ -354,6 +315,5 @@ void DisplayCuts(
    FloatEbmType minValue,
    FloatEbmType maxValue
 );
-
 
 #endif // EBM_NATIVE_TEST_H
