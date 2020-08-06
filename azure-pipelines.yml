@@ -7,18 +7,13 @@ jobs:
 - job: 'Build_ebm_native'
   strategy:
     matrix:
-      Docker:
-        image.name: 'ubuntu-18.04'
-        containerImage: interpretml/quickbuild:latest
       Linux:
         image.name: 'ubuntu-18.04'
       Mac:
         image.name: 'macOS-10.14'
       Windows:
         image.name: 'windows-2019'
-    maxParallel: 4
-  ${{ if startsWith( variables['containerImage'], 'interpretml' ) }}:
-    container: $[ variables['containerImage'] ]
+    maxParallel: 3
   pool:
     vmImage: '$(image.name)'
   variables:
@@ -100,18 +95,13 @@ jobs:
   dependsOn: 'Build_ebm_native'
   strategy:
     matrix:
-      Docker:
-        image.name: 'ubuntu-18.04'
-        containerImage: interpretml/quickbuild:latest
       Linux:
         image.name: 'ubuntu-18.04'
       Mac:
         image.name: 'macOS-10.14'
       Windows:
         image.name: 'windows-2019'
-    maxParallel: 4
-  ${{ if startsWith( variables['containerImage'], 'interpretml' ) }}:
-    container: $[ variables['containerImage'] ]
+    maxParallel: 3
   pool:
     vmImage: '$(image.name)'
   variables:
@@ -233,18 +223,6 @@ jobs:
   dependsOn: 'Build_Package'
   strategy:
     matrix:
-      DockerPython35:
-        image.name: 'ubuntu-18.04'
-        containerImage: 'interpretml/quickbuild:latest'
-        python.version: '3.5'
-      DockerPython36:
-        image.name: 'ubuntu-18.04'
-        containerImage: 'interpretml/quickbuild:latest'
-        python.version: '3.6'
-      DockerPython37:
-        image.name: 'ubuntu-18.04'
-        containerImage: 'interpretml/quickbuild:latest'
-        python.version: '3.7'
       LinuxPython35:
         python.version: '3.5'
         image.name: 'ubuntu-18.04'
