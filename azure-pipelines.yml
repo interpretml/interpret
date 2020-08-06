@@ -232,6 +232,9 @@ jobs:
       LinuxPython37:
         python.version: '3.7'
         image.name: 'ubuntu-18.04'
+      LinuxPython38:
+        python.version: '3.8'
+        image.name: 'ubuntu-18.04'
 #      WindowsPython35:
 #        python.version: '3.5'
 #        image.name: 'windows-2019'
@@ -240,6 +243,9 @@ jobs:
         image.name: 'windows-2019'
       WindowsPython37:
         python.version: '3.7'
+        image.name: 'windows-2019'
+      WindowsPython38:
+        python.version: '3.8'
         image.name: 'windows-2019'
 #       MacPython35:
 #         python.version: '3.5'
@@ -250,7 +256,10 @@ jobs:
       MacPython37:
         python.version: '3.7'
         image.name: 'macOS-10.14'
-    maxParallel: 12
+      MacPython38:
+        python.version: '3.8'
+        image.name: 'macOS-10.14'
+    maxParallel: 16
   pool:
     vmImage: '$(image.name)'
   variables:
