@@ -1,2 +1,5 @@
 # Set default behavior to automatically normalize line endings
 * text=auto
+# Set files to LF that need it regardless of OS
+Dockerfile  eol=lf
+*.sh        eol=lf

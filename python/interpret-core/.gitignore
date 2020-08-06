@@ -16,3 +16,5 @@ dev-log.txt
 *.ipynb
 .coverage.*
 geckodriver.log
+coverage.xml
+htmlcov/

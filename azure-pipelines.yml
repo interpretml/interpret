@@ -250,7 +250,7 @@ jobs:
       MacPython37:
         python.version: '3.7'
         image.name: 'macOS-10.14'
-    maxParallel: 9
+    maxParallel: 12
   pool:
     vmImage: '$(image.name)'
   variables:
