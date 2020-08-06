@@ -9,7 +9,7 @@ jobs:
     matrix:
       Docker:
         image.name: 'ubuntu-18.04'
-        containerImage: 'interpretml/quickbuild:latest'
+        containerImage: interpretml/quickbuild:latest
       Linux:
         image.name: 'ubuntu-18.04'
       Mac:
@@ -102,7 +102,7 @@ jobs:
     matrix:
       Docker:
         image.name: 'ubuntu-18.04'
-        containerImage: 'interpretml/quickbuild:latest'
+        containerImage: interpretml/quickbuild:latest
       Linux:
         image.name: 'ubuntu-18.04'
       Mac:
@@ -110,6 +110,8 @@ jobs:
       Windows:
         image.name: 'windows-2019'
     maxParallel: 4
+  ${{ if startsWith( variables['containerImage'], 'interpretml' ) }}:
+    container: $[ variables['containerImage'] ]
   pool:
     vmImage: '$(image.name)'
   variables:
