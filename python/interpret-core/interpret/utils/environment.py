@@ -95,6 +95,10 @@ def _detect_databricks():
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 
+def _is_docker_development_mode():
+    return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
+
+
 def is_cloud_env(detected):
     cloud_env = [
         "databricks",
@@ -114,6 +118,7 @@ def is_cloud_env(detected):
 class EnvironmentDetector:
     def __init__(self):
         self.checks = {
+            "docker-dev-mode": _is_docker_development_mode,
             "databricks": _detect_databricks,
             "vscode": _detect_vscode,
             "azure": _detect_azure_notebook,

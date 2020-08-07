@@ -44,14 +44,15 @@ class AppRunner:
             self.ip = "127.0.0.1"
             self.port = -1
             max_attempts = 10
+            port = 7001
             for _ in range(max_attempts):
-                port = random.randint(7000, 7999)
                 if self._local_port_available(port, rais=False):
                     self.port = port
                     log.info("Found open port: {0}".format(port))
                     break
                 else:  # pragma: no cover
                     log.info("Port already in use: {0}".format(port))
+                    port = random.randint(7002, 7999)
 
             else:  # pragma: no cover
                 msg = """Could not find open port.

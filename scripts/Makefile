@@ -4,6 +4,8 @@ DOCKER ?= docker
 DOCKER_IMG_NAME ?= interpretml/quickbuild:latest
 DOCKER_VOL_NAME ?= interpretml-quickbuild
 DOCKER_MNT_PATH ?= /mnt/interpret
+DOCKER_CWD ?= /usr/staging/interpret
+
 PYTHON ?= python
 NPM ?= npm
 ifeq ($(OS),Windows_NT)
@@ -21,13 +23,36 @@ else
 endif
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
-docker:
+docker: prepare-docker
+	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):$(DOCKER_CWD) \
+	    -p 127.0.0.1:8888:8888 \
+	    -p 127.0.0.1:7001:7001 \
+		-e INTERPRET_DOCKER_MODE='dev' \
+		--entrypoint /bin/sh $(DOCKER_IMG_NAME) -c "\
+			cd $(DOCKER_CWD)/python/interpret-core && pip install -e . &&\
+			cd $(DOCKER_CWD)/python/interpret && pip install -e . &&\
+			cd $(DOCKER_CWD)/scripts && /bin/bash"
+
+run-docker-notebook: prepare-docker
+	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):$(DOCKER_CWD) \
+	    -p 127.0.0.1:8888:8888 \
+	    -p 127.0.0.1:7001:7001 \
+		-e INTERPRET_DOCKER_MODE='dev' \
+		--entrypoint /bin/bash $(DOCKER_IMG_NAME) -c "\
+			cd $(DOCKER_CWD)/python/interpret-core && pip install -e . &&\
+			cd $(DOCKER_CWD)/python/interpret && pip install -e . &&\
+			cd $(DOCKER_CWD)/examples/python/notebooks &&\
+			python -m jupyter notebook --ip=0.0.0.0 --allow-root"
+
+build-in-docker: prepare-docker
+	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):$(DOCKER_CWD) \
+		--entrypoint /bin/bash $(DOCKER_IMG_NAME) -c "cd $(DOCKER_CWD)/scripts && make build"
+
+prepare-docker:
 	$(DOCKER) build -t $(DOCKER_IMG_NAME) .
 	$(DOCKER) volume create --name $(DOCKER_VOL_NAME)
-	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):/usr/staging \
-		--entrypoint /bin/bash $(DOCKER_IMG_NAME) $(DOCKER_MNT_PATH)/scripts/mirror-repo-docker.sh /usr/staging/interpret
-	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):/usr/staging \
-		--entrypoint /bin/sh $(DOCKER_IMG_NAME) -c 'cd /usr/staging/interpret/scripts && /bin/bash'
+	$(DOCKER) run --rm -it -v $(ROOTDIR):$(DOCKER_MNT_PATH) -v $(DOCKER_VOL_NAME):$(DOCKER_CWD) \
+		--entrypoint /bin/bash $(DOCKER_IMG_NAME) $(DOCKER_MNT_PATH)/scripts/mirror-repo-docker.sh $(DOCKER_CWD)
 
 clean:
 	-$(RMDIR) "$(ROOTDIR)/staging"

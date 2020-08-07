@@ -45,6 +45,9 @@ class AutoVisualizeProvider(VisualizeProvider):
                 )
             )
             self.provider = InlineProvider(detected_envs=detected_envs, js_url=JS_URL)
+        elif "docker-dev-mode" in detected_envs:
+            log.info("Operating in docker development mode.")
+            self.provider = InlineProvider(detected_envs=detected_envs)
         else:
             log.info("Detected non-cloud environment.")
             if self.app_runner:

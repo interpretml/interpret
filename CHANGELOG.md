@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] - 2020-08-06
+### Added
+- Python 3.8 support.
+### Changed
+- Dash based visualizations will always default to listen port 7001 on first attempt;
+  if the first attempt fails it will try a random port between 7002-7999.
+### Experimental (WIP)
+- Further cloud environment support.
+
 ## [v0.2.0] - 2020-07-21
 ### Breaking Changes
 - With warning, EBM classifier adapts internal validation size
@@ -330,6 +339,7 @@ and the versioning is mostly derived from [Semantic Versioning](https://semver.o
 - Libraries are statically linked where possible.
 - Code now conforms to Python Black and its associated flake8.
 
+[v0.2.1]: https://github.com/microsoft/interpret/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/microsoft/interpret/releases/tag/v0.2.0
 [v0.1.22]: https://github.com/microsoft/interpret/releases/tag/v0.1.22
 [v0.1.21]: https://github.com/microsoft/interpret/releases/tag/v0.1.21
