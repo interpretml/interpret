@@ -104,7 +104,7 @@ class Native:
             # int64_t * discretizedReturn
             ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
         ]
-        self.lib.Discretize.restype = None
+        self.lib.Discretize.restype = ct.c_longlong
 
         self.lib.InitializeBoostingClassification.argtypes = [
             # int64_t countTargetClasses
