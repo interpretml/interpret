@@ -2860,7 +2860,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
    return 0;
 }
 
-EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
@@ -2870,39 +2870,40 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples cannot be negative");
+         return IntEbmType { 1 };
       } else {
          EBM_ASSERT(IntEbmType { 0 } == countSamples);
          LOG_0(TraceLevelWarning, "WARNING Discretize countSamples was zero");
+         return IntEbmType { 0 };
       }
-      return;
    }
 
    if(UNLIKELY((!IsNumberConvertable<size_t, IntEbmType>(countSamples)))) {
       // this needs to point to real memory, otherwise it's invalid
       LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
-      return;
+      return IntEbmType { 1 };
    }
 
    const size_t cSamples = static_cast<size_t>(countSamples);
 
    if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
       LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into featureValues");
-      return;
+      return IntEbmType { 1 };
    }
 
    if(IsMultiplyError(sizeof(*discretizedReturn), cSamples)) {
       LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedReturn");
-      return;
+      return IntEbmType { 1 };
    }
 
    if(UNLIKELY(nullptr == featureValues)) {
       LOG_0(TraceLevelError, "ERROR Discretize featureValues cannot be null");
-      return;
+      return IntEbmType { 1 };
    }
 
    if(UNLIKELY(nullptr == discretizedReturn)) {
       LOG_0(TraceLevelError, "ERROR Discretize discretizedReturn cannot be null");
-      return;
+      return IntEbmType { 1 };
    }
 
    const FloatEbmType * pValue = featureValues;
@@ -2912,7 +2913,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
    if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
       if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countCutPoints cannot be negative");
-         return;
+         return IntEbmType { 1 };
       }
       EBM_ASSERT(IntEbmType { 0 } == countCutPoints);
 
@@ -2929,13 +2930,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          // have any value to indicate missing
          LOG_0(TraceLevelError,
             "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
-         return;
+         return IntEbmType { 1 };
       }
 
       if(UNLIKELY((!IsNumberConvertable<size_t, IntEbmType>(countCutPoints)))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countCutPoints was too large to fit into memory");
-         return;
+         return IntEbmType { 1 };
       }
 
       const size_t cCutPoints = static_cast<size_t>(countCutPoints);
@@ -2943,7 +2944,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
       if(IsMultiplyError(sizeof(*cutPointsLowerBoundInclusive), cCutPoints)) {
          LOG_0(TraceLevelError, 
             "ERROR Discretize countCutPoints was too large to fit into cutPointsLowerBoundInclusive");
-         return;
+         return IntEbmType { 1 };
       }
 
       if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } <= cCutPoints)) {
@@ -2951,12 +2952,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          // since we use the properties of ptrdiff_t in our binary search below
          LOG_0(TraceLevelError,
             "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
-         return;
+         return IntEbmType { 1 };
       }
 
       if(UNLIKELY(nullptr == cutPointsLowerBoundInclusive)) {
          LOG_0(TraceLevelError, "ERROR Discretize cutPointsLowerBoundInclusive cannot be null");
-         return;
+         return IntEbmType { 1 };
       }
 
 #ifndef NDEBUG
@@ -3024,4 +3025,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY void EBM_NATIVE_CALLING_CONVENTION Discretize(
          ++pValue;
       } while(LIKELY(pValueEnd != pValue));
    }
+
+   return IntEbmType { 0 };
 }
