@@ -2919,7 +2919,53 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
 
       do {
          const FloatEbmType val = *pValue;
-         const IntEbmType result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 1 } : IntEbmType { 0 };
+         IntEbmType result;
+         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 1 } : IntEbmType { 0 };
+         *pDiscretized = result;
+         ++pDiscretized;
+         ++pValue;
+      } while(LIKELY(pValueEnd != pValue));
+   } else if(PREDICTABLE(IntEbmType { 1 } == countCutPoints)) {
+      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+      do {
+         const FloatEbmType val = *pValue;
+         IntEbmType result;
+
+         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 2 } : result;
+
+         *pDiscretized = result;
+         ++pDiscretized;
+         ++pValue;
+      } while(LIKELY(pValueEnd != pValue));
+   } else if(PREDICTABLE(IntEbmType { 2 } == countCutPoints)) {
+      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+      do {
+         const FloatEbmType val = *pValue;
+         IntEbmType result;
+
+         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 3 } : result;
+
+         *pDiscretized = result;
+         ++pDiscretized;
+         ++pValue;
+      } while(LIKELY(pValueEnd != pValue));
+   } else if(PREDICTABLE(IntEbmType { 3 } == countCutPoints)) {
+      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+      do {
+         const FloatEbmType val = *pValue;
+         IntEbmType result;
+
+         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 4 } : result;
+
          *pDiscretized = result;
          ++pDiscretized;
          ++pValue;
