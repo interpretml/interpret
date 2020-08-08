@@ -87,7 +87,7 @@ TEST_CASE("Discretize, increasing lengths") {
    FloatEbmType featureValues[1];
    IntEbmType singleFeatureDiscretized[1];
 
-   constexpr size_t cCutPointsMax = 259;
+   constexpr size_t cCutPointsMax = 1024 * 2 + 100;
    FloatEbmType cutPointsLowerBoundInclusive[cCutPointsMax];
    for(size_t iCutPoint = 0; iCutPoint < cCutPointsMax; ++iCutPoint) {
       cutPointsLowerBoundInclusive[iCutPoint] = static_cast<FloatEbmType>(iCutPoint);
