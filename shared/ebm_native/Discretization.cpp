@@ -2460,18 +2460,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       static_cast<void *>(maxValueReturn)
    );
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countSamples)");
+   if(!IsNumberConvertable<size_t>(countSamples)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamples)");
       return 1;
    }
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countBinsMax)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countBinsMax)");
+   if(!IsNumberConvertable<size_t>(countBinsMax)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countBinsMax)");
       return 1;
    }
 
-   if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesPerBinMin)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t, IntEbmType>(countSamplesPerBinMin)");
+   if(!IsNumberConvertable<size_t>(countSamplesPerBinMin)) {
+      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamplesPerBinMin)");
       return 1;
    }
 
@@ -2878,7 +2878,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       }
    }
 
-   if(UNLIKELY((!IsNumberConvertable<size_t, IntEbmType>(countSamples)))) {
+   if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
       // this needs to point to real memory, otherwise it's invalid
       LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
       return IntEbmType { 1 };
@@ -2979,7 +2979,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          return IntEbmType { 1 };
       }
 
-      if(UNLIKELY((!IsNumberConvertable<size_t, IntEbmType>(countCutPoints)))) {
+      if(UNLIKELY(!IsNumberConvertable<size_t>(countCutPoints))) {
          // this needs to point to real memory, otherwise it's invalid
          LOG_0(TraceLevelError, "ERROR Discretize countCutPoints was too large to fit into memory");
          return IntEbmType { 1 };

@@ -285,7 +285,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countFeaturesInGroup");
       return 1;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInGroup)) {
+   if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
       if(LIKELY(nullptr != interactionScoreReturn)) {
          *interactionScoreReturn = FloatEbmType { 0 };
       }
@@ -316,7 +316,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
       cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
+      if(!IsNumberConvertable<size_t>(countSamplesRequiredForChildSplitMin)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
@@ -338,7 +338,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
          return 1;
       }
-      if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
+      if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
          if(LIKELY(nullptr != interactionScoreReturn)) {
             *interactionScoreReturn = FloatEbmType { 0 };
          }
@@ -383,7 +383,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    do {
       const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
       EBM_ASSERT(0 <= indexFeatureInterop);
-      EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop))); // we already checked indexFeatureInterop was good above
+      EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // we already checked indexFeatureInterop was good above
       size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
       EBM_ASSERT(iFeatureForGroup < pEbmInteractionState->GetCountFeatures());
       const Feature * const pFeature = &aFeatures[iFeatureForGroup];

@@ -166,7 +166,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return 1;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != validationMetricReturn)) {
          *validationMetricReturn = FloatEbmType { 0 };

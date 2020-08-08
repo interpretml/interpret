@@ -83,7 +83,7 @@ public:
             const StorageDataType * pInputData = pDataSet->GetInputDataPointer(pInputFeature);
             pInputData += iSample;
             StorageDataType iBinOriginal = *pInputData;
-            EBM_ASSERT((IsNumberConvertable<size_t, StorageDataType>(iBinOriginal)));
+            EBM_ASSERT(IsNumberConvertable<size_t>(iBinOriginal));
             size_t iBin = static_cast<size_t>(iBinOriginal);
             EBM_ASSERT(iBin < cBins);
             iBucket += cBuckets * iBin;

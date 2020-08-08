@@ -113,11 +113,11 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
             LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value cannot be negative");
             goto free_all;
          }
-         if(!IsNumberConvertable<StorageDataType, IntEbmType>(inputData)) {
+         if(!IsNumberConvertable<StorageDataType>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
-         if(!IsNumberConvertable<size_t, IntEbmType>(inputData)) {
+         if(!IsNumberConvertable<size_t>(inputData)) {
             LOG_0(TraceLevelError, "ERROR DataSetByFeature::ConstructInputData inputData value too big to reference memory");
             goto free_all;
          }
@@ -201,11 +201,11 @@ bool DataSetByFeature::Initialize(
                LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize target value cannot be negative");
                return true;
             }
-            if(!IsNumberConvertable<StorageDataType, IntEbmType>(data)) {
+            if(!IsNumberConvertable<StorageDataType>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
                return true;
             }
-            if(!IsNumberConvertable<size_t, IntEbmType>(data)) {
+            if(!IsNumberConvertable<size_t>(data)) {
                LOG_0(TraceLevelError, "ERROR DataSetByFeature::Initialize data target too big to reference memory");
                return true;
             }

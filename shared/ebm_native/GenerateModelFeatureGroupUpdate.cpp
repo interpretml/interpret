@@ -812,7 +812,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       if(LIKELY(nullptr != gainReturn)) {
          *gainReturn = FloatEbmType { 0 };
@@ -855,7 +855,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       LOG_0(TraceLevelWarning, "WARNING GenerateModelFeatureGroupUpdate countTreeSplitsMax is zero.");
    }
    size_t cTreeSplitsMax = static_cast<size_t>(countTreeSplitsMax);
-   if(!IsNumberConvertable<size_t, IntEbmType>(countTreeSplitsMax)) {
+   if(!IsNumberConvertable<size_t>(countTreeSplitsMax)) {
       // we can never exceed a size_t number of splits, so let's just set it to the maximum if we were going to overflow because it will generate 
       // the same results as if we used the true number
       cTreeSplitsMax = std::numeric_limits<size_t>::max();
@@ -864,7 +864,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    size_t cSamplesRequiredForChildSplitMin = size_t { 1 }; // this is the min value
    if(IntEbmType { 1 } <= countSamplesRequiredForChildSplitMin) {
       cSamplesRequiredForChildSplitMin = static_cast<size_t>(countSamplesRequiredForChildSplitMin);
-      if(!IsNumberConvertable<size_t, IntEbmType>(countSamplesRequiredForChildSplitMin)) {
+      if(!IsNumberConvertable<size_t>(countSamplesRequiredForChildSplitMin)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to overflow because it will generate 
          // the same results as if we used the true number
          cSamplesRequiredForChildSplitMin = std::numeric_limits<size_t>::max();
