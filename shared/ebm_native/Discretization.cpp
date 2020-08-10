@@ -2860,6 +2860,110 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
    return 0;
 }
 
+// Plan:
+//   - when making predictions, in the great majority of cases, we should serially determine the logits of each
+//     sample per feature and then later add those logits.  It's tempting to want to process more than one feature
+//     at a time, but that's a red-hearing:
+//     - data typically gets passed to us as C ordered data, so feature0 and feature1 are in adjacent memory
+//       cells, and sample0 and sample1 are distant.  It's less costly to read the data per feature for our pure input
+//       data.  It wouldn't do us much good though if we striped just two features at a time, so we'd want to
+//       process all N features in order to take advantage of this property.  But if you do that, then we'd need
+//       to do binary searches on a single sample for a single feature, then fetch into cache the next feature's
+//       cut "definition".  The cost of constantly bringing into L1 cache the cut points and logits for each feature
+//       would entail more memory movement than either processing the matrix out of order or transposing it beforehand
+//     - it's tempting to then consider striping just 2 features or some limited subset.  We get limited speed benefits
+//       when processing two features at a time since at best it halves the time to access the matrix, but we still
+//       then need to keep two cut point arrays that we do unpredictable branches on and it potentially pushes some
+//       of our cut point and logit arrays out from L1 cache into L2 or beyond
+//     - we get benefits by having special case algorithms based on the number of cut points (see below where we
+//       do linear searches for small numbers of cut points, and pad cut point arrays for slightly larger numbers of
+//       cut points).  And it's hard to see how we could combine these together and say have a special loop to handle
+//       when one feature has 3 cut points, and the other has 50 cut points
+//     - one of the benefits of doing 2 features at once would be that we could add the logits together and write
+//       the sum to memory instead of writing both logits and later reading those again and summing them and writing
+//       them back to memory, but since we'd be doing this with correcly ordered memory, we'd be able to stream
+//       the reads and the writes such that they'd take approx 1 clock cycle each, so in reality we don't gain much
+//       from combining the logits at binary search time
+//     - in theory we might gain something if we had two single cut features because we could load the 2 values we're
+//       cutting into 2 registers, then have the cut points in 2 persistent registers, and have 4 registers for the
+//       logit results.  We can overwrite one of the two registers loaded with the sum of the resulting logits.  
+//       That's a total of 8 registers.  For 2 cuts, we'd need 2 for loading, 4 for cuts, 6 for logits, so 12 registers
+//       Which is also doable.  Beyond that, we'd need to use or access memory when combining processing for 2 features
+//       and I think it would be better to pay the streaming to memory cost than to fetch somewhat unpredictably
+//       the cut points or logits
+//     - even if we did write special case code for handling two binary features, it won't help us if the matrix the
+//       user passes us doesn't put the binary features adjacent to eachother.  We can't re-arrange the columsn for
+//       less than the cost of partial transposes, so we'd rather just go with partial transposes
+//     - doing a partial striped transpose is 32% faster in my tests than reading 2 columns at once, so we'd be
+//       better off transposing the two columns than process them.  This is because we are limited to reading just
+//       two values efficiently at a time, rather than reading a full stripe efficiently.
+//   - we can get data from the user as fortran ordered.  If it comes to us fortran ordered
+//     then great, because our accessing that data per feature is very efficient (approx 1 clock cycle per read)
+//   - we can get data from the user as C ordered (this is more common).  We could read the matrix in poor memory
+//     order, but then we're still loading in a complete cache line at a time.  It makes more sense to read in data
+//     in a stripe and transpose it that way.  I did some perfs, and reading stripes of 64 doubles was fastest
+//     We pay the cost of having 64 write streams, but our reads are very fast.  That's the break even point though
+//   - transposing the complete matrix would double our memory requirements.  Since transposing is fastest with 64
+//     doubles though, we can extract and transpose our original C ordered data in 64 feature groupings
+//   - we can use SIMD easily enough by loading the next 2/4/8 doubles at a time and re-using the same cut definition
+//     within a single processor
+//   - we can use threading efficiently in one of two ways.  We can subdivide the samples up by the number of CPUs
+//     and have each CPU process those ranges.  This allows all the CPUs to utilize the same cut point definitions
+//     but they have smaller batches.  Alternatively, we can give each CPU one feature and have it load the cut
+//     point and logit definitions into it's L1 cache which isn't likely to be shared.  If some of the cut points
+//     or logits need to be in L2 though, there might be bad contention.
+//   - hyper-threads would probably benefit from having the same cut points and logits since both hyper-threads share
+//     the L1 cahce, so the "best" solution is probably use thread afinity to keep CPUs working on the same feature
+//     and dividing up the samples between the hyper-threads, but then benefit from larger batch sizes by putting
+//     different features on different CPUs
+//   - the exact threading solution will probably depend on exact numbers of samples and threads and machine 
+//     architecture
+//   - whether dividing the work by samples or features or a mix, if we make multiple calls into our discritize
+//     function, we would want to preserve our threads since they are costly to make, so we'd want to have a
+//     thread allocation object that we'd free after discretization
+//   - for fortran ordered arrays, the user might as well pass us the entire array and we'll process it directly
+//   - for C ordered data, either the 64 stride transpose happens in our higher level caller, or they just pass
+//     us the C ordered data, and we do the partial transposes inside C++ from the badly ordered original data
+//   - in the entire dataset gets passed to us, then we don't need a thread allocation object since we just do it once
+//   - if the original array is in pandas, it seems to be stored internally as a numpy array if the datatypes are all
+//     the same, so we can pass that direclty into our function
+//   - if the original array is in pandas, and consists of strings or integers or anything heterogenious, then
+//     the data appears to be fortran ordered.  In that case we'd like to pass the data in that bare format
+//   - but we're not sure that pandas stores these as 2-D matricies or multiple 1-D arrays.  If the ladder, then
+//     we either need to process it one array at a time, or copy the data together.
+//   - handling strings can either be done with python vectorized functions or in cython (try pure python first)
+//   - after our per-feature logit arrays have been written, we can load in several at a time and add them together
+//     and write out the result, and we can parallelize that operation until all the logits have been added
+//   - SIMD reads and writes are better on certain boundaries.  We don't control the data passed to us from the user
+//     so we might want to read the first few instances with a special binary search function and then start
+//     on the SIMD on a memory aligned boundary, then also use the special binary search function for the last few
+//   - one complication is that for pairs we need to have both feature in memory to evaluate.  If the pairs are
+//     not in the same stripe we need to preserve them until they are.  In most cases we can probably just hold the
+//     features we need or organize which stripes we load at which times, but in the worst case we may want
+//     to re-discretize some features, or in the worst case discretize all features (preserving in a compressed 
+//     format?).  This really needs to be threshed out.
+//
+//   - Table of matrix access speeds (for summing cells in a matrix):
+//       bad_order = 7.43432
+//       stride_1 = 7.27575
+//       stride_2 = 4.08857
+//       stride_16384 = 0.431882
+//       transpose_1 = 10.4326
+//       transpose_2 = 6.49787
+//       transpose_4 = 4.54615
+//       transpose_8 = 3.42918
+//       transpose_16 = 3.04755
+//       transpose_32 = 2.80757
+//       transpose_64 = 2.75464
+//       transpose_128 = 2.79845
+//       transpose_256 = 2.8748
+//       transpose_512 = 2.96725
+//       transpose_1024 = 3.17072
+//       transpose_2048 = 6.04042
+//       transpose_4096 = 6.1348
+//       transpose_8192 = 6.26907
+//       transpose_16384 = 7.73406
+
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
@@ -3067,6 +3171,16 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          } while(LIKELY(pValueEnd != pValue));
          return IntEbmType { 0 };
       } else if(PREDICTABLE(IntEbmType { 7 } == countCutPoints)) {
+         // for digitization during training this all fits into registers, but if we evaluate the logits at the same
+         // time for mains it doesn't quite fit into 16 registers.  We have 1 value that we load from memory to
+         // process, 7 cut points, 8 logits bin cut logits (for prediction), and 1 logit for the missing value bin
+         // (for prediction), which is 17 registers.  We need to load some things from memory therefore.  We can
+         // do the final load for the missing bin logit after the comparison operator of isnan, so we could probably
+         // just load 1 value, otherwise we'd need to load 2 values since loading them would overwrite one of them
+         
+         // TODO: since we can't fit everything into registers, perhaps we'd get better performance doing a full
+         // binary search using memory, thus minimizing the number of comparisons?
+
          const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
          const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
          const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
@@ -3093,6 +3207,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          } while(LIKELY(pValueEnd != pValue));
          return IntEbmType { 0 };
       } else if(PREDICTABLE(IntEbmType { 8 } == countCutPoints)) {
+         // TODO: for 8 specifically, we could probably do a special case of binary search with everything in
+         //       registers.  It would take just 3 comparisons then instead of 8.  7 is less benefit since we'd then 
+         //       still have 3 comparisons required plus one to handle the padding case at the end, so we'd have 
+         //       4 total and more register moves.  8 is probably the only sweet spot special case.
+
          const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
          const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
          const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
@@ -3121,10 +3240,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          } while(LIKELY(pValueEnd != pValue));
          return IntEbmType { 0 };
       } else {
-         // TODO: in the future tune this check fo cSamples to a reasonable number of values.  Like 256 or so.
-         if(2 <= cSamples) {
-            FloatEbmType cutPointsLowerBoundInclusiveCopy[1023];
-            if(PREDICTABLE(countCutPoints <= IntEbmType { 15 })) {
+         FloatEbmType cutPointsLowerBoundInclusiveCopy[1023];
+         if(PREDICTABLE(countCutPoints <= IntEbmType { 15 })) {
+            if(16 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 15 cuts (16 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3155,7 +3277,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 31 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 31 })) {
+            if(32 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 31 cuts (32 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3187,7 +3315,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 63 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 63 })) {
+            if(64 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 63 cuts (64 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3220,7 +3354,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 127 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 127 })) {
+            if(128 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 127 cuts (128 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3254,7 +3394,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 255 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 255 })) {
+            if(256 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 255 cuts (256 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3289,7 +3435,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 511 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 511 })) {
+            if(512 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 511 cuts (512 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
@@ -3325,7 +3477,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
                   ++pValue;
                } while(LIKELY(pValueEnd != pValue));
                return IntEbmType { 0 };
-            } else if(PREDICTABLE(countCutPoints <= IntEbmType { 1023 })) {
+            }
+         } else if(PREDICTABLE(countCutPoints <= IntEbmType { 1023 })) {
+            if(1024 * 4 <= cSamples) {
+               // TODO if the user passes us exactly 1023 cuts (1024 bins), then we don't need to do the padding AND
+               // we can eliminate the final check for going over into the padding:
+               // THIS ONE --> result = UNPREDICTABLE(cCutPoints < result) ? cCutPoints : result;
+
                const size_t cCutPoints = static_cast<size_t>(countCutPoints);
 
                memcpy(cutPointsLowerBoundInclusiveCopy, cutPointsLowerBoundInclusive,
