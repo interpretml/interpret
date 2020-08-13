@@ -3582,12 +3582,23 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    EBM_ASSERT(size_t { 1 } <= cCutPoints);
    EBM_ASSERT(cCutPoints - size_t { 1 } <= size_t { std::numeric_limits<ptrdiff_t>::max() });
    const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+
+   // if we're going to runroll our first loop, then we need to ensure that there's a next loop after the first
+   // unrolled loop, otherwise we would need to check if we were done before the first real loop iteration.
+   // To ensure we have 2 original loop iterations, we need 1 cut in the center, 1 cut above, and 1 cut below, so 3
+   EBM_ASSERT(size_t { 3 } <= cCutPoints);
+   const size_t firstMiddle = static_cast<size_t>(highStart) >> 1;
+   EBM_ASSERT(firstMiddle < cCutPoints);
+   const FloatEbmType firstMidVal = cutPointsLowerBoundInclusive[firstMiddle];
+   const ptrdiff_t firstMidLow = static_cast<ptrdiff_t>(firstMiddle) + ptrdiff_t { 1 };
+   const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t { 1 };
+
    do {
       const FloatEbmType val = *pValue;
       size_t middle = missingVal;
       if(PREDICTABLE(!std::isnan(val))) {
-         ptrdiff_t high = highStart;
-         ptrdiff_t low = ptrdiff_t { 0 };
+         ptrdiff_t high = UNPREDICTABLE(firstMidVal <= val) ? highStart : firstMidHigh;
+         ptrdiff_t low = UNPREDICTABLE(firstMidVal <= val) ? firstMidLow : ptrdiff_t { 0 };
          FloatEbmType midVal;
          do {
             EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < cCutPoints);
