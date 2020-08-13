@@ -766,14 +766,6 @@ class NativeEBMBoosting:
             # TODO PK make sure the None value here is handled by our caller
             return None
 
-        # TODO PK v.2 currently we return only a single logit for binary classification
-        #             for the positive case (the one with target 1).  scikit also
-        #             stores and returns 1 logit, but they say to do softmax, make the
-        #             target0 logit equal to the negative of the target1 logit.
-        #             this has the nice property that it would closely match what you'd
-        #             see in a multiclass problem with very few cases other than the 0th and 1th
-        #             cases.  Do we want to do the same for conformance and in graphing
-
         array_p = self._native.lib.GetBestModelFeatureGroup(
             self._booster_pointer, feature_group_index
         )
