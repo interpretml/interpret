@@ -2964,6 +2964,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
+// VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
@@ -3554,65 +3555,61 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       return IntEbmType { 1 };
    }
 
-   if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } <= cCutPoints)) {
-      // we need to be able to add one to cCutPoints for the missing value, and convert it to a ptrdiff_t
-      // since we use the properties of ptrdiff_t in our binary search below.  Also, low in our binary
-      // search can exceed high by 1 on the last loop, so we need to preserve 1 at the top end for that.
+   if(UNLIKELY(std::numeric_limits<size_t>::max() == cCutPoints)) {
+      // we add 1 to cCutPoints as our missing value, so this addition must succeed
       LOG_0(TraceLevelError,
          "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
       return IntEbmType { 1 };
    }
 
-   if(UNLIKELY(std::numeric_limits<size_t>::max() / 2 + 1 < cCutPoints)) {
-      // we need to be able to add one to cCutPoints for the missing value, and convert it to a ptrdiff_t
-      // since we use the properties of ptrdiff_t in our binary search below
+   if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCutPoints)) {
+      // the low value can increase until it's equal to cCutPoints, so cCutPoints must be expressable as a ptrdiff_t
       LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to allow for our binary search add");
+         "ERROR Discretize countCutPoints was too large to allow for the binary search comparison");
       return IntEbmType { 1 };
    }
 
-   // we checked above that we could add 1 to cCutPoints and convert to ptrdiff_t
-   const ptrdiff_t missingVal = static_cast<ptrdiff_t>(cCutPoints) + ptrdiff_t { 1 };
-   const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints) - ptrdiff_t { 1 };
-   do {
-      // TODO: if we pad the cutPointsLowerBoundInclusive array up to a power of 2 by putting min or max values,
-      // or +-infinity values in the padded positions (use a branchless comparison at the end to check for the 
-      // padded values and change to the appropriate result in that case) , then we can guarantee
-      // that we'll execute the loop exactly N times from 2^N.  Once we have a known exact number of loop iterations
-      // then we can use SIMD to process the loop, making it 8 times faster.  We can also build 
-      // 1, 2, 4, 8, 16, 32, 64, 128, 256 specific versions of this function to eliminate the loop, thus 
-      // eliminating one last branch mispredict.  It also makes our memory prefetcher more accurate if the
-      // data isn't random since if large numbers of values are the same, then the fetch order will be the same
-      // and since the processor pays attention to which instruction fetch which memory, we get that performance
-      // benefit by unwinding the loop to nothing.
-      // Here are some partial solutions:
-      // https://stackoverflow.com/questions/11360831/about-the-branchless-binary-search
-      // https://stackoverflow.com/questions/11349221/about-reducing-the-branch-miss-prediciton
-      // https://blog.demofox.org/2017/06/20/simd-gpu-friendly-branchless-binary-search/
-      //
-      // TODO: if we want to go crazy, we could also parallelize this, which would probably use hypterthreading
-      // effectively given we'll probably still have some latency to L1 cache, at least for random data.
+   if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 } < cCutPoints)) {
+      // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
+      // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
+      LOG_0(TraceLevelError,
+         "ERROR Discretize countCutPoints was too large to allow for the binary search add");
+      return IntEbmType { 1 };
+   }
 
+   EBM_ASSERT(cCutPoints < std::numeric_limits<size_t>::max());
+   const size_t missingVal = cCutPoints + size_t { 1 };
+   EBM_ASSERT(size_t { 1 } <= cCutPoints);
+   EBM_ASSERT(cCutPoints - size_t { 1 } <= size_t { std::numeric_limits<ptrdiff_t>::max() });
+   const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+   do {
       const FloatEbmType val = *pValue;
-      ptrdiff_t middle = missingVal;
+      size_t middle = missingVal;
       if(PREDICTABLE(!std::isnan(val))) {
          ptrdiff_t high = highStart;
-         ptrdiff_t low = 0;
+         ptrdiff_t low = ptrdiff_t { 0 };
          FloatEbmType midVal;
          do {
-            EBM_ASSERT(ptrdiff_t { 0 } <= low);
-            EBM_ASSERT(ptrdiff_t { 0 } <= high);
+            EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < cCutPoints);
+            EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < cCutPoints);
+            EBM_ASSERT(low <= high);
             // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
             // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
             // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
             // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
             // the following must be false (which we check above):
-            // "std::numeric_limits<size_t>::max() / 2 + 1 < cCutPoints"
-            middle = static_cast<ptrdiff_t>((static_cast<size_t>(low) + static_cast<size_t>(high)) >> 1);
-            EBM_ASSERT(ptrdiff_t { 0 } <= middle && static_cast<size_t>(middle) < cCutPoints);
-            midVal = cutPointsLowerBoundInclusive[static_cast<size_t>(middle)];
-            high = UNPREDICTABLE(midVal <= val) ? high : middle - ptrdiff_t { 1 };
-            low = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : low;
+            // "std::numeric_limits<size_t>::max() / 2 < cCutPoints - 1"
+            EBM_ASSERT(!IsAddError(static_cast<size_t>(low), static_cast<size_t>(high)));
+            middle = (static_cast<size_t>(low) + static_cast<size_t>(high)) >> 1;
+            EBM_ASSERT(middle <= static_cast<size_t>(high));
+            EBM_ASSERT(middle < cCutPoints);
+            midVal = cutPointsLowerBoundInclusive[middle];
+            EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
+            low = UNPREDICTABLE(midVal <= val) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
+            EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= cCutPoints);
+            high = UNPREDICTABLE(midVal <= val) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
+            EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+
             // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
             // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
             // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
@@ -3620,11 +3617,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
             // loop, so this version we have here is faster given that we only need to compare to a value that
             // we've already fetched from memory.  Also, this version makes slightly faster progress since
             // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
-            // iteration
+            // iteration.  In practice this version will always work since no floating point type is less than 4
+            // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
+            // for accessing memory are always size_t, so those should always work.
          } while(LIKELY(low <= high));
-         middle = UNPREDICTABLE(midVal <= val) ? middle + ptrdiff_t { 1 } : middle;
-         EBM_ASSERT(ptrdiff_t { 0 } <= middle && middle <= static_cast<ptrdiff_t>(cCutPoints));
+         EBM_ASSERT(size_t { 0 } <= middle && middle < cCutPoints);
+         middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 1 } : middle;
+         EBM_ASSERT(size_t { 0 } <= middle && middle <= cCutPoints);
       }
+      EBM_ASSERT(IsNumberConvertable<IntEbmType>(middle));
       *pDiscretized = static_cast<IntEbmType>(middle);
       ++pDiscretized;
       ++pValue;
