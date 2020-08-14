@@ -2964,6 +2964,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
+// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
+static unsigned int g_cLogDiscretizeParametersMessages = 25;
+
 // VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
@@ -2972,6 +2975,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    const FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * discretizedReturn
 ) {
+   LOG_COUNTED_N(
+      &g_cLogDiscretizeParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
+      "Discretize parameters: "
+      "countSamples=%" IntEbmTypePrintf ", "
+      "featureValues=%p, "
+      "countCutPoints=%" IntEbmTypePrintf ", "
+      "cutPointsLowerBoundInclusive=%p, "
+      "discretizedReturn=%p"
+      ,
+      countSamples,
+      static_cast<const void *>(featureValues),
+      countCutPoints,
+      static_cast<const void *>(cutPointsLowerBoundInclusive),
+      static_cast<void *>(discretizedReturn)
+   );
+
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples cannot be negative");
