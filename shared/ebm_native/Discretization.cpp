@@ -2278,9 +2278,10 @@ INLINE_RELEASE static size_t GetAvgLength(
    const size_t cBinsMax, 
    const size_t cSamplesPerBinMin
 ) noexcept {
-   EBM_ASSERT(size_t { 1 } <= cSamples);
+   EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
    EBM_ASSERT(size_t { 2 } <= cBinsMax); // if there is just one bin, then you can't have splits, so we exit earlier
    EBM_ASSERT(size_t { 1 } <= cSamplesPerBinMin);
+   EBM_ASSERT(cSamplesPerBinMin <= cSamples / 2); // we exit earlier if we don't have enough samples for 2 bins
 
    // SplittingRanges are ranges of numbers that we have the guaranteed option of making at least one split within.
    // if there is only one SplittingRange, then we have no choice other than make cuts within the one SplittingRange that we're given
@@ -2313,6 +2314,8 @@ INLINE_RELEASE static size_t GetAvgLength(
    // testing for the case that we don't give the first and last SplittingRanges an initial cut.  In this case, we're still missing a cut for one of the
    // long ranges that we can't fullfil.
 
+   // TODO: review why we convert to float and then back to size_t.  This doesn't make sense to me right now, and
+   //       also why does the loop below exists.  Can't we get an exact version without the loop?
    size_t avgLength = static_cast<size_t>(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cBinsMax));
    avgLength = UNPREDICTABLE(avgLength < cSamplesPerBinMin) ? cSamplesPerBinMin : avgLength;
    while(true) {
@@ -2330,10 +2333,10 @@ INLINE_RELEASE static size_t GetAvgLength(
 }
 
 INLINE_RELEASE static size_t PossiblyRemoveCutForMissing(
-   const bool bMissing, 
+   const IntEbmType isMissing, 
    size_t cCutPointsMax
 ) noexcept {
-   if(PREDICTABLE(bMissing)) {
+   if(PREDICTABLE(EBM_FALSE != isMissing)) {
       // if there is a missing value, then we use 0 for the missing value bin, and bump up all other values by 1.  This creates a semi-problem
       // if the number of bins was specified as a power of two like 256, because we now have 257 possible values, and instead of consuming 8
       // bits per value, we're consuming 9.  If we're told to have a maximum of a power of two bins though, in most cases it won't hurt to
@@ -2460,506 +2463,496 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       static_cast<void *>(maxValueReturn)
    );
 
+   IntEbmType cCutPointsRet;
+   IntEbmType isMissingPresentRet;
+   FloatEbmType minValueRet;
+   FloatEbmType maxValueRet;
    IntEbmType ret;
 
    // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
    if(UNLIKELY(nullptr == countCutPointsInOut)) {
       LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == countCutPointsInOut");
-      if(LIKELY(nullptr != isMissingPresentReturn)) {
-         *isMissingPresentReturn = EBM_FALSE;
-      }
-      if(LIKELY(nullptr != minValueReturn)) {
-         *minValueReturn = FloatEbmType { 0 };
-      }
-      if(LIKELY(nullptr != maxValueReturn)) {
-         *maxValueReturn = FloatEbmType { 0 };
-      }
+      cCutPointsRet = IntEbmType { 0 };
+      isMissingPresentRet = EBM_FALSE;
+      minValueRet = FloatEbmType { 0 };
+      maxValueRet = FloatEbmType { 0 };
       ret = IntEbmType { 1 };
-      goto exit_with_log;
-   }
-
-   if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
-      EBM_ASSERT(nullptr != countCutPointsInOut);
-      *countCutPointsInOut = IntEbmType { 0 };
-      if(LIKELY(nullptr != isMissingPresentReturn)) {
-         *isMissingPresentReturn = EBM_FALSE;
-      }
-      if(LIKELY(nullptr != minValueReturn)) {
-         *minValueReturn = FloatEbmType { 0 };
-      }
-      if(LIKELY(nullptr != maxValueReturn)) {
-         *maxValueReturn = FloatEbmType { 0 };
-      }
-
-      ret = IntEbmType { 0 };
-      if(UNLIKELY(countSamples < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples < IntEbmType { 0 }");
-         ret = IntEbmType { 1 };
-      }
-
-      goto exit_with_log;
    } else {
-      if(UNLIKELY(nullptr == featureValues)) {
-         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == featureValues");
-
-         EBM_ASSERT(nullptr != countCutPointsInOut);
-         *countCutPointsInOut = IntEbmType { 0 };
-         if(LIKELY(nullptr != isMissingPresentReturn)) {
-            *isMissingPresentReturn = EBM_FALSE;
-         }
-         if(LIKELY(nullptr != minValueReturn)) {
-            *minValueReturn = FloatEbmType { 0 };
-         }
-         if(LIKELY(nullptr != maxValueReturn)) {
-            *maxValueReturn = FloatEbmType { 0 };
-         }
-
-         ret = IntEbmType { 1 };
-         goto exit_with_log;
-      }
-
-      if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-         LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamples)");
-
-         EBM_ASSERT(nullptr != countCutPointsInOut);
-         *countCutPointsInOut = IntEbmType { 0 };
-         if(LIKELY(nullptr != isMissingPresentReturn)) {
-            *isMissingPresentReturn = EBM_FALSE;
-         }
-         if(LIKELY(nullptr != minValueReturn)) {
-            *minValueReturn = FloatEbmType { 0 };
-         }
-         if(LIKELY(nullptr != maxValueReturn)) {
-            *maxValueReturn = FloatEbmType { 0 };
-         }
-
-         ret = IntEbmType { 1 };
-         goto exit_with_log;
-      }
-
-      const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
-
-      if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
-         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples was too large to fit into featureValues");
-
-         EBM_ASSERT(nullptr != countCutPointsInOut);
-         *countCutPointsInOut = IntEbmType { 0 };
-         if(LIKELY(nullptr != isMissingPresentReturn)) {
-            *isMissingPresentReturn = EBM_FALSE;
-         }
-         if(LIKELY(nullptr != minValueReturn)) {
-            *minValueReturn = FloatEbmType { 0 };
-         }
-         if(LIKELY(nullptr != maxValueReturn)) {
-            *maxValueReturn = FloatEbmType { 0 };
-         }
-
-         ret = IntEbmType { 1 };
-         goto exit_with_log;
-      }
-
-      const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, featureValues);
-
-      const bool bMissing = cSamplesIncludingMissingValues != cSamples;
-      if(LIKELY(nullptr != isMissingPresentReturn)) {
-         *isMissingPresentReturn = bMissing ? EBM_TRUE : EBM_FALSE;
-      }
-
-      if(UNLIKELY(size_t { 0 } == cSamples)) {
-         EBM_ASSERT(nullptr != countCutPointsInOut);
-         *countCutPointsInOut = IntEbmType { 0 };
-
-         if(LIKELY(nullptr != minValueReturn)) {
-            *minValueReturn = FloatEbmType { 0 };
-         }
-         if(LIKELY(nullptr != maxValueReturn)) {
-            *maxValueReturn = FloatEbmType { 0 };
-         }
+      if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
+         cCutPointsRet = IntEbmType { 0 };
+         isMissingPresentRet = EBM_FALSE;
+         minValueRet = FloatEbmType { 0 };
+         maxValueRet = FloatEbmType { 0 };
          ret = IntEbmType { 0 };
-         goto exit_with_log;
+         if(UNLIKELY(countSamples < IntEbmType { 0 })) {
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples < IntEbmType { 0 }");
+            ret = IntEbmType { 1 };
+         }
       } else {
+         if(UNLIKELY(nullptr == featureValues)) {
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == featureValues");
+
+            cCutPointsRet = IntEbmType { 0 };
+            isMissingPresentRet = EBM_FALSE;
+            minValueRet = FloatEbmType { 0 };
+            maxValueRet = FloatEbmType { 0 };
+            ret = IntEbmType { 1 };
+
+            goto exit_with_log;
+         }
+
+         if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamples)");
+
+            cCutPointsRet = IntEbmType { 0 };
+            isMissingPresentRet = EBM_FALSE;
+            minValueRet = FloatEbmType { 0 };
+            maxValueRet = FloatEbmType { 0 };
+            ret = IntEbmType { 1 };
+
+            goto exit_with_log;
+         }
+
+         const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
+
+         if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples was too large to fit into featureValues");
+
+            cCutPointsRet = IntEbmType { 0 };
+            isMissingPresentRet = EBM_FALSE;
+            minValueRet = FloatEbmType { 0 };
+            maxValueRet = FloatEbmType { 0 };
+            ret = IntEbmType { 1 };
+
+            goto exit_with_log;
+         }
+
+         const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, featureValues);
+
+         isMissingPresentRet = cSamplesIncludingMissingValues == cSamples ? EBM_FALSE : EBM_TRUE;
+
+         if(UNLIKELY(size_t { 0 } == cSamples)) {
+            cCutPointsRet = IntEbmType { 0 };
+            minValueRet = FloatEbmType { 0 };
+            maxValueRet = FloatEbmType { 0 };
+            ret = IntEbmType { 0 };
+
+            goto exit_with_log;
+         }
+
          FloatEbmType * const pValuesEnd = featureValues + cSamples;
          std::sort(featureValues, pValuesEnd);
-         if(LIKELY(nullptr != minValueReturn)) {
-            *minValueReturn = featureValues[0];
-         }
-         if(LIKELY(nullptr != maxValueReturn)) {
-            *maxValueReturn = pValuesEnd[-1];
-         }
+         minValueRet = featureValues[0];
+         maxValueRet = pValuesEnd[-1];
+
          EBM_ASSERT(nullptr != countCutPointsInOut);
-         IntEbmType countCutPoints = *countCutPointsInOut;
+         const IntEbmType countCutPoints = *countCutPointsInOut;
 
          if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
+            cCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
             if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {
                LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countCutPoints can't be negative.");
                ret = IntEbmType { 1 };
             }
             goto exit_with_log;
-         } else {
-            if(UNLIKELY(nullptr == cutPointsLowerBoundInclusiveReturn)) {
-               // 1 bin doesn't need any cut points, but 2 bins does
-               LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == cutPointsLowerBoundInclusiveReturn");
-               ret = IntEbmType { 1 };
-               goto exit_with_log;
-            }
+         }
+         
+         if(UNLIKELY(nullptr == cutPointsLowerBoundInclusiveReturn)) {
+            // if we have a potential bin cut, then cutPointsLowerBoundInclusiveReturn shouldn't be nullptr
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == cutPointsLowerBoundInclusiveReturn");
 
-            if(UNLIKELY(countSamples <= countSamplesPerBinMin)) {
-               // if the min number of samples per bin is equal to the number of samples, 
-               // then they all end up in one bin
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
 
-               EBM_ASSERT(nullptr != countCutPointsInOut);
-               *countCutPointsInOut = IntEbmType { 0 };
-               ret = IntEbmType { 0 };
-               goto exit_with_log;
-            } else {
-               if(UNLIKELY(countSamplesPerBinMin <= IntEbmType { 0 })) {
-                  // we set this to 1 below
-                  LOG_0(TraceLevelWarning,
-                     "WARNING GenerateQuantileCutPoints countSamplesPerBinMin shouldn't be zero or negative.  Adjusting to 1");
+            goto exit_with_log;
+         }
 
-                  countSamplesPerBinMin = IntEbmType { 1 };
+         if(UNLIKELY(countSamplesPerBinMin <= IntEbmType { 0 })) {
+            LOG_0(TraceLevelWarning,
+               "WARNING GenerateQuantileCutPoints countSamplesPerBinMin shouldn't be zero or negative.  Setting to 1");
+
+            countSamplesPerBinMin = IntEbmType { 1 };
+         }
+
+         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cSamples)); // since it came from an IntEbmType originally
+         // do this check after checking for zero because if cSamples and countSamplesPerBinMin == 0 we want to quit
+         if(UNLIKELY(static_cast<IntEbmType>(cSamples >> 1) < countSamplesPerBinMin)) {
+            // each bin needs at least countSamplesPerBinMin samples, so we need two sets of countSamplesPerBinMin
+            // in order to make any cuts.  Anything less and we should just return now.
+            // We also use this as a comparison to ensure that countSamplesPerBinMin is convertible to a size_t
+
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+         // countSamplesPerBinMin is convertible to size_t since (cSamples >> 1) <= countSamplesPerBinMin
+         EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesPerBinMin));
+         const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
+
+         EBM_ASSERT(size_t { 1 } < cSamples);
+         EBM_ASSERT(IsNumberConvertable<IntEbmType>(cSamples)); // it came from IntEbmType originally
+         // since cSamples is a size_t, and since we check to see if countCutPoints is equal or larger
+         // we know that countCutPoints can be converted to a size_t if it's being used instead of cSamples
+         const size_t cCutPointsMaxInitial = static_cast<IntEbmType>(cSamples) <= countCutPoints ?
+            cSamples - size_t { 1 } : static_cast<size_t>(countCutPoints);
+
+         const size_t cCutPointsMax = PossiblyRemoveCutForMissing(isMissingPresentRet, cCutPointsMaxInitial);
+         EBM_ASSERT(size_t { 1 } <= cCutPointsMax); // we won't eliminate to less than 1, and we had at least 1 before
+         EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
+
+         const size_t avgLength = GetAvgLength(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
+         EBM_ASSERT(size_t { 1 } <= avgLength);
+         const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cSamplesPerBinMin);
+         // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
+         EBM_ASSERT(cSplittingRanges <= cCutPointsMax);
+         if(UNLIKELY(size_t { 0 } == cSplittingRanges)) {
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+
+         NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
+         if(UNLIKELY(nullptr == aNeighbourJumps)) {
+            // we've already written a message in ConstructJumps
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+
+         // sometimes cut points will move between SplittingRanges, so we won't know an accurate
+         // number of cut points, but we can be sure that we won't exceed the total number of cut points
+         // so allocate the same number each time.  Hopefully we'll get back the same memory range each time
+         // to avoid memory fragmentation.
+
+         // we limit the cCutPointsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
+         // the maximum size_t though since the caller must have allocated cSamples floats in featureValues, and
+         // there are no float types that are 1 byte, and we checked that this didn't overflow, so we should be good
+         EBM_ASSERT(cCutPointsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
+         // include storage for the end points
+         const size_t cSplitPointsWithEndpointsMax = cCutPointsMax + size_t { 2 };
+         SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint>(cSplitPointsWithEndpointsMax);
+         if(UNLIKELY(nullptr == aSplitPoints)) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aSplitPoints");
+
+            free(aNeighbourJumps);
+
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+
+         RandomStream randomStream;
+         randomStream.Initialize(k_randomSeed);
+
+         // do this just once and reuse the random numbers
+         FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
+
+         const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
+         if(UNLIKELY(IsMultiplyError(cSplittingRanges, cBytesCombined))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cSplittingRanges, cBytesCombined)");
+
+            free(aSplitPoints);
+            free(aNeighbourJumps);
+
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+
+         // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
+         SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(EbmMalloc<void>(cSplittingRanges * cBytesCombined));
+         if(UNLIKELY(nullptr == apSplittingRange)) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == apSplittingRange");
+
+            free(aSplitPoints);
+            free(aNeighbourJumps);
+
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
+
+         FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
+         FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
+
+         FillSplittingRangeBasics(cSamples, featureValues, avgLength, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
+         FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
+
+         const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+         const size_t cCutsRemaining = cCutPointsMax - cUsedSplits;
+
+         if(UNLIKELY(StuffSplitsIntoSplittingRanges(
+            cSplittingRanges,
+            aSplittingRange,
+            cSamplesPerBinMin,
+            cCutsRemaining
+         ))) {
+            // we've already written a message in ConstructJumps
+
+            free(apSplittingRange);
+            free(aSplitPoints);
+            free(aNeighbourJumps);
+
+            cCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+
+         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
+         for(size_t i = 0; i < cSplittingRanges; ++i) {
+            // TODO first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
+            // side, but the short range isn't big enough to split.  In otherwords, there are less than cSamplesPerBinMin items
+            // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
+
+            SplittingRange * const pSplittingRange = &aSplittingRange[i];
+            size_t cSplits = pSplittingRange->m_cSplitsAssigned;
+            if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMin)) {
+               // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+               // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+               // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+               // like getting a free cut, so increase the number of splits by one if we don't need one cut at the tail
+               // side
+
+               ++cSplits;
+               if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMax)) {
+                  // if there's just one range and there are no long ranges on either end, then one split will create
+                  // two ranges, so add 1 more.
+
+                  EBM_ASSERT(1 == cSplittingRanges);
+
+                  ++cSplits;
                }
-               const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
-
-               // since cSamples is a size_t, and since we check to see if countBinsMax is larger than countSamples
-               // we know that countBinsMax can be converted to a size_t if it's being used instead of cSamples
-               EBM_ASSERT(size_t { 1 } < cSamples);
-               const size_t cCutPointsMaxInitial = countSamples <= countCutPoints ?
-                  cSamples - size_t { 1 } : static_cast<size_t>(countCutPoints);
-
-               const size_t cCutPointsMax = PossiblyRemoveCutForMissing(bMissing, cCutPointsMaxInitial);
-               EBM_ASSERT(1 <= cCutPointsMax); // if we had just one bin then there would be no cuts and we should have exited above
-               EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
-               const size_t avgLength = GetAvgLength(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
-               EBM_ASSERT(1 <= avgLength);
-               const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cSamplesPerBinMin);
-               // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
-               EBM_ASSERT(cSplittingRanges <= cCutPointsMax);
-               if(UNLIKELY(0 == cSplittingRanges)) {
-                  *countCutPointsInOut = IntEbmType { 0 };
-               } else {
-                  NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
-                  if(UNLIKELY(nullptr == aNeighbourJumps)) {
-                     // we've already written a message in ConstructJumps
-                     ret = IntEbmType { 1 };
-                     goto exit_with_log;
-                  }
-
-                  // sometimes cut points will move between SplittingRanges, so we won't know an accurate
-                  // number of cut points, but we can be sure that we won't exceed the total number of cut points
-                  // so allocate the same number each time.  Hopefully we'll get back the same memory range each time
-                  // to avoid memory fragmentation.
-
-                  // TODO: cSplitPointsWithEndpointsMax might overflow
-                  const size_t cSplitPointsWithEndpointsMax = cCutPointsMax + 2; // include storage for the end points
-                  SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint>(cSplitPointsWithEndpointsMax);
-
-                  if(UNLIKELY(nullptr == aSplitPoints)) {
-                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aSplitPoints");
-
-                     free(aNeighbourJumps);
-
-                     ret = IntEbmType { 1 };
-                     goto exit_with_log;
-                  }
-
-                  RandomStream randomStream;
-                  randomStream.Initialize(k_randomSeed);
-
-                  // do this just once and reuse the random numbers
-                  FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
-
-                  const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
-                  if(UNLIKELY(IsMultiplyError(cSplittingRanges, cBytesCombined))) {
-                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cSplittingRanges, cBytesCombined)");
-
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-
-                     ret = IntEbmType { 1 };
-                     goto exit_with_log;
-                  }
-                  // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
-                  SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(EbmMalloc<void>(cSplittingRanges * cBytesCombined));
-                  if(UNLIKELY(nullptr == apSplittingRange)) {
-                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == apSplittingRange");
-
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-
-                     ret = IntEbmType { 1 };
-                     goto exit_with_log;
-                  }
-                  SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
-
-                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
-                  FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
-
-                  FillSplittingRangeBasics(cSamples, featureValues, avgLength, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
-                  FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
-
-                  const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
-
-                  const size_t cCutsRemaining = cCutPointsMax - cUsedSplits;
-
-                  if(UNLIKELY(StuffSplitsIntoSplittingRanges(
-                     cSplittingRanges,
-                     aSplittingRange,
-                     cSamplesPerBinMin,
-                     cCutsRemaining
-                  ))) {
-                     // we've already written a message in ConstructJumps
-
-                     free(apSplittingRange);
-                     free(aSplitPoints);
-                     free(aNeighbourJumps);
-
-                     ret = IntEbmType { 1 };
-                     goto exit_with_log;
-                  }
-
-                  FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
-                  for(size_t i = 0; i < cSplittingRanges; ++i) {
-                     SplittingRange * const pSplittingRange = &aSplittingRange[i];
-                     size_t cSplits = pSplittingRange->m_cSplitsAssigned;
-                     if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMin)) {
-                        // our first and last SplittingRanges can either have a long range of equal items on their tail ends
-                        // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
-                        // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
-                        // like getting a free cut, so increase the number of splits by one if we don't need one cut at the tail
-                        // side
-
-                        ++cSplits;
-                        if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMax)) {
-                           // if there's just one range and there are no long ranges on either end, then one split will create
-                           // two ranges, so add 1 more.
-
-                           EBM_ASSERT(1 == cSplittingRanges);
-
-                           ++cSplits;
-                        }
-                     }
-                     // we have splits on our ends (or we've accounted for that by adding theoretical splits), so 
-                     // if we had 3 cuts, we'd have 1 cut on each end, and 1 cut in the center, and 2 ranges, so..
-                     EBM_ASSERT(1 <= cSplits);
-                     const size_t cRanges = cSplits - 1;
-                     EBM_ASSERT(0 <= cRanges);
-                     if(PREDICTABLE(2 <= cRanges)) {
-                        // we have splits on our ends, and at least one split in our center, so we have to make decisions
-                        try {
-                           std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
+            }
+            // we have splits on our ends (or we've accounted for that by adding theoretical splits), so 
+            // if we had 3 cuts, we'd have 1 cut on each end, and 1 cut in the center, and 2 ranges, so..
+            EBM_ASSERT(1 <= cSplits);
+            const size_t cRanges = cSplits - 1;
+            EBM_ASSERT(0 <= cRanges);
+            if(PREDICTABLE(size_t { 1 } < cRanges)) {
+               // we have splits on our ends, and at least one split in our center, so we have to make decisions
+               try {
+                  std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
 
 #ifdef NEVER
-                           // TODO : in the future fill this priority queue with the average length within our
-                           //        visibility window AFTER a new split would be added.  We calculate this value per
-                           //        SplitPoint and we do it at the same time we're calculating the split priority, which
-                           //        is good since we'll already have the visibility windows calculated and all that.
-                           //        One wrinkle is that we want to be able to insert a split into a range that no longer
-                           //        has any internal splits.  So for instance if we had a range from 50 to 100 with
-                           //        materialized splits on both 50 and 100, and no allocated splits between them, in
-                           //        the future if splits become plentiful, then we want to create a new split between
-                           //        those materialized splits.  I believe the best way to handle this is to check
-                           //        when materializing a split if both our lower and higher split points are aspirational
-                           //        or materialized.  If they are both materialized, then insert our new materialized
-                           //        split into the open space priority queue AND the split to the left (which represents)
-                           //        the lower range.  Or if that's too complicated then take the maximum min from both
-                           //        our sides and insert ourselves with that.  We can always examine the left and right
-                           //        on extraction to determine which side we should go to.
-                           //        Inisde CalculateRangesMaximizeMin, we might notice that one of our sides doesn't
-                           //        work very well with a certain number of splits.  We should speculatively move
-                           //        one of our splits from that side to a new set of ranges (encoded as SplitPoints)
-                           //        We still do the low/high split number optimization with our left and right windows
-                           //        when planning since it's more efficient, and no changes should leak information
-                           //        outside those windows otherwise it would become an N^2 algorithm.
-                           //        We use our doubly linked list to move non-materialized split points long distances
-                           //        from one part of the splitting range to annother if necessary.
-                           //        We should also use the doubly linked list to delete SplitPoints that we can't use
-                           //        if there is no place to put them
+                  // TODO : in the future fill this priority queue with the average length within our
+                  //        visibility window AFTER a new split would be added.  We calculate this value per
+                  //        SplitPoint and we do it at the same time we're calculating the split priority, which
+                  //        is good since we'll already have the visibility windows calculated and all that.
+                  //        One wrinkle is that we want to be able to insert a split into a range that no longer
+                  //        has any internal splits.  So for instance if we had a range from 50 to 100 with
+                  //        materialized splits on both 50 and 100, and no allocated splits between them, in
+                  //        the future if splits become plentiful, then we want to create a new split between
+                  //        those materialized splits.  I believe the best way to handle this is to check
+                  //        when materializing a split if both our lower and higher split points are aspirational
+                  //        or materialized.  If they are both materialized, then insert our new materialized
+                  //        split into the open space priority queue AND the split to the left (which represents)
+                  //        the lower range.  Or if that's too complicated then take the maximum min from both
+                  //        our sides and insert ourselves with that.  We can always examine the left and right
+                  //        on extraction to determine which side we should go to.
+                  //        Inisde CalculateRangesMaximizeMin, we might notice that one of our sides doesn't
+                  //        work very well with a certain number of splits.  We should speculatively move
+                  //        one of our splits from that side to a new set of ranges (encoded as SplitPoints)
+                  //        We still do the low/high split number optimization with our left and right windows
+                  //        when planning since it's more efficient, and no changes should leak information
+                  //        outside those windows otherwise it would become an N^2 algorithm.
+                  //        We use our doubly linked list to move non-materialized split points long distances
+                  //        from one part of the splitting range to annother if necessary.
+                  //        We should also use the doubly linked list to delete SplitPoints that we can't use
+                  //        if there is no place to put them
 
-                           std::set<SplitPoint *, CompareSplitPoint> fillTheVoids;
+                  std::set<SplitPoint *, CompareSplitPoint> fillTheVoids;
 #endif // NEVER
 
-                           // TODO : don't ignore the return value of TradeSplitSegment
-                           TradeSplitSegment(
-                              &bestSplitPoints,
-                              cSamplesPerBinMin,
-                              pSplittingRange->m_pSplittableValuesFirst - featureValues,
-                              pSplittingRange->m_cSplittableValues,
-                              aNeighbourJumps,
-                              cRanges,
-                              // for efficiency we include space for the end point cuts even if they don't exist
-                              aSplitPoints
-                           );
+                  // TODO : don't ignore the return value of TradeSplitSegment
+                  TradeSplitSegment(
+                     &bestSplitPoints,
+                     cSamplesPerBinMin,
+                     pSplittingRange->m_pSplittableValuesFirst - featureValues,
+                     pSplittingRange->m_cSplittableValues,
+                     aNeighbourJumps,
+                     cRanges,
+                     // for efficiency we include space for the end point cuts even if they don't exist
+                     aSplitPoints
+                  );
 
-                           const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesFirst;
+                  const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesFirst;
 
-                           if(0 != pSplittingRange->m_cUnsplittableLowValues) {
-                              // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                              // otherwise put in the cut
-                              const FloatEbmType * const pCut = pSplittableValuesStart;
-                              EBM_ASSERT(featureValues < pCut);
-                              EBM_ASSERT(pCut < featureValues + countSamples);
-                              const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                              *pCutPointsLowerBoundInclusive = cut;
-                              ++pCutPointsLowerBoundInclusive;
-                           }
-
-                           const SplitPoint * pSplitPoints = aSplitPoints->m_pNext;
-                           while(true) {
-                              const SplitPoint * const pNext = pSplitPoints->m_pNext;
-                              if(UNLIKELY(nullptr == pNext)) {
-                                 break;
-                              }
-
-                              const size_t iVal = pSplitPoints->m_iVal;
-                              if(k_illegalIndex != iVal) {
-                                 const FloatEbmType * const pCut = pSplittableValuesStart + iVal;
-                                 EBM_ASSERT(featureValues < pCut);
-                                 EBM_ASSERT(pCut < featureValues + countSamples);
-                                 const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                                 *pCutPointsLowerBoundInclusive = cut;
-                                 ++pCutPointsLowerBoundInclusive;
-                              }
-
-                              pSplitPoints = pNext;
-                           }
-
-                           if(0 != pSplittingRange->m_cUnsplittableHighValues) {
-                              // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                              // otherwise put in the cut
-                              const FloatEbmType * const pCut =
-                                 pSplittableValuesStart + pSplittingRange->m_cSplittableValues;
-                              EBM_ASSERT(featureValues < pCut);
-                              EBM_ASSERT(pCut < featureValues + countSamples);
-                              const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                              *pCutPointsLowerBoundInclusive = cut;
-                              ++pCutPointsLowerBoundInclusive;
-                           }
-                        } catch(...) {
-                           LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
-                           free(apSplittingRange);
-                           free(aSplitPoints);
-                           free(aNeighbourJumps);
-
-                           ret = IntEbmType { 1 };
-                           goto exit_with_log;
-                        }
-                     } else if(PREDICTABLE(1 == cRanges)) {
-                        // we have splits on both our ends (either explicit or implicit), so
-                        // we don't have to make any hard decisions, but we do have to be careful of the scenarios
-                        // where some of our cuts are implicit
-
-                        if(0 != pSplittingRange->m_cUnsplittableLowValues) {
-                           // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                           // otherwise put in the cut
-                           const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesFirst;
-                           EBM_ASSERT(featureValues < pCut);
-                           EBM_ASSERT(pCut < featureValues + countSamples);
-                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                           *pCutPointsLowerBoundInclusive = cut;
-                           ++pCutPointsLowerBoundInclusive;
-                        }
-                        if(0 != pSplittingRange->m_cUnsplittableHighValues) {
-                           // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                           // otherwise put in the cut
-                           const FloatEbmType * const pCut =
-                              pSplittingRange->m_pSplittableValuesFirst + pSplittingRange->m_cSplittableValues;
-                           EBM_ASSERT(featureValues < pCut);
-                           EBM_ASSERT(pCut < featureValues + countSamples);
-                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                           *pCutPointsLowerBoundInclusive = cut;
-                           ++pCutPointsLowerBoundInclusive;
-                        }
-                     } else {
-                        EBM_ASSERT(0 == cRanges);
-                        // we have only 1 split to place, and no splits on our boundaries, so we need to figure out
-                        // where in our range to place it, taking into consideration that we might have neighbours on our
-                        // sides that could be large
-
-                        // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
-                        // be handled above
-                        EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMax);
-
-                        // if one side or the other was an implicit split, then we have zero splits left after
-                        // the implicit split is accounted for, so do nothing
-                        if(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
-                           // even though we could reduce our squared error length more, it probably makes sense to 
-                           // include a little bit of our available numbers on one long range and the other, so let's put
-                           // the cut in the middle and only make the low/high decision to settle long-ish ranges
-                           // in the center
-
-                           const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesFirst;
-                           const size_t cSplittableItems = pSplittingRange->m_cSplittableValues;
-                           if(0 != cSplittableItems) {
-                              // if m_cSplittableItems then we get bumped into the neighbour jumps object for our
-                              // unsplittable range above, and the next value is way far away from our current splitting
-                              // range
-
-                              pCut += cSplittableItems >> 1;
-
-                              const NeighbourJump * const pNeighbourJump =
-                                 &aNeighbourJumps[pCut - featureValues];
-
-                              const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesFirst - featureValues);
-                              const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesFirst +
-                                 cSplittableItems - featureValues - pNeighbourJump->m_iStartNext;
-
-                              if(cDistanceHigh < cDistanceLow) {
-                                 pCut = featureValues + pNeighbourJump->m_iStartCur;
-                              } else if(cDistanceLow < cDistanceHigh) {
-                                 pCut = featureValues + pNeighbourJump->m_iStartNext;
-                              } else {
-                                 EBM_ASSERT(cDistanceHigh == cDistanceLow);
-                                 // TODO: for now be lazy and just use the low one, but eventually try and get symetry from order
-                                 // inversion we should next try and use the distance to the outer splitting range border
-                                 // then if that's still equal to the full array border, and if that's still equal
-                                 // then pick it randomly
-                                 pCut = featureValues + pNeighbourJump->m_iStartCur;
-                              }
-                           }
-                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                           *pCutPointsLowerBoundInclusive = cut;
-                           ++pCutPointsLowerBoundInclusive;
-                        }
-                     }
+                  if(0 != pSplittingRange->m_cUnsplittableLowValues) {
+                     // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                     // otherwise put in the cut
+                     const FloatEbmType * const pCut = pSplittableValuesStart;
+                     EBM_ASSERT(featureValues < pCut);
+                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                     *pCutPointsLowerBoundInclusive = cut;
+                     ++pCutPointsLowerBoundInclusive;
                   }
 
-                  EBM_ASSERT(nullptr != countCutPointsInOut);
-                  *countCutPointsInOut = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
+                  const SplitPoint * pSplitPoints = aSplitPoints->m_pNext;
+                  while(true) {
+                     const SplitPoint * const pNext = pSplitPoints->m_pNext;
+                     if(UNLIKELY(nullptr == pNext)) {
+                        break;
+                     }
 
-                  free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
+                     const size_t iVal = pSplitPoints->m_iVal;
+                     if(k_illegalIndex != iVal) {
+                        const FloatEbmType * const pCut = pSplittableValuesStart + iVal;
+                        EBM_ASSERT(featureValues < pCut);
+                        EBM_ASSERT(pCut < featureValues + countSamples);
+                        const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                        *pCutPointsLowerBoundInclusive = cut;
+                        ++pCutPointsLowerBoundInclusive;
+                     }
 
-                  // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
-                  // side, but the short range isn't big enough to split.  In otherwords, there are less than cSamplesPerBinMin items
-                  // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
+                     pSplitPoints = pNext;
+                  }
 
+                  if(0 != pSplittingRange->m_cUnsplittableHighValues) {
+                     // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                     // otherwise put in the cut
+                     const FloatEbmType * const pCut =
+                        pSplittableValuesStart + pSplittingRange->m_cSplittableValues;
+                     EBM_ASSERT(featureValues < pCut);
+                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                     *pCutPointsLowerBoundInclusive = cut;
+                     ++pCutPointsLowerBoundInclusive;
+                  }
+               } catch(...) {
+                  LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
+                  free(apSplittingRange);
                   free(aSplitPoints);
                   free(aNeighbourJumps);
+
+                  cCutPointsRet = IntEbmType { 0 };
+                  ret = IntEbmType { 1 };
+                  goto exit_with_log;
+               }
+            } else if(PREDICTABLE(size_t { 1 } == cRanges)) {
+               // we have splits on both our ends (either explicit or implicit), so
+               // we don't have to make any hard decisions, but we do have to be careful of the scenarios
+               // where some of our cuts are implicit
+
+               if(0 != pSplittingRange->m_cUnsplittableLowValues) {
+                  // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                  // otherwise put in the cut
+                  const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesFirst;
+                  EBM_ASSERT(featureValues < pCut);
+                  EBM_ASSERT(pCut < featureValues + countSamples);
+                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                  *pCutPointsLowerBoundInclusive = cut;
+                  ++pCutPointsLowerBoundInclusive;
+               }
+               if(0 != pSplittingRange->m_cUnsplittableHighValues) {
+                  // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                  // otherwise put in the cut
+                  const FloatEbmType * const pCut =
+                     pSplittingRange->m_pSplittableValuesFirst + pSplittingRange->m_cSplittableValues;
+                  EBM_ASSERT(featureValues < pCut);
+                  EBM_ASSERT(pCut < featureValues + countSamples);
+                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                  *pCutPointsLowerBoundInclusive = cut;
+                  ++pCutPointsLowerBoundInclusive;
+               }
+
+               // TODO: can we get here without using our single cut.  if so can we make the if above and "else"
+            } else {
+               EBM_ASSERT(0 == cRanges);
+               // we have only 1 split to place, and no splits on our boundaries, so we need to figure out
+               // where in our range to place it, taking into consideration that we might have neighbours on our
+               // sides that could be large
+
+               // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
+               // be handled above
+               EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMax);
+
+               // if one side or the other was an implicit split, then we have zero splits left after
+               // the implicit split is accounted for, so do nothing
+               if(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
+                  // even though we could reduce our squared error length more, it probably makes sense to 
+                  // include a little bit of our available numbers on one long range and the other, so let's put
+                  // the cut in the middle and only make the low/high decision to settle long-ish ranges
+                  // in the center
+
+                  const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesFirst;
+                  const size_t cSplittableItems = pSplittingRange->m_cSplittableValues;
+                  if(0 != cSplittableItems) {
+                     // if m_cSplittableItems then we get bumped into the neighbour jumps object for our
+                     // unsplittable range above, and the next value is way far away from our current splitting
+                     // range
+
+                     pCut += cSplittableItems >> 1;
+
+                     const NeighbourJump * const pNeighbourJump =
+                        &aNeighbourJumps[pCut - featureValues];
+
+                     const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesFirst - featureValues);
+                     const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesFirst +
+                        cSplittableItems - featureValues - pNeighbourJump->m_iStartNext;
+
+                     if(cDistanceHigh < cDistanceLow) {
+                        pCut = featureValues + pNeighbourJump->m_iStartCur;
+                     } else if(cDistanceLow < cDistanceHigh) {
+                        pCut = featureValues + pNeighbourJump->m_iStartNext;
+                     } else {
+                        EBM_ASSERT(cDistanceHigh == cDistanceLow);
+                        // TODO: for now be lazy and just use the low one, but eventually try and get symetry from order
+                        // inversion we should next try and use the distance to the outer splitting range border
+                        // then if that's still equal to the full array border, and if that's still equal
+                        // then pick it randomly
+                        pCut = featureValues + pNeighbourJump->m_iStartCur;
+                     }
+                  }
+                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                  *pCutPointsLowerBoundInclusive = cut;
+                  ++pCutPointsLowerBoundInclusive;
                }
             }
          }
-      }
-   }
-   ret = IntEbmType { 0 };
 
-exit_with_log:;
+         cCutPointsRet = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
+
+         free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
+         free(aSplitPoints);
+         free(aNeighbourJumps);
+
+         ret = IntEbmType { 0 };
+      }
+
+   exit_with_log:;
+
+      EBM_ASSERT(nullptr != countCutPointsInOut);
+      *countCutPointsInOut = cCutPointsRet;
+   }
+
+   if(LIKELY(nullptr != isMissingPresentReturn)) {
+      *isMissingPresentReturn = isMissingPresentRet;
+   }
+   if(LIKELY(nullptr != minValueReturn)) {
+      *minValueReturn = minValueRet;
+   }
+   if(LIKELY(nullptr != maxValueReturn)) {
+      *maxValueReturn = maxValueRet;
+   }
 
    LOG_COUNTED_N(
       &g_cLogExitGenerateQuantileCutPointsParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "Exited GenerateQuantileCutPoints: "
-      "*countCutPointsInOut=%" IntEbmTypePrintf ", "
-      "*isMissingPresentReturn=%s, "
-      "*minValueReturn=%" FloatEbmTypePrintf ", "
-      "*maxValueReturn=%" FloatEbmTypePrintf ", "
+      "cCutPointsRet=%" IntEbmTypePrintf ", "
+      "isMissingPresentRet=%s, "
+      "minValueRet=%" FloatEbmTypePrintf ", "
+      "maxValueRet=%" FloatEbmTypePrintf ", "
       "return=%" IntEbmTypePrintf
       ,
-      nullptr == countCutPointsInOut ? IntEbmType { 0 } : *countCutPointsInOut,
-      nullptr == isMissingPresentReturn || EBM_FALSE == *isMissingPresentReturn ? g_falseString : g_trueString,
-      nullptr == minValueReturn ? FloatEbmType { 0 } : *minValueReturn,
-      nullptr == maxValueReturn ? FloatEbmType { 0 } : *maxValueReturn,
+      cCutPointsRet,
+      EBM_FALSE == isMissingPresentRet ? g_falseString : g_trueString,
+      minValueRet,
+      maxValueRet,
       ret
    );
 
