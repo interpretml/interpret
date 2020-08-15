@@ -12,6 +12,9 @@
 #include "EbmInternal.h" // FeatureType
 #include "Logging.h"
 
+const char g_trueString[] = "true";
+const char g_falseString[] = "false";
+
 constexpr static char g_assertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
 constexpr static char g_pLoggingParameterError[] = "Error in vsnprintf parameters for logging.";
 

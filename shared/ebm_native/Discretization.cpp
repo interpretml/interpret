@@ -2329,12 +2329,10 @@ INLINE_RELEASE static size_t GetAvgLength(
    return avgLength;
 }
 
-INLINE_RELEASE static size_t PossiblyRemoveBinForMissing(
+INLINE_RELEASE static size_t PossiblyRemoveCutForMissing(
    const bool bMissing, 
-   const IntEbmType countBinsMax
+   size_t cCutPointsMax
 ) noexcept {
-   EBM_ASSERT(IntEbmType { 2 } <= countBinsMax);
-   size_t cBinsMax = static_cast<size_t>(countBinsMax);
    if(PREDICTABLE(bMissing)) {
       // if there is a missing value, then we use 0 for the missing value bin, and bump up all other values by 1.  This creates a semi-problem
       // if the number of bins was specified as a power of two like 256, because we now have 257 possible values, and instead of consuming 8
@@ -2342,23 +2340,23 @@ INLINE_RELEASE static size_t PossiblyRemoveBinForMissing(
       // have one less bin so that we consume less data.  Our countBinsMax is just a maximum afterall, so we can choose to have less bins.
       // BUT, if the user requests 8 bins or less, then don't reduce the number of bins since then we'll be changing the bin size significantly
 
-      size_t cBits = (~size_t { 0 }) ^ ((~size_t { 0 }) >> 1);
+      size_t cCuts = ~size_t { 0 };
       do {
          // if cBinsMax is a power of two equal to or greater than 16, then reduce the number of bins (it's a maximum after all) to one less so that
          // it's more compressible.  If we have 256 bins, we really want 255 bins and 0 to be the missing value, using 256 values and 1 byte of storage
          // some powers of two aren't compressible, like 2^34, which needs to fit into a 64 bit storage, but we don't want to take a dependency
          // on the size of the storage system, which is system dependent, so we just exclude all powers of two
-         if(UNLIKELY(cBits == cBinsMax)) {
-            --cBinsMax;
+         if(UNLIKELY(cCuts == cCutPointsMax)) {
+            --cCutPointsMax;
             break;
          }
-         cBits >>= 1;
-         // don't allow shrinkage below 16 bins (8 is the first power of two below 16).  By the time we reach 8 bins, we don't want to reduce this
+         cCuts >>= 1;
+         // don't allow shrinkage below 16 bins (8 is the first power of two below 16, which is 7 cuts).  By the time we reach 8 bins, we don't want to reduce this
          // by a complete bin.  We can just use an extra bit for the missing bin
          // if we had shrunk down to 7 bits for non-missing, we would have been able to fit in 21 items per data item instead of 16 for 64 bit systems
-      } while(UNLIKELY(0x8 != cBits));
+      } while(UNLIKELY(0x7 != cCuts));
    }
-   return cBinsMax;
+   return cCutPointsMax;
 }
 
 INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_t cSamples, FloatEbmType * const aValues) noexcept {
@@ -2410,28 +2408,20 @@ INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(const size_
    return cSamples;
 }
 
+// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
+static unsigned int g_cLogEnterGenerateQuantileCutPointsParametersMessages = 25;
+static unsigned int g_cLogExitGenerateQuantileCutPointsParametersMessages = 25;
+
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
    FloatEbmType * maxValueReturn
 ) {
-   EBM_ASSERT(0 <= countSamples);
-   EBM_ASSERT(0 == countSamples || nullptr != featureValues);
-   EBM_ASSERT(0 <= countBinsMax);
-   EBM_ASSERT(0 == countSamples || 0 < countBinsMax); // countBinsMax can only be zero if there are no samples, because otherwise you need a bin
-   EBM_ASSERT(0 <= countSamplesPerBinMin);
-   EBM_ASSERT(nullptr != countCutPointsReturn);
-   EBM_ASSERT(0 == countSamples || countBinsMax <= 1 || nullptr != cutPointsLowerBoundInclusiveReturn);
-   EBM_ASSERT(nullptr != isMissingPresentReturn);
-   EBM_ASSERT(nullptr != minValueReturn);
-   EBM_ASSERT(nullptr != maxValueReturn);
-
    // TODO: 
    //   - we shouldn't use randomness unless impossible to do otherwise.  choosing the split points isn't that critical to have
    //       variability for.  We can do things like hashing the data, etc to choose random values, and we should REALLY
@@ -2446,238 +2436,368 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    //       4) if all the splits are the same from the center, we can use the values given to us to choose a direction
    //       5) if all of these things fail, we can use a random number
 
-   LOG_N(TraceLevelInfo, "Entered GenerateQuantileCutPoints: countSamples=%" IntEbmTypePrintf 
-      ", featureValues=%p, countBinsMax=%" IntEbmTypePrintf ", countSamplesPerBinMin=%" IntEbmTypePrintf 
-      ", countCutPointsReturn=%p, cutPointsLowerBoundInclusiveReturn=%p, isMissingPresentReturn=%p, minValueReturn=%p, maxValueReturn=%p", 
-      countSamples, 
-      static_cast<void *>(featureValues), 
-      countBinsMax, 
-      countSamplesPerBinMin, 
-      static_cast<void *>(countCutPointsReturn),
+   LOG_COUNTED_N(
+      &g_cLogEnterGenerateQuantileCutPointsParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
+      "Entered GenerateQuantileCutPoints: "
+      "countSamples=%" IntEbmTypePrintf ", "
+      "featureValues=%p, "
+      "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
+      "countCutPointsInOut=%p, "
+      "cutPointsLowerBoundInclusiveReturn=%p, "
+      "isMissingPresentReturn=%p, "
+      "minValueReturn=%p, "
+      "maxValueReturn=%p"
+      ,
+      countSamples,
+      static_cast<void *>(featureValues),
+      countSamplesPerBinMin,
+      static_cast<void *>(countCutPointsInOut),
       static_cast<void *>(cutPointsLowerBoundInclusiveReturn),
       static_cast<void *>(isMissingPresentReturn),
       static_cast<void *>(minValueReturn),
       static_cast<void *>(maxValueReturn)
    );
 
-   if(!IsNumberConvertable<size_t>(countSamples)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamples)");
-      return 1;
+   IntEbmType ret;
+
+   // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
+   if(UNLIKELY(nullptr == countCutPointsInOut)) {
+      LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == countCutPointsInOut");
+      if(LIKELY(nullptr != isMissingPresentReturn)) {
+         *isMissingPresentReturn = EBM_FALSE;
+      }
+      if(LIKELY(nullptr != minValueReturn)) {
+         *minValueReturn = FloatEbmType { 0 };
+      }
+      if(LIKELY(nullptr != maxValueReturn)) {
+         *maxValueReturn = FloatEbmType { 0 };
+      }
+      ret = IntEbmType { 1 };
+      goto exit_with_log;
    }
 
-   if(!IsNumberConvertable<size_t>(countBinsMax)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countBinsMax)");
-      return 1;
-   }
+   if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
+      EBM_ASSERT(nullptr != countCutPointsInOut);
+      *countCutPointsInOut = IntEbmType { 0 };
+      if(LIKELY(nullptr != isMissingPresentReturn)) {
+         *isMissingPresentReturn = EBM_FALSE;
+      }
+      if(LIKELY(nullptr != minValueReturn)) {
+         *minValueReturn = FloatEbmType { 0 };
+      }
+      if(LIKELY(nullptr != maxValueReturn)) {
+         *maxValueReturn = FloatEbmType { 0 };
+      }
 
-   if(!IsNumberConvertable<size_t>(countSamplesPerBinMin)) {
-      LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamplesPerBinMin)");
-      return 1;
-   }
+      ret = IntEbmType { 0 };
+      if(UNLIKELY(countSamples < IntEbmType { 0 })) {
+         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples < IntEbmType { 0 }");
+         ret = IntEbmType { 1 };
+      }
 
-   const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
-
-   if(0 == cSamplesIncludingMissingValues) {
-      *countCutPointsReturn = 0;
-      *isMissingPresentReturn = EBM_FALSE;
-      *minValueReturn = 0;
-      *maxValueReturn = 0;
+      goto exit_with_log;
    } else {
-      const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(
-         cSamplesIncludingMissingValues, 
-         featureValues
-      );
+      if(UNLIKELY(nullptr == featureValues)) {
+         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == featureValues");
+
+         EBM_ASSERT(nullptr != countCutPointsInOut);
+         *countCutPointsInOut = IntEbmType { 0 };
+         if(LIKELY(nullptr != isMissingPresentReturn)) {
+            *isMissingPresentReturn = EBM_FALSE;
+         }
+         if(LIKELY(nullptr != minValueReturn)) {
+            *minValueReturn = FloatEbmType { 0 };
+         }
+         if(LIKELY(nullptr != maxValueReturn)) {
+            *maxValueReturn = FloatEbmType { 0 };
+         }
+
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
+         LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints !IsNumberConvertable<size_t>(countSamples)");
+
+         EBM_ASSERT(nullptr != countCutPointsInOut);
+         *countCutPointsInOut = IntEbmType { 0 };
+         if(LIKELY(nullptr != isMissingPresentReturn)) {
+            *isMissingPresentReturn = EBM_FALSE;
+         }
+         if(LIKELY(nullptr != minValueReturn)) {
+            *minValueReturn = FloatEbmType { 0 };
+         }
+         if(LIKELY(nullptr != maxValueReturn)) {
+            *maxValueReturn = FloatEbmType { 0 };
+         }
+
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      const size_t cSamplesIncludingMissingValues = static_cast<size_t>(countSamples);
+
+      if(UNLIKELY(IsMultiplyError(sizeof(*featureValues), cSamplesIncludingMissingValues))) {
+         LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countSamples was too large to fit into featureValues");
+
+         EBM_ASSERT(nullptr != countCutPointsInOut);
+         *countCutPointsInOut = IntEbmType { 0 };
+         if(LIKELY(nullptr != isMissingPresentReturn)) {
+            *isMissingPresentReturn = EBM_FALSE;
+         }
+         if(LIKELY(nullptr != minValueReturn)) {
+            *minValueReturn = FloatEbmType { 0 };
+         }
+         if(LIKELY(nullptr != maxValueReturn)) {
+            *maxValueReturn = FloatEbmType { 0 };
+         }
+
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      const size_t cSamples = RemoveMissingValuesAndReplaceInfinities(cSamplesIncludingMissingValues, featureValues);
 
       const bool bMissing = cSamplesIncludingMissingValues != cSamples;
-      *isMissingPresentReturn = bMissing ? EBM_TRUE : EBM_FALSE;
+      if(LIKELY(nullptr != isMissingPresentReturn)) {
+         *isMissingPresentReturn = bMissing ? EBM_TRUE : EBM_FALSE;
+      }
 
-      if(0 == cSamples) {
-         *countCutPointsReturn = 0;
-         *minValueReturn = 0;
-         *maxValueReturn = 0;
+      if(UNLIKELY(size_t { 0 } == cSamples)) {
+         EBM_ASSERT(nullptr != countCutPointsInOut);
+         *countCutPointsInOut = IntEbmType { 0 };
+
+         if(LIKELY(nullptr != minValueReturn)) {
+            *minValueReturn = FloatEbmType { 0 };
+         }
+         if(LIKELY(nullptr != maxValueReturn)) {
+            *maxValueReturn = FloatEbmType { 0 };
+         }
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       } else {
          FloatEbmType * const pValuesEnd = featureValues + cSamples;
          std::sort(featureValues, pValuesEnd);
-         *minValueReturn = featureValues[0];
-         *maxValueReturn = pValuesEnd[-1];
-         if(countBinsMax <= 1) {
-            // if there is only 1 bin, then there can be no cut points, and no point doing any more work here
-            *countCutPointsReturn = 0;
+         if(LIKELY(nullptr != minValueReturn)) {
+            *minValueReturn = featureValues[0];
+         }
+         if(LIKELY(nullptr != maxValueReturn)) {
+            *maxValueReturn = pValuesEnd[-1];
+         }
+         EBM_ASSERT(nullptr != countCutPointsInOut);
+         IntEbmType countCutPoints = *countCutPointsInOut;
+
+         if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
+            ret = IntEbmType { 0 };
+            if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {
+               LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints countCutPoints can't be negative.");
+               ret = IntEbmType { 1 };
+            }
+            goto exit_with_log;
          } else {
-            const size_t cSamplesPerBinMin =
-               countSamplesPerBinMin <= IntEbmType { 0 } ? size_t { 1 } : static_cast<size_t>(countSamplesPerBinMin);
-            const size_t cBinsMax = PossiblyRemoveBinForMissing(bMissing, countBinsMax);
-            EBM_ASSERT(2 <= cBinsMax); // if we had just one bin then there would be no cuts and we should have exited above
-            const size_t avgLength = GetAvgLength(cSamples, cBinsMax, cSamplesPerBinMin);
-            EBM_ASSERT(1 <= avgLength);
-            const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cSamplesPerBinMin);
-            // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
-            EBM_ASSERT(cSplittingRanges < cBinsMax);
-            if(0 == cSplittingRanges) {
-               *countCutPointsReturn = 0;
+            if(UNLIKELY(nullptr == cutPointsLowerBoundInclusiveReturn)) {
+               // 1 bin doesn't need any cut points, but 2 bins does
+               LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == cutPointsLowerBoundInclusiveReturn");
+               ret = IntEbmType { 1 };
+               goto exit_with_log;
+            }
+
+            if(UNLIKELY(countSamples <= countSamplesPerBinMin)) {
+               // if the min number of samples per bin is equal to the number of samples, 
+               // then they all end up in one bin
+
+               EBM_ASSERT(nullptr != countCutPointsInOut);
+               *countCutPointsInOut = IntEbmType { 0 };
+               ret = IntEbmType { 0 };
+               goto exit_with_log;
             } else {
-               NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
-               if(nullptr == aNeighbourJumps) {
-                  goto exit_error;
+               if(UNLIKELY(countSamplesPerBinMin <= IntEbmType { 0 })) {
+                  // we set this to 1 below
+                  LOG_0(TraceLevelWarning,
+                     "WARNING GenerateQuantileCutPoints countSamplesPerBinMin shouldn't be zero or negative.  Adjusting to 1");
+
+                  countSamplesPerBinMin = IntEbmType { 1 };
                }
+               const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
 
-               // TODO: limit cBinsMax to a reasonable number based on the number of samples.
-               //       if the user passes us the maximum size_t number, we shouldn't try and allocate
-               //       that much memory
+               // since cSamples is a size_t, and since we check to see if countBinsMax is larger than countSamples
+               // we know that countBinsMax can be converted to a size_t if it's being used instead of cSamples
+               EBM_ASSERT(size_t { 1 } < cSamples);
+               const size_t cCutPointsMaxInitial = countSamples <= countCutPoints ?
+                  cSamples - size_t { 1 } : static_cast<size_t>(countCutPoints);
 
-               // sometimes cut points will move between SplittingRanges, so we won't know an accurate
-               // number of cut points, but we can be sure that we won't exceed the total number of cut points
-               // so allocate the same number each time.  Hopefully we'll get back the same memory range each time
-               // to avoid memory fragmentation.
-               const size_t cSplitPointsMax = cBinsMax - 1;
+               const size_t cCutPointsMax = PossiblyRemoveCutForMissing(bMissing, cCutPointsMaxInitial);
+               EBM_ASSERT(1 <= cCutPointsMax); // if we had just one bin then there would be no cuts and we should have exited above
+               EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
+               const size_t avgLength = GetAvgLength(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
+               EBM_ASSERT(1 <= avgLength);
+               const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cSamplesPerBinMin);
+               // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
+               EBM_ASSERT(cSplittingRanges <= cCutPointsMax);
+               if(UNLIKELY(0 == cSplittingRanges)) {
+                  *countCutPointsInOut = IntEbmType { 0 };
+               } else {
+                  NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
+                  if(UNLIKELY(nullptr == aNeighbourJumps)) {
+                     // we've already written a message in ConstructJumps
+                     ret = IntEbmType { 1 };
+                     goto exit_with_log;
+                  }
 
-               const size_t cSplitPointsWithEndpointsMax = cSplitPointsMax + 2; // include storage for the end points
-               SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint>(cSplitPointsWithEndpointsMax);
+                  // sometimes cut points will move between SplittingRanges, so we won't know an accurate
+                  // number of cut points, but we can be sure that we won't exceed the total number of cut points
+                  // so allocate the same number each time.  Hopefully we'll get back the same memory range each time
+                  // to avoid memory fragmentation.
 
-               if(nullptr == aSplitPoints) {
-                  free(aNeighbourJumps);
-                  goto exit_error;
-               }
+                  // TODO: cSplitPointsWithEndpointsMax might overflow
+                  const size_t cSplitPointsWithEndpointsMax = cCutPointsMax + 2; // include storage for the end points
+                  SplitPoint * const aSplitPoints = EbmMalloc<SplitPoint>(cSplitPointsWithEndpointsMax);
 
-               RandomStream randomStream;
-               randomStream.Initialize(k_randomSeed);
+                  if(UNLIKELY(nullptr == aSplitPoints)) {
+                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aSplitPoints");
 
-               // do this just once and reuse the random numbers
-               FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
+                     free(aNeighbourJumps);
 
-               const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
-               if(IsMultiplyError(cSplittingRanges, cBytesCombined)) {
-                  free(aSplitPoints);
-                  free(aNeighbourJumps);
-                  goto exit_error;
-               }
-               // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
-               SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(EbmMalloc<void>(cSplittingRanges * cBytesCombined));
-               if(nullptr == apSplittingRange) {
-                  free(aSplitPoints);
-                  free(aNeighbourJumps);
-                  goto exit_error;
-               }
-               SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
+                     ret = IntEbmType { 1 };
+                     goto exit_with_log;
+                  }
 
-               FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
-               FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
+                  RandomStream randomStream;
+                  randomStream.Initialize(k_randomSeed);
 
-               FillSplittingRangeBasics(cSamples, featureValues, avgLength, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
-               FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
+                  // do this just once and reuse the random numbers
+                  FillSplitPointRandom(&randomStream, cSplitPointsWithEndpointsMax, aSplitPoints);
 
-               const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+                  const size_t cBytesCombined = sizeof(SplittingRange) + sizeof(SplittingRange *);
+                  if(UNLIKELY(IsMultiplyError(cSplittingRanges, cBytesCombined))) {
+                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cSplittingRanges, cBytesCombined)");
 
-               const size_t cCutsRemaining = cBinsMax - 1 - cUsedSplits;
+                     free(aSplitPoints);
+                     free(aNeighbourJumps);
 
-               if(StuffSplitsIntoSplittingRanges(
-                  cSplittingRanges,
-                  aSplittingRange,
-                  cSamplesPerBinMin,
-                  cCutsRemaining
-               )) {
-                  free(apSplittingRange);
-                  free(aSplitPoints);
-                  free(aNeighbourJumps);
-                  goto exit_error;
-               }
+                     ret = IntEbmType { 1 };
+                     goto exit_with_log;
+                  }
+                  // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
+                  SplittingRange ** const apSplittingRange = static_cast<SplittingRange **>(EbmMalloc<void>(cSplittingRanges * cBytesCombined));
+                  if(UNLIKELY(nullptr == apSplittingRange)) {
+                     LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == apSplittingRange");
 
-               FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
-               for(size_t i = 0; i < cSplittingRanges; ++i) {
-                  SplittingRange * const pSplittingRange = &aSplittingRange[i];
-                  size_t cSplits = pSplittingRange->m_cSplitsAssigned;
-                  if(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
-                     // our first and last SplittingRanges can either have a long range of equal items on their tail ends
-                     // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
-                     // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
-                     // like getting a free cut, so increase the number of splits by one if we don't need one cut at the tail
-                     // side
+                     free(aSplitPoints);
+                     free(aNeighbourJumps);
 
-                     ++cSplits;
-                     if(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMax) {
-                        // if there's just one range and there are no long ranges on either end, then one split will create
-                        // two ranges, so add 1 more.
+                     ret = IntEbmType { 1 };
+                     goto exit_with_log;
+                  }
+                  SplittingRange * const aSplittingRange = reinterpret_cast<SplittingRange *>(apSplittingRange + cSplittingRanges);
 
-                        EBM_ASSERT(1 == cSplittingRanges);
+                  FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
+                  FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
+
+                  FillSplittingRangeBasics(cSamples, featureValues, avgLength, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
+                  FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
+
+                  const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+
+                  const size_t cCutsRemaining = cCutPointsMax - cUsedSplits;
+
+                  if(UNLIKELY(StuffSplitsIntoSplittingRanges(
+                     cSplittingRanges,
+                     aSplittingRange,
+                     cSamplesPerBinMin,
+                     cCutsRemaining
+                  ))) {
+                     // we've already written a message in ConstructJumps
+
+                     free(apSplittingRange);
+                     free(aSplitPoints);
+                     free(aNeighbourJumps);
+
+                     ret = IntEbmType { 1 };
+                     goto exit_with_log;
+                  }
+
+                  FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
+                  for(size_t i = 0; i < cSplittingRanges; ++i) {
+                     SplittingRange * const pSplittingRange = &aSplittingRange[i];
+                     size_t cSplits = pSplittingRange->m_cSplitsAssigned;
+                     if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMin)) {
+                        // our first and last SplittingRanges can either have a long range of equal items on their tail ends
+                        // or nothing.  If there is a long range of equal items, then we'll be placing one cut at the tail
+                        // end, otherwise we have an implicit cut there and we don't need to use one of our cuts.  It's
+                        // like getting a free cut, so increase the number of splits by one if we don't need one cut at the tail
+                        // side
 
                         ++cSplits;
+                        if(UNLIKELY(0 == pSplittingRange->m_cUnsplittableEitherSideValuesMax)) {
+                           // if there's just one range and there are no long ranges on either end, then one split will create
+                           // two ranges, so add 1 more.
+
+                           EBM_ASSERT(1 == cSplittingRanges);
+
+                           ++cSplits;
+                        }
                      }
-                  }
-                  // we have splits on our ends (or we've accounted for that by adding theoretical splits), so 
-                  // if we had 3 cuts, we'd have 1 cut on each end, and 1 cut in the center, and 2 ranges, so..
-                  EBM_ASSERT(1 <= cSplits);
-                  const size_t cRanges = cSplits - 1;
-                  EBM_ASSERT(0 <= cRanges);
-                  if(2 <= cRanges) {
-                     // we have splits on our ends, and at least one split in our center, so we have to make decisions
-                     try {
-                        std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
+                     // we have splits on our ends (or we've accounted for that by adding theoretical splits), so 
+                     // if we had 3 cuts, we'd have 1 cut on each end, and 1 cut in the center, and 2 ranges, so..
+                     EBM_ASSERT(1 <= cSplits);
+                     const size_t cRanges = cSplits - 1;
+                     EBM_ASSERT(0 <= cRanges);
+                     if(PREDICTABLE(2 <= cRanges)) {
+                        // we have splits on our ends, and at least one split in our center, so we have to make decisions
+                        try {
+                           std::set<SplitPoint *, CompareSplitPoint> bestSplitPoints;
 
 #ifdef NEVER
-                        // TODO : in the future fill this priority queue with the average length within our
-                        //        visibility window AFTER a new split would be added.  We calculate this value per
-                        //        SplitPoint and we do it at the same time we're calculating the split priority, which
-                        //        is good since we'll already have the visibility windows calculated and all that.
-                        //        One wrinkle is that we want to be able to insert a split into a range that no longer
-                        //        has any internal splits.  So for instance if we had a range from 50 to 100 with
-                        //        materialized splits on both 50 and 100, and no allocated splits between them, in
-                        //        the future if splits become plentiful, then we want to create a new split between
-                        //        those materialized splits.  I believe the best way to handle this is to check
-                        //        when materializing a split if both our lower and higher split points are aspirational
-                        //        or materialized.  If they are both materialized, then insert our new materialized
-                        //        split into the open space priority queue AND the split to the left (which represents)
-                        //        the lower range.  Or if that's too complicated then take the maximum min from both
-                        //        our sides and insert ourselves with that.  We can always examine the left and right
-                        //        on extraction to determine which side we should go to.
-                        //        Inisde CalculateRangesMaximizeMin, we might notice that one of our sides doesn't
-                        //        work very well with a certain number of splits.  We should speculatively move
-                        //        one of our splits from that side to a new set of ranges (encoded as SplitPoints)
-                        //        We still do the low/high split number optimization with our left and right windows
-                        //        when planning since it's more efficient, and no changes should leak information
-                        //        outside those windows otherwise it would become an N^2 algorithm.
-                        //        We use our doubly linked list to move non-materialized split points long distances
-                        //        from one part of the splitting range to annother if necessary.
-                        //        We should also use the doubly linked list to delete SplitPoints that we can't use
-                        //        if there is no place to put them
+                           // TODO : in the future fill this priority queue with the average length within our
+                           //        visibility window AFTER a new split would be added.  We calculate this value per
+                           //        SplitPoint and we do it at the same time we're calculating the split priority, which
+                           //        is good since we'll already have the visibility windows calculated and all that.
+                           //        One wrinkle is that we want to be able to insert a split into a range that no longer
+                           //        has any internal splits.  So for instance if we had a range from 50 to 100 with
+                           //        materialized splits on both 50 and 100, and no allocated splits between them, in
+                           //        the future if splits become plentiful, then we want to create a new split between
+                           //        those materialized splits.  I believe the best way to handle this is to check
+                           //        when materializing a split if both our lower and higher split points are aspirational
+                           //        or materialized.  If they are both materialized, then insert our new materialized
+                           //        split into the open space priority queue AND the split to the left (which represents)
+                           //        the lower range.  Or if that's too complicated then take the maximum min from both
+                           //        our sides and insert ourselves with that.  We can always examine the left and right
+                           //        on extraction to determine which side we should go to.
+                           //        Inisde CalculateRangesMaximizeMin, we might notice that one of our sides doesn't
+                           //        work very well with a certain number of splits.  We should speculatively move
+                           //        one of our splits from that side to a new set of ranges (encoded as SplitPoints)
+                           //        We still do the low/high split number optimization with our left and right windows
+                           //        when planning since it's more efficient, and no changes should leak information
+                           //        outside those windows otherwise it would become an N^2 algorithm.
+                           //        We use our doubly linked list to move non-materialized split points long distances
+                           //        from one part of the splitting range to annother if necessary.
+                           //        We should also use the doubly linked list to delete SplitPoints that we can't use
+                           //        if there is no place to put them
 
-                        std::set<SplitPoint *, CompareSplitPoint> fillTheVoids;
+                           std::set<SplitPoint *, CompareSplitPoint> fillTheVoids;
 #endif // NEVER
 
-                        // TODO : don't ignore the return value of TradeSplitSegment
-                        TradeSplitSegment(
-                           &bestSplitPoints,
-                           cSamplesPerBinMin,
-                           pSplittingRange->m_pSplittableValuesFirst - featureValues,
-                           pSplittingRange->m_cSplittableValues,
-                           aNeighbourJumps,
-                           cRanges,
-                           // for efficiency we include space for the end point cuts even if they don't exist
-                           aSplitPoints
-                        );
+                           // TODO : don't ignore the return value of TradeSplitSegment
+                           TradeSplitSegment(
+                              &bestSplitPoints,
+                              cSamplesPerBinMin,
+                              pSplittingRange->m_pSplittableValuesFirst - featureValues,
+                              pSplittingRange->m_cSplittableValues,
+                              aNeighbourJumps,
+                              cRanges,
+                              // for efficiency we include space for the end point cuts even if they don't exist
+                              aSplitPoints
+                           );
 
-                        const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesFirst;
+                           const FloatEbmType * const pSplittableValuesStart = pSplittingRange->m_pSplittableValuesFirst;
 
-                        if(0 != pSplittingRange->m_cUnsplittableLowValues) {
-                           // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                           // otherwise put in the cut
-                           const FloatEbmType * const pCut = pSplittableValuesStart;
-                           EBM_ASSERT(featureValues < pCut);
-                           EBM_ASSERT(pCut < featureValues + countSamples);
-                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                           *pCutPointsLowerBoundInclusive = cut;
-                           ++pCutPointsLowerBoundInclusive;
-                        }
-
-                        const SplitPoint * pSplitPoints = aSplitPoints->m_pNext;
-                        while(true) {
-                           const SplitPoint * const pNext = pSplitPoints->m_pNext;
-                           if(nullptr == pNext) {
-                              break;
-                           }
-
-                           const size_t iVal = pSplitPoints->m_iVal;
-                           if(k_illegalIndex != iVal) {
-                              const FloatEbmType * const pCut = pSplittableValuesStart + iVal;
+                           if(0 != pSplittingRange->m_cUnsplittableLowValues) {
+                              // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                              // otherwise put in the cut
+                              const FloatEbmType * const pCut = pSplittableValuesStart;
                               EBM_ASSERT(featureValues < pCut);
                               EBM_ASSERT(pCut < featureValues + countSamples);
                               const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
@@ -2685,138 +2805,171 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                               ++pCutPointsLowerBoundInclusive;
                            }
 
-                           pSplitPoints = pNext;
-                        }
+                           const SplitPoint * pSplitPoints = aSplitPoints->m_pNext;
+                           while(true) {
+                              const SplitPoint * const pNext = pSplitPoints->m_pNext;
+                              if(UNLIKELY(nullptr == pNext)) {
+                                 break;
+                              }
 
-                        if(0 != pSplittingRange->m_cUnsplittableHighValues) {
+                              const size_t iVal = pSplitPoints->m_iVal;
+                              if(k_illegalIndex != iVal) {
+                                 const FloatEbmType * const pCut = pSplittableValuesStart + iVal;
+                                 EBM_ASSERT(featureValues < pCut);
+                                 EBM_ASSERT(pCut < featureValues + countSamples);
+                                 const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                                 *pCutPointsLowerBoundInclusive = cut;
+                                 ++pCutPointsLowerBoundInclusive;
+                              }
+
+                              pSplitPoints = pNext;
+                           }
+
+                           if(0 != pSplittingRange->m_cUnsplittableHighValues) {
+                              // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                              // otherwise put in the cut
+                              const FloatEbmType * const pCut =
+                                 pSplittableValuesStart + pSplittingRange->m_cSplittableValues;
+                              EBM_ASSERT(featureValues < pCut);
+                              EBM_ASSERT(pCut < featureValues + countSamples);
+                              const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                              *pCutPointsLowerBoundInclusive = cut;
+                              ++pCutPointsLowerBoundInclusive;
+                           }
+                        } catch(...) {
+                           LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
+                           free(apSplittingRange);
+                           free(aSplitPoints);
+                           free(aNeighbourJumps);
+
+                           ret = IntEbmType { 1 };
+                           goto exit_with_log;
+                        }
+                     } else if(PREDICTABLE(1 == cRanges)) {
+                        // we have splits on both our ends (either explicit or implicit), so
+                        // we don't have to make any hard decisions, but we do have to be careful of the scenarios
+                        // where some of our cuts are implicit
+
+                        if(0 != pSplittingRange->m_cUnsplittableLowValues) {
                            // if it's zero then it's an implicit cut and we shouldn't put one there, 
                            // otherwise put in the cut
-                           const FloatEbmType * const pCut = 
-                              pSplittableValuesStart + pSplittingRange->m_cSplittableValues;
+                           const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesFirst;
                            EBM_ASSERT(featureValues < pCut);
                            EBM_ASSERT(pCut < featureValues + countSamples);
                            const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
                            *pCutPointsLowerBoundInclusive = cut;
                            ++pCutPointsLowerBoundInclusive;
                         }
-
-                     } catch(...) {
-                        LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
-                        free(apSplittingRange);
-                        free(aSplitPoints);
-                        free(aNeighbourJumps);
-                        goto exit_error;
-                     }
-                  } else if(1 == cRanges) {
-                     // we have splits on both our ends (either explicit or implicit), so
-                     // we don't have to make any hard decisions, but we do have to be careful of the scenarios
-                     // where some of our cuts are implicit
-
-                     if(0 != pSplittingRange->m_cUnsplittableLowValues) {
-                        // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                        // otherwise put in the cut
-                        const FloatEbmType * const pCut = pSplittingRange->m_pSplittableValuesFirst;
-                        EBM_ASSERT(featureValues < pCut);
-                        EBM_ASSERT(pCut < featureValues + countSamples);
-                        const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                        *pCutPointsLowerBoundInclusive = cut;
-                        ++pCutPointsLowerBoundInclusive;
-                     }
-                     if(0 != pSplittingRange->m_cUnsplittableHighValues) {
-                        // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                        // otherwise put in the cut
-                        const FloatEbmType * const pCut = 
-                           pSplittingRange->m_pSplittableValuesFirst + pSplittingRange->m_cSplittableValues;
-                        EBM_ASSERT(featureValues < pCut);
-                        EBM_ASSERT(pCut < featureValues + countSamples);
-                        const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                        *pCutPointsLowerBoundInclusive = cut;
-                        ++pCutPointsLowerBoundInclusive;
-                     }
-                  } else {
-                     EBM_ASSERT(0 == cRanges);
-                     // we have only 1 split to place, and no splits on our boundaries, so we need to figure out
-                     // where in our range to place it, taking into consideration that we might have neighbours on our
-                     // sides that could be large
-
-                     // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
-                     // be handled above
-                     EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMax);
-
-                     // if one side or the other was an implicit split, then we have zero splits left after
-                     // the implicit split is accounted for, so do nothing
-                     if(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
-                        // even though we could reduce our squared error length more, it probably makes sense to 
-                        // include a little bit of our available numbers on one long range and the other, so let's put
-                        // the cut in the middle and only make the low/high decision to settle long-ish ranges
-                        // in the center
-
-                        const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesFirst;
-                        const size_t cSplittableItems = pSplittingRange->m_cSplittableValues;
-                        if(0 != cSplittableItems) {
-                           // if m_cSplittableItems then we get bumped into the neighbour jumps object for our
-                           // unsplittable range above, and the next value is way far away from our current splitting
-                           // range
-
-                           pCut += cSplittableItems >> 1;
-
-                           const NeighbourJump * const pNeighbourJump =
-                              &aNeighbourJumps[pCut - featureValues];
-
-                           const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesFirst - featureValues);
-                           const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesFirst + 
-                              cSplittableItems - featureValues - pNeighbourJump->m_iStartNext;
-
-                           if(cDistanceHigh < cDistanceLow) {
-                              pCut = featureValues + pNeighbourJump->m_iStartCur;
-                           } else if(cDistanceLow < cDistanceHigh) {
-                              pCut = featureValues + pNeighbourJump->m_iStartNext;
-                           } else {
-                              EBM_ASSERT(cDistanceHigh == cDistanceLow);
-                              // TODO: for now be lazy and just use the low one, but eventually try and get symetry from order
-                              // inversion we should next try and use the distance to the outer splitting range border
-                              // then if that's still equal to the full array border, and if that's still equal
-                              // then pick it randomly
-                              pCut = featureValues + pNeighbourJump->m_iStartCur;
-                           }
+                        if(0 != pSplittingRange->m_cUnsplittableHighValues) {
+                           // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                           // otherwise put in the cut
+                           const FloatEbmType * const pCut =
+                              pSplittingRange->m_pSplittableValuesFirst + pSplittingRange->m_cSplittableValues;
+                           EBM_ASSERT(featureValues < pCut);
+                           EBM_ASSERT(pCut < featureValues + countSamples);
+                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                           *pCutPointsLowerBoundInclusive = cut;
+                           ++pCutPointsLowerBoundInclusive;
                         }
-                        const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                        *pCutPointsLowerBoundInclusive = cut;
-                        ++pCutPointsLowerBoundInclusive;
+                     } else {
+                        EBM_ASSERT(0 == cRanges);
+                        // we have only 1 split to place, and no splits on our boundaries, so we need to figure out
+                        // where in our range to place it, taking into consideration that we might have neighbours on our
+                        // sides that could be large
+
+                        // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
+                        // be handled above
+                        EBM_ASSERT(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMax);
+
+                        // if one side or the other was an implicit split, then we have zero splits left after
+                        // the implicit split is accounted for, so do nothing
+                        if(0 != pSplittingRange->m_cUnsplittableEitherSideValuesMin) {
+                           // even though we could reduce our squared error length more, it probably makes sense to 
+                           // include a little bit of our available numbers on one long range and the other, so let's put
+                           // the cut in the middle and only make the low/high decision to settle long-ish ranges
+                           // in the center
+
+                           const FloatEbmType * pCut = pSplittingRange->m_pSplittableValuesFirst;
+                           const size_t cSplittableItems = pSplittingRange->m_cSplittableValues;
+                           if(0 != cSplittableItems) {
+                              // if m_cSplittableItems then we get bumped into the neighbour jumps object for our
+                              // unsplittable range above, and the next value is way far away from our current splitting
+                              // range
+
+                              pCut += cSplittableItems >> 1;
+
+                              const NeighbourJump * const pNeighbourJump =
+                                 &aNeighbourJumps[pCut - featureValues];
+
+                              const size_t cDistanceLow = pNeighbourJump->m_iStartCur - (pSplittingRange->m_pSplittableValuesFirst - featureValues);
+                              const size_t cDistanceHigh = pSplittingRange->m_pSplittableValuesFirst +
+                                 cSplittableItems - featureValues - pNeighbourJump->m_iStartNext;
+
+                              if(cDistanceHigh < cDistanceLow) {
+                                 pCut = featureValues + pNeighbourJump->m_iStartCur;
+                              } else if(cDistanceLow < cDistanceHigh) {
+                                 pCut = featureValues + pNeighbourJump->m_iStartNext;
+                              } else {
+                                 EBM_ASSERT(cDistanceHigh == cDistanceLow);
+                                 // TODO: for now be lazy and just use the low one, but eventually try and get symetry from order
+                                 // inversion we should next try and use the distance to the outer splitting range border
+                                 // then if that's still equal to the full array border, and if that's still equal
+                                 // then pick it randomly
+                                 pCut = featureValues + pNeighbourJump->m_iStartCur;
+                              }
+                           }
+                           const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                           *pCutPointsLowerBoundInclusive = cut;
+                           ++pCutPointsLowerBoundInclusive;
+                        }
                      }
                   }
+
+                  EBM_ASSERT(nullptr != countCutPointsInOut);
+                  *countCutPointsInOut = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
+
+                  free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
+
+                  // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
+                  // side, but the short range isn't big enough to split.  In otherwords, there are less than cSamplesPerBinMin items
+                  // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
+
+                  free(aSplitPoints);
+                  free(aNeighbourJumps);
                }
-
-               *countCutPointsReturn = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
-
-               free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
-
-               // first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
-               // side, but the short range isn't big enough to split.  In otherwords, there are less than cSamplesPerBinMin items
-               // we start with the biggest long ranges and essentially try to push whatever mass there is away from them and continue down the list
-
-               free(aSplitPoints);
-               free(aNeighbourJumps);
             }
          }
       }
    }
-   LOG_N(TraceLevelInfo, "Exited GenerateQuantileCutPoints countCutPoints=%" IntEbmTypePrintf ", isMissing=%" IntEbmTypePrintf,
-      *countCutPointsReturn,
-      *isMissingPresentReturn
-   );
-   return 0;
+   ret = IntEbmType { 0 };
 
-exit_error:;
-   LOG_N(TraceLevelWarning, "WARNING GenerateQuantileCutPoints returned %" IntEbmTypePrintf, 1);
-   return 1;
+exit_with_log:;
+
+   LOG_COUNTED_N(
+      &g_cLogExitGenerateQuantileCutPointsParametersMessages,
+      TraceLevelInfo,
+      TraceLevelVerbose,
+      "Exited GenerateQuantileCutPoints: "
+      "*countCutPointsInOut=%" IntEbmTypePrintf ", "
+      "*isMissingPresentReturn=%s, "
+      "*minValueReturn=%" FloatEbmTypePrintf ", "
+      "*maxValueReturn=%" FloatEbmTypePrintf ", "
+      "return=%" IntEbmTypePrintf
+      ,
+      nullptr == countCutPointsInOut ? IntEbmType { 0 } : *countCutPointsInOut,
+      nullptr == isMissingPresentReturn || EBM_FALSE == *isMissingPresentReturn ? g_falseString : g_trueString,
+      nullptr == minValueReturn ? FloatEbmType { 0 } : *minValueReturn,
+      nullptr == maxValueReturn ? FloatEbmType { 0 } : *maxValueReturn,
+      ret
+   );
+
+   return ret;
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
@@ -2824,8 +2977,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
-   UNUSED(countBinsMax);
-   UNUSED(countCutPointsReturn);
+   UNUSED(countCutPointsInOut);
    UNUSED(cutPointsLowerBoundInclusiveReturn);
    UNUSED(isMissingPresentReturn);
    UNUSED(minValueReturn);
@@ -2839,8 +2991,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
@@ -2848,8 +2999,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
-   UNUSED(countBinsMax);
-   UNUSED(countCutPointsReturn);
+   UNUSED(countCutPointsInOut);
    UNUSED(cutPointsLowerBoundInclusiveReturn);
    UNUSED(isMissingPresentReturn);
    UNUSED(minValueReturn);
@@ -2964,8 +3114,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 //       transpose_8192 = 6.26907
 //       transpose_16384 = 7.73406
 
-// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static unsigned int g_cLogDiscretizeParametersMessages = 25;
+// don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
+static unsigned int g_cLogEnterDiscretizeParametersMessages = 25;
+static unsigned int g_cLogExitDiscretizeParametersMessages = 25;
 
 // VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
@@ -2976,10 +3127,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    IntEbmType * discretizedReturn
 ) {
    LOG_COUNTED_N(
-      &g_cLogDiscretizeParametersMessages,
+      &g_cLogEnterDiscretizeParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "Discretize parameters: "
+      "Entered Discretize: "
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countCutPoints=%" IntEbmTypePrintf ", "
@@ -2993,674 +3144,719 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       static_cast<void *>(discretizedReturn)
    );
 
+   IntEbmType ret;
    if(UNLIKELY(countSamples <= IntEbmType { 0 })) {
       if(UNLIKELY(countSamples < IntEbmType { 0 })) {
          LOG_0(TraceLevelError, "ERROR Discretize countSamples cannot be negative");
-         return IntEbmType { 1 };
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
       } else {
          EBM_ASSERT(IntEbmType { 0 } == countSamples);
-         LOG_0(TraceLevelWarning, "WARNING Discretize countSamples was zero");
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   }
-
-   if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
-      // this needs to point to real memory, otherwise it's invalid
-      LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
-      return IntEbmType { 1 };
-   }
-
-   const size_t cSamples = static_cast<size_t>(countSamples);
-
-   if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
-      LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into featureValues");
-      return IntEbmType { 1 };
-   }
-
-   if(IsMultiplyError(sizeof(*discretizedReturn), cSamples)) {
-      LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedReturn");
-      return IntEbmType { 1 };
-   }
-
-   if(UNLIKELY(nullptr == featureValues)) {
-      LOG_0(TraceLevelError, "ERROR Discretize featureValues cannot be null");
-      return IntEbmType { 1 };
-   }
-
-   if(UNLIKELY(nullptr == discretizedReturn)) {
-      LOG_0(TraceLevelError, "ERROR Discretize discretizedReturn cannot be null");
-      return IntEbmType { 1 };
-   }
-
-   const FloatEbmType * pValue = featureValues;
-   const FloatEbmType * const pValueEnd = featureValues + cSamples;
-   IntEbmType * pDiscretized = discretizedReturn;
-
-   if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
-      if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {
-         LOG_0(TraceLevelError, "ERROR Discretize countCutPoints cannot be negative");
-         return IntEbmType { 1 };
+   } else {
+      if(UNLIKELY(!IsNumberConvertable<size_t>(countSamples))) {
+         // this needs to point to real memory, otherwise it's invalid
+         LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into memory");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
       }
-      EBM_ASSERT(IntEbmType { 0 } == countCutPoints);
 
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 1 } : IntEbmType { 0 };
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
+      const size_t cSamples = static_cast<size_t>(countSamples);
 
-   if(UNLIKELY(nullptr == cutPointsLowerBoundInclusive)) {
-      LOG_0(TraceLevelError, "ERROR Discretize cutPointsLowerBoundInclusive cannot be null");
-      return IntEbmType { 1 };
-   }
+      if(IsMultiplyError(sizeof(*featureValues), cSamples)) {
+         LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into featureValues");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(IsMultiplyError(sizeof(*discretizedReturn), cSamples)) {
+         LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedReturn");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(nullptr == featureValues)) {
+         LOG_0(TraceLevelError, "ERROR Discretize featureValues cannot be null");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(nullptr == discretizedReturn)) {
+         LOG_0(TraceLevelError, "ERROR Discretize discretizedReturn cannot be null");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      const FloatEbmType * pValue = featureValues;
+      const FloatEbmType * const pValueEnd = featureValues + cSamples;
+      IntEbmType * pDiscretized = discretizedReturn;
+
+      if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
+         if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {
+            LOG_0(TraceLevelError, "ERROR Discretize countCutPoints cannot be negative");
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         EBM_ASSERT(IntEbmType { 0 } == countCutPoints);
+
+         do {
+            const FloatEbmType val = *pValue;
+            IntEbmType result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 1 } : IntEbmType { 0 };
+            *pDiscretized = result;
+            ++pDiscretized;
+            ++pValue;
+         } while(LIKELY(pValueEnd != pValue));
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(nullptr == cutPointsLowerBoundInclusive)) {
+         LOG_0(TraceLevelError, "ERROR Discretize cutPointsLowerBoundInclusive cannot be null");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
 
 #ifndef NDEBUG
-   if(IsNumberConvertable<size_t>(countCutPoints)) {
-      const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-      size_t iDebug = 0;
-      while(true) {
-         EBM_ASSERT(!std::isnan(cutPointsLowerBoundInclusive[iDebug]));
-         EBM_ASSERT(!std::isinf(cutPointsLowerBoundInclusive[iDebug]));
+      if(IsNumberConvertable<size_t>(countCutPoints)) {
+         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+         size_t iDebug = 0;
+         while(true) {
+            EBM_ASSERT(!std::isnan(cutPointsLowerBoundInclusive[iDebug]));
+            EBM_ASSERT(!std::isinf(cutPointsLowerBoundInclusive[iDebug]));
 
-         size_t iDebugInc = iDebug + 1;
-         if(cCutPoints <= iDebugInc) {
-            break;
+            size_t iDebugInc = iDebug + 1;
+            if(cCutPoints <= iDebugInc) {
+               break;
+            }
+            // if the values aren't increasing, we won't crash, but we'll return non-sensical bins.  That's a tollerable
+            // failure though given that this check might be expensive if cCutPoints was large compared to cSamples
+            EBM_ASSERT(cutPointsLowerBoundInclusive[iDebug] < cutPointsLowerBoundInclusive[iDebugInc]);
+            iDebug = iDebugInc;
          }
-         // if the values aren't increasing, we won't crash, but we'll return non-sensical bins.  That's a tollerable
-         // failure though given that this check might be expensive if cCutPoints was large compared to cSamples
-         EBM_ASSERT(cutPointsLowerBoundInclusive[iDebug] < cutPointsLowerBoundInclusive[iDebugInc]);
-         iDebug = iDebugInc;
       }
-   }
 # endif // NDEBUG
 
-   if(PREDICTABLE(IntEbmType { 1 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 2 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 2 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 3 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 3 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 4 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 4 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 5 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 5 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
-      const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
-         result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 6 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 6 } == countCutPoints)) {
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
-      const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
-      const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
-         result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
-         result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 7 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 7 } == countCutPoints)) {
-      // for digitization during training this all fits into registers, but if we evaluate the logits at the same
-      // time for mains it doesn't quite fit into 16 registers.  We have 1 value that we load from memory to
-      // process, 7 cut points, 8 logits bin cut logits (for prediction), and 1 logit for the missing value bin
-      // (for prediction), which is 17 registers.  We need to load some things from memory therefore.  We can
-      // do the final load for the missing bin logit after the comparison operator of isnan, so we could probably
-      // just load 1 value, otherwise we'd need to load 2 values since loading them would overwrite one of them
-         
-      // TODO: since we can't fit everything into registers, perhaps we'd get better performance doing a full
-      // binary search using memory, thus minimizing the number of comparisons?
-
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
-      const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
-      const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
-      const FloatEbmType cut6 = cutPointsLowerBoundInclusive[6];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
-         result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
-         result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
-         result = UNPREDICTABLE(cut6 <= val) ? IntEbmType { 7 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 8 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   if(PREDICTABLE(IntEbmType { 8 } == countCutPoints)) {
-      // TODO: for 8 specifically, we could probably do a special case of binary search with everything in
-      //       registers.  It would take just 3 comparisons then instead of 8.  7 is less benefit since we'd then 
-      //       still have 3 comparisons required plus one to handle the padding case at the end, so we'd have 
-      //       4 total and more register moves.  8 is probably the only sweet spot special case.
-
-      const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
-      const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
-      const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
-      const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
-      const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
-      const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
-      const FloatEbmType cut6 = cutPointsLowerBoundInclusive[6];
-      const FloatEbmType cut7 = cutPointsLowerBoundInclusive[7];
-      do {
-         const FloatEbmType val = *pValue;
-         IntEbmType result;
-
-         result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
-         result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
-         result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
-         result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
-         result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
-         result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
-         result = UNPREDICTABLE(cut6 <= val) ? IntEbmType { 7 } : result;
-         result = UNPREDICTABLE(cut7 <= val) ? IntEbmType { 8 } : result;
-         result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 9 } : result;
-
-         *pDiscretized = result;
-         ++pDiscretized;
-         ++pValue;
-      } while(LIKELY(pValueEnd != pValue));
-      return IntEbmType { 0 };
-   }
-   
-   FloatEbmType cutPointsLowerBoundInclusiveCopy[1023];
-   if(PREDICTABLE(countCutPoints <= IntEbmType { 15 })) {
-      constexpr size_t cPower = 16;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
-
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 1 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 2 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 31 })) {
-      constexpr size_t cPower = 32;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 2 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 3 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 63 })) {
-      constexpr size_t cPower = 64;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 3 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 4 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 127 })) {
-      constexpr size_t cPower = 128;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 4 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+         const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 5 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 255 })) {
-      constexpr size_t cPower = 256;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 5 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+         const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
+         const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
+            result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 6 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 511 })) {
-      constexpr size_t cPower = 512;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
-
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
-
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+      if(PREDICTABLE(IntEbmType { 6 } == countCutPoints)) {
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+         const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
+         const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
+         const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 127 } * sizeof(FloatEbmType)) <= val) ? size_t { 128 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
+            result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
+            result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 7 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   } else if(PREDICTABLE(countCutPoints <= IntEbmType { 1023 })) {
-      constexpr size_t cPower = 1024;
-      if(cPower * 4 <= cSamples) {
-         static_assert(cPower - 1 == sizeof(cutPointsLowerBoundInclusiveCopy) / 
-            sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-         const size_t cSkip = cPower - 1 - cCutPoints;
+      if(PREDICTABLE(IntEbmType { 7 } == countCutPoints)) {
+         // for digitization during training this all fits into registers, but if we evaluate the logits at the same
+         // time for mains it doesn't quite fit into 16 registers.  We have 1 value that we load from memory to
+         // process, 7 cut points, 8 logits bin cut logits (for prediction), and 1 logit for the missing value bin
+         // (for prediction), which is 17 registers.  We need to load some things from memory therefore.  We can
+         // do the final load for the missing bin logit after the comparison operator of isnan, so we could probably
+         // just load 1 value, otherwise we'd need to load 2 values since loading them would overwrite one of them
 
-         for(size_t i = 0; i < cSkip; ++i) {
-            cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
-         }
+         // TODO: since we can't fit everything into registers, perhaps we'd get better performance doing a full
+         // binary search using memory, thus minimizing the number of comparisons?
 
-         char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
-         memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
-
-         const size_t missingVal = cCutPoints + size_t { 1 };
-         const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+         const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
+         const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
+         const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
+         const FloatEbmType cut6 = cutPointsLowerBoundInclusive[6];
          do {
             const FloatEbmType val = *pValue;
-            char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+            IntEbmType result;
 
-            pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 255 } * sizeof(FloatEbmType)) <= val) ? size_t { 256 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 127 } * sizeof(FloatEbmType)) <= val) ? size_t { 128 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
-            pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
+            result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
+            result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
+            result = UNPREDICTABLE(cut6 <= val) ? IntEbmType { 7 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 8 } : result;
 
-            size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
-            result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
-
-            *pDiscretized = static_cast<IntEbmType>(result);
+            *pDiscretized = result;
             ++pDiscretized;
             ++pValue;
          } while(LIKELY(pValueEnd != pValue));
-         return IntEbmType { 0 };
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-   }
 
-   if(UNLIKELY(std::numeric_limits<IntEbmType>::max() == countCutPoints)) {
-      // we convert back to IntEbmType when we return, and if countCutPoints is at the limit, then we don't
-      // have any value to indicate missing
-      LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
-      return IntEbmType { 1 };
-   }
+      if(PREDICTABLE(IntEbmType { 8 } == countCutPoints)) {
+         // TODO: for 8 specifically, we could probably do a special case of binary search with everything in
+         //       registers.  It would take just 3 comparisons then instead of 8.  7 is less benefit since we'd then 
+         //       still have 3 comparisons required plus one to handle the padding case at the end, so we'd have 
+         //       4 total and more register moves.  8 is probably the only sweet spot special case.
 
-   if(UNLIKELY(!IsNumberConvertable<size_t>(countCutPoints))) {
-      // this needs to point to real memory, otherwise it's invalid
-      LOG_0(TraceLevelError, "ERROR Discretize countCutPoints was too large to fit into memory");
-      return IntEbmType { 1 };
-   }
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-
-   if(IsMultiplyError(sizeof(*cutPointsLowerBoundInclusive), cCutPoints)) {
-      LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to fit into cutPointsLowerBoundInclusive");
-      return IntEbmType { 1 };
-   }
-
-   if(UNLIKELY(std::numeric_limits<size_t>::max() == cCutPoints)) {
-      // we add 1 to cCutPoints as our missing value, so this addition must succeed
-      LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
-      return IntEbmType { 1 };
-   }
-
-   if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCutPoints)) {
-      // the low value can increase until it's equal to cCutPoints, so cCutPoints must be expressable as a ptrdiff_t
-      LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to allow for the binary search comparison");
-      return IntEbmType { 1 };
-   }
-
-   if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 } < cCutPoints)) {
-      // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
-      // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
-      LOG_0(TraceLevelError,
-         "ERROR Discretize countCutPoints was too large to allow for the binary search add");
-      return IntEbmType { 1 };
-   }
-
-   EBM_ASSERT(cCutPoints < std::numeric_limits<size_t>::max());
-   const size_t missingVal = cCutPoints + size_t { 1 };
-   EBM_ASSERT(size_t { 1 } <= cCutPoints);
-   EBM_ASSERT(cCutPoints - size_t { 1 } <= size_t { std::numeric_limits<ptrdiff_t>::max() });
-   const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
-
-   // if we're going to runroll our first loop, then we need to ensure that there's a next loop after the first
-   // unrolled loop, otherwise we would need to check if we were done before the first real loop iteration.
-   // To ensure we have 2 original loop iterations, we need 1 cut in the center, 1 cut above, and 1 cut below, so 3
-   EBM_ASSERT(size_t { 3 } <= cCutPoints);
-   const size_t firstMiddle = static_cast<size_t>(highStart) >> 1;
-   EBM_ASSERT(firstMiddle < cCutPoints);
-   const FloatEbmType firstMidVal = cutPointsLowerBoundInclusive[firstMiddle];
-   const ptrdiff_t firstMidLow = static_cast<ptrdiff_t>(firstMiddle) + ptrdiff_t { 1 };
-   const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t { 1 };
-
-   do {
-      const FloatEbmType val = *pValue;
-      size_t middle = missingVal;
-      if(PREDICTABLE(!std::isnan(val))) {
-         ptrdiff_t high = UNPREDICTABLE(firstMidVal <= val) ? highStart : firstMidHigh;
-         ptrdiff_t low = UNPREDICTABLE(firstMidVal <= val) ? firstMidLow : ptrdiff_t { 0 };
-         FloatEbmType midVal;
+         const FloatEbmType cut0 = cutPointsLowerBoundInclusive[0];
+         const FloatEbmType cut1 = cutPointsLowerBoundInclusive[1];
+         const FloatEbmType cut2 = cutPointsLowerBoundInclusive[2];
+         const FloatEbmType cut3 = cutPointsLowerBoundInclusive[3];
+         const FloatEbmType cut4 = cutPointsLowerBoundInclusive[4];
+         const FloatEbmType cut5 = cutPointsLowerBoundInclusive[5];
+         const FloatEbmType cut6 = cutPointsLowerBoundInclusive[6];
+         const FloatEbmType cut7 = cutPointsLowerBoundInclusive[7];
          do {
-            EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < cCutPoints);
-            EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < cCutPoints);
-            EBM_ASSERT(low <= high);
-            // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
-            // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
-            // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
-            // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
-            // the following must be false (which we check above):
-            // "std::numeric_limits<size_t>::max() / 2 < cCutPoints - 1"
-            EBM_ASSERT(!IsAddError(static_cast<size_t>(low), static_cast<size_t>(high)));
-            middle = (static_cast<size_t>(low) + static_cast<size_t>(high)) >> 1;
-            EBM_ASSERT(middle <= static_cast<size_t>(high));
-            EBM_ASSERT(middle < cCutPoints);
-            midVal = cutPointsLowerBoundInclusive[middle];
-            EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
-            low = UNPREDICTABLE(midVal <= val) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
-            EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= cCutPoints);
-            high = UNPREDICTABLE(midVal <= val) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
-            EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+            const FloatEbmType val = *pValue;
+            IntEbmType result;
 
-            // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
-            // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
-            // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
-            // has a check at the end where we'd need to fetch cutPointsLowerBoundInclusive[low] after exiting the 
-            // loop, so this version we have here is faster given that we only need to compare to a value that
-            // we've already fetched from memory.  Also, this version makes slightly faster progress since
-            // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
-            // iteration.  In practice this version will always work since no floating point type is less than 4
-            // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
-            // for accessing memory are always size_t, so those should always work.
-         } while(LIKELY(low <= high));
-         EBM_ASSERT(size_t { 0 } <= middle && middle < cCutPoints);
-         middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 1 } : middle;
-         EBM_ASSERT(size_t { 0 } <= middle && middle <= cCutPoints);
+            result = UNPREDICTABLE(cut0 <= val) ? IntEbmType { 1 } : IntEbmType { 0 };
+            result = UNPREDICTABLE(cut1 <= val) ? IntEbmType { 2 } : result;
+            result = UNPREDICTABLE(cut2 <= val) ? IntEbmType { 3 } : result;
+            result = UNPREDICTABLE(cut3 <= val) ? IntEbmType { 4 } : result;
+            result = UNPREDICTABLE(cut4 <= val) ? IntEbmType { 5 } : result;
+            result = UNPREDICTABLE(cut5 <= val) ? IntEbmType { 6 } : result;
+            result = UNPREDICTABLE(cut6 <= val) ? IntEbmType { 7 } : result;
+            result = UNPREDICTABLE(cut7 <= val) ? IntEbmType { 8 } : result;
+            result = UNPREDICTABLE(std::isnan(val)) ? IntEbmType { 9 } : result;
+
+            *pDiscretized = result;
+            ++pDiscretized;
+            ++pValue;
+         } while(LIKELY(pValueEnd != pValue));
+         ret = IntEbmType { 0 };
+         goto exit_with_log;
       }
-      EBM_ASSERT(IsNumberConvertable<IntEbmType>(middle));
-      *pDiscretized = static_cast<IntEbmType>(middle);
-      ++pDiscretized;
-      ++pValue;
-   } while(LIKELY(pValueEnd != pValue));
-   return IntEbmType { 0 };
+
+      FloatEbmType cutPointsLowerBoundInclusiveCopy[1023];
+      if(PREDICTABLE(countCutPoints <= IntEbmType { 15 })) {
+         constexpr size_t cPower = 16;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 31 })) {
+         constexpr size_t cPower = 32;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 63 })) {
+         constexpr size_t cPower = 64;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 127 })) {
+         constexpr size_t cPower = 128;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 255 })) {
+         constexpr size_t cPower = 256;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 511 })) {
+         constexpr size_t cPower = 512;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 <= sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 127 } * sizeof(FloatEbmType)) <= val) ? size_t { 128 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      } else if(PREDICTABLE(countCutPoints <= IntEbmType { 1023 })) {
+         constexpr size_t cPower = 1024;
+         if(cPower * 4 <= cSamples) {
+            static_assert(cPower - 1 == sizeof(cutPointsLowerBoundInclusiveCopy) /
+               sizeof(cutPointsLowerBoundInclusiveCopy[0]), "cutPointsLowerBoundInclusiveCopy buffer not large enough");
+
+            const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+            const size_t cSkip = cPower - 1 - cCutPoints;
+
+            for(size_t i = 0; i < cSkip; ++i) {
+               cutPointsLowerBoundInclusiveCopy[i] = -std::numeric_limits<FloatEbmType>::infinity();
+            }
+
+            char * const pBaseValid = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy + cSkip);
+            memcpy(pBaseValid, cutPointsLowerBoundInclusive, sizeof(*cutPointsLowerBoundInclusive) * cCutPoints);
+
+            const size_t missingVal = cCutPoints + size_t { 1 };
+            const FloatEbmType firstComparison = cutPointsLowerBoundInclusiveCopy[cPower / 2 - 1];
+            do {
+               const FloatEbmType val = *pValue;
+               char * pResult = reinterpret_cast<char *>(cutPointsLowerBoundInclusiveCopy);
+
+               pResult += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 255 } * sizeof(FloatEbmType)) <= val) ? size_t { 256 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 127 } * sizeof(FloatEbmType)) <= val) ? size_t { 128 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 63 } * sizeof(FloatEbmType)) <= val) ? size_t { 64 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 31 } * sizeof(FloatEbmType)) <= val) ? size_t { 32 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 15 } * sizeof(FloatEbmType)) <= val) ? size_t { 16 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 7 } * sizeof(FloatEbmType)) <= val) ? size_t { 8 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 3 } * sizeof(FloatEbmType)) <= val) ? size_t { 4 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult + size_t { 1 } * sizeof(FloatEbmType)) <= val) ? size_t { 2 } * sizeof(FloatEbmType) : size_t { 0 };
+               pResult += UNPREDICTABLE(*reinterpret_cast<FloatEbmType *>(pResult) <= val) ? size_t { 1 } * sizeof(FloatEbmType) : size_t { 0 };
+
+               size_t result = (pResult - pBaseValid) / sizeof(FloatEbmType);
+               result = UNPREDICTABLE(std::isnan(val)) ? missingVal : result;
+
+               *pDiscretized = static_cast<IntEbmType>(result);
+               ++pDiscretized;
+               ++pValue;
+            } while(LIKELY(pValueEnd != pValue));
+            ret = IntEbmType { 0 };
+            goto exit_with_log;
+         }
+      }
+
+      if(UNLIKELY(std::numeric_limits<IntEbmType>::max() == countCutPoints)) {
+         // we convert back to IntEbmType when we return, and if countCutPoints is at the limit, then we don't
+         // have any value to indicate missing
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(!IsNumberConvertable<size_t>(countCutPoints))) {
+         // this needs to point to real memory, otherwise it's invalid
+         LOG_0(TraceLevelError, "ERROR Discretize countCutPoints was too large to fit into memory");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+
+      if(IsMultiplyError(sizeof(*cutPointsLowerBoundInclusive), cCutPoints)) {
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCutPoints was too large to fit into cutPointsLowerBoundInclusive");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(std::numeric_limits<size_t>::max() == cCutPoints)) {
+         // we add 1 to cCutPoints as our missing value, so this addition must succeed
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCutPoints was too large to allow for a missing value placeholder");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCutPoints)) {
+         // the low value can increase until it's equal to cCutPoints, so cCutPoints must be expressable as a ptrdiff_t
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCutPoints was too large to allow for the binary search comparison");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 } < cCutPoints)) {
+         // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
+         // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
+         LOG_0(TraceLevelError,
+            "ERROR Discretize countCutPoints was too large to allow for the binary search add");
+         ret = IntEbmType { 1 };
+         goto exit_with_log;
+      }
+
+      EBM_ASSERT(cCutPoints < std::numeric_limits<size_t>::max());
+      const size_t missingVal = cCutPoints + size_t { 1 };
+      EBM_ASSERT(size_t { 1 } <= cCutPoints);
+      EBM_ASSERT(cCutPoints - size_t { 1 } <= size_t { std::numeric_limits<ptrdiff_t>::max() });
+      const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+
+      // if we're going to runroll our first loop, then we need to ensure that there's a next loop after the first
+      // unrolled loop, otherwise we would need to check if we were done before the first real loop iteration.
+      // To ensure we have 2 original loop iterations, we need 1 cut in the center, 1 cut above, and 1 cut below, so 3
+      EBM_ASSERT(size_t { 3 } <= cCutPoints);
+      const size_t firstMiddle = static_cast<size_t>(highStart) >> 1;
+      EBM_ASSERT(firstMiddle < cCutPoints);
+      const FloatEbmType firstMidVal = cutPointsLowerBoundInclusive[firstMiddle];
+      const ptrdiff_t firstMidLow = static_cast<ptrdiff_t>(firstMiddle) + ptrdiff_t { 1 };
+      const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t { 1 };
+
+      do {
+         const FloatEbmType val = *pValue;
+         size_t middle = missingVal;
+         if(PREDICTABLE(!std::isnan(val))) {
+            ptrdiff_t high = UNPREDICTABLE(firstMidVal <= val) ? highStart : firstMidHigh;
+            ptrdiff_t low = UNPREDICTABLE(firstMidVal <= val) ? firstMidLow : ptrdiff_t { 0 };
+            FloatEbmType midVal;
+            do {
+               EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < cCutPoints);
+               EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < cCutPoints);
+               EBM_ASSERT(low <= high);
+               // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
+               // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
+               // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
+               // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
+               // the following must be false (which we check above):
+               // "std::numeric_limits<size_t>::max() / 2 < cCutPoints - 1"
+               EBM_ASSERT(!IsAddError(static_cast<size_t>(low), static_cast<size_t>(high)));
+               middle = (static_cast<size_t>(low) + static_cast<size_t>(high)) >> 1;
+               EBM_ASSERT(middle <= static_cast<size_t>(high));
+               EBM_ASSERT(middle < cCutPoints);
+               midVal = cutPointsLowerBoundInclusive[middle];
+               EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
+               low = UNPREDICTABLE(midVal <= val) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
+               EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= cCutPoints);
+               high = UNPREDICTABLE(midVal <= val) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
+               EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+
+               // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
+               // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
+               // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
+               // has a check at the end where we'd need to fetch cutPointsLowerBoundInclusive[low] after exiting the 
+               // loop, so this version we have here is faster given that we only need to compare to a value that
+               // we've already fetched from memory.  Also, this version makes slightly faster progress since
+               // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
+               // iteration.  In practice this version will always work since no floating point type is less than 4
+               // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
+               // for accessing memory are always size_t, so those should always work.
+            } while(LIKELY(low <= high));
+            EBM_ASSERT(size_t { 0 } <= middle && middle < cCutPoints);
+            middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 1 } : middle;
+            EBM_ASSERT(size_t { 0 } <= middle && middle <= cCutPoints);
+         }
+         EBM_ASSERT(IsNumberConvertable<IntEbmType>(middle));
+         *pDiscretized = static_cast<IntEbmType>(middle);
+         ++pDiscretized;
+         ++pValue;
+      } while(LIKELY(pValueEnd != pValue));
+      ret = IntEbmType { 0 };
+   }
+
+exit_with_log:;
+
+   LOG_COUNTED_N(
+      &g_cLogExitDiscretizeParametersMessages, 
+      TraceLevelInfo, 
+      TraceLevelVerbose, 
+      "Exited Discretize: "
+      "return=%" IntEbmTypePrintf
+      ,
+      ret
+   );
+
+   return ret;
 }

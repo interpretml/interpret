@@ -400,9 +400,8 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
@@ -411,8 +410,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
@@ -421,8 +419,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
+   IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveReturn,
    IntEbmType * isMissingPresentReturn,
    FloatEbmType * minValueReturn,
