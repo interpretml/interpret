@@ -9,21 +9,21 @@
 
 static const TestPriority k_filePriority = TestPriority::InteractionUnusualInputs;
 
-TEST_CASE("null interactionScoreReturn, interaction, regression") {
+TEST_CASE("null interactionScoreOut, interaction, regression") {
    PEbmInteraction pEbmInteraction = InitializeInteractionRegression(0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
-TEST_CASE("null interactionScoreReturn, interaction, binary") {
+TEST_CASE("null interactionScoreOut, interaction, binary") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(2, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);
    FreeInteraction(pEbmInteraction);
 }
 
-TEST_CASE("null interactionScoreReturn, interaction, multiclass") {
+TEST_CASE("null interactionScoreOut, interaction, multiclass") {
    PEbmInteraction pEbmInteraction = InitializeInteractionClassification(3, 0, nullptr, 0, nullptr, nullptr, nullptr, nullptr);
    const IntEbmType ret = CalculateInteractionScore(pEbmInteraction, 0, nullptr, k_countSamplesRequiredForChildSplitMinDefault, nullptr);
    CHECK(0 == ret);

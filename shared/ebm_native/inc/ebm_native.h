@@ -336,13 +336,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    IntEbmType countSamplesRequiredForChildSplitMin, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
-   FloatEbmType * gainReturn
+   FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
    IntEbmType indexFeatureGroup, 
    const FloatEbmType * modelFeatureGroupUpdateTensor,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
@@ -352,7 +352,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    PEbmBoosting ebmBoosting, 
@@ -391,7 +391,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Calcul
    IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * interactionScoreReturn
+   FloatEbmType * interactionScoreOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
@@ -402,35 +402,35 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * discretizedReturn
+   IntEbmType * discretizedOut
 );
 
 

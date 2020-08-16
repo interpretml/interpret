@@ -2420,10 +2420,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 ) {
    // TODO: 
    //   - we shouldn't use randomness unless impossible to do otherwise.  choosing the split points isn't that critical to have
@@ -2448,19 +2448,19 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
       "countCutPointsInOut=%p, "
-      "cutPointsLowerBoundInclusiveReturn=%p, "
-      "isMissingPresentReturn=%p, "
-      "minValueReturn=%p, "
-      "maxValueReturn=%p"
+      "cutPointsLowerBoundInclusiveOut=%p, "
+      "isMissingPresentOut=%p, "
+      "minValueOut=%p, "
+      "maxValueOut=%p"
       ,
       countSamples,
       static_cast<void *>(featureValues),
       countSamplesPerBinMin,
       static_cast<void *>(countCutPointsInOut),
-      static_cast<void *>(cutPointsLowerBoundInclusiveReturn),
-      static_cast<void *>(isMissingPresentReturn),
-      static_cast<void *>(minValueReturn),
-      static_cast<void *>(maxValueReturn)
+      static_cast<void *>(cutPointsLowerBoundInclusiveOut),
+      static_cast<void *>(isMissingPresentOut),
+      static_cast<void *>(minValueOut),
+      static_cast<void *>(maxValueOut)
    );
 
    IntEbmType cCutPointsRet;
@@ -2558,9 +2558,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
          
-         if(UNLIKELY(nullptr == cutPointsLowerBoundInclusiveReturn)) {
-            // if we have a potential bin cut, then cutPointsLowerBoundInclusiveReturn shouldn't be nullptr
-            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == cutPointsLowerBoundInclusiveReturn");
+         if(UNLIKELY(nullptr == cutPointsLowerBoundInclusiveOut)) {
+            // if we have a potential bin cut, then cutPointsLowerBoundInclusiveOut shouldn't be nullptr
+            LOG_0(TraceLevelError, "ERROR GenerateQuantileCutPoints nullptr == cutPointsLowerBoundInclusiveOut");
 
             cCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
@@ -2700,7 +2700,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveReturn;
+         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
          for(size_t i = 0; i < cSplittingRanges; ++i) {
             // TODO first let's tackle the short ranges between big ranges (or at the tails) where we know there will be a split to separate the big ranges to either
             // side, but the short range isn't big enough to split.  In otherwords, there are less than cSamplesPerBinMin items
@@ -2913,7 +2913,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             }
          }
 
-         cCutPointsRet = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveReturn;
+         cCutPointsRet = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveOut;
 
          free(apSplittingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
          free(aSplitPoints);
@@ -2928,14 +2928,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       *countCutPointsInOut = cCutPointsRet;
    }
 
-   if(LIKELY(nullptr != isMissingPresentReturn)) {
-      *isMissingPresentReturn = isMissingPresentRet;
+   if(LIKELY(nullptr != isMissingPresentOut)) {
+      *isMissingPresentOut = isMissingPresentRet;
    }
-   if(LIKELY(nullptr != minValueReturn)) {
-      *minValueReturn = minValueRet;
+   if(LIKELY(nullptr != minValueOut)) {
+      *minValueOut = minValueRet;
    }
-   if(LIKELY(nullptr != maxValueReturn)) {
-      *maxValueReturn = maxValueRet;
+   if(LIKELY(nullptr != maxValueOut)) {
+      *maxValueOut = maxValueRet;
    }
 
    LOG_COUNTED_N(
@@ -2963,18 +2963,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
    UNUSED(countCutPointsInOut);
-   UNUSED(cutPointsLowerBoundInclusiveReturn);
-   UNUSED(isMissingPresentReturn);
-   UNUSED(minValueReturn);
-   UNUSED(maxValueReturn);
+   UNUSED(cutPointsLowerBoundInclusiveOut);
+   UNUSED(isMissingPresentOut);
+   UNUSED(minValueOut);
+   UNUSED(maxValueOut);
 
    // TODO: IMPLEMENT
 
@@ -2985,18 +2985,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType * countCutPointsInOut,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * isMissingPresentOut,
+   FloatEbmType * minValueOut,
+   FloatEbmType * maxValueOut
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
    UNUSED(countCutPointsInOut);
-   UNUSED(cutPointsLowerBoundInclusiveReturn);
-   UNUSED(isMissingPresentReturn);
-   UNUSED(minValueReturn);
-   UNUSED(maxValueReturn);
+   UNUSED(cutPointsLowerBoundInclusiveOut);
+   UNUSED(isMissingPresentOut);
+   UNUSED(minValueOut);
+   UNUSED(maxValueOut);
 
    // TODO: IMPLEMENT
 
@@ -3117,7 +3117,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
    const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * discretizedReturn
+   IntEbmType * discretizedOut
 ) {
    LOG_COUNTED_N(
       &g_cLogEnterDiscretizeParametersMessages,
@@ -3128,13 +3128,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
       "featureValues=%p, "
       "countCutPoints=%" IntEbmTypePrintf ", "
       "cutPointsLowerBoundInclusive=%p, "
-      "discretizedReturn=%p"
+      "discretizedOut=%p"
       ,
       countSamples,
       static_cast<const void *>(featureValues),
       countCutPoints,
       static_cast<const void *>(cutPointsLowerBoundInclusive),
-      static_cast<void *>(discretizedReturn)
+      static_cast<void *>(discretizedOut)
    );
 
    IntEbmType ret;
@@ -3164,8 +3164,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          goto exit_with_log;
       }
 
-      if(IsMultiplyError(sizeof(*discretizedReturn), cSamples)) {
-         LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedReturn");
+      if(IsMultiplyError(sizeof(*discretizedOut), cSamples)) {
+         LOG_0(TraceLevelError, "ERROR Discretize countSamples was too large to fit into discretizedOut");
          ret = IntEbmType { 1 };
          goto exit_with_log;
       }
@@ -3176,15 +3176,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretiz
          goto exit_with_log;
       }
 
-      if(UNLIKELY(nullptr == discretizedReturn)) {
-         LOG_0(TraceLevelError, "ERROR Discretize discretizedReturn cannot be null");
+      if(UNLIKELY(nullptr == discretizedOut)) {
+         LOG_0(TraceLevelError, "ERROR Discretize discretizedOut cannot be null");
          ret = IntEbmType { 1 };
          goto exit_with_log;
       }
 
       const FloatEbmType * pValue = featureValues;
       const FloatEbmType * const pValueEnd = featureValues + cSamples;
-      IntEbmType * pDiscretized = discretizedReturn;
+      IntEbmType * pDiscretized = discretizedOut;
 
       if(UNLIKELY(countCutPoints <= IntEbmType { 0 })) {
          if(UNLIKELY(countCutPoints < IntEbmType { 0 })) {

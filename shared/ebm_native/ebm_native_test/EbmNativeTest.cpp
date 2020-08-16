@@ -717,7 +717,7 @@ FloatEbmType TestApi::Boost(
       exit(1);
    }
 
-   FloatEbmType validationMetricReturn = FloatEbmType { 0 };
+   FloatEbmType validationMetricOut = FloatEbmType { 0 };
    const IntEbmType ret = BoostingStep(
       m_pEbmBoosting,
       indexFeatureGroup,
@@ -726,12 +726,12 @@ FloatEbmType TestApi::Boost(
       countSamplesRequiredForChildSplitMin,
       0 == trainingWeights.size() ? nullptr : &trainingWeights[0],
       0 == validationWeights.size() ? nullptr : &validationWeights[0],
-      &validationMetricReturn
+      &validationMetricOut
    );
    if(0 != ret) {
       exit(1);
    }
-   return validationMetricReturn;
+   return validationMetricOut;
 }
 
 FloatEbmType TestApi::GetBestModelPredictorScore(
@@ -1015,18 +1015,18 @@ FloatEbmType TestApi::InteractionScore(
       }
    }
 
-   FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
+   FloatEbmType interactionScoreOut = FloatEbmType { 0 };
    const IntEbmType ret = CalculateInteractionScore(
       m_pEbmInteraction,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,
-      &interactionScoreReturn
+      &interactionScoreOut
    );
    if(0 != ret) {
       exit(1);
    }
-   return interactionScoreReturn;
+   return interactionScoreOut;
 }
 
 extern void DisplayCuts(

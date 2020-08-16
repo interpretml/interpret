@@ -101,7 +101,7 @@ class Native:
             ct.c_longlong,
             # double * cutPointsLowerBoundInclusive
             ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * discretizedReturn
+            # int64_t * discretizedOut
             ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.Discretize.restype = ct.c_longlong
@@ -199,7 +199,7 @@ class Native:
             # double * validationWeights
             # ndpointer(dtype=np.float64, ndim=1),
             ct.c_void_p,
-            # double * gainReturn
+            # double * gainOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.GenerateModelFeatureGroupUpdate.restype = ct.POINTER(ct.c_double)
@@ -211,7 +211,7 @@ class Native:
             ct.c_longlong,
             # double * modelFeatureGroupUpdateTensor
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
-            # double * validationMetricReturn
+            # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.ApplyModelFeatureGroupUpdate.restype = ct.c_longlong
@@ -286,7 +286,7 @@ class Native:
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
-            # double * interactionScoreReturn
+            # double * interactionScoreOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.CalculateInteractionScore.restype = ct.c_longlong

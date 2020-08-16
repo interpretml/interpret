@@ -778,7 +778,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
    IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
-   FloatEbmType * gainReturn
+   FloatEbmType * gainOut
 ) {
    LOG_COUNTED_N(
       &g_cLogGenerateModelFeatureGroupUpdateParametersMessages,
@@ -786,7 +786,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       TraceLevelVerbose,
       "GenerateModelFeatureGroupUpdate parameters: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf ", learningRate=%" FloatEbmTypePrintf
       ", countTreeSplitsMax=%" IntEbmTypePrintf ", countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf
-      ", trainingWeights=%p, validationWeights=%p, gainReturn=%p",
+      ", trainingWeights=%p, validationWeights=%p, gainOut=%p",
       static_cast<void *>(ebmBoosting),
       indexFeatureGroup,
       learningRate,
@@ -794,36 +794,36 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       countSamplesRequiredForChildSplitMin,
       static_cast<const void *>(trainingWeights),
       static_cast<const void *>(validationWeights),
-      static_cast<void *>(gainReturn)
+      static_cast<void *>(gainOut)
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    if(nullptr == pEbmBoostingState) {
-      if(LIKELY(nullptr != gainReturn)) {
-         *gainReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate ebmBoosting cannot be nullptr");
       return nullptr;
    }
    if(indexFeatureGroup < 0) {
-      if(LIKELY(nullptr != gainReturn)) {
-         *gainReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return nullptr;
    }
    if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      if(LIKELY(nullptr != gainReturn)) {
-         *gainReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup is too high to index");
       return nullptr;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
-      if(LIKELY(nullptr != gainReturn)) {
-         *gainReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR GenerateModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
       return nullptr;
@@ -875,14 +875,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
 
    EBM_ASSERT(nullptr == trainingWeights); // TODO : implement this later
    EBM_ASSERT(nullptr == validationWeights); // TODO : implement this later
-   // validationMetricReturn can be nullptr
+   // gainOut can be nullptr
 
    if(ptrdiff_t { 0 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmBoostingState->GetRuntimeLearningTypeOrCountTargetClasses()) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our gain will be 0.
-      if(LIKELY(nullptr != gainReturn)) {
-         *gainReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != gainOut)) {
+         *gainOut = FloatEbmType { 0 };
       }
       LOG_0(
          TraceLevelWarning,
@@ -899,20 +899,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Gener
       cSamplesRequiredForChildSplitMin,
       trainingWeights,
       validationWeights,
-      gainReturn
+      gainOut
    );
 
-   if(nullptr != gainReturn) {
-      EBM_ASSERT(!std::isnan(*gainReturn)); // NaNs can happen, but we should have edited those before here
-      EBM_ASSERT(!std::isinf(*gainReturn)); // infinities can happen, but we should have edited those before here
+   if(nullptr != gainOut) {
+      EBM_ASSERT(!std::isnan(*gainOut)); // NaNs can happen, but we should have edited those before here
+      EBM_ASSERT(!std::isinf(*gainOut)); // infinities can happen, but we should have edited those before here
       // no epsilon required.  We make it zero if the value is less than zero for floating point instability reasons
-      EBM_ASSERT(FloatEbmType { 0 } <= *gainReturn);
+      EBM_ASSERT(FloatEbmType { 0 } <= *gainOut);
       LOG_COUNTED_N(
          pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
          "Exited GenerateModelFeatureGroupUpdate %" FloatEbmTypePrintf,
-         *gainReturn
+         *gainOut
       );
    } else {
       LOG_COUNTED_0(

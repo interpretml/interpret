@@ -246,24 +246,24 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    IntEbmType countFeaturesInGroup,
    const IntEbmType * featureIndexes,
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * interactionScoreReturn
+   FloatEbmType * interactionScoreOut
 ) {
    LOG_COUNTED_N(
       &g_cLogCalculateInteractionScoreParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
-      "CalculateInteractionScore parameters: ebmInteraction=%p, countFeaturesInGroup=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreReturn=%p",
+      "CalculateInteractionScore parameters: ebmInteraction=%p, countFeaturesInGroup=%" IntEbmTypePrintf ", featureIndexes=%p, countSamplesRequiredForChildSplitMin=%" IntEbmTypePrintf ", interactionScoreOut=%p",
       static_cast<void *>(ebmInteraction),
       countFeaturesInGroup,
       static_cast<const void *>(featureIndexes),
       countSamplesRequiredForChildSplitMin,
-      static_cast<void *>(interactionScoreReturn)
+      static_cast<void *>(interactionScoreOut)
    );
 
    EbmInteractionState * pEbmInteractionState = reinterpret_cast<EbmInteractionState *>(ebmInteraction);
    if(nullptr == pEbmInteractionState) {
-      if(LIKELY(nullptr != interactionScoreReturn)) {
-         *interactionScoreReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != interactionScoreOut)) {
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore ebmInteraction cannot be nullptr");
       return 1;
@@ -272,22 +272,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    LOG_COUNTED_0(pEbmInteractionState->GetPointerCountLogEnterMessages(), TraceLevelInfo, TraceLevelVerbose, "Entered CalculateInteractionScore");
 
    if(countFeaturesInGroup < 0) {
-      if(LIKELY(nullptr != interactionScoreReturn)) {
-         *interactionScoreReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != interactionScoreOut)) {
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countFeaturesInGroup must be positive");
       return 1;
    }
    if(0 != countFeaturesInGroup && nullptr == featureIndexes) {
-      if(LIKELY(nullptr != interactionScoreReturn)) {
-         *interactionScoreReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != interactionScoreOut)) {
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes cannot be nullptr if 0 < countFeaturesInGroup");
       return 1;
    }
    if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
-      if(LIKELY(nullptr != interactionScoreReturn)) {
-         *interactionScoreReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != interactionScoreOut)) {
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR CalculateInteractionScore countFeaturesInGroup too large to index");
       return 1;
@@ -295,20 +295,20 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    size_t cFeaturesInGroup = static_cast<size_t>(countFeaturesInGroup);
    if(0 == cFeaturesInGroup) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore empty feature group");
-      if(nullptr != interactionScoreReturn) {
+      if(nullptr != interactionScoreOut) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
          // caler be smarter about this condition
-         *interactionScoreReturn = FloatEbmType { 0 };
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       return 0;
    }
    if(0 == pEbmInteractionState->GetDataSetByFeature()->GetCountSamples()) {
       // if there are zero samples, there isn't much basis to say whether there are interactions, so just return zero
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore zero samples");
-      if(nullptr != interactionScoreReturn) {
+      if(nullptr != interactionScoreOut) {
          // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer our 
          // caler be smarter about this condition
-         *interactionScoreReturn = 0;
+         *interactionScoreOut = 0;
       }
       return 0;
    }
@@ -332,33 +332,33 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
    do {
       const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
       if(indexFeatureInterop < 0) {
-         if(LIKELY(nullptr != interactionScoreReturn)) {
-            *interactionScoreReturn = FloatEbmType { 0 };
+         if(LIKELY(nullptr != interactionScoreOut)) {
+            *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value cannot be negative");
          return 1;
       }
       if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
-         if(LIKELY(nullptr != interactionScoreReturn)) {
-            *interactionScoreReturn = FloatEbmType { 0 };
+         if(LIKELY(nullptr != interactionScoreOut)) {
+            *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value too big to reference memory");
          return 1;
       }
       const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
       if(pEbmInteractionState->GetCountFeatures() <= iFeatureForGroup) {
-         if(LIKELY(nullptr != interactionScoreReturn)) {
-            *interactionScoreReturn = FloatEbmType { 0 };
+         if(LIKELY(nullptr != interactionScoreOut)) {
+            *interactionScoreOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelError, "ERROR CalculateInteractionScore featureIndexes value must be less than the number of features");
          return 1;
       }
       const Feature * const pFeature = &aFeatures[iFeatureForGroup];
       if(pFeature->GetCountBins() <= 1) {
-         if(nullptr != interactionScoreReturn) {
+         if(nullptr != interactionScoreOut) {
             // we return the lowest value possible for the interaction score, but we don't return an error since we handle it even though we'd prefer 
             // our caler be smarter about this condition
-            *interactionScoreReturn = 0;
+            *interactionScoreOut = 0;
          }
          LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore feature with 0/1 value");
          return 0;
@@ -396,10 +396,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
 
    if(ptrdiff_t { 0 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses() || ptrdiff_t { 1 } == pEbmInteractionState->GetRuntimeLearningTypeOrCountTargetClasses()) {
       LOG_0(TraceLevelInfo, "INFO CalculateInteractionScore target with 0/1 classes");
-      if(nullptr != interactionScoreReturn) {
+      if(nullptr != interactionScoreOut) {
          // if there is only 1 classification target, then we can predict the outcome with 100% accuracy and there is no need for logits or 
          // interactions or anything else.  We return 0 since interactions have no benefit
-         *interactionScoreReturn = FloatEbmType { 0 };
+         *interactionScoreOut = FloatEbmType { 0 };
       }
       return 0;
    }
@@ -415,7 +415,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       pEbmInteractionState,
       pFeatureGroup,
       cSamplesRequiredForChildSplitMin,
-      interactionScoreReturn
+      interactionScoreOut
    );
 
    CachedInteractionThreadResources::Free(pCachedThreadResources);
@@ -424,14 +424,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Calculate
       LOG_N(TraceLevelWarning, "WARNING CalculateInteractionScore returned %" IntEbmTypePrintf, ret);
    }
 
-   if(nullptr != interactionScoreReturn) {
-      // if *interactionScoreReturn was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
-      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreReturn);
+   if(nullptr != interactionScoreOut) {
+      // if *interactionScoreOut was negative for floating point instability reasons, we zero it so that we don't return a negative number to our caller
+      EBM_ASSERT(FloatEbmType { 0 } <= *interactionScoreOut);
       LOG_COUNTED_N(
          pEbmInteractionState->GetPointerCountLogExitMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited CalculateInteractionScore %" FloatEbmTypePrintf, *interactionScoreReturn
+         "Exited CalculateInteractionScore %" FloatEbmTypePrintf, *interactionScoreOut
       );
    } else {
       LOG_COUNTED_0(pEbmInteractionState->GetPointerCountLogExitMessages(), TraceLevelInfo, TraceLevelVerbose, "Exited CalculateInteractionScore");

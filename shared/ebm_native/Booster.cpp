@@ -845,7 +845,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 ) {
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    if(nullptr == pEbmBoostingState) {
@@ -860,8 +860,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
-         if(nullptr != validationMetricReturn) {
-            *validationMetricReturn = FloatEbmType { 0 };
+         if(nullptr != validationMetricOut) {
+            *validationMetricOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelWarning, "WARNING BoostingStep pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return 0;
@@ -883,12 +883,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       // if we get back a nullptr from GenerateModelFeatureGroupUpdate it either means that there's only
       // 1 class in our classification problem, or it means we encountered an error.  We assume here that
       // it was an error since the caller can check ahead of time if there was only 1 class before calling us
-      if(nullptr != validationMetricReturn) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(nullptr != validationMetricOut) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       return 1;
    }
-   return ApplyModelFeatureGroupUpdate(ebmBoosting, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricReturn);
+   return ApplyModelFeatureGroupUpdate(ebmBoosting, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricOut);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
