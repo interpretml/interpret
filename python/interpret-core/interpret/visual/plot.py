@@ -6,6 +6,7 @@
 import plotly.graph_objs as go
 import numpy as np
 from plotly import subplots
+import matplotlib.pyplot as plt
 from numbers import Number
 
 
@@ -766,3 +767,66 @@ def rules_to_html(data_dict, title=""):  # pragma: no cover
 
     html_str = multi_html_template.format(title=title, rules=rule_final)
     return html_str
+
+
+def plot_all(feat_names, ebm_global, mpl_style=False, figname=None):
+    """
+        Helper function to plot the effect sizes of many Boolean features on the same figure.
+        Args:
+            feat_names: list of feature names to be plotted.
+            ebm_global: Explanation Object for which the effect sizes should be plotted.
+            mpl_style: Boolean, if True the Figure is plotted in matplotlib style.
+                        If False, the Figure is plotted as an interactive Plotly figure.
+            figname: str name of figure to be saved. If none, the figure is not saved.
+        Returns:
+            None
+    """
+    names = []
+    upper_bounds = []
+    impacts = []
+    lower_bounds = []
+    densities = []
+    counter = 0
+    for i, feat_name in enumerate(ebm_global.feature_names):
+        if feat_name in feat_names:
+            my_data = ebm_global.data(i)
+            if len(my_data['scores']) == 2:
+                my_name = "{} ({})".format(feat_name, my_data['density']['scores'][1])
+                names.append(my_name)
+                impacts.append(my_data['scores'][1]-my_data['scores'][0])
+                upper_bounds.append(my_data['upper_bounds'][1] - my_data['lower_bounds'][0])
+                lower_bounds.append(my_data['lower_bounds'][1] - my_data['upper_bounds'][0])
+                densities.append(my_data['density']['scores'][1])
+                counter += 1
+            else:
+                print("Feature: {} is not observed as a Boolean variable.".format(feat_name))
+    if mpl_style:
+        fig = plt.figure(figsize=(12, 12))
+        sorted_i = np.argsort(impacts)
+        for counter, i in enumerate(sorted_i):
+            plt.bar(counter, impacts[i], width=0.5, color='blue', edgecolor='black',
+                   yerr=upper_bounds[i]-impacts[i]) # Assume symmetric error.
+        plt.xticks(range(len(names)), np.array(names)[sorted_i], rotation=90, fontsize=24)
+        plt.ylabel("Addition to Score", fontsize=32)
+        plt.yticks(fontsize=26)
+        if figname is not None:
+            plt.savefig(figname, dpi=300, bbox_inches='tight')
+        else:
+            plt.show()
+    else:
+        sorted_i = np.argsort(impacts)
+        names = np.array(names)[sorted_i]
+        impacts = np.array(impacts)[sorted_i]
+        upper_bounds = np.array(upper_bounds)[sorted_i]
+        lower_bounds = np.array(lower_bounds)[sorted_i]
+        densities_dict = {'names': names,
+                          'scores': np.array(densities)[sorted_i]}
+        data_dict = {'type': 'univariate',
+            'names': names,
+            'scores': impacts,
+            'scores_range': (np.min(lower_bounds), np.max(upper_bounds)),
+            'upper_bounds': upper_bounds,
+            'lower_bounds': lower_bounds,
+            'density': densities_dict,
+            }
+        plot_bar(data_dict)
