@@ -22,7 +22,7 @@ extern void InitializeResiduals(
    FloatEbmType * pResidualError
 );
 
-INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(
    const size_t cSamples, 
    const void * const aTargetData, 
    const FloatEbmType * const aPredictorScores, 
@@ -74,7 +74,7 @@ INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(
    return aResidualErrors;
 }
 
-INLINE_RELEASE static StorageDataType * * ConstructInputData(
+INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cFeatures, 
    const Feature * const aFeatures, 
    const size_t cSamples, 

@@ -508,7 +508,7 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    return false;
 }
 
-INLINE_RELEASE static long GetExponent(const char * str) noexcept {
+INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * str) noexcept {
    str = &str[k_iExp + 1];
    // we previously checked that this converted to a long in FloatToString
    return strtol(str, nullptr, 10);
@@ -650,7 +650,7 @@ static void StringToFloatChopped(
    return;
 }
 
-INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    const FloatEbmType low, 
    const FloatEbmType high
 ) noexcept {
@@ -768,7 +768,7 @@ INLINE_RELEASE static FloatEbmType GetInterpretableCutPointFloat(
    }
 }
 
-INLINE_RELEASE static void IronSplits() noexcept {
+INLINE_RELEASE_UNTEMPLATED static void IronSplits() noexcept {
    // - TODO: POST-HEALING
    //   Our splitting algorithm is greedy and some of the early decisions might not have been optimal.  
    //   We can try and improve things after we're done by looking at small one by one movements that try and
@@ -791,7 +791,7 @@ INLINE_RELEASE static void IronSplits() noexcept {
    //     moves along
 }
 
-INLINE_RELEASE static void CalculatePriority(
+INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
    const FloatEbmType iValLowerFloat,
    const FloatEbmType iValHigherFloat,
    SplitPoint * const pSplitCur
@@ -1789,7 +1789,7 @@ static size_t TreeSearchSplitSegment(
    );
 }
 
-INLINE_RELEASE static size_t TradeSplitSegment(
+INLINE_RELEASE_UNTEMPLATED static size_t TradeSplitSegment(
    std::set<SplitPoint *, CompareSplitPoint> * pBestSplitPoints,
 
    const size_t cSamplesPerBinMin,
@@ -1957,7 +1957,7 @@ static bool StuffSplitsIntoSplittingRanges(
    return false;
 }
 
-INLINE_RELEASE static size_t FillSplittingRangeRemaining(
+INLINE_RELEASE_UNTEMPLATED static size_t FillSplittingRangeRemaining(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) noexcept {
@@ -2001,7 +2001,7 @@ INLINE_RELEASE static size_t FillSplittingRangeRemaining(
    return cConsumedSplittingRanges;
 }
 
-INLINE_RELEASE static void FillSplittingRangeNeighbours(
+INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeNeighbours(
    const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
    const size_t cSplittingRanges,
@@ -2035,7 +2035,7 @@ INLINE_RELEASE static void FillSplittingRangeNeighbours(
    pSplittingRange->m_cUnsplittableHighValues = cUnsplittableSubsequentItems;
 }
 
-INLINE_RELEASE static void FillSplittingRangeBasics(
+INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeBasics(
    const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
@@ -2087,7 +2087,7 @@ INLINE_RELEASE static void FillSplittingRangeBasics(
    }
 }
 
-INLINE_RELEASE static void FillSplittingRangeRandom(
+INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeRandom(
    RandomStream * const pRandomStream,
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
@@ -2118,7 +2118,7 @@ INLINE_RELEASE static void FillSplittingRangeRandom(
    }
 }
 
-INLINE_RELEASE static void FillSplittingRangePointers(
+INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangePointers(
    const size_t cSplittingRanges,
    SplittingRange ** const apSplittingRange,
    SplittingRange * const aSplittingRange
@@ -2137,7 +2137,7 @@ INLINE_RELEASE static void FillSplittingRangePointers(
    } while(apSplittingRangeEnd != ppSplittingRange);
 }
 
-INLINE_RELEASE static void FillSplitPointRandom(
+INLINE_RELEASE_UNTEMPLATED static void FillSplitPointRandom(
    RandomStream * const pRandomStream,
    const size_t cSplitPoints,
    SplitPoint * const aSplitPoints
@@ -2169,7 +2169,7 @@ INLINE_RELEASE static void FillSplitPointRandom(
 }
 
 // TODO : we construct this early on in our process, so we might want to use it when building SplittingRanges
-INLINE_RELEASE static NeighbourJump * ConstructJumps(
+INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
    const size_t cSamples, 
    const FloatEbmType * const aValues
 ) noexcept {
@@ -2214,7 +2214,7 @@ INLINE_RELEASE static NeighbourJump * ConstructJumps(
    return aNeighbourJump;
 }
 
-INLINE_RELEASE static size_t CountSplittingRanges(
+INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues,
    const size_t avgLength,
@@ -2279,7 +2279,7 @@ INLINE_RELEASE static size_t CountSplittingRanges(
    }
 }
 
-INLINE_RELEASE static size_t GetAvgLength(
+INLINE_RELEASE_UNTEMPLATED static size_t GetAvgLength(
    const size_t cSamples, 
    const size_t cBinsMax, 
    const size_t cSamplesPerBinMin
@@ -2338,7 +2338,7 @@ INLINE_RELEASE static size_t GetAvgLength(
    return avgLength;
 }
 
-INLINE_RELEASE static size_t PossiblyRemoveCutForMissing(
+INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
    const bool bMissingPresent,
    size_t cCutPointsMax
 ) noexcept {
@@ -2368,7 +2368,7 @@ INLINE_RELEASE static size_t PossiblyRemoveCutForMissing(
    return cCutPointsMax;
 }
 
-INLINE_RELEASE static size_t RemoveMissingValuesAndReplaceInfinities(
+INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities(
    size_t cSamples,
    FloatEbmType * const aValues,
    FloatEbmType * const pMinNonInfinityValueOut,
@@ -2642,9 +2642,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         FloatEbmType * const pValuesEnd = featureValues + cSamples;
-         std::sort(featureValues, pValuesEnd);
-
          EBM_ASSERT(nullptr != countCutPointsInOut);
          const IntEbmType countCutPoints = *countCutPointsInOut;
 
@@ -2686,6 +2683,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             ret = IntEbmType { 0 };
             goto exit_with_log;
          }
+
          // countSamplesPerBinMin is convertible to size_t since (cSamples >> 1) <= countSamplesPerBinMin
          EBM_ASSERT(IsNumberConvertable<size_t>(countSamplesPerBinMin));
          const size_t cSamplesPerBinMin = static_cast<size_t>(countSamplesPerBinMin);
@@ -2697,9 +2695,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cCutPointsMaxInitial = static_cast<IntEbmType>(cSamples) <= countCutPoints ?
             cSamples - size_t { 1 } : static_cast<size_t>(countCutPoints);
 
-         const size_t cCutPointsMax = PossiblyRemoveCutForMissing(IntEbmType { 0 } != countMissingValuesRet, cCutPointsMaxInitial);
+         const size_t cCutPointsMax = PossiblyRemoveCutForMissing(
+            IntEbmType { 0 } != countMissingValuesRet, 
+            cCutPointsMaxInitial
+         );
          EBM_ASSERT(size_t { 1 } <= cCutPointsMax); // we won't eliminate to less than 1, and we had at least 1 before
          EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
+
+         std::sort(featureValues, featureValues + cSamples);
 
          const size_t avgLength = GetAvgLength(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
          EBM_ASSERT(size_t { 1 } <= avgLength);
