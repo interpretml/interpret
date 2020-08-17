@@ -1961,7 +1961,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t FillSplittingRangeRemaining(
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) noexcept {
-   EBM_ASSERT(1 <= cSplittingRanges);
+   EBM_ASSERT(size_t { 1 } <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
 
    SplittingRange * pSplittingRange = aSplittingRange;
@@ -1974,27 +1974,35 @@ INLINE_RELEASE_UNTEMPLATED static size_t FillSplittingRangeRemaining(
       pSplittingRange->m_cUnsplittableEitherSideValuesMin = std::min(cUnsplittablePriorItems, cUnsplittableSubsequentItems);
 
       pSplittingRange->m_flags = k_MiddleSplittingRange;
-      pSplittingRange->m_cSplitsAssigned = 1;
+      pSplittingRange->m_cSplitsAssigned = size_t { 1 };
 
       ++pSplittingRange;
    } while(pSplittingRangeEnd != pSplittingRange);
 
    size_t cConsumedSplittingRanges = cSplittingRanges;
-   if(1 == cSplittingRanges) {
+   if(size_t { 1 } == cSplittingRanges) {
       aSplittingRange[0].m_flags = k_FirstSplittingRange | k_LastSplittingRange;
       // might as well assign a split to the only SplittingRange.  We'll be stuffing it as full as it can get soon
-      EBM_ASSERT(1 == aSplittingRange[0].m_cSplitsAssigned);
+      EBM_ASSERT(size_t { 1 } == aSplittingRange[0].m_cSplitsAssigned);
    } else {
       aSplittingRange[0].m_flags = k_FirstSplittingRange;
-      if(0 == aSplittingRange[0].m_cUnsplittableLowValues) {
-         aSplittingRange[0].m_cSplitsAssigned = 0;
+      if(size_t { 0 } == aSplittingRange[0].m_cUnsplittableLowValues) {
+         // we chose cUnsplittableRangeLengthMin such that we could GUARANTEE that we'd have enough splits for
+         // any SplittingRange that was bound on both sides by unsplitable ranges.  If this SplittingRange isn't
+         // bound by unsplittable ranges though, it means we can't have a guaranteed assigned cut
+         aSplittingRange[0].m_cSplitsAssigned = size_t { 0 };
+         EBM_ASSERT(size_t { 1 } <= cConsumedSplittingRanges);
          --cConsumedSplittingRanges;
       }
 
       --pSplittingRange; // go back to the last one
       pSplittingRange->m_flags = k_LastSplittingRange;
-      if(0 == pSplittingRange->m_cUnsplittableHighValues) {
-         pSplittingRange->m_cSplitsAssigned = 0;
+      if(size_t { 0 } == pSplittingRange->m_cUnsplittableHighValues) {
+         // we chose cUnsplittableRangeLengthMin such that we could GUARANTEE that we'd have enough splits for
+         // any SplittingRange that was bound on both sides by unsplitable ranges.  If this SplittingRange isn't
+         // bound by unsplittable ranges though, it means we can't have a guaranteed assigned cut
+         pSplittingRange->m_cSplitsAssigned = size_t { 0 };
+         EBM_ASSERT(size_t { 1 } <= cConsumedSplittingRanges);
          --cConsumedSplittingRanges;
       }
    }
@@ -2038,14 +2046,14 @@ INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeNeighbours(
 INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeBasics(
    const size_t cSamples,
    FloatEbmType * const aSingleFeatureValues,
-   const size_t avgLength,
+   const size_t cUnsplittableRangeLengthMin,
    const size_t cSamplesPerBinMin,
    const size_t cSplittingRanges,
    SplittingRange * const aSplittingRange
 ) noexcept {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aSingleFeatureValues);
-   EBM_ASSERT(1 <= avgLength);
+   EBM_ASSERT(1 <= cUnsplittableRangeLengthMin);
    EBM_ASSERT(1 <= cSamplesPerBinMin);
    EBM_ASSERT(1 <= cSplittingRanges);
    EBM_ASSERT(nullptr != aSplittingRange);
@@ -2061,7 +2069,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeBasics(
       const FloatEbmType val = *pScan;
       if(val != rangeValue) {
          size_t cEqualRangeItems = pScan - pStartEqualRange;
-         if(avgLength <= cEqualRangeItems) {
+         if(cUnsplittableRangeLengthMin <= cEqualRangeItems) {
             if(aSingleFeatureValues != pSplittableValuesStart || cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
                EBM_ASSERT(pSplittingRange < aSplittingRange + cSplittingRanges);
                pSplittingRange->m_pSplittableValuesFirst = pSplittableValuesStart;
@@ -2082,7 +2090,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillSplittingRangeBasics(
       pSplittingRange->m_pSplittableValuesFirst = pSplittableValuesStart;
       EBM_ASSERT(pStartEqualRange < pValuesEnd);
       const size_t cEqualRangeItems = pValuesEnd - pStartEqualRange;
-      const FloatEbmType * const pSplittableRangeEnd = avgLength <= cEqualRangeItems ? pStartEqualRange : pValuesEnd;
+      const FloatEbmType * const pSplittableRangeEnd = cUnsplittableRangeLengthMin <= cEqualRangeItems ? pStartEqualRange : pValuesEnd;
       pSplittingRange->m_cSplittableValues = pSplittableRangeEnd - pSplittableValuesStart;
    }
 }
@@ -2217,30 +2225,27 @@ INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
 INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues,
-   const size_t avgLength,
+   const size_t cUnsplittableRangeLengthMin,
    const size_t cSamplesPerBinMin
 ) noexcept {
-   EBM_ASSERT(1 <= cSamples);
+   EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
    EBM_ASSERT(nullptr != aSingleFeatureValues);
-   EBM_ASSERT(1 <= avgLength);
-   EBM_ASSERT(1 <= cSamplesPerBinMin);
+   EBM_ASSERT(size_t { 1 } <= cUnsplittableRangeLengthMin);
+   EBM_ASSERT(size_t { 1 } <= cSamplesPerBinMin);
+   EBM_ASSERT(cSamplesPerBinMin <= cSamples / size_t { 2 }); // we exit earlier if we don't have enough samples for 2 bins
 
-   if(cSamples < (cSamplesPerBinMin << 1)) {
-      // we can't make any cuts if we have less than 2 * cSamplesPerBinMin samples, 
-      // since we need at least cSamplesPerBinMin samples on either side of the cut point
-      return 0;
-   }
    FloatEbmType rangeValue = *aSingleFeatureValues;
    const FloatEbmType * pSplittableValuesStart = aSingleFeatureValues;
    const FloatEbmType * pStartEqualRange = aSingleFeatureValues;
    const FloatEbmType * pScan = aSingleFeatureValues + 1;
    const FloatEbmType * const pValuesEnd = aSingleFeatureValues + cSamples;
    size_t cSplittingRanges = 0;
-   while(pValuesEnd != pScan) {
+   EBM_ASSERT(pValuesEnd != pScan); // because 2 <= cSamples
+   do {
       const FloatEbmType val = *pScan;
-      if(val != rangeValue) {
-         size_t cEqualRangeItems = pScan - pStartEqualRange;
-         if(avgLength <= cEqualRangeItems) {
+      if(PREDICTABLE(val != rangeValue)) {
+         const size_t cEqualRangeItems = pScan - pStartEqualRange;
+         if(cUnsplittableRangeLengthMin <= cEqualRangeItems) {
             if(aSingleFeatureValues != pSplittableValuesStart || cSamplesPerBinMin <= static_cast<size_t>(pStartEqualRange - pSplittableValuesStart)) {
                ++cSplittingRanges;
             }
@@ -2250,26 +2255,22 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
          pStartEqualRange = pScan;
       }
       ++pScan;
-   }
+   } while(LIKELY(pValuesEnd != pScan));
    if(aSingleFeatureValues == pSplittableValuesStart) {
       EBM_ASSERT(0 == cSplittingRanges);
 
       // we're still on the first splitting range.  We need to make sure that there is at least one possible cut
       // if we require 3 items for a cut, a problematic range like 0 1 3 3 4 5 could look ok, but we can't cut it in the middle!
-      const FloatEbmType * pCheckForSplitPoint = aSingleFeatureValues + cSamplesPerBinMin;
-      EBM_ASSERT(pCheckForSplitPoint <= pValuesEnd);
-      const FloatEbmType * pCheckForSplitPointLast = pValuesEnd - cSamplesPerBinMin;
-      EBM_ASSERT(aSingleFeatureValues <= pCheckForSplitPointLast);
-      EBM_ASSERT(aSingleFeatureValues < pCheckForSplitPoint);
-      FloatEbmType checkValue = *(pCheckForSplitPoint - 1);
-      while(pCheckForSplitPoint <= pCheckForSplitPointLast) {
-         if(checkValue != *pCheckForSplitPoint) {
-            return 1;
-         }
-         ++pCheckForSplitPoint;
-      }
-      // there's no possible place to split, so return
-      return 0;
+
+      const FloatEbmType * pLow = aSingleFeatureValues + cSamplesPerBinMin - 1;
+      EBM_ASSERT(pLow < pValuesEnd);
+      const FloatEbmType * pHigh = pValuesEnd - cSamplesPerBinMin;
+      EBM_ASSERT(aSingleFeatureValues <= pHigh);
+      EBM_ASSERT(pLow < pHigh);
+
+      // if they are equal, then there are no values between them where we could split.  
+      // If unequal, there's a split somewhere
+      return UNPREDICTABLE(*pLow == *pHigh) ? size_t { 0 } : size_t { 1 };
    } else {
       const size_t cItemsLast = static_cast<size_t>(pValuesEnd - pSplittableValuesStart);
       if(cSamplesPerBinMin <= cItemsLast) {
@@ -2279,63 +2280,76 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
    }
 }
 
-INLINE_RELEASE_UNTEMPLATED static size_t GetAvgLength(
+INLINE_RELEASE_UNTEMPLATED static size_t GetUnsplittableRangeLengthMin(
    const size_t cSamples, 
    const size_t cBinsMax, 
    const size_t cSamplesPerBinMin
 ) noexcept {
+
+   // !! IMPORTANT !!
+   // This function returns an unsplittable range minimum length that is sufficiently long that it can GUARANTEE 
+   // that all interior SplittingRanges can be assigned 1 cut.  There is no guarantee that either the first or last 
+   // SplittingRange will get a cut though, unless there is an unsplittable range on both sides of the first or last
+   // SplittingRange, which can happen if the value sequence either starts or ends with an unsplittable range.
+   //
+   // The best way to describe what this function does is via an example.  Let's say that we had 100 samples,
+   // and 10 bins.  The ideal data would allow us to create 10 bins of 10 items each.  This function would return
+   // the value 10 because that's the ideal range length for this hypothetical example.  If there is a range of
+   // 10 identical values or more (say 15), that range is GUARANTEED to be segmented by an aspirational split point
+   // or be perfectly bound by two split points.  In this example, a range of 15 identical values will always 
+   // contain an aspirational split point, so we will treat these long ranges differently and place explicit split
+   // points on their ends.
+   //
+   // Let's change the example and say that there were 101 samples, but still 10 bins. Our aspirational split points
+   // will now be on fractional numbers.  Ranges are now 10.1 items each.  We are no longer guaranteed that a
+   // range of identical values 10 long will have an aspirational split point within it, so we need to take the
+   // ceiling when getting the average, so that we set our minimum unsplittable range length to 11 in this example.
+   // 
+   // We get one more very important GUARANTEE by taking the ceiling of the average length.  We get a guarantee
+   // that we can always assign 1 cut to each interior SplittingRange.  When we partition our data, our data
+   // can start and end with a splittable range or an unsplitable range.  It can also have splittable interior ranges
+   // separated by unsplittable ranges.  The general form looks like this:
+   // optional_splitable | unsplitable | splitable | unsplitable | splitable | unsplitable | optional_splitable
+   // The splitable interior ranges are always bounded by unsplitable ranges on both sides.  The interior splitable
+   // ranges can have a length of zero.  It would be very very bad if one of these interior splitable ranges
+   // was not able to get a cut, since then we'd need to choose two unsplitable ranges, and an splitable range
+   // to join together.  By taking the ceiling of the average length, we avoid this potential misshap.  In most cases
+   // we'll also still have split points to give to the first and last splitable ranges (if they exist), but
+   // those are less critical since they can be small down to even just 1 value if cSamplesPerBinMin is 1.
+   // Also, even if the first or last tail splitable range is longer it isn't as catetrophic to not get a cut since
+   // we'll at most then be combining a full unsplitable range with the splitable range values, and if we need to
+   // make this kind of hard decision, it's best to make a bigger range at the tail ends to avoid overfitting there.
+   // Also, if the two tail unsplitable ranges sum to the length of a complete average range, then we'll get at least
+   // one cut that we can assign to the larger of the two.
+   //
+   // Ok, here is why we get a guarantee that our interior splittable ranges will get a cut.  If we discard the
+   // first and last splitable ranges, then the most efficient packing method for a dataset that starts and ends
+   // with an unsplitable range is to have equal spaced unsplitable ranges separated by zero length unsplitable
+   // ranges, so in the example above of 100 samples with 10 bins, this would be something like having:
+   // 10 zeros, 10 ones, 10 twos, 10 threes, 10 fours, 10 fives, 10 sixes, 10 sevens, 10 eights, and 10 nines.
+   // With a minimum unsplitable range length of 10, there is no way to have more than 10 bins with this dataset.
+   // 
+   // Example of a bad situation if we took the rounded average of cSamples / cBinsMax:
+   // 20 == cSamples, 9 == cBinsMax (so 8 cuts).  20 / 9 = 2.22222222222.  std::round(2.222222222) = 2.  
+   // So cUnsplittableRangeLengthMin would be 2 if we rounded 20 / 9  , but if our data is:
+   // 0,0|1,1|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9
+   // then we get 9 SplittingRanges, but we only have 8 cuts to distribute.  And then we get to somehow choose 
+   // which SplittingRange gets 0 cuts. A better choice would have been to make cUnsplittableRangeLengthMin 3 
+   // instead, so the ceiling.  Then we'd be guaranteed to have 8 or less SplittingRanges
+   //
+
    EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
    EBM_ASSERT(size_t { 2 } <= cBinsMax); // if there is just one bin, then you can't have splits, so we exit earlier
    EBM_ASSERT(size_t { 1 } <= cSamplesPerBinMin);
-   EBM_ASSERT(cSamplesPerBinMin <= cSamples / 2); // we exit earlier if we don't have enough samples for 2 bins
+   EBM_ASSERT(cSamplesPerBinMin <= cSamples / size_t { 2 }); // we exit earlier if we don't have enough samples for 2 bins
 
-   // SplittingRanges are ranges of numbers that we have the guaranteed option of making at least one split within.
-   // if there is only one SplittingRange, then we have no choice other than make cuts within the one SplittingRange that we're given
-   // if there are multiple SplittingRanges, then every SplittingRanges borders at least one long range of equal values which are unsplittable.
-   // cuts are a limited resource, so we want to spend them wisely.  If we have N cuts to give out, we'll first want to ensure that we get a cut
-   // within each possible SplittingRange, since these things always border long ranges of unsplittable values.
-   //
-   // BUT, what happens if we have N SplittingRange, but only N-1 cuts to give out.  In that case we would have to make difficult decisions about where
-   // to put the cuts
-   //
-   // To avoid the bad scenario of having to figure out which SplittingRange won't get a cut, we instead ensure that we can never have more SplittingRanges
-   // than we have cuts.  This way every SplittingRanges is guaranteed to have at least 1 cut.
-   // 
-   // If our avgLength is the ceiling of cSamples / cBinsMax, then we get this guarantee
-   // but std::ceil works on floating point numbers, and it is inexact, especially if cSamples is above the point where floating point numbers can't
-   // represent all integer values anymore (above 2^52)
-   // so, instead of taking the std::ceil, we take the floor instead by just converting it to size_t, then we increment the avgLength until we
-   // get our guarantee using integer math.  This gives us a true guarantee that we'll have sufficient cuts to give each SplittingRange at least one cut
+   size_t cUnsplittableRangeLengthMin = (cSamples - size_t { 1 }) / cBinsMax + size_t { 1 }; // get the ceil value
+   cUnsplittableRangeLengthMin = UNPREDICTABLE(cUnsplittableRangeLengthMin < cSamplesPerBinMin) ? 
+      cSamplesPerBinMin : cUnsplittableRangeLengthMin;
 
-   // Example of a bad situation if we took the rounded average of cSamples / cBinsMax:
-   // 20 == cSamples, 9 == cBinsMax (so 8 cuts).  20 / 9 = 2.22222222222.  std::round(2.222222222) = 2.  So avgLength would be 2 if we rounded 20 / 9
-   // but if our data is:
-   // 0,0|1,1|2,2|3,3|4,4|5,5|6,6|7,7|8,8|9,9
-   // then we get 9 SplittingRanges, but we only have 8 cuts to distribute.  And then we get to somehow choose which SplittingRange gets 0 cuts.
-   // a better choice would have been to make avgLength 3 instead, so the ceiling.  Then we'd be guaranteed to have 8 or less SplittingRanges
+   EBM_ASSERT(size_t { 1 } <= cUnsplittableRangeLengthMin);
 
-   // our algorithm has the option of not putting cut points in the first and last SplittingRanges, since they could be cSamplesPerBinMin long
-   // and have a long set of equal values only on one side, which means that a cut there isn't absolutely required.  We still need to take the ceiling
-   // for the avgLength though since it's possible to create arbitrarily high number of missing bins.  We have a test that creates 3 missing bins, thereby
-   // testing for the case that we don't give the first and last SplittingRanges an initial cut.  In this case, we're still missing a cut for one of the
-   // long ranges that we can't fullfil.
-
-   // TODO: review why we convert to float and then back to size_t.  This doesn't make sense to me right now, and
-   //       also why does the loop below exists.  Can't we get an exact version without the loop?
-   size_t avgLength = static_cast<size_t>(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cBinsMax));
-   avgLength = UNPREDICTABLE(avgLength < cSamplesPerBinMin) ? cSamplesPerBinMin : avgLength;
-   while(true) {
-      if(UNLIKELY(IsMultiplyError(avgLength, cBinsMax))) {
-         // cSamples isn't an overflow (we checked when we entered), so if we've reached an overflow in the multiplication, 
-         // then our multiplication result must be larger than cSamples, even though we can't perform it, so we're good
-         break;
-      }
-      if(PREDICTABLE(cSamples <= avgLength * cBinsMax)) {
-         break;
-      }
-      ++avgLength;
-   }
-   return avgLength;
+   return cUnsplittableRangeLengthMin;
 }
 
 INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
@@ -2700,15 +2714,27 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             cCutPointsMaxInitial
          );
          EBM_ASSERT(size_t { 1 } <= cCutPointsMax); // we won't eliminate to less than 1, and we had at least 1 before
-         EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
 
          std::sort(featureValues, featureValues + cSamples);
 
-         const size_t avgLength = GetAvgLength(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
-         EBM_ASSERT(size_t { 1 } <= avgLength);
-         const size_t cSplittingRanges = CountSplittingRanges(cSamples, featureValues, avgLength, cSamplesPerBinMin);
-         // we GUARANTEE that each SplittingRange can have at least one cut by choosing an avgLength sufficiently long to ensure this property
-         EBM_ASSERT(cSplittingRanges <= cCutPointsMax);
+         EBM_ASSERT(cCutPointsMax < cSamples); // so we can add 1 to cCutPointsMax safely
+         const size_t cUnsplittableRangeLengthMin = 
+            GetUnsplittableRangeLengthMin(cSamples, cCutPointsMax + 1, cSamplesPerBinMin);
+         EBM_ASSERT(size_t { 1 } <= cUnsplittableRangeLengthMin);
+
+         const size_t cSplittingRanges = CountSplittingRanges(
+            cSamples, 
+            featureValues, 
+            cUnsplittableRangeLengthMin, 
+            cSamplesPerBinMin
+         );
+         // we GUARANTEE that each interior SplittingRange can have at least one cut by choosing an 
+         // cUnsplittableRangeLengthMin sufficiently long to ensure this property.  The first and last splitable
+         // ranges, if they exist, can be quite small, so we can trade 1 long unsplitable range for 2 splitable
+         // ranges at the tail ends, so we can get 1 more split than the maximum number of splits given to us
+         // but not 2 more.  cCutPointsMax + size_t { 1 } can't overflow since cCutPointsMax < cSamples , and
+         // cSamples is a size_t
+         EBM_ASSERT(cSplittingRanges <= cCutPointsMax + size_t { 1 });
          if(UNLIKELY(size_t { 0 } == cSplittingRanges)) {
             countCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 0 };
@@ -2780,10 +2806,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          FillSplittingRangePointers(cSplittingRanges, apSplittingRange, aSplittingRange);
          FillSplittingRangeRandom(&randomStream, cSplittingRanges, aSplittingRange);
 
-         FillSplittingRangeBasics(cSamples, featureValues, avgLength, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
+         FillSplittingRangeBasics(cSamples, featureValues, cUnsplittableRangeLengthMin, cSamplesPerBinMin, cSplittingRanges, aSplittingRange);
          FillSplittingRangeNeighbours(cSamples, featureValues, cSplittingRanges, aSplittingRange);
 
          const size_t cUsedSplits = FillSplittingRangeRemaining(cSplittingRanges, aSplittingRange);
+         EBM_ASSERT(cUsedSplits <= cCutPointsMax);
          const size_t cCutsRemaining = cCutPointsMax - cUsedSplits;
 
          if(UNLIKELY(StuffSplitsIntoSplittingRanges(
@@ -2792,7 +2819,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             cSamplesPerBinMin,
             cCutsRemaining
          ))) {
-            // we've already written a message in ConstructJumps
+            // we've already written an error message within StuffSplitsIntoSplittingRanges
 
             free(apSplittingRange);
             free(aSplitPoints);

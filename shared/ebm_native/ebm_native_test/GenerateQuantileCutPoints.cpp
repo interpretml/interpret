@@ -1972,6 +1972,92 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    }
 }
 
+TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per SplittingRange, by 2") {
+   constexpr IntEbmType countSamplesPerBinMin = 1;
+   constexpr size_t cItemsPerRange = 10;
+   constexpr size_t cInteriorRanges = 3;
+   constexpr size_t cRemoveCuts = 1;
+
+   FloatEbmType featureValues[3 + cInteriorRanges * cItemsPerRange];
+
+   std::vector<FloatEbmType> expectedCutPoints;
+
+   featureValues[0] = 0;
+   for(size_t iRange = 0; iRange < cInteriorRanges; ++iRange) {
+      for(size_t i = 1 + cItemsPerRange * iRange; i < 1 + (cItemsPerRange * (iRange + 1)); ++i) {
+         featureValues[i] = iRange + 1;
+      }
+      expectedCutPoints.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(iRange));
+   }
+   expectedCutPoints.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(cInteriorRanges));
+
+   featureValues[cInteriorRanges * cItemsPerRange + 1] = 1 + cInteriorRanges;
+   featureValues[cInteriorRanges * cItemsPerRange + 2] = 1 + cInteriorRanges;
+
+   if(1 == cRemoveCuts) {
+      expectedCutPoints.erase(expectedCutPoints.begin());
+   } else if(2 == cRemoveCuts) {
+      expectedCutPoints.erase(expectedCutPoints.begin());
+      expectedCutPoints.erase(expectedCutPoints.end() - 1);
+   } else {
+      assert(0 == cRemoveCuts);
+   }
+
+   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
+   FloatEbmType cutPointsLowerBoundInclusive[cInteriorRanges + 1 - cRemoveCuts];
+   assert(sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]) == expectedCutPoints.size());
+   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   IntEbmType countMissingValues;
+   FloatEbmType minNonInfinityValue;
+   IntEbmType countNegativeInfinity;
+   FloatEbmType maxNonInfinityValue;
+   IntEbmType countPositiveInfinity;
+
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
+   IntEbmType countMissingValuesExpected;
+   FloatEbmType minNonInfinityValueExpected;
+   IntEbmType countNegativeInfinityExpected;
+   FloatEbmType maxNonInfinityValueExpected;
+   IntEbmType countPositiveInfinityExpected;
+   GetExpectedStats(
+      countSamples,
+      featureValues,
+      countMissingValuesExpected,
+      minNonInfinityValueExpected,
+      countNegativeInfinityExpected,
+      maxNonInfinityValueExpected,
+      countPositiveInfinityExpected
+   );
+
+   IntEbmType ret = GenerateQuantileCutPoints(
+      countSamples,
+      featureValues,
+      countSamplesPerBinMin,
+      &countCutPoints,
+      cutPointsLowerBoundInclusive,
+      &countMissingValues,
+      &minNonInfinityValue,
+      &countNegativeInfinity,
+      &maxNonInfinityValue,
+      &countPositiveInfinity
+   );
+   CHECK(0 == ret);
+
+   CHECK(countMissingValuesExpected == countMissingValues);
+   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
+   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
+   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
+   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
+
+   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
+      }
+   }
+}
+
 TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
    RandomStreamTest randomStream(randomSeed);
    if(!randomStream.IsSuccess()) {
