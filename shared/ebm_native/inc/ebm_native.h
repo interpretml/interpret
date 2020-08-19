@@ -291,6 +291,15 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, 
 //         so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
+
+// TODO: we should change our interface such that long running work items will return instantly but are working on
+//       a background thread.  The caller will get back a token to the work.  They can either start a number of
+//       work items simultaneously, or call a blocking function that waits on any/all work items to complete.
+//       The log in this world would be a circular buffer and wouldn't be writtent out unless the C++ code was
+//       controlling the main thread (either during calls to the non-blocking components, or while the caller is
+//       in the waiting function).  We would drop anything that exceeds the circular buffer.  This allows us to have
+//       threaded code inside non-threaded languages.
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,

@@ -2176,13 +2176,12 @@ INLINE_RELEASE_UNTEMPLATED static void FillSplitPointRandom(
    }
 }
 
-// TODO : we construct this early on in our process, so we might want to use it when building SplittingRanges
+// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
    const size_t cSamples, 
    const FloatEbmType * const aValues
 ) noexcept {
-   // TODO test this
-   EBM_ASSERT(0 < cSamples);
+   EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aValues);
 
    NeighbourJump * const aNeighbourJump = EbmMalloc<NeighbourJump>(cSamples);
@@ -2196,32 +2195,37 @@ INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
 
    size_t iStartCur = 0;
    NeighbourJump * pNeighbourJump = aNeighbourJump;
-   do {
+   while(true) {
       const FloatEbmType valCur = valNext;
       do {
          ++pValue;
          if(UNLIKELY(pValueEnd == pValue)) {
-            break;
+            const size_t iStartNext = pValue - aValues;
+            const NeighbourJump * const pNeighbourJumpEnd = aNeighbourJump + iStartNext;
+            do {
+               pNeighbourJump->m_iStartCur = iStartCur;
+               pNeighbourJump->m_iStartNext = iStartNext;
+               ++pNeighbourJump;
+            } while(PREDICTABLE(pNeighbourJumpEnd != pNeighbourJump));
+
+            return aNeighbourJump;
          }
          valNext = *pValue;
       } while(PREDICTABLE(valNext == valCur));
 
       const size_t iStartNext = pValue - aValues;
-      const size_t cItems = iStartNext - iStartCur;
-
-      const NeighbourJump * const pNeighbourJumpEnd = pNeighbourJump + cItems;
+      const NeighbourJump * const pNeighbourJumpEnd = aNeighbourJump + iStartNext;
       do {
          pNeighbourJump->m_iStartCur = iStartCur;
          pNeighbourJump->m_iStartNext = iStartNext;
          ++pNeighbourJump;
-      } while(pNeighbourJumpEnd != pNeighbourJump);
+      } while(PREDICTABLE(pNeighbourJumpEnd != pNeighbourJump));
 
       iStartCur = iStartNext;
-   } while(LIKELY(pValueEnd != pValue));
-
-   return aNeighbourJump;
+   }
 }
 
+// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues,
@@ -2280,6 +2284,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t CountSplittingRanges(
    }
 }
 
+// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t GetUnsplittableRangeLengthMin(
    const size_t cSamples, 
    const size_t cBinsMax, 
@@ -2352,6 +2357,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t GetUnsplittableRangeLengthMin(
    return cUnsplittableRangeLengthMin;
 }
 
+// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
    const bool bMissingPresent,
    size_t cCutPointsMax
@@ -2382,6 +2388,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t PossiblyRemoveCutForMissing(
    return cCutPointsMax;
 }
 
+// VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities(
    size_t cSamples,
    FloatEbmType * const aValues,
@@ -2743,20 +2750,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
          if(UNLIKELY(nullptr == aNeighbourJumps)) {
-            // we've already written a message in ConstructJumps
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aNeighbourJumps");
+
             countCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
 
-         // sometimes cut points will move between SplittingRanges, so we won't know an accurate
-         // number of cut points, but we can be sure that we won't exceed the total number of cut points
-         // so allocate the same number each time.  Hopefully we'll get back the same memory range each time
-         // to avoid memory fragmentation.
-
          // we limit the cCutPointsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
          // the maximum size_t though since the caller must have allocated cSamples floats in featureValues, and
          // there are no float types that are 1 byte, and we checked that this didn't overflow, so we should be good
+         // to add 2 to the cCutPointsMax value
          EBM_ASSERT(cCutPointsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
          // include storage for the end points
          const size_t cSplitPointsWithEndpointsMax = cCutPointsMax + size_t { 2 };
