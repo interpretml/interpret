@@ -141,7 +141,20 @@ class EBMUtils:
             # Get the current column(s) to process
             feature_idxs = feature_group
             sliced_X = X[feature_idxs, :]
+
+            # Log and re-assign negative indexes to prevent slice failure
+            unknowns = (sliced_X < 0)
+            sliced_X[unknowns] = 0  
             scores = tensor[tuple(sliced_X)]
+
+            # Reduce pairs back to 1 dimensional, currently fails on 3D+ tensors
+            if unknowns.shape[0] == 2:
+                unknowns = unknowns[0, :] | unknowns[1, :]
+            else:
+                unknowns = unknowns.ravel()
+                
+            # Reset scores from unknown/missing indexes to 0  
+            scores[unknowns] = 0  
 
             yield set_idx, feature_group, scores
 
