@@ -387,6 +387,9 @@ class CompareTreeNodeSplittingGain final {
 public:
    // TODO : check how efficient this is.  Is there a faster way to to this
    INLINE_ALWAYS bool operator() (const TreeNode<bClassification> * const & lhs, const TreeNode<bClassification> * const & rhs) const noexcept {
+
+      // TODO : VERY IMPORTANT, review if this is sorting in the correct direction!!!
+
       // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
       // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
       return lhs->AFTER_GetSplitGain() < rhs->AFTER_GetSplitGain();

@@ -1361,7 +1361,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
    FloatEbmType featureValues[] { 1, 2, 2, 4, 6, 8, 8 };
-   const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
+   const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
@@ -1774,7 +1774,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
    FloatEbmType featureValues[] { 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCutPoints { 2.5, 4.5, 6.5 };
+   const std::vector<FloatEbmType> expectedCutPoints { 3.5, 5.5, 7.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
@@ -1913,9 +1913,9 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    FloatEbmType featureValues[] { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
       17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29 };
    const std::vector<FloatEbmType> expectedCutPoints {
-      0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 9.5,
-      10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 19.5,
-      20.5, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5
+      0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5,
+      9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5,
+      18.5, 19.5, 21.5, 22.5, 23.5, 24.5, 25.5, 27.5
    };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -2160,7 +2160,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
    const size_t cMax = std::max(cBottomTotal, cTopTotal);
    const size_t cMin = std::min(cBottomTotal, cTopTotal);
    const FloatEbmType ratio = static_cast<FloatEbmType>(cMin) / static_cast<FloatEbmType>(cMax);
-   CHECK(0.98 <= ratio || 0 == cMax);
+   CHECK(0.97 <= ratio || 0 == cMax);
 }
 
 TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
