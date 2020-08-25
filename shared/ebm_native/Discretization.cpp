@@ -58,6 +58,12 @@
 //    if we had the values [1, 2, 3, 4] and one CutPoint, a reasonable cutPoint would be 2.5.
 //  - cut range - the values between two CutPoint
 
+INLINE_ALWAYS static FloatEbmType GetTweakingMultiple(const size_t iTweak) noexcept {
+   // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
+   constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
+   return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
+}
+
 // VERIFIED
 INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
@@ -866,6 +872,18 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
 
       priority = priorityLow * priorityHigh;
       EBM_ASSERT(FloatEbmType { 1 } <= priority);
+
+      // initiallly the space is divided into equal length ranges, so there are usually a lot of collisions
+      // in priority from potential cuts on opposite sides of the value array.  We have a tiebreaker inside
+      // our CutPoint to handle exact matches, but frequently due to floating point inexactness we find that
+      // the priority isn't exactly equivalent from the top and bottom.  We generate a very small multiple which
+      // is very very close to 1 in most cases, but it is enough to separate similar numbers.  If we have huge numbers
+      // of potential cuts, then we might exceed 1 by a lot, but neighbouring cuts all have very similar values
+      // and only differ by a small amount.  If we have such huge numbers of cuts, we probably want to focus
+      // on the ends anyways, and our tiebreaker selection algorithm will put the higher priority numbers at
+      // the tail ends, which is perfect
+      
+      priority *= GetTweakingMultiple(pCutCur->m_uniqueTiebreaker);
    }
    pCutCur->m_priority = priority;
 }
@@ -1956,8 +1974,6 @@ static bool StuffCutsIntoCuttingRanges(
          const CuttingRange * const & lhs,
          const CuttingRange * const & rhs
       ) const noexcept {
-         // TODO : VERY IMPORTANT, review if this is sorting in the correct direction!!!
-
          // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
          // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
          return lhs->m_avgCuttableRangeWidthAfterAddingOneCut == rhs->m_avgCuttableRangeWidthAfterAddingOneCut ?
@@ -2258,6 +2274,7 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangePointers(
 
 // VERIFIED 08-2020
 INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
+   bool bReverseSymmetry,
    RandomStream * const pRandomStream,
    const size_t cCutPoints,
    CutPoint * const aCutPoints
@@ -2266,42 +2283,46 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
    // occasionally there will be ties in our priority calculation. We need a repeatable method to break
    // those ties so that our outputs are repetable in a consistent cross platform way.  We also like symetry
    // such that if we reversed the order of our input values, we'd get the same cuts.  This isn't possible
-   // in all cases, but it's still a nice property to obtain when possible.  To achieve this, when our priority
-   // calculation is identical for two proposed splits, we use a tiebreaker value.  For symetry, we first
-   // prefer cuts that are closer to the edges, since in general we'd prefer to keep flexibility in the
-   // more open center where we can course correct more easily.  So, as a tiebreaker we use a number that is
-   // the distance to the center (higher numbers at the edges).  When we're called on though to break a tie
-   // where the potential cuts are both equidistant to the center/ends, then we don't really have any other
-   // recourse other than using a random number, so we shuffle the tiebreakers between the top and bottom
-
-   // if the CutPoints get moved arround, then the index won't be true to their new position, but this unique
-   // number is more about ensuring repeatable results in a symetric way, so we can tollerate repositioning.
-   // The repositioning itself should be symetric too, so it won't necessarily lead to non-symetric results
-
+   // in 100% of all cases, but we can get this property in 99% of cases by first detecting a symetry order
+   // ourside of this function, then using a repeatable random number generator which will order our tiebreakers
+   // in a consistent way based on the symetry starting side.  We also use the tiebreaker value to add some
+   // consistent priority to our splits to combat floating point inexactnes issues.  We therefore want our
+   // tiebreakers to roughly also follow a priority order.  Since in generall, all things being equal, we
+   // prefer our initial cuts to be at the ends we want the biggest numbers at the ends and zero in the center
+   
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(size_t { 1 } <= cCutPoints);
    EBM_ASSERT(nullptr != aCutPoints);
 
-   // this should be ok since cCutPoints is allocated memory with more than 2 bytes (so negative values ok)
-   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cCutPoints);
+   // this conversion to a signed number should be ok since cCutPoints is allocated memory with more than 
+   // 2 bytes, so we should have room for the negative values.
+   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+   // bReverseSymmetry helps us ensure symetry because we pick true or false based on a fingerprint of the original 
+   // values so if the values are flipped in a transform, then we'll flip reverseSymmetryXor and get the same 
+   // cuts mirror on the opposite sides from the ends
+   size_t reverseSymmetryXor = bReverseSymmetry ? size_t { 1 } : size_t { 0 };
    CutPoint * pCutPointLow = aCutPoints;
    CutPoint * pCutPointHigh = aCutPoints + cCutPoints - size_t { 1 };
    do {
-      const size_t randomLowHigh = pRandomStream->Next(size_t { 2 });
-      EBM_ASSERT(size_t { 0 } == randomLowHigh || size_t { 1 } == randomLowHigh);
+      // our random stream is repetable, and with reverseSymmetryXor it will preserve symmetry of the cuts
+      size_t randomBit = pRandomStream->Next(size_t { 2 });
+      EBM_ASSERT(size_t { 0 } == randomBit || size_t { 1 } == randomBit);
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
 
-      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? tiebreaker : tiebreakerMinusOne;
-      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? tiebreakerMinusOne : tiebreaker;
+      randomBit ^= reverseSymmetryXor;
 
-      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker1);
-      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker2);
+      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } == randomBit) ? tiebreaker : tiebreakerMinusOne;
+      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } == randomBit) ? tiebreakerMinusOne : tiebreaker;
+
+      EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker1);
+      EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker2);
       EBM_ASSERT(pCutPointLow <= pCutPointHigh);
 
       // if we have an even number of items, the last write will be aliased (both pointers will point to the same
-      // location), so we'll either get zero or one in the last location, but for sorting we only care about the
-      // order, and that'll be the same
+      // location), and we'll write either a -1 or 0 in that location selected randomly.  After we exit the loop
+      // we'll write a 0 into the memory if needed to ensure that we don't have a negative value
+      // NOTE: if tiebreaker1 or tiebreaker2 is negative, conversion to an unsigned size_t is defined behavior in C++
       pCutPointLow->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker1);
       pCutPointHigh->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker2);
 
@@ -2312,21 +2333,111 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
       --pCutPointHigh;
 
       tiebreaker -= ptrdiff_t { 2 };
-   } while(ptrdiff_t { 0 } < tiebreaker);
+   } while(ptrdiff_t { 0 } <= tiebreaker);
 
-   EBM_ASSERT(ptrdiff_t { -1 } == tiebreaker || ptrdiff_t { 0 } == tiebreaker);
-   EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow - 1 || pCutPointHigh + 1 == pCutPointLow);
+   EBM_ASSERT(ptrdiff_t { -2 } == tiebreaker || ptrdiff_t { -1 } == tiebreaker);
 
-   EBM_ASSERT(
-      size_t { 0 } != cCutPoints % size_t { 2 } && 
-      (size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker || 
-      size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker) ||
-      size_t { 0 } == cCutPoints % size_t { 2 } && 
-      (size_t { 1 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker && 
-      size_t { 2 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker || 
-      size_t { 2 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
-      size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker)
-   );
+   if(ptrdiff_t { -1 } != tiebreaker) {
+      // we had an odd number of items.  We will have either a -1 or 0 in the last center tiebreaker, but we
+      // want the consistenty of always having a zero, so zero it here
+      EBM_ASSERT(size_t { 0 } != cCutPoints % size_t { 2 });
+      EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow - 1);
+
+      EBM_ASSERT(size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker ||
+         static_cast<size_t>(ptrdiff_t { -1 }) == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker);
+
+      // we had an odd number of items, so the last center one was written either a -1 or a 0 randomly.
+      // we want this to consistently be zero, so overwrite whatever is there with a zero
+      (pCutPointHigh + 1)->m_uniqueTiebreaker = size_t { 0 };
+   } else {
+      // we had an even number of items.  no fixup required
+      EBM_ASSERT(size_t { 0 } == cCutPoints % size_t { 2 });
+      EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow);
+      EBM_ASSERT(
+         size_t { 0 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
+         size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker ||
+         size_t { 1 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
+         size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker
+      );
+   }
+}
+
+// VERIFIED 08-2020
+INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetryRandomDirection(
+   const size_t cSamples,
+   const FloatEbmType * const aSingleFeatureValues
+) noexcept {
+   EBM_ASSERT(size_t { 2 } <= cSamples); // if we don't have enough samples to generate 2 bins we exit earlier
+   EBM_ASSERT(nullptr != aSingleFeatureValues);
+
+   const FloatEbmType * const pTop = aSingleFeatureValues + cSamples - size_t { 1 };
+
+   const FloatEbmType * pLow = aSingleFeatureValues;
+   const FloatEbmType * pHigh = pTop;
+   FloatEbmType lowPrev = *pLow;
+   FloatEbmType highPrev = *pHigh;
+
+   // first try and see if we can differentiate by having identical values next to eachother.  Identical values
+   // should be invariant to the transform, except in the rare case that two values get mapped to the same
+   // value, but if we get that, then our data is probably different enough that our user shouldn't expect symmetry
+
+   ++pLow;
+   do {
+      --pHigh;
+
+      // surprisingly, this works if cSamples, since low becomes high, and the reverse and they should
+      // have identical agreement or disagreement, so we don't need to check above
+      EBM_ASSERT(size_t { 2 } == cSamples && pLow == 1 + pHigh || pLow <= pHigh);
+
+      // pLow and pHigh can be aliased, and that's ok.  If that happens we want to compare to the previous values anyways
+      const FloatEbmType lowCur = *pLow;
+      const FloatEbmType highCur = *pHigh;
+
+      const bool lowIdentical = lowPrev == lowCur;
+      const bool highIdentical = highPrev == highCur;
+
+      if(lowIdentical != highIdentical) {
+         // if cSamples was 2, then they should be symetric in terms of identicality since they are the same numbers
+         EBM_ASSERT(size_t { 3 } <= cSamples);
+         return highIdentical;
+      }
+
+      lowPrev = lowCur;
+      highPrev = highCur;
+
+      // increment pLow here so that we can compare it against high to determine if we should exit
+      // pLow can legally increase to the location one past the end of the array in C++.
+      // IMPORTANT: WE CANNOT DECREMENT pHigh HERE because then if cSamples == 2 WE WOULD MOVE TO A LOCATION
+      // BEFORE THE BEGINNING OF THE ARRAY, and that's undefined behavior.
+      ++pLow;
+   } while(LIKELY(pLow < pHigh));
+
+   // ok, we weren't able to find any differences in identical value spacing.  Probably all values are unique
+   // let's try next to use the absolute value of the values
+   pLow = aSingleFeatureValues;
+   pHigh = pTop;
+   do {
+      EBM_ASSERT(pLow < pHigh);
+
+      const FloatEbmType lowCur = std::abs(*pLow);
+      const FloatEbmType highCur = std::abs(*pHigh);
+
+      if(lowCur != highCur) {
+         return lowCur < highCur;
+      }
+
+      ++pLow;
+      --pHigh;
+      // we can exit if they are equal, since their absolute value would be equal
+   } while(LIKELY(pLow < pHigh));
+
+   // if all our values are identical, then we shouldn't have gotten any cuts, and we shouldn't have gotten here
+   EBM_ASSERT(*aSingleFeatureValues != *pTop);
+
+   // if all else fails, just return the order of the first and last items, which unless all values are identical
+   // are required to be different.  If all values are the same then it won't matter anyways since there will be no
+   // cuts
+   return *aSingleFeatureValues < *pTop;
 }
 
 // VERIFIED 08-2020
@@ -2949,13 +3060,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         RandomStream randomStream;
-         randomStream.Initialize(k_randomSeed);
-
-         // do this just once and reuse the random numbers
-         // we don't need random numbres in the endpoints
-         FillCutPointTiebreakers(&randomStream, cCutPointsMax, aCutPoints + 1);
-
          // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
          CuttingRange ** const apCuttingRange = static_cast<CuttingRange **>(EbmMalloc<void>(cCuttingRanges * cBytesCombined));
          if(UNLIKELY(nullptr == apCuttingRange)) {
@@ -2968,6 +3072,15 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
+
+         bool bRandomSymmetryTiebreaker = DetermineSymmetryRandomDirection(cSamples, featureValues);
+
+         RandomStream randomStream;
+         randomStream.Initialize(k_randomSeed);
+
+         // we don't need tiebreakers in the endpoints
+         FillCutPointTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCutPointsMax, aCutPoints + 1);
+
          CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(apCuttingRange + cCuttingRanges);
 
          FillCuttingRangePointers(cCuttingRanges, apCuttingRange, aCuttingRange);
@@ -2979,6 +3092,14 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          const size_t cUsedCuts = FillCuttingRangeRemaining(cCuttingRanges, aCuttingRange);
          EBM_ASSERT(cUsedCuts <= cCutPointsMax);
          const size_t cCutsRemaining = cCutPointsMax - cUsedCuts;
+
+         EBM_ASSERT(size_t { 1 } == cCuttingRanges || aCuttingRange[0].m_pCuttableValuesFirst != featureValues ||
+            size_t { 0 } == aCuttingRange[0].m_cCutsAssigned);
+         EBM_ASSERT(size_t { 1 } == cCuttingRanges || 
+            aCuttingRange[cCuttingRanges - size_t { 1 }].m_pCuttableValuesFirst +
+            aCuttingRange[cCuttingRanges - size_t { 1 }].m_cCuttableValues != featureValues + cSamples ||
+            size_t { 0 } == aCuttingRange[cCuttingRanges - 1].m_cCutsAssigned
+         );
 
          if(UNLIKELY(StuffCutsIntoCuttingRanges(
             cCuttingRanges,
