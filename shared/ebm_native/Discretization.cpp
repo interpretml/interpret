@@ -821,9 +821,14 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
    if(UNLIKELY(k_illegalIndex == pCutCur->m_iVal)) {
       priority = k_noCutPriority;
    } else {
-      // TODO: VERY IMPORTANT!! This calculation doesn't take into account that we can move our cut point
+      // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
       // GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable
+      // I'm not sure if this is bad or not.  In general, if we're swapping cut points, we're probably moving
+      // pretty far, but I think if we're swaping cut points then we probably do in fact want to add priority
+      // to those potential cut points since they are shuffling cut points around and we want to ensure that this
+      // can still happen.  We migth even want to increase the priority of such even by first sorting on the
+      // absolute value of m_cPredeterminedMovementOnCut, then by the priority.
 
       // TODO : these are not guaranteed due to floating point inexactness.  We should detect this scenario
       EBM_ASSERT(iValLowerFloat < pCutCur->m_iVal); // it would violate cSamplesPerBinMin if these were equal
@@ -1021,7 +1026,7 @@ static void BuildNeighbourhoodPlan(
 
    const ptrdiff_t lowHighBound = iValLowChoice + static_cast<ptrdiff_t>(cSamplesPerBinMin);
    const ptrdiff_t highHighBound = iValHighChoice + static_cast<ptrdiff_t>(cSamplesPerBinMin);
-   if(k_illegalIndex == iValLow) {
+   if(UNLIKELY(k_illegalIndex == iValLow)) {
       // we always start from the low index because for floating points the low numbers have more resolution
       totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
       distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowFloat;
@@ -1031,7 +1036,7 @@ static void BuildNeighbourhoodPlan(
          static_cast<FloatEbmType>(iValLowChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
       const FloatEbmType highLowBoundFloat = 
          static_cast<FloatEbmType>(iValHighChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
-      if(k_illegalIndex == iValHigh) {
+      if(UNLIKELY(k_illegalIndex == iValHigh)) {
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
 
@@ -1040,13 +1045,13 @@ static void BuildNeighbourhoodPlan(
          EBM_ASSERT(FloatEbmType { 0 } <= iValAspirationalLowFloat);
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
-         bCanCutLow = iValAspirationalLowFloat <= lowLowBoundFloat &&
-            static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat && 
-            lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems);
+         bCanCutLow = LIKELY(LIKELY(iValAspirationalLowFloat <= lowLowBoundFloat) &&
+            LIKELY(static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
 
-         bCanCutHigh = static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat && 
-            iValAspirationalLowFloat <= highLowBoundFloat &&
-            highHighBound <= static_cast<ptrdiff_t>(cCuttableItems);
+         bCanCutHigh = LIKELY(LIKELY(static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(iValAspirationalLowFloat <= highLowBoundFloat) &&
+            LIKELY(highHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
       } else {
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
@@ -1057,11 +1062,11 @@ static void BuildNeighbourhoodPlan(
          EBM_ASSERT(FloatEbmType { 0 } <= iValAspirationalLowFloat);
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
-         bCanCutLow = iValAspirationalLowFloat <= lowLowBoundFloat && 
-            lowHighBound <= static_cast<ptrdiff_t>(iValHigh);
+         bCanCutLow = LIKELY(LIKELY(iValAspirationalLowFloat <= lowLowBoundFloat) &&
+            LIKELY(lowHighBound <= static_cast<ptrdiff_t>(iValHigh)));
 
-         bCanCutHigh = highHighBound <= static_cast<ptrdiff_t>(iValHigh) && 
-            iValAspirationalLowFloat <= highLowBoundFloat;
+         bCanCutHigh = LIKELY(LIKELY(highHighBound <= static_cast<ptrdiff_t>(iValHigh)) &&
+            LIKELY(iValAspirationalLowFloat <= highLowBoundFloat));
       }
    } else {
       // even though our lower boundary is materialized, if there are a huge number of items, then we can reach 
@@ -1074,20 +1079,20 @@ static void BuildNeighbourhoodPlan(
       const ptrdiff_t distanceHighSizeT = iValHighChoice - static_cast<ptrdiff_t>(iValLow);
       distanceLowLowFloat = static_cast<FloatEbmType>(distanceLowSizeT);
       distanceHighLowFloat = static_cast<FloatEbmType>(distanceHighSizeT);
-      if(k_illegalIndex == iValHigh) {
+      if(UNLIKELY(k_illegalIndex == iValHigh)) {
          totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
 
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
-         bCanCutLow = static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT &&
-            static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat && 
-            lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems);
+         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT) &&
+            LIKELY(static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
 
-         bCanCutHigh = static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat && 
-            static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT &&
-            highHighBound <= static_cast<ptrdiff_t>(cCuttableItems);
+         bCanCutHigh = LIKELY(LIKELY(static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat) &&
+            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT) &&
+            LIKELY(highHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
       } else {
          // reduce floating point noise when we have have exact distances
          totalDistance = static_cast<FloatEbmType>(iValHigh - iValLow);
@@ -1097,21 +1102,21 @@ static void BuildNeighbourhoodPlan(
 
          EBM_ASSERT(iValHigh <= cCuttableItems);
 
-         bCanCutLow = static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT &&
-            lowHighBound <= static_cast<ptrdiff_t>(iValHigh);
+         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT) &&
+            LIKELY(lowHighBound <= static_cast<ptrdiff_t>(iValHigh)));
 
-         bCanCutHigh = highHighBound <= static_cast<ptrdiff_t>(iValHigh) &&
-            static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT;
+         bCanCutHigh = LIKELY(LIKELY(highHighBound <= static_cast<ptrdiff_t>(iValHigh)) &&
+            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT));
       }
    }
 
-   {
-      constexpr FloatEbmType k_badScore = std::numeric_limits<FloatEbmType>::lowest();
+   constexpr FloatEbmType k_badScore = std::numeric_limits<FloatEbmType>::lowest();
 
-      FloatEbmType scoreHigh;
-      ptrdiff_t transferRangesHigh;
+   FloatEbmType scoreHigh;
+   ptrdiff_t transferRangesHigh;
 
-      if(bCanCutHigh) {
+   if(LIKELY(bCanCutHigh)) {
+      {
          const size_t cRangesHighLow = CalculateRangesMaximizeMin(distanceHighLowFloat, totalDistance, cRanges);
          EBM_ASSERT(1 <= cRangesHighLow);
          EBM_ASSERT(cRangesHighLow < cRanges);
@@ -1123,17 +1128,15 @@ static void BuildNeighbourhoodPlan(
 
          scoreHigh = std::min(avgLengthHighLow, avgLengthHighHigh);
          transferRangesHigh = static_cast<ptrdiff_t>(cRangesHighLow) - static_cast<ptrdiff_t>(cRangesLow);
-      } else {
-         if(!bCanCutLow) {
-            goto exit_no_possible_cuts;
-         }
-         scoreHigh = k_badScore;
-         transferRangesHigh = 0;
       }
 
-      FloatEbmType scoreLow = k_badScore;
-      ptrdiff_t transferRangesLow = 0;
-      if(bCanCutLow) {
+      FloatEbmType scoreLow;
+      ptrdiff_t transferRangesLow;
+
+      if(LIKELY(bCanCutLow)) {
+
+      do_low:;
+
          const size_t cRangesLowLow = CalculateRangesMaximizeMin(distanceLowLowFloat, totalDistance, cRanges);
          EBM_ASSERT(1 <= cRangesLowLow);
          EBM_ASSERT(cRangesLowLow < cRanges);
@@ -1145,6 +1148,9 @@ static void BuildNeighbourhoodPlan(
 
          scoreLow = std::min(avgLengthLowLow, avgLengthLowHigh);
          transferRangesLow = static_cast<ptrdiff_t>(cRangesLowLow) - static_cast<ptrdiff_t>(cRangesLow);
+      } else {
+         scoreLow = k_badScore;
+         transferRangesLow = 0;
       }
 
       EBM_ASSERT(k_badScore != scoreHigh || k_badScore != scoreLow);
@@ -1156,15 +1162,17 @@ static void BuildNeighbourhoodPlan(
          pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
          pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
       }
+   } else if(LIKELY(bCanCutLow)) {
+      scoreHigh = k_badScore;
+      transferRangesHigh = 0;
 
-      EBM_ASSERT(!pCutCur->IsCut());
-      return;
+      goto do_low;
+
+   } else {
+      // can't cut either high or low, so exit indicating we're at an impossible cut
+      pCutCur->m_iVal = k_illegalIndex;
+      pCutCur->m_cPredeterminedMovementOnCut = 0; // set this to indicate that we aren't cut
    }
-
-exit_no_possible_cuts:;
-   pCutCur->m_iVal = k_illegalIndex;
-   pCutCur->m_cPredeterminedMovementOnCut = 0; // set this to indicate that we aren't cut
-
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
@@ -2274,40 +2282,50 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
    EBM_ASSERT(size_t { 1 } <= cCutPoints);
    EBM_ASSERT(nullptr != aCutPoints);
 
-   size_t tiebreaker = cCutPoints - size_t { 1 };
+   // this should be ok since cCutPoints is allocated memory with more than 2 bytes (so negative values ok)
+   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cCutPoints);
    CutPoint * pCutPointLow = aCutPoints;
-   CutPoint * pCutPointHigh = aCutPoints + (cCutPoints - size_t { 1 });
+   CutPoint * pCutPointHigh = aCutPoints + cCutPoints - size_t { 1 };
    do {
       const size_t randomLowHigh = pRandomStream->Next(size_t { 2 });
       EBM_ASSERT(size_t { 0 } == randomLowHigh || size_t { 1 } == randomLowHigh);
 
-      CutPoint * pCutPoint1 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? pCutPointLow : pCutPointHigh;
-      CutPoint * pCutPoint2 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? pCutPointHigh : pCutPointLow;
+      const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
 
-      // NOTE: pCutPoint1 and pCutPoint2 will be the same value (aliased) on the last iteration if there are an
-      // odd number of cut points.  The C++ standard says aliased pointers have defined behavior, so this should 
-      // give us a consistent result of having 0 in the center since we assign the non-subtracted result last.
-      // The subtracted by 1 version will be ignored since it'll be overwritten and underflow below 0 is legal
-      // defined behavior for unsigned values
-      pCutPoint1->m_uniqueTiebreaker = tiebreaker - size_t { 1 };
-      pCutPoint2->m_uniqueTiebreaker = tiebreaker;
+      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? tiebreaker : tiebreakerMinusOne;
+      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } == randomLowHigh) ? tiebreakerMinusOne : tiebreaker;
 
-      // TODO: redo this to make it more memory predictable.  don't decrement cCutPoints for the tiebreaker above
-      // and alternate the tiebreakers so that we can assign to (then our last value will either be 0 or 1 and
-      // we can't use aliasing to clean it up
+      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker1);
+      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker2);
+      EBM_ASSERT(pCutPointLow <= pCutPointHigh);
 
-      tiebreaker -= size_t { 2 };
+      // if we have an even number of items, the last write will be aliased (both pointers will point to the same
+      // location), so we'll either get zero or one in the last location, but for sorting we only care about the
+      // order, and that'll be the same
+      pCutPointLow->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker1);
+      pCutPointHigh->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker2);
 
       ++pCutPointLow;
-      // TECHNICALLY, this would be undefined behavior if we ended up pointing to a memory location
-      // before the beginning of our allocation, BUT we have allocated cut points on the top and bottom sides
+      // this would be undefined behavior if we ended up pointing to a memory location before the 
+      // beginning of our allocation, BUT we have allocated sentinal cut points on the top and bottom ends
       // so we won't wander outside our legal allocation window with this decrement
       --pCutPointHigh;
-   } while(pCutPointLow <= pCutPointHigh);
+
+      tiebreaker -= ptrdiff_t { 2 };
+   } while(ptrdiff_t { 0 } < tiebreaker);
+
+   EBM_ASSERT(ptrdiff_t { -1 } == tiebreaker || ptrdiff_t { 0 } == tiebreaker);
+   EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow - 1 || pCutPointHigh + 1 == pCutPointLow);
+
    EBM_ASSERT(
-      size_t { 0 } != cCutPoints % size_t { 2 } && size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker ||
-      size_t { 0 } == cCutPoints % size_t { 2 } && size_t { 1 } == 
-      (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker + (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker
+      size_t { 0 } != cCutPoints % size_t { 2 } && 
+      (size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker || 
+      size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker) ||
+      size_t { 0 } == cCutPoints % size_t { 2 } && 
+      (size_t { 1 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker && 
+      size_t { 2 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker || 
+      size_t { 2 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
+      size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker)
    );
 }
 

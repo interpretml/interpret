@@ -711,7 +711,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 4, 4, 6, 6 };
+   FloatEbmType featureValues[] { 1, 4, 4, 6, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -770,7 +770,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 6, 6, 9 };
+   FloatEbmType featureValues[] { 4, 4, 6, 6, 6, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -829,7 +829,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 5, 6, 6 };
+   FloatEbmType featureValues[] { 4, 4, 4, 5, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 4.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1065,7 +1065,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 5, 5, 7, 8 };
+   FloatEbmType featureValues[] { 1, 5, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 6 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1183,7 +1183,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5, 7 };
+   FloatEbmType featureValues[] { 1, 2, 3, 5, 5, 7 };
    const std::vector<FloatEbmType> expectedCutPoints { 4 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1360,8 +1360,8 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 2, 4, 6, 8, 8 };
-   const std::vector<FloatEbmType> expectedCutPoints { 5 };
+   FloatEbmType featureValues[] { 1, 2, 2, 4, 5, 6, 8, 8 };
+   const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
@@ -1419,7 +1419,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 2, 4, 6, 8, 8, 9 };
+   FloatEbmType featureValues[] { 2, 2, 2, 4, 6, 8, 8, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1596,7 +1596,7 @@ TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitabl
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 0, 1, 1, 2, 3, 5, 5, 7, 8 };
+   FloatEbmType featureValues[] { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 1.5, 4, 6 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1714,7 +1714,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5, 7, 8, 9, 9, 10 };
+   FloatEbmType featureValues[] { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
    const std::vector<FloatEbmType> expectedCutPoints { 4, 6, 8.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
@@ -1773,8 +1773,8 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCutPoints { 3.5, 5.5, 7.5 };
+   FloatEbmType featureValues[] { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints { 2.5, 4.5, 6.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
