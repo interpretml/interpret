@@ -127,52 +127,6 @@ static_assert(std::is_trivial<NeighbourJump>::value,
 static_assert(std::is_pod<NeighbourJump>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-struct CuttingRange final {
-
-   // we divide the space into long segments of uncuttable equal values separated by spaces where we can put
-   // cuts, which we call CuttingRanges.  CuttingRanges can have zero or more items.  If they have zero
-   // cuttable items, then the CuttingRange is just there to separate two uncuttable ranges on both sides.
-   // The first and last CuttingRanges are special in that they can either have a long range of uncuttable
-   // values on the tail end, or not.  If they have a tail consisting of a long range of uncutable values, then
-   // we'll definetly want to have a cut point within the tail CuttingRange, but if there is no uncutable
-   // range on the tail end, then having cuts within that range is more optional.
-   // 
-   // If the first few or last few values are unequal, and followed by an uncuttable range, then
-   // we put the unequal values into the uncuttable range IF there are not enough of them to create a cut based
-   // on our countSamplesPerBinMin value.
-   // Example: If countSamplesPerBinMin == 3 and the avg bin size is 5, and the list is 
-   // (1, 2, 3, 3, 3, 3, 3 | 4, 5, 6 | 7, 7, 7, 7, 7, 8, 9) -> then the only cuttable range is (4, 5, 6)
-
-   CuttingRange() = default; // preserve our POD status
-   ~CuttingRange() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
-
-   // this can be zero if we're sandwitched between two uncuttable ranges, eg: 0, 0, 0, <CuttingRange here> 1, 1, 1
-   size_t         m_cCuttableValues;
-   FloatEbmType * m_pCuttableValuesFirst;
-
-   size_t         m_cUncuttableLowValues;
-   size_t         m_cUncuttableHighValues;
-
-   size_t         m_cUncuttableEitherSideValuesMax;
-   size_t         m_cUncuttableEitherSideValuesMin;
-
-   size_t         m_uniqueRandom;
-
-   size_t         m_cCutsAssigned;
-
-   FloatEbmType   m_avgCuttableRangeWidthAfterAddingOneCut;
-
-   unsigned int   m_flags;
-};
-static_assert(std::is_standard_layout<CuttingRange>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<CuttingRange>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-static_assert(std::is_pod<CuttingRange>::value,
-   "We use a lot of C constructs, so disallow non-POD types in general");
-
 struct CutPoint final {
    CutPoint() = default; // preserve our POD status
    ~CutPoint() = default; // preserve our POD status
@@ -210,6 +164,53 @@ static_assert(std::is_trivial<CutPoint>::value,
    "We use memcpy in several places, so disallow non-trivial types in general");
 static_assert(std::is_pod<CutPoint>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
+
+struct CuttingRange final {
+
+   // we divide the space into long segments of uncuttable equal values separated by spaces where we can put
+   // cuts, which we call CuttingRanges.  CuttingRanges can have zero or more items.  If they have zero
+   // cuttable items, then the CuttingRange is just there to separate two uncuttable ranges on both sides.
+   // The first and last CuttingRanges are special in that they can either have a long range of uncuttable
+   // values on the tail end, or not.  If they have a tail consisting of a long range of uncutable values, then
+   // we'll definetly want to have a cut point within the tail CuttingRange, but if there is no uncutable
+   // range on the tail end, then having cuts within that range is more optional.
+   // 
+   // If the first few or last few values are unequal, and followed by an uncuttable range, then
+   // we put the unequal values into the uncuttable range IF there are not enough of them to create a cut based
+   // on our countSamplesPerBinMin value.
+   // Example: If countSamplesPerBinMin == 3 and the avg bin size is 5, and the list is 
+   // (1, 2, 3, 3, 3, 3, 3 | 4, 5, 6 | 7, 7, 7, 7, 7, 8, 9) -> then the only cuttable range is (4, 5, 6)
+
+   CuttingRange() = default; // preserve our POD status
+   ~CuttingRange() = default; // preserve our POD status
+   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete (void *) = delete; // we only use malloc/free in this library
+
+   // this can be zero if we're sandwitched between two uncuttable ranges, eg: 0, 0, 0, <CuttingRange here> 1, 1, 1
+   size_t         m_cCuttableValues;
+   FloatEbmType * m_pCuttableValuesFirst;
+
+   size_t         m_cUncuttableLowValues;
+   size_t         m_cUncuttableHighValues;
+
+   size_t         m_cUncuttableEitherSideValuesMax;
+   size_t         m_cUncuttableEitherSideValuesMin;
+
+   size_t         m_uniqueTiebreaker;
+
+   size_t         m_cCutsAssigned;
+
+   FloatEbmType   m_avgCuttableRangeWidthAfterAddingOneCut;
+
+   unsigned int   m_flags;
+};
+static_assert(std::is_standard_layout<CuttingRange>::value,
+   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<CuttingRange>::value,
+   "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_pod<CuttingRange>::value,
+   "We use a lot of C constructs, so disallow non-POD types in general");
+
 
 // VERIFIED 2020-08
 class CompareCutPoint final {
@@ -1974,11 +1975,15 @@ static bool StuffCutsIntoCuttingRanges(
          const CuttingRange * const & lhs,
          const CuttingRange * const & rhs
       ) const noexcept {
-         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
-         return lhs->m_avgCuttableRangeWidthAfterAddingOneCut == rhs->m_avgCuttableRangeWidthAfterAddingOneCut ?
-            (lhs->m_uniqueRandom < rhs->m_uniqueRandom) :
-            (lhs->m_avgCuttableRangeWidthAfterAddingOneCut < rhs->m_avgCuttableRangeWidthAfterAddingOneCut);
+         if(UNLIKELY(lhs->m_avgCuttableRangeWidthAfterAddingOneCut == rhs->m_avgCuttableRangeWidthAfterAddingOneCut)) {
+            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+            // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+            return UNPREDICTABLE(lhs->m_uniqueTiebreaker < rhs->m_uniqueTiebreaker);
+         } else {
+            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+            // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+            return UNPREDICTABLE(lhs->m_avgCuttableRangeWidthAfterAddingOneCut < rhs->m_avgCuttableRangeWidthAfterAddingOneCut);
+         }
       }
    };
 
@@ -2021,6 +2026,12 @@ static bool StuffCutsIntoCuttingRanges(
                const FloatEbmType avgRangeWidthAfterAddingOneCut =
                   static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
+               // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
+               // size_t values, it should have exactly the same value when cCuttableItems and newProposedRanges
+               // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
+               // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
+               // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
+               // priorities, unlike for CutPoints
                pCuttingRangeInit->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
                queue.push(pCuttingRangeInit);
             }
@@ -2072,6 +2083,12 @@ static bool StuffCutsIntoCuttingRanges(
                const FloatEbmType avgRangeWidthAfterAddingOneCut =
                   static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(newProposedRanges);
 
+               // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
+               // size_t values, it should have exactly the same value when cCuttableItems and newProposedRanges
+               // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
+               // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
+               // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
+               // priorities, unlike for CutPoints
                pCuttingRangeAdd->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
                queue.push(pCuttingRangeAdd);
             }
@@ -2222,37 +2239,6 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
    }
 }
 
-INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeRandom(
-   RandomStream * const pRandomStream,
-   const size_t cCuttingRanges,
-   CuttingRange * const aCuttingRange
-) noexcept {
-   EBM_ASSERT(1 <= cCuttingRanges);
-   EBM_ASSERT(nullptr != aCuttingRange);
-
-   size_t index = 0;
-   CuttingRange * pCuttingRange = aCuttingRange;
-   const CuttingRange * const pCuttingRangeEnd = pCuttingRange + cCuttingRanges;
-   do {
-      pCuttingRange->m_uniqueRandom = index;
-      ++index;
-      ++pCuttingRange;
-   } while(pCuttingRangeEnd != pCuttingRange);
-
-   // the last index doesn't need to be swapped, since there is nothing to swap it with
-   const size_t cVisitCuttingRanges = cCuttingRanges - 1;
-   for(size_t i = 0; LIKELY(i < cVisitCuttingRanges); ++i) {
-      const size_t cPossibleSwapLocations = cCuttingRanges - i;
-      EBM_ASSERT(1 <= cPossibleSwapLocations);
-      // for randomness, we need to be able to swap with ourselves, so iSwap can be 0 
-      // and in that case we'll swap with ourselves
-      const size_t iSwap = pRandomStream->Next(cPossibleSwapLocations);
-      const size_t uniqueRandomTmp = aCuttingRange[i].m_uniqueRandom;
-      aCuttingRange[i].m_uniqueRandom = aCuttingRange[i + iSwap].m_uniqueRandom;
-      aCuttingRange[i + iSwap].m_uniqueRandom = uniqueRandomTmp;
-   }
-}
-
 INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangePointers(
    const size_t cCuttingRanges,
    CuttingRange ** const apCuttingRange,
@@ -2273,11 +2259,12 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangePointers(
 }
 
 // VERIFIED 08-2020
-INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
+template<typename T>
+INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    bool bReverseSymmetry,
    RandomStream * const pRandomStream,
-   const size_t cCutPoints,
-   CutPoint * const aCutPoints
+   const size_t cItems,
+   T * const aItems
 ) noexcept {
 
    // occasionally there will be ties in our priority calculation. We need a repeatable method to break
@@ -2291,18 +2278,18 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
    // prefer our initial cuts to be at the ends we want the biggest numbers at the ends and zero in the center
    
    EBM_ASSERT(nullptr != pRandomStream);
-   EBM_ASSERT(size_t { 1 } <= cCutPoints);
-   EBM_ASSERT(nullptr != aCutPoints);
+   EBM_ASSERT(size_t { 1 } <= cItems);
+   EBM_ASSERT(nullptr != aItems);
 
-   // this conversion to a signed number should be ok since cCutPoints is allocated memory with more than 
+   // this conversion to a signed number should be ok since cItems is allocated memory with more than 
    // 2 bytes, so we should have room for the negative values.
-   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cCutPoints - size_t { 1 });
+   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cItems - size_t { 1 });
    // bReverseSymmetry helps us ensure symetry because we pick true or false based on a fingerprint of the original 
    // values so if the values are flipped in a transform, then we'll flip reverseSymmetryXor and get the same 
    // cuts mirror on the opposite sides from the ends
    size_t reverseSymmetryXor = bReverseSymmetry ? size_t { 1 } : size_t { 0 };
-   CutPoint * pCutPointLow = aCutPoints;
-   CutPoint * pCutPointHigh = aCutPoints + cCutPoints - size_t { 1 };
+   T * pLow = aItems;
+   T * pHigh = aItems + cItems - size_t { 1 };
    do {
       // our random stream is repetable, and with reverseSymmetryXor it will preserve symmetry of the cuts
       size_t randomBit = pRandomStream->Next(size_t { 2 });
@@ -2317,20 +2304,20 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
 
       EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker1);
       EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker2);
-      EBM_ASSERT(pCutPointLow <= pCutPointHigh);
+      EBM_ASSERT(pLow <= pHigh);
 
       // if we have an even number of items, the last write will be aliased (both pointers will point to the same
       // location), and we'll write either a -1 or 0 in that location selected randomly.  After we exit the loop
       // we'll write a 0 into the memory if needed to ensure that we don't have a negative value
       // NOTE: if tiebreaker1 or tiebreaker2 is negative, conversion to an unsigned size_t is defined behavior in C++
-      pCutPointLow->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker1);
-      pCutPointHigh->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker2);
+      pLow->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker1);
+      pHigh->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker2);
 
-      ++pCutPointLow;
+      ++pLow;
       // this would be undefined behavior if we ended up pointing to a memory location before the 
       // beginning of our allocation, BUT we have allocated sentinal cut points on the top and bottom ends
       // so we won't wander outside our legal allocation window with this decrement
-      --pCutPointHigh;
+      --pHigh;
 
       tiebreaker -= ptrdiff_t { 2 };
    } while(ptrdiff_t { 0 } <= tiebreaker);
@@ -2340,24 +2327,24 @@ INLINE_RELEASE_UNTEMPLATED static void FillCutPointTiebreakers(
    if(ptrdiff_t { -1 } != tiebreaker) {
       // we had an odd number of items.  We will have either a -1 or 0 in the last center tiebreaker, but we
       // want the consistenty of always having a zero, so zero it here
-      EBM_ASSERT(size_t { 0 } != cCutPoints % size_t { 2 });
-      EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow - 1);
+      EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 });
+      EBM_ASSERT(pHigh + 1 == pLow - 1);
 
-      EBM_ASSERT(size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker ||
-         static_cast<size_t>(ptrdiff_t { -1 }) == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker);
+      EBM_ASSERT(size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
+         static_cast<size_t>(ptrdiff_t { -1 }) == (aItems + cItems / 2)->m_uniqueTiebreaker);
 
       // we had an odd number of items, so the last center one was written either a -1 or a 0 randomly.
       // we want this to consistently be zero, so overwrite whatever is there with a zero
-      (pCutPointHigh + 1)->m_uniqueTiebreaker = size_t { 0 };
+      (pHigh + 1)->m_uniqueTiebreaker = size_t { 0 };
    } else {
       // we had an even number of items.  no fixup required
-      EBM_ASSERT(size_t { 0 } == cCutPoints % size_t { 2 });
-      EBM_ASSERT(pCutPointHigh + 1 == pCutPointLow);
+      EBM_ASSERT(size_t { 0 } == cItems % size_t { 2 });
+      EBM_ASSERT(pHigh + 1 == pLow);
       EBM_ASSERT(
-         size_t { 0 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
-         size_t { 1 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker ||
-         size_t { 1 } == (aCutPoints + cCutPoints / 2 - 1)->m_uniqueTiebreaker &&
-         size_t { 0 } == (aCutPoints + cCutPoints / 2)->m_uniqueTiebreaker
+         size_t { 0 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
+         size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
+         size_t { 1 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
+         size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker
       );
    }
 }
@@ -3073,18 +3060,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
+         CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(apCuttingRange + cCuttingRanges);
+         FillCuttingRangePointers(cCuttingRanges, apCuttingRange, aCuttingRange);
+
          bool bRandomSymmetryTiebreaker = DetermineSymmetryRandomDirection(cSamples, featureValues);
 
          RandomStream randomStream;
          randomStream.Initialize(k_randomSeed);
 
          // we don't need tiebreakers in the endpoints
-         FillCutPointTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCutPointsMax, aCutPoints + 1);
-
-         CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(apCuttingRange + cCuttingRanges);
-
-         FillCuttingRangePointers(cCuttingRanges, apCuttingRange, aCuttingRange);
-         FillCuttingRangeRandom(&randomStream, cCuttingRanges, aCuttingRange);
+         FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCutPointsMax, aCutPoints + 1);
+         FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, featureValues, cCuttingRanges, aCuttingRange);
