@@ -948,7 +948,7 @@ TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
    FloatEbmType featureValues[] { 4, 4, 5, 6, 6, 9 };
-   const std::vector<FloatEbmType> expectedCutPoints { 4.5 };
+   const std::vector<FloatEbmType> expectedCutPoints { 5.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
@@ -1774,7 +1774,7 @@ TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitabl
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
    constexpr IntEbmType countSamplesPerBinMin = 2;
    FloatEbmType featureValues[] { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
-   const std::vector<FloatEbmType> expectedCutPoints { 2.5, 4.5, 6.5 };
+   const std::vector<FloatEbmType> expectedCutPoints { 3.5, 4.5, 7.5 };
 
    constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
    FloatEbmType cutPointsLowerBoundInclusive[1000];
@@ -2219,7 +2219,7 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    featureValues[0] = 0;
    for(size_t iRange = 0; iRange < cInteriorRanges; ++iRange) {
       for(size_t i = 1 + cItemsPerRange * iRange; i < 1 + (cItemsPerRange * (iRange + 1)); ++i) {
-         featureValues[i] = iRange + 1;
+         featureValues[i] = static_cast<FloatEbmType>(iRange + 1);
       }
       expectedCutPoints.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(iRange));
    }
