@@ -45,1794 +45,652 @@ void GetExpectedStats(
    }
 }
 
-TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
-   constexpr IntEbmType countSamplesPerBinMin = -1;
+void TestQuantileBinning(
+   TestCaseHidden & testCaseHidden,
+   const bool bTestReverse,
+   const size_t cCutPointsMax,
+   const size_t cSamplesPerBinMin,
+   const std::vector<FloatEbmType> featureValues,
+   const std::vector<FloatEbmType> expectedCutPoints
+) {
+   const IntEbmType countCutPointsMax = cCutPointsMax;
+   const IntEbmType countSamplesPerBinMin = cSamplesPerBinMin;
 
-   IntEbmType countCutPoints = -1;
+   constexpr FloatEbmType illegalVal = FloatEbmType { -888.88 };
+   std::vector<FloatEbmType> cutPointsLowerBoundInclusive(cCutPointsMax + 2, illegalVal); // allocate values at ends
+
+   std::vector<FloatEbmType> featureValues1(featureValues);
+   std::vector<FloatEbmType> featureValues2(featureValues);
+   std::transform(featureValues2.begin(), featureValues2.end(), featureValues2.begin(), 
+      [](FloatEbmType & val) { return -val; });
+
    IntEbmType countMissingValues;
    FloatEbmType minNonInfinityValue;
    IntEbmType countNegativeInfinity;
    FloatEbmType maxNonInfinityValue;
-   IntEbmType isPositiveInfinityPresent;
+   IntEbmType countPositiveInfinity;
 
+   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
+   IntEbmType countMissingValuesExpected;
+   FloatEbmType minNonInfinityValueExpected;
+   IntEbmType countNegativeInfinityExpected;
+   FloatEbmType maxNonInfinityValueExpected;
+   IntEbmType countPositiveInfinityExpected;
+   GetExpectedStats(
+      featureValues.size(),
+      0 == featureValues.size() ? nullptr : &featureValues[0],
+      countMissingValuesExpected,
+      minNonInfinityValueExpected,
+      countNegativeInfinityExpected,
+      maxNonInfinityValueExpected,
+      countPositiveInfinityExpected
+   );
+
+   IntEbmType countCutPoints = countCutPointsMax;
    IntEbmType ret = GenerateQuantileCutPoints(
-      0,
-      nullptr,
+      featureValues1.size(),
+      0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
       &countCutPoints,
-      nullptr,
+      &cutPointsLowerBoundInclusive[1],
       &countMissingValues,
       &minNonInfinityValue,
       &countNegativeInfinity,
       &maxNonInfinityValue,
-      &isPositiveInfinityPresent
+      &countPositiveInfinity
    );
-   CHECK(IntEbmType { 0 } == ret);
-   CHECK(IntEbmType { 0 } == countMissingValues);
-   CHECK(FloatEbmType { 0 } == minNonInfinityValue);
-   CHECK(IntEbmType { 0 } == countNegativeInfinity);
-   CHECK(FloatEbmType { 0 } == maxNonInfinityValue);
-   CHECK(EBM_FALSE == isPositiveInfinityPresent);
-   CHECK(IntEbmType { 0 } == countCutPoints);
+   CHECK(0 == ret);
+
+   CHECK(illegalVal == cutPointsLowerBoundInclusive[0]);
+   for(size_t iCheck = static_cast<size_t>(countCutPoints) + 1; iCheck < cCutPointsMax + 2; ++iCheck) {
+      CHECK(illegalVal == cutPointsLowerBoundInclusive[iCheck]);
+   }
+
+   CHECK(countMissingValuesExpected == countMissingValues);
+   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
+   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
+   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
+   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
+
+   size_t cCutPoints = static_cast<size_t>(countCutPoints);
+   CHECK(expectedCutPoints.size() == cCutPoints);
+   if(expectedCutPoints.size() == cCutPoints) {
+      for(size_t i = 0; i < cCutPoints; ++i) {
+         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i + 1]);
+      }
+   }
+
+   if(bTestReverse) {
+      // try the reverse now.  We try very hard to ensure that we preserve symmetry in the cutting algorithm
+
+      countCutPoints = countCutPointsMax;
+      ret = GenerateQuantileCutPoints(
+         featureValues2.size(),
+         0 == featureValues2.size() ? nullptr : &featureValues2[0],
+         countSamplesPerBinMin,
+         &countCutPoints,
+         &cutPointsLowerBoundInclusive[1],
+         &countMissingValues,
+         &minNonInfinityValue,
+         &countNegativeInfinity,
+         &maxNonInfinityValue,
+         &countPositiveInfinity
+      );
+      CHECK(0 == ret);
+
+      CHECK(illegalVal == cutPointsLowerBoundInclusive[0]);
+      for(size_t iCheck = static_cast<size_t>(countCutPoints) + 1; iCheck < cCutPointsMax + 2; ++iCheck) {
+         CHECK(illegalVal == cutPointsLowerBoundInclusive[iCheck]);
+      }
+
+      CHECK(countMissingValuesExpected == countMissingValues);
+      CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
+      CHECK(countPositiveInfinityExpected == countNegativeInfinity);
+      CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
+      CHECK(countNegativeInfinityExpected == countPositiveInfinity);
+
+      cCutPoints = static_cast<size_t>(countCutPoints);
+      CHECK(expectedCutPoints.size() == cCutPoints);
+      if(expectedCutPoints.size() == cCutPoints) {
+         for(size_t i = 0; i < cCutPoints; ++i) {
+            CHECK_APPROX(-expectedCutPoints[cCutPoints - 1 - i], cutPointsLowerBoundInclusive[i + 1]);
+         }
+      }
+   }
+}
+
+TEST_CASE("GenerateQuantileCutPoints, 0 samples") {
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { };
+   const std::vector<FloatEbmType> expectedCutPoints { };
+
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
+      featureValues,
+      expectedCutPoints
+   );
 }
 
 TEST_CASE("GenerateQuantileCutPoints, only missing") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { std::numeric_limits<FloatEbmType>::quiet_NaN(), std::numeric_limits<FloatEbmType>::quiet_NaN() };
+   const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   IntEbmType countCutPoints = 1;
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      reinterpret_cast<FloatEbmType *>(0x1), // this shouldn't be filled, so it would throw an exception if it did 
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   CHECK(IntEbmType { 0 } == countCutPoints);
 }
 
 TEST_CASE("GenerateQuantileCutPoints, just one bin") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { 1, 2 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 0;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { 1, 2 };
+   const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   IntEbmType countCutPoints = 0;
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      nullptr,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   CHECK(IntEbmType { 0 } == countCutPoints);
 }
 
 TEST_CASE("GenerateQuantileCutPoints, too small") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 5 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 5 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 0, 1, 2, 3 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 0, 1, 2, 3 };
    const std::vector<FloatEbmType> expectedCutPoints { 1.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable (first interior check not splitable)") {
-   constexpr IntEbmType countSamplesPerBinMin = 3;
-   FloatEbmType featureValues[] { 0, 1, 5, 5, 7, 8, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 3;
+   const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 7, 8, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable except middle isn't available") {
-   constexpr IntEbmType countSamplesPerBinMin = 3;
-   FloatEbmType featureValues[] { 0, 1, 5, 5, 8, 9 };
-   const std::vector<FloatEbmType> expectedCutPoints {};
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 3;
+   const std::vector<FloatEbmType> featureValues { 0, 1, 5, 5, 8, 9 };
+   const std::vector<FloatEbmType> expectedCutPoints { };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 5, 5, 5, 5 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 5, 5, 5, 5 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 5, 5, 5 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 5, 5, 5, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 5, 5, 5, 9 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 5, 5, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 9 };
    const std::vector<FloatEbmType> expectedCutPoints {};
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 6, 6 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 4, 4, 6, 6, 6 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 4, 4, 6, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 6, 6, 6, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 4, 4, 6, 6, 6, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 4, 5, 6, 6 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 4, 4, 4, 5, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 4.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+mid+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 4, 4, 5, 6, 6 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 4, 4, 5, 6, 6 };
    const std::vector<FloatEbmType> expectedCutPoints { 4.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+mid+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 4, 4, 5, 6, 6, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 4, 4, 5, 6, 6, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 5.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 5, 5, 7, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 5, 5, 5, 7, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 5, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5 };
    const std::vector<FloatEbmType> expectedCutPoints { 4 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 3, 5, 5, 7 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 2, 3, 5, 5, 7 };
    const std::vector<FloatEbmType> expectedCutPoints { 4 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5, 7, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 4, 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 2, 4, 6, 8, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 2, 4, 6, 8, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 2, 4, 5, 6, 8, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 5, 6, 8, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 2, 2, 4, 6, 8, 8, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 2, 2, 4, 6, 8, 8, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 2, 4, 6, 8, 8, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 4, 6, 8, 8, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 3, 7 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, unsplitable+splitable+unsplitable+splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 1, 2, 3, 5, 5, 7, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 1, 2, 3, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 1.5, 4, 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 0, 1, 1, 2, 3, 5, 5, 5, 7, 8 };
    const std::vector<FloatEbmType> expectedCutPoints { 1.5, 4, 6 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitable") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5, 7, 8, 9, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 7, 8, 9, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 4, 6, 8.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, splitable+unsplitable+splitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 2, 3, 5, 5, 5, 7, 8, 9, 9, 10 };
    const std::vector<FloatEbmType> expectedCutPoints { 4, 6, 8.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable+unsplitable+splitable+unsplitable+right") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 1, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9 };
    const std::vector<FloatEbmType> expectedCutPoints { 3.5, 4.5, 7.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, infinities") {
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 
       -std::numeric_limits<FloatEbmType>::infinity(),
       std::numeric_limits<FloatEbmType>::lowest(),
       std::numeric_limits<FloatEbmType>::max(),
@@ -1846,58 +704,14 @@ TEST_CASE("GenerateQuantileCutPoints, infinities") {
    };
    const std::vector<FloatEbmType> expectedCutPoints { 0 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the ceiling instead of rounding") {
@@ -1909,301 +723,91 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    // first and last SplittingRanges are special in that they may have no long ranges on the tail ends, 
    // you still end up with one or more SplittingRanges that can't have a cut if you don't take the ceiling.
 
-   constexpr IntEbmType countSamplesPerBinMin = 2;
-   FloatEbmType featureValues[] { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 26;
+   constexpr size_t cSamplesPerBinMin = 2;
+   const std::vector<FloatEbmType> featureValues { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
       13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 
       27, 27, 28, 28, 29, 29 };
-   const std::vector<FloatEbmType> expectedCutPoints { 1.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 
-      12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 25.5, 26.5, 27.5, 28.5 };
+   const std::vector<FloatEbmType> expectedCutPoints { 1.5, 3.5, 4.5, 5.5, 6.5, 7.5, 9.5, 10.5, 11.5,
+      12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[26];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility, 2") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { -1, 1 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { -1, 1 };
    const std::vector<FloatEbmType> expectedCutPoints { 0 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility, 3") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { -2, 1, 2 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { -2, 1, 2 };
    const std::vector<FloatEbmType> expectedCutPoints { 0, 1.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, reversibility") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { -2, -1, 1, 2 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { -2, -1, 1, 2 };
    const std::vector<FloatEbmType> expectedCutPoints { -1.5, 0, 1.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, imbalanced") {
-   constexpr IntEbmType countSamplesPerBinMin = 1;
-   FloatEbmType featureValues[] { -2, 0, 1, 2 };
-   const std::vector<FloatEbmType> expectedCutPoints { 0, 0.5, 1.5 };
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = 1000;
+   constexpr size_t cSamplesPerBinMin = 1;
+   const std::vector<FloatEbmType> featureValues { -3, -1, 2, 3 };
+   const std::vector<FloatEbmType> expectedCutPoints { -2, 0, 2.5 };
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[1000];
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
-
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per SplittingRange, by 2") {
@@ -2212,8 +816,7 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    constexpr size_t cInteriorRanges = 3;
    constexpr size_t cRemoveCuts = 1;
 
-   FloatEbmType featureValues[3 + cInteriorRanges * cItemsPerRange];
-
+   std::vector<FloatEbmType> featureValues(3 + cInteriorRanges * cItemsPerRange, 0);
    std::vector<FloatEbmType> expectedCutPoints;
 
    featureValues[0] = 0;
@@ -2225,8 +828,8 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
    }
    expectedCutPoints.push_back(FloatEbmType { 0.5 } + static_cast<FloatEbmType>(cInteriorRanges));
 
-   featureValues[cInteriorRanges * cItemsPerRange + 1] = 1 + cInteriorRanges;
-   featureValues[cInteriorRanges * cItemsPerRange + 2] = 1 + cInteriorRanges;
+   featureValues[cInteriorRanges * cItemsPerRange + 1] = static_cast<FloatEbmType>(1 + cInteriorRanges);
+   featureValues[cInteriorRanges * cItemsPerRange + 2] = static_cast<FloatEbmType>(1 + cInteriorRanges);
 
    if(1 == cRemoveCuts) {
       expectedCutPoints.erase(expectedCutPoints.begin());
@@ -2237,59 +840,18 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
       assert(0 == cRemoveCuts);
    }
 
-   constexpr IntEbmType countSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   FloatEbmType cutPointsLowerBoundInclusive[cInteriorRanges + 1 - cRemoveCuts];
-   assert(sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]) == expectedCutPoints.size());
-   IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType countMissingValues;
-   FloatEbmType minNonInfinityValue;
-   IntEbmType countNegativeInfinity;
-   FloatEbmType maxNonInfinityValue;
-   IntEbmType countPositiveInfinity;
+   constexpr bool bTestReverse = true;
+   constexpr size_t cCutPointsMax = cInteriorRanges + 1 - cRemoveCuts;
+   constexpr size_t cSamplesPerBinMin = 1;
 
-   // do this before calling GenerateQuantileCutPoints, since GenerateQuantileCutPoints modifies featureValues
-   IntEbmType countMissingValuesExpected;
-   FloatEbmType minNonInfinityValueExpected;
-   IntEbmType countNegativeInfinityExpected;
-   FloatEbmType maxNonInfinityValueExpected;
-   IntEbmType countPositiveInfinityExpected;
-   GetExpectedStats(
-      countSamples,
+   TestQuantileBinning(
+      testCaseHidden,
+      bTestReverse,
+      cCutPointsMax,
+      cSamplesPerBinMin,
       featureValues,
-      countMissingValuesExpected,
-      minNonInfinityValueExpected,
-      countNegativeInfinityExpected,
-      maxNonInfinityValueExpected,
-      countPositiveInfinityExpected
+      expectedCutPoints
    );
-
-   IntEbmType ret = GenerateQuantileCutPoints(
-      countSamples,
-      featureValues,
-      countSamplesPerBinMin,
-      &countCutPoints,
-      cutPointsLowerBoundInclusive,
-      &countMissingValues,
-      &minNonInfinityValue,
-      &countNegativeInfinity,
-      &maxNonInfinityValue,
-      &countPositiveInfinity
-   );
-   CHECK(0 == ret);
-
-   CHECK(countMissingValuesExpected == countMissingValues);
-   CHECK(minNonInfinityValueExpected == minNonInfinityValue);
-   CHECK(countNegativeInfinityExpected == countNegativeInfinity);
-   CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
-   CHECK(countPositiveInfinityExpected == countPositiveInfinity);
-
-   const size_t cCutPoints = static_cast<size_t>(countCutPoints);
-   CHECK(expectedCutPoints.size() == cCutPoints);
-   if(expectedCutPoints.size() == cCutPoints) {
-      for(size_t i = 0; i < cCutPoints; ++i) {
-         CHECK_APPROX(expectedCutPoints[i], cutPointsLowerBoundInclusive[i]);
-      }
-   }
 }
 
 TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
@@ -2300,7 +862,9 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
 
    constexpr IntEbmType countSamplesPerBinMin = 1;
    constexpr IntEbmType countSamples = 100;
-   FloatEbmType featureValues[countSamples];
+   FloatEbmType featureValues[countSamples]; // preserve these for debugging purposes
+   FloatEbmType featureValuesForward[countSamples];
+   FloatEbmType featureValuesReversed[countSamples];
 
    constexpr IntEbmType randomMaxMax = countSamples - 1; // this doesn't need to be exactly countSamples - 1, but this number gives us chunky sets
    size_t cutHistogram[randomMaxMax];
@@ -2308,7 +872,9 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
    // our random numbers can be any numbers from 0 to randomMaxMax (inclusive), which gives us randomMaxMax - 1 possible cut points between them
    static_assert(1 == cCutHistogram % 2, "cutHistogram must have a center value that is perfectly in the middle");
 
-   FloatEbmType cutPointsLowerBoundInclusive[9];
+   constexpr size_t cCutPoints = 9;
+   FloatEbmType cutPointsLowerBoundInclusiveForward[cCutPoints];
+   FloatEbmType cutPointsLowerBoundInclusiveReversed[cCutPoints];
 
    memset(cutHistogram, 0, sizeof(cutHistogram));
 
@@ -2317,11 +883,10 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          // since randomMax isn't larger than the number of samples, we'll always be chunky.  This is good for testing range collisions
          for(size_t iSample = 0; iSample < countSamples; ++iSample) {
             bool bMissing = 0 == randomStream.Next(countSamples); // some datasetes will have zero missing values, some will have 1 or more
-            size_t iRandom = randomStream.Next(randomMax + 1);
+            size_t iRandom = randomStream.Next(randomMax + 1) + 1;
             featureValues[iSample] = bMissing ? std::numeric_limits<FloatEbmType>::quiet_NaN() : static_cast<FloatEbmType>(iRandom);
          }
 
-         IntEbmType countCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
          IntEbmType countMissingValues;
          FloatEbmType minNonInfinityValue;
          IntEbmType countNegativeInfinity;
@@ -2344,12 +909,17 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countPositiveInfinityExpected
          );
 
+         memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
+         std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
+            [](FloatEbmType & val) { return -val; });
+
+         IntEbmType countCutPointsForward = static_cast<IntEbmType>(cCutPoints);
          IntEbmType ret = GenerateQuantileCutPoints(
             countSamples,
-            featureValues,
+            featureValuesForward,
             countSamplesPerBinMin,
-            &countCutPoints,
-            cutPointsLowerBoundInclusive,
+            &countCutPointsForward,
+            cutPointsLowerBoundInclusiveForward,
             &countMissingValues,
             &minNonInfinityValue,
             &countNegativeInfinity,
@@ -2364,16 +934,48 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
          CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
-         const size_t cCutPoints = static_cast<size_t>(countCutPoints);
+         IntEbmType countCutPointsReversed = static_cast<IntEbmType>(cCutPoints);
+         ret = GenerateQuantileCutPoints(
+            countSamples,
+            featureValuesReversed,
+            countSamplesPerBinMin,
+            &countCutPointsReversed,
+            cutPointsLowerBoundInclusiveReversed,
+            &countMissingValues,
+            &minNonInfinityValue,
+            &countNegativeInfinity,
+            &maxNonInfinityValue,
+            &countPositiveInfinity
+         );
+         CHECK(0 == ret);
+
+         CHECK(countMissingValuesExpected == countMissingValues);
+         CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
+         CHECK(countPositiveInfinityExpected == countNegativeInfinity);
+         CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
+         CHECK(countNegativeInfinityExpected == countPositiveInfinity);
+
+         CHECK(countCutPointsForward == countCutPointsReversed);
+
          assert(1 == randomMax % 2); // our random numbers need a center value as well
          constexpr size_t iHistogramExactMiddle = cCutHistogram / 2;
          const size_t iCutExactMiddle = randomMax / 2;
          assert(iCutExactMiddle <= iHistogramExactMiddle);
          const size_t iShiftToMiddle = iHistogramExactMiddle - iCutExactMiddle;
-         for(size_t iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
-            const FloatEbmType cutPoint = cutPointsLowerBoundInclusive[iCutPoint];
+         const size_t cCutPointsReturned = static_cast<size_t>(countCutPointsForward);
+         for(size_t iCutPoint = 0; iCutPoint < cCutPointsReturned; ++iCutPoint) {
+            const FloatEbmType cutPointForward = cutPointsLowerBoundInclusiveForward[iCutPoint];
+            if(countCutPointsForward == countCutPointsReversed) {
+               // TODO: turn the reveral test back on!
+               // For now we've turned off the reversal tests, since they aren't exact, and we need
+               // to take a better look at symmetry in the future.  We still get some benefits though from 
+               // running the tests backwards to look for assert failures.
+
+               //const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
+               //CHECK_APPROX(cutPointReversed, cutPointForward);
+            }
             // cutPoint can be a number between 0.5 and (randomMax - 0.5)
-            const size_t iCut = static_cast<size_t>(std::round(cutPoint - FloatEbmType { 0.5 }));
+            const size_t iCut = static_cast<size_t>(std::round(cutPointForward - FloatEbmType { 1.5 }));
             const size_t iSymetricCut = iShiftToMiddle + iCut;
             assert(iSymetricCut < cCutHistogram);
             ++cutHistogram[iSymetricCut];
@@ -2403,15 +1005,19 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       exit(1);
    }
 
-   FloatEbmType cutPointsLowerBoundInclusive[9];
-   constexpr size_t cCutPoints = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
+   constexpr size_t cCutPoints = 9;
+   FloatEbmType cutPointsLowerBoundInclusiveForward[cCutPoints];
+   FloatEbmType cutPointsLowerBoundInclusiveReversed[cCutPoints];
+
    constexpr IntEbmType countSamplesPerBinMin = 3;
    constexpr size_t cSamples = 100;
    constexpr size_t maxRandomVal = 70;
    const size_t cLongBinLength = static_cast<size_t>(
       std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cCutPoints + 1))
       );
-   FloatEbmType featureValues[cSamples];
+   FloatEbmType featureValues[cSamples]; // preserve these for debugging purposes
+   FloatEbmType featureValuesForward[cSamples];
+   FloatEbmType featureValuesReversed[cSamples];
 
    for(int iIteration = 0; iIteration < 30000; ++iIteration) {
       memset(featureValues, 0, sizeof(featureValues));
@@ -2443,7 +1049,6 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
 
       const IntEbmType countSamples = static_cast<IntEbmType>(cSamples);
 
-      IntEbmType countCutPoints = static_cast<IntEbmType>(cCutPoints);
       IntEbmType countMissingValues;
       FloatEbmType minNonInfinityValue;
       IntEbmType countNegativeInfinity;
@@ -2466,12 +1071,17 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countPositiveInfinityExpected
       );
 
+      memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
+      std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
+         [](FloatEbmType & val) { return -val; });
+
+      IntEbmType countCutPointsForward = static_cast<IntEbmType>(cCutPoints);
       IntEbmType ret = GenerateQuantileCutPoints(
          countSamples,
-         featureValues,
+         featureValuesForward,
          countSamplesPerBinMin,
-         &countCutPoints,
-         cutPointsLowerBoundInclusive,
+         &countCutPointsForward,
+         cutPointsLowerBoundInclusiveForward,
          &countMissingValues,
          &minNonInfinityValue,
          &countNegativeInfinity,
@@ -2485,6 +1095,47 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       CHECK(countNegativeInfinityExpected == countNegativeInfinity);
       CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
       CHECK(countPositiveInfinityExpected == countPositiveInfinity);
+
+      IntEbmType countCutPointsReversed = static_cast<IntEbmType>(cCutPoints);
+      ret = GenerateQuantileCutPoints(
+         countSamples,
+         featureValuesReversed,
+         countSamplesPerBinMin,
+         &countCutPointsReversed,
+         cutPointsLowerBoundInclusiveReversed,
+         &countMissingValues,
+         &minNonInfinityValue,
+         &countNegativeInfinity,
+         &maxNonInfinityValue,
+         &countPositiveInfinity
+      );
+      CHECK(0 == ret);
+
+      CHECK(countMissingValuesExpected == countMissingValues);
+      CHECK(-maxNonInfinityValueExpected == minNonInfinityValue);
+      CHECK(countPositiveInfinityExpected == countNegativeInfinity);
+      CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
+      CHECK(countNegativeInfinityExpected == countPositiveInfinity);
+
+      // TODO: turn the reveral test back on!
+      // For now we've turned off the reversal tests, since they aren't exact, and we need
+      // to take a better look at symmetry in the future.  We still get some benefits though from 
+      // running the tests backwards to look for assert failures.
+
+      //CHECK(countCutPointsForward == countCutPointsReversed);
+      //if(countCutPointsForward == countCutPointsReversed) {
+      //   const size_t cCutPointsReturned = static_cast<size_t>(countCutPointsForward);
+      //   for(size_t iCutPoint = 0; iCutPoint < cCutPointsReturned; ++iCutPoint) {
+      //      const FloatEbmType cutPointForward = cutPointsLowerBoundInclusiveForward[iCutPoint];
+      //      // TODO: turn the reveral test back on!
+      //      // For now we've turned off the reversal tests, since they aren't exact, and we need
+      //      // to take a better look at symmetry in the future.  We still get some benefits though from 
+      //      // running the tests backwards to look for assert failures.
+
+      //      const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
+      //      CHECK_APPROX(cutPointReversed, cutPointForward);
+      //   }
+      //}
    }
 }
 

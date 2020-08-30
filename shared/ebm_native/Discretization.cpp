@@ -58,10 +58,13 @@
 //    if we had the values [1, 2, 3, 4] and one CutPoint, a reasonable cutPoint would be 2.5.
 //  - cut range - the values between two CutPoint
 
-INLINE_ALWAYS static FloatEbmType GetTweakingMultiple(const size_t iTweak) noexcept {
-   // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
-   constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
+// 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
+constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
+INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiple(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
+}
+INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultipleNegative(const size_t iTweak) noexcept {
+   return FloatEbmType { 1 } - tweakIncrement * static_cast<FloatEbmType>(iTweak);
 }
 
 // VERIFIED
@@ -234,7 +237,8 @@ public:
 INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
    const FloatEbmType sideDistance, 
    const FloatEbmType totalDistance, 
-   const size_t cRanges
+   const size_t cRanges,
+   const size_t cRangesSideOriginal
 ) noexcept {
    // our goal is to, as much as possible, avoid having small ranges at the end.  We don't care as much
    // about having long ranges so much as small range since small ranges allow the boosting algorithm to overfit
@@ -250,9 +254,39 @@ INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
    // issues if the number of ranges is huge, and we clip on both the low and high ranges below to handle issues
    // where rounding pushes us a bit over the numeric limits
    const size_t cRangesPlusOne = cRanges + size_t { 1 };
-   size_t cSide = static_cast<size_t>(static_cast<FloatEbmType>(cRangesPlusOne) * sideDistance / totalDistance);
+   const FloatEbmType result = static_cast<FloatEbmType>(cRangesPlusOne) * sideDistance / totalDistance;
+   size_t cSide = static_cast<size_t>(result);
    cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
    cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
+   if(cSide != cRangesSideOriginal) {
+      // sometimes, "cRangesPlusOne * sideDistance == totalDistance" and when that happens we can get a situation
+      // where symmetry breaks down as we round up when the numbers are in one orientation and round down (since
+      // they are reversed) in the opposite direction.  By adding a slight bias towards keeping the original 
+      // number of ranges we can avoid divergence on exact matches
+      if(cSide < cRangesSideOriginal) {
+         // we're below the original.  check to see if increasing the number helps us any
+         cSide = static_cast<size_t>(result * GetTweakingMultiple(1));
+         // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
+         // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
+         // Same thing on the top end, we'd have to skip over an entire range
+         // But maybe, under some extreme floating point ranges, it might be possible, so keep these checks for now
+         cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
+         cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
+         EBM_ASSERT(0 < cSide);
+         EBM_ASSERT(cSide < cRanges);
+      } else {
+         // we're above our original.  check to see if decreasing the number helps us any
+         cSide = static_cast<size_t>(result * GetTweakingMultipleNegative(1));
+         // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
+         // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
+         // Same thing on the top end, we'd have to skip over an entire range
+         // But maybe, under some extreme floating point ranges, it might be possible, so keep these checks for now
+         cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
+         cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
+         EBM_ASSERT(0 < cSide);
+         EBM_ASSERT(cSide < cRanges);
+      }
+   }
 
 #ifndef NDEBUG
    
@@ -711,10 +745,13 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    int lowExp = GetExponent(strLow);
    int highExp = GetExponent(strHigh);
 
-   EBM_ASSERT(lowExp <= highExp);
+   EBM_ASSERT(low < FloatEbmType { 0 } && highExp <= lowExp || FloatEbmType { 0 } <= low && lowExp <= highExp);
+
+   int expMin = std::min(lowExp, highExp);
+   int expMax = std::max(lowExp, highExp);
 
    FloatEbmType avg;
-   if(lowExp + 2 <= highExp) {
+   if(expMin + 2 <= expMax) {
       avg = GeometricMeanSameSign(low, high);
    } else {
       avg = ArithmeticMean(low, high);
@@ -731,7 +768,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    FloatEbmType lowChop;
    FloatEbmType highChop;
 
-   if(lowExp + 2 <= highExp) {
+   if(expMin + 2 <= expMax) {
       EBM_ASSERT(low < avg);
       EBM_ASSERT(avg < high);
 
@@ -892,6 +929,8 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
 }
 
 static void BuildNeighbourhoodPlan(
+   const size_t cSamples,
+   const bool bRandomSymmetryTiebreaker,
    const size_t cSamplesPerBinMin,
    const size_t iValuesStart,
    const size_t cCuttableItems,
@@ -930,12 +969,12 @@ static void BuildNeighbourhoodPlan(
 
    EBM_ASSERT(nullptr != pCutCur);
 
-   // I suppose it could be zero if we had huge numbers and we rounded down
-   EBM_ASSERT(FloatEbmType { 0 } <= pCutCur->m_iValAspirationalFloat);
-   EBM_ASSERT(pCutCur->m_iValAspirationalFloat <=
-      static_cast<FloatEbmType>(cCuttableItems) * FloatEbmType {
-      1.0001
-   });
+   // normally m_iValAspirationalFloat shouldn't get much smaller than cSamplesPerBinMin, although we don't
+   // prevent our aspirational cuts from breaking the cSamplesPerBinMin barrier since the ultimate cut might
+   // end up on the far side.  There's a huge gulf though from starting at cSamplesPerBinMin to the minimum
+   // floating point, so much so that it should never get to zero
+   EBM_ASSERT(FloatEbmType { 0 } < pCutCur->m_iValAspirationalFloat);
+   EBM_ASSERT(pCutCur->m_iValAspirationalFloat <= static_cast<FloatEbmType>(cCuttableItems) * FloatEbmType { 1.0001 });
 
    // Before making any cuts, we examine each potential cut AS IF we were going to cut it, and we determine
    // which direction we would go in that instance.  After making all these future decisions for each aspirational
@@ -1026,18 +1065,25 @@ static void BuildNeighbourhoodPlan(
    }
 
    const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iValuesStart + iValAspirationalCur];
-   EBM_ASSERT(pNeighbourJump->m_iStartCur < pNeighbourJump->m_iStartNext);
 
-   // in cases of really bad floating point numeracy issues, we could have landed on a neighbour jump preceeding
-   // or following our validity window.  If we get one of these bad outliers then we could get negative
-   // values for iValLowChoice or iValHighChoice or values that exceed the legal array boundaries.  We 
-   // check later to ensure that we're within the more constrained legality window (when iValLow and/or iValHigh
-   // have meaningful values, or iValuesStart, iValuesStart + cCuttableItems when they do not)
+   const size_t iStartCur = pNeighbourJump->m_iStartCur;
+   const size_t iStartNext = pNeighbourJump->m_iStartNext;
+
+   EBM_ASSERT(iStartCur < iStartNext);
+   EBM_ASSERT(iValuesStart <= iStartCur); // since iValAspirationalCur can't be negative
+   EBM_ASSERT(iValuesStart <= iStartNext); // since iValAspirationalCur can't be negative
+
+   // it shouldn't be possible to have iValAspirationalCur even close to zero, since normally the lowest value
+   // would be 1, and we have a lot of resultion in floating point numbers near zero, and we always calculate
+   // these values starting from the low value and adding up (since there's more resolution in low numbers)
+   // on the upper end though there are failure cases where if we had sufficiently huge numbers we might
+   // find that we got back a Neighbour Jump above our legal range due to floating point inexactness when rounding
+   // up.  We check for this condition below though
 
    const ptrdiff_t iValLowChoice = 
-      static_cast<ptrdiff_t>(pNeighbourJump->m_iStartCur) - static_cast<ptrdiff_t>(iValuesStart);
+      static_cast<ptrdiff_t>(iStartCur) - static_cast<ptrdiff_t>(iValuesStart);
    const ptrdiff_t iValHighChoice = 
-      static_cast<ptrdiff_t>(pNeighbourJump->m_iStartNext) - static_cast<ptrdiff_t>(iValuesStart);
+      static_cast<ptrdiff_t>(iStartNext) - static_cast<ptrdiff_t>(iValuesStart);
 
    FloatEbmType totalDistance;
    FloatEbmType distanceLowLowFloat;
@@ -1138,7 +1184,7 @@ static void BuildNeighbourhoodPlan(
 
    if(LIKELY(bCanCutHigh)) {
       {
-         const size_t cRangesHighLow = CalculateRangesMaximizeMin(distanceHighLowFloat, totalDistance, cRanges);
+         const size_t cRangesHighLow = CalculateRangesMaximizeMin(distanceHighLowFloat, totalDistance, cRanges, cRangesLow);
          EBM_ASSERT(1 <= cRangesHighLow);
          EBM_ASSERT(cRangesHighLow < cRanges);
          const size_t cRangesHighHigh = cRanges - cRangesHighLow;
@@ -1158,7 +1204,7 @@ static void BuildNeighbourhoodPlan(
 
       do_low:;
 
-         const size_t cRangesLowLow = CalculateRangesMaximizeMin(distanceLowLowFloat, totalDistance, cRanges);
+         const size_t cRangesLowLow = CalculateRangesMaximizeMin(distanceLowLowFloat, totalDistance, cRanges, cRangesLow);
          EBM_ASSERT(1 <= cRangesLowLow);
          EBM_ASSERT(cRangesLowLow < cRanges);
          const size_t cRangesLowHigh = cRanges - cRangesLowLow;
@@ -1176,12 +1222,36 @@ static void BuildNeighbourhoodPlan(
 
       EBM_ASSERT(k_badScore != scoreHigh || k_badScore != scoreLow);
 
-      if(UNPREDICTABLE(scoreLow < scoreHigh)) {
+      if(UNPREDICTABLE(scoreHigh < scoreLow * GetTweakingMultipleNegative(1))) {
+         pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
+         pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+      } else if(LIKELY(scoreLow < scoreHigh * GetTweakingMultipleNegative(1))) {
          pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
          pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
       } else {
-         pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
-         pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+         // next, let's try to the edges of our full array
+         const size_t cDistanceLow = iStartCur;
+         EBM_ASSERT(iStartNext <= cSamples);
+         const size_t cDistanceHigh = cSamples - iStartNext;
+         if(UNPREDICTABLE(cDistanceHigh < cDistanceLow)) {
+            pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
+            pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+         } else if(LIKELY(cDistanceLow < cDistanceHigh)) {
+            pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
+            pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
+         } else {
+            // we're at the center of the entire array. Our final fallback is to resort to our symmetric determination
+
+            // TODO: see if there's any benefit in flipping the value of bRandomSymmetryTiebreaker when we determine it
+
+            if(UNPREDICTABLE(bRandomSymmetryTiebreaker)) {
+               pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
+               pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+            } else {
+               pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
+               pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
+            }
+         }
       }
    } else if(LIKELY(bCanCutLow)) {
       scoreHigh = k_badScore;
@@ -1200,6 +1270,8 @@ static void BuildNeighbourhoodPlan(
 static bool CutSegment(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
+   const size_t cSamples,
+   const bool bRandomSymmetryTiebreaker,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -1546,6 +1618,9 @@ static bool CutSegment(
             EBM_ASSERT(!pCutLowNeighbourhoodCur->IsCut()); // we should have exited on 0 == cCutLowerLower beforehand
 
             BuildNeighbourhoodPlan(
+               cSamples,
+               bRandomSymmetryTiebreaker,
+
                cSamplesPerBinMin,
                iValuesStart,
                cCuttableItems,
@@ -1604,6 +1679,9 @@ static bool CutSegment(
             EBM_ASSERT(!pCutHighNeighbourhoodCur->IsCut());
 
             BuildNeighbourhoodPlan(
+               cSamples,
+               bRandomSymmetryTiebreaker,
+
                cSamplesPerBinMin,
                iValuesStart,
                cCuttableItems,
@@ -1789,6 +1867,8 @@ static bool CutSegment(
 static bool TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
 
+   const size_t cSamples,
+   const bool bRandomSymmetryTiebreaker,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -1861,6 +1941,8 @@ static bool TreeSearchCutSegment(
          pCutCur->m_iValAspirationalFloat = iValAspirationalCurFloat;
 
          BuildNeighbourhoodPlan(
+            cSamples,
+            bRandomSymmetryTiebreaker,
             cSamplesPerBinMin,
             iValuesStart,
             cCuttableItems,
@@ -1911,6 +1993,8 @@ static bool TreeSearchCutSegment(
 
    return CutSegment(
       pBestCutPoints,
+      cSamples,
+      bRandomSymmetryTiebreaker,
       cSamplesPerBinMin,
       iValuesStart,
       cCuttableItems,
@@ -1921,6 +2005,8 @@ static bool TreeSearchCutSegment(
 INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
 
+   const size_t cSamples,
+   const bool bRandomSymmetryTiebreaker,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -1944,8 +2030,17 @@ INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    //     of cuts.  Perahps we want to use a binary algorithm where we do +1, +2, +4, +8, and if we exceed then
    //     do binary descent between 4 and 8 until we get our exact number.
 
-   return TreeSearchCutSegment(pBestCutPoints, cSamplesPerBinMin, iValuesStart, cCuttableItems, aNeighbourJumps,
-      cRanges, aCutsWithENDPOINTS);
+   return TreeSearchCutSegment(
+      pBestCutPoints, 
+      cSamples,
+      bRandomSymmetryTiebreaker,
+      cSamplesPerBinMin,
+      iValuesStart, 
+      cCuttableItems, 
+      aNeighbourJumps,
+      cRanges, 
+      aCutsWithENDPOINTS
+   );
 }
 
 // VERIFIED 2020-08
@@ -2803,6 +2898,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities
 static unsigned int g_cLogEnterGenerateQuantileCutPointsParametersMessages = 25;
 static unsigned int g_cLogExitGenerateQuantileCutPointsParametersMessages = 25;
 
+// VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
@@ -3190,6 +3286,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                   if(TradeCutSegment(
                      &bestCutPoints,
+                     cSamples,
+                     bRandomSymmetryTiebreaker,
                      cSamplesPerBinMin,
                      pCuttingRange->m_pCuttableValuesFirst - featureValues,
                      pCuttingRange->m_cCuttableValues,
