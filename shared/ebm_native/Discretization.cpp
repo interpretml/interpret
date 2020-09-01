@@ -4,6 +4,9 @@
 
 #include "PrecompiledHeader.h"
 
+//#define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+//#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+
 // TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
 // TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
 // TODO: after we've found our cuts, generate the best interpretable cut points, then move 1% backwards and forwards
@@ -171,6 +174,9 @@ static_assert(std::is_trivial<CutPoint>::value,
 static_assert(std::is_pod<CutPoint>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+// there is no legal negative value, so having this negative value provides us a safe priority for the queue
+constexpr FloatEbmType k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<FloatEbmType>::lowest();
+
 struct CuttingRange final {
 
    // we divide the space into long segments of uncuttable equal values separated by spaces where we can put
@@ -217,6 +223,21 @@ static_assert(std::is_pod<CuttingRange>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 
+class CompareCuttingRange final {
+public:
+   INLINE_ALWAYS bool operator() (const CuttingRange * const & lhs, const CuttingRange * const & rhs) const noexcept {
+      if(UNLIKELY(rhs->m_avgCuttableRangeWidthAfterAddingOneCut == lhs->m_avgCuttableRangeWidthAfterAddingOneCut)) {
+         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+         return UNPREDICTABLE(rhs->m_uniqueTiebreaker < lhs->m_uniqueTiebreaker);
+      } else {
+         // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+         // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+         return UNPREDICTABLE(rhs->m_avgCuttableRangeWidthAfterAddingOneCut < lhs->m_avgCuttableRangeWidthAfterAddingOneCut);
+      }
+   }
+};
+
 // VERIFIED 2020-08
 class CompareCutPoint final {
 public:
@@ -234,7 +255,7 @@ public:
    }
 };
 
-INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
+INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    const FloatEbmType sideDistance, 
    const FloatEbmType totalDistance, 
    const size_t cRanges,
@@ -258,6 +279,24 @@ INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
    size_t cSide = static_cast<size_t>(result);
    cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
    cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
+
+#ifndef NDEBUG
+
+   FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
+   if(2 <= cSide) {
+      const size_t denominator = cRanges - cSide + 1;
+      FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / denominator);
+      EBM_ASSERT(avgOther <= avg);
+   }
+
+   if(2 <= cRanges - cSide) {
+      const size_t denominator = cSide + 1;
+      FloatEbmType avgOther = std::min(sideDistance / denominator, (totalDistance - sideDistance) / (cRanges - cSide - 1));
+      EBM_ASSERT(avgOther <= avg);
+   }
+
+#endif
+
    if(cSide != cRangesSideOriginal) {
       // sometimes, "cRangesPlusOne * sideDistance == totalDistance" and when that happens we can get a situation
       // where symmetry breaks down as we round up when the numbers are in one orientation and round down (since
@@ -287,23 +326,6 @@ INLINE_ALWAYS size_t CalculateRangesMaximizeMin(
          EBM_ASSERT(cSide < cRanges);
       }
    }
-
-#ifndef NDEBUG
-   
-   FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
-   if(2 <= cSide) {
-      const size_t denominator = cRanges - cSide + 1;
-      FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / denominator);
-      EBM_ASSERT(avgOther <= avg);
-   }
-
-   if(2 <= cRanges - cSide) {
-      const size_t denominator = cSide + 1;
-      FloatEbmType avgOther = std::min(sideDistance / denominator, (totalDistance - sideDistance) / (cRanges - cSide - 1));
-      EBM_ASSERT(avgOther <= avg);
-   }
-
-#endif
 
    return cSide;
 }
@@ -863,10 +885,8 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
 
    // if the m_iVal value was set to k_illegalIndex, then there are no legal cuts, 
    // so leave it with the most terrible possible priority
-   FloatEbmType priority;
-   if(UNLIKELY(k_illegalIndex == pCutCur->m_iVal)) {
-      priority = k_noCutPriority;
-   } else {
+   FloatEbmType priority = k_noCutPriority;
+   if(LIKELY(k_illegalIndex != pCutCur->m_iVal)) {
       // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
       // GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable
@@ -926,6 +946,16 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
       priority *= GetTweakingMultiple(pCutCur->m_uniqueTiebreaker);
    }
    pCutCur->m_priority = priority;
+
+#ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+   LOG_N(TraceLevelVerbose, "Prioritized CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
+      pCutCur->m_uniqueTiebreaker,
+      pCutCur->m_iVal,
+      pCutCur->m_iValAspirationalFloat,
+      pCutCur->m_cPredeterminedMovementOnCut,
+      priority
+   );
+#endif // LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
 }
 
 static void BuildNeighbourhoodPlan(
@@ -1229,30 +1259,67 @@ static void BuildNeighbourhoodPlan(
          pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
          pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
       } else {
-         // next, let's try to the edges of our full array
-         const size_t cDistanceLow = iStartCur;
-         EBM_ASSERT(iStartNext <= cSamples);
-         const size_t cDistanceHigh = cSamples - iStartNext;
-         if(UNPREDICTABLE(cDistanceHigh < cDistanceLow)) {
-            pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
-            pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
-         } else if(LIKELY(cDistanceLow < cDistanceHigh)) {
-            pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
-            pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
-         } else {
-            // we're at the center of the entire array. Our final fallback is to resort to our symmetric determination
-
-            // TODO: see if there's any benefit in flipping the value of bRandomSymmetryTiebreaker when we determine it
-
-            if(UNPREDICTABLE(bRandomSymmetryTiebreaker)) {
+         ptrdiff_t transferRangesLowAbs = transferRangesLow;
+         if(UNLIKELY(transferRangesLowAbs < ptrdiff_t { 0 })) {
+            transferRangesLowAbs = -transferRangesLowAbs;
+         }
+         ptrdiff_t transferRangesHighAbs = transferRangesHigh;
+         if(UNLIKELY(transferRangesHighAbs < ptrdiff_t { 0 })) {
+            transferRangesHighAbs = -transferRangesHighAbs;
+         }
+         if(transferRangesLowAbs != transferRangesHighAbs) {
+            // very very occasionally we get a situation where the priorities are equal because our aspirational
+            // cut lands exactly on the optimal cut AND thus our other side cuts are different in a reversed symmetry
+            // scenario (aNeighbourJumps is reversed but has the same index).  And if all of that is the case, AND
+            // also the other sided cut happens to be exactly on the ideal separation boundary, then we
+            // can see that transfering the cut point allows us to change the number of ranges.  To guard against
+            // this we select the cut that minimizes the transfer, which is a good goal in itself
+            if(UNPREDICTABLE(transferRangesLowAbs < transferRangesHighAbs)) {
                pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
                pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
             } else {
+               EBM_ASSERT(transferRangesHighAbs < transferRangesLowAbs);
                pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
                pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
             }
+         } else {
+            // next, let's try to the edges of our full array
+            const size_t cDistanceLow = iStartCur;
+            EBM_ASSERT(iStartNext <= cSamples);
+            const size_t cDistanceHigh = cSamples - iStartNext;
+            if(UNPREDICTABLE(cDistanceHigh < cDistanceLow)) {
+               pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
+               pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+            } else if(LIKELY(cDistanceLow < cDistanceHigh)) {
+               pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
+               pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
+            } else {
+               // we're at the center of the entire array. Our final fallback is to resort to our symmetric determination
+
+               // TODO: see if there's any benefit in flipping the value of bRandomSymmetryTiebreaker when we determine it
+
+               if(UNPREDICTABLE(bRandomSymmetryTiebreaker)) {
+                  pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
+                  pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
+               } else {
+                  pCutCur->m_iVal = static_cast<size_t>(iValHighChoice);
+                  pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
+               }
+            }
          }
       }
+
+#ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+      LOG_N(TraceLevelVerbose, "Plan CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf ", %" FloatEbmTypePrintf,
+         pCutCur->m_uniqueTiebreaker,
+         pCutCur->m_iVal,
+         pCutCur->m_iValAspirationalFloat,
+         pCutCur->m_cPredeterminedMovementOnCut,
+         scoreLow, 
+         scoreHigh
+      );
+#endif // LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+
    } else if(LIKELY(bCanCutLow)) {
       scoreHigh = k_badScore;
       transferRangesHigh = 0;
@@ -1263,6 +1330,10 @@ static void BuildNeighbourhoodPlan(
       // can't cut either high or low, so exit indicating we're at an impossible cut
       pCutCur->m_iVal = k_illegalIndex;
       pCutCur->m_cPredeterminedMovementOnCut = 0; // set this to indicate that we aren't cut
+
+#ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+      LOG_0(TraceLevelVerbose, "Plan CutPoint: DENIED");
+#endif // LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
    }
    EBM_ASSERT(!pCutCur->IsCut());
 }
@@ -1382,6 +1453,16 @@ static bool CutSegment(
 
          EBM_ASSERT(nullptr != pCutBest->m_pPrev);
          EBM_ASSERT(nullptr != pCutBest->m_pNext);
+
+#ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+         LOG_N(TraceLevelVerbose, "Dequeue CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
+            pCutBest->m_uniqueTiebreaker,
+            pCutBest->m_iVal,
+            pCutBest->m_iValAspirationalFloat,
+            pCutBest->m_cPredeterminedMovementOnCut,
+            pCutBest->m_priority
+         );
+#endif // LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
 
          if(k_noCutPriority == pCutBest->m_priority) {
             // k_noCutPriority means there are no legal cuts, and also that all the remaining items in the queue
@@ -1939,6 +2020,7 @@ static bool TreeSearchCutSegment(
          const FloatEbmType iHighValFloat = stepInit * iHighBound;
 
          pCutCur->m_iValAspirationalFloat = iValAspirationalCurFloat;
+         EBM_ASSERT(pCutCur->m_uniqueTiebreaker < cRanges);
 
          BuildNeighbourhoodPlan(
             cSamples,
@@ -2111,13 +2193,59 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    return cRanges;
 }
 
+static bool AddCutToRanges(
+   std::set<CuttingRange *, CompareCuttingRange> & queue,
+   const size_t cSamplesPerBinMin
+) {
+   EBM_ASSERT(!queue.empty());
+
+   auto iterator = queue.begin();
+   CuttingRange * const pCuttingRangeAdd = *iterator;
+   if(k_illegalAvgCuttableRangeWidthAfterAddingOneCut == pCuttingRangeAdd->m_avgCuttableRangeWidthAfterAddingOneCut) {
+      // nothing remaining in the queue can accept new cuts
+      return true;
+   }
+   queue.erase(iterator);
+
+   // this is how many ranges we were assigned before deciding that this range would recieve a new cut
+   const size_t cRangesPrev = pCuttingRangeAdd->m_cRangesAssigned;
+   // now that this range has been decided as the receiver of a new cut, it now has this many ranges
+   const size_t cRangesCur = cRangesPrev + size_t { 1 };
+   pCuttingRangeAdd->m_cRangesAssigned = cRangesCur;
+
+   FloatEbmType avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
+   if(LIKELY(pCuttingRangeAdd->m_cRangesMax != cRangesCur)) {
+      // we need to re-add our CuttingRange back into the priority queue.  If we were assigned a new range
+      // again, this is how many we'd be at
+      const size_t cRangesNext = cRangesCur + size_t { 1 };
+      const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableValues;
+      // use more exact integer math here
+      if(LIKELY(cSamplesPerBinMin <= cCuttableItems / cRangesNext)) {
+         avgRangeWidthAfterAddingOneCut =
+            static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRangesNext);
+
+         // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
+         // size_t values, it should have exactly the same value when cCuttableItems and cRangesNext
+         // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
+         // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
+         // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
+         // priorities, unlike for CutPoints
+      }
+   }
+   pCuttingRangeAdd->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
+   queue.insert(pCuttingRangeAdd);
+   return false;
+}
+
+
 // VERIFIED 2020-08
-static bool StuffCutsIntoCuttingRanges(
+static void StuffCutsIntoCuttingRanges(
+   std::set<CuttingRange *, CompareCuttingRange> & queue,
    const size_t cCuttingRanges,
    CuttingRange * const aCuttingRange,
    const size_t cSamplesPerBinMin,
    const size_t cCutsAssignable
-) noexcept {
+) {
    EBM_ASSERT(1 <= cCuttingRanges);
    EBM_ASSERT(nullptr != aCuttingRange);
    EBM_ASSERT(1 <= cSamplesPerBinMin);
@@ -2134,148 +2262,90 @@ static bool StuffCutsIntoCuttingRanges(
    // until there are no items in the heap because they've all exhausted the possibilities of cuts
    // OR until we run out of cuts to dole out.
 
-   class CompareCuttingRange final {
-   public:
-      INLINE_ALWAYS bool operator() (
-         const CuttingRange * const & lhs,
-         const CuttingRange * const & rhs
-      ) const noexcept {
-         if(UNLIKELY(lhs->m_avgCuttableRangeWidthAfterAddingOneCut == rhs->m_avgCuttableRangeWidthAfterAddingOneCut)) {
-            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-            // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
-            return UNPREDICTABLE(lhs->m_uniqueTiebreaker < rhs->m_uniqueTiebreaker);
-         } else {
-            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
-            // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
-            return UNPREDICTABLE(lhs->m_avgCuttableRangeWidthAfterAddingOneCut < rhs->m_avgCuttableRangeWidthAfterAddingOneCut);
-         }
+   CuttingRange * pCuttingRangeInit = aCuttingRange;
+   const CuttingRange * const pCuttingRangeEnd = aCuttingRange + cCuttingRanges;
+   do {
+      // when dividing the values into uncutable and cutable ranges, we chose the minimum number of equal values
+      // that needed to exist before a range was considered uncutable (inside GetUncuttableRangeLengthMin)
+      // That value was chosen very carefully such that we could guarantee that every cuttable range that was
+      // surrounded by uncuttable ranges on both sides would get a cut.  The only cuttable ranges that are not
+      // guaranteed to get an explicit cut are the first and last ranges, and only if they don't have uncuttable
+      // ranges between the cutable range and the first or last values.  Of course, we would want any cutable
+      // range surrounded on both sides by uncutable ranges to have a cut, if only just to separate the uncuttable
+      // ranges.  The interesting thing about the first and last cuttable ranges is that they can form a a range 
+      // with just one cut since the end of the array provides an implicit cut.
+      // 
+      // So, our initial starting point is that every cuttable range will achieve a range if we give it one
+      // more cut than what it has currenlty.  If we add 1 cut, we'll get 1 range in each of the CuttingRanges.
+      // Another way to say this is that each CuttingRange currently has 0 ranges, so our initial state is
+      // to set m_cRangesAssigned to zero, and insert each CuttingRange into the priority queue with the priority
+      // based on the forward looking future that would occur if we added one cut, which would lead to 1 full range.
+      //
+      // One oddity is the case where we have one cuttable range and no uncuttable ranges.  In that case we
+      // essentially have two implicit cuts, and therefore a full range even without an explicit cut assigned.
+      // The zero cut scenario isn't possible, since we filter those cases out before calling this function, 
+      // so we are always guaranteed that adding the first cut will succeed in this scenario, so we just let 
+      // our existing logic run and add the first cut instead of special casing that handling.
+
+      pCuttingRangeInit->m_cRangesAssigned = size_t { 0 };
+
+      // we want to add any cutting range into the priority queue with what the result would be if we added one
+      // cut, but since all of our ranges currently have one cut (zero ranges), adding one cut will get us a full
+      // range, and we don't need to divide our m_cCuttableValues by 1 for the 1 range.  We just need to check
+      // that it has enough samples per bin
+      const size_t cCuttableItems = pCuttingRangeInit->m_cCuttableValues;
+      size_t cRangesMax = 0;
+      FloatEbmType avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
+      if(LIKELY(cSamplesPerBinMin <= cCuttableItems)) {
+         // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
+         // size_t values, it should have exactly the same value when cCuttableItems and newProposedRanges
+         // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
+         // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
+         // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
+         // priorities, unlike for CutPoints
+         avgRangeWidthAfterAddingOneCut = static_cast<FloatEbmType>(cCuttableItems);
+
+         cRangesMax = DetermineRangesMax(
+            cCuttableItems, 
+            pCuttingRangeInit->m_pCuttableValuesFirst, 
+            cSamplesPerBinMin
+         );
+
+         EBM_ASSERT(1 <= cRangesMax);
       }
-   };
+      pCuttingRangeInit->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
+      pCuttingRangeInit->m_cRangesMax = cRangesMax;
+      queue.insert(pCuttingRangeInit);
 
-   try {
-      std::priority_queue<CuttingRange *, std::vector<CuttingRange *>, CompareCuttingRange> queue;
+      ++pCuttingRangeInit;
+   } while(LIKELY(pCuttingRangeEnd != pCuttingRangeInit));
 
-      CuttingRange * pCuttingRangeInit = aCuttingRange;
-      const CuttingRange * const pCuttingRangeEnd = aCuttingRange + cCuttingRanges;
-      do {
-         // when dividing the values into uncutable and cutable ranges, we chose the minimum number of equal values
-         // that needed to exist before a range was considered uncutable (inside GetUncuttableRangeLengthMin)
-         // That value was chosen very carefully such that we could guarantee that every cuttable range that was
-         // surrounded by uncuttable ranges on both sides would get a cut.  The only cuttable ranges that are not
-         // guaranteed to get an explicit cut are the first and last ranges, and only if they don't have uncuttable
-         // ranges between the cutable range and the first or last values.  Of course, we would want any cutable
-         // range surrounded on both sides by uncutable ranges to have a cut, if only just to separate the uncuttable
-         // ranges.  The interesting thing about the first and last cuttable ranges is that they can form a a range 
-         // with just one cut since the end of the array provides an implicit cut.
-         // 
-         // So, our initial starting point is that every cuttable range will achieve a range if we give it one
-         // more cut than what it has currenlty.  If we add 1 cut, we'll get 1 range in each of the CuttingRanges.
-         // Another way to say this is that each CuttingRange currently has 0 ranges, so our initial state is
-         // to set m_cRangesAssigned to zero, and insert each CuttingRange into the priority queue with the priority
-         // based on the forward looking future that would occur if we added one cut, which would lead to 1 full range.
-         //
-         // One oddity is the case where we have one cuttable range and no uncuttable ranges.  In that case we
-         // essentially have two implicit cuts, and therefore a full range even without an explicit cut assigned.
-         // The zero cut scenario isn't possible, since we filter those cases out before calling this function, 
-         // so we are always guaranteed that adding the first cut will succeed in this scenario, so we just let 
-         // our existing logic run and add the first cut instead of special casing that handling.
-
-         pCuttingRangeInit->m_cRangesAssigned = size_t { 0 };
-
-         // we want to add any cutting range into the priority queue with what the result would be if we added one
-         // cut, but since all of our ranges currently have one cut (zero ranges), adding one cut will get us a full
-         // range, and we don't need to divide our m_cCuttableValues by 1 for the 1 range.  We just need to check
-         // that it has enough samples per bin
-         const size_t cCuttableItems = pCuttingRangeInit->m_cCuttableValues;
-         size_t cRangesMax = 0;
-         if(LIKELY(cSamplesPerBinMin <= cCuttableItems)) {
-            // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
-            // size_t values, it should have exactly the same value when cCuttableItems and newProposedRanges
-            // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
-            // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
-            // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
-            // priorities, unlike for CutPoints
-            pCuttingRangeInit->m_avgCuttableRangeWidthAfterAddingOneCut = static_cast<FloatEbmType>(cCuttableItems);
-
-            cRangesMax = DetermineRangesMax(
-               cCuttableItems, 
-               pCuttingRangeInit->m_pCuttableValuesFirst, 
-               cSamplesPerBinMin
-            );
-
-            EBM_ASSERT(1 <= cRangesMax);
-
-            queue.push(pCuttingRangeInit);
-         }
-         pCuttingRangeInit->m_cRangesMax = cRangesMax;
-
-         ++pCuttingRangeInit;
-      } while(LIKELY(pCuttingRangeEnd != pCuttingRangeInit));
-
-      size_t cRemainingCuts = cCutsAssignable;
-      if(UNLIKELY(0 == aCuttingRange[0].m_cUncuttableLowValues)) {
-         // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
-         // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
-         // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
-         // add one to our remaining cuts to account for the implicit cut that we get at the start
-         ++cRemainingCuts;
-      }
-
-      if(UNLIKELY(0 == (pCuttingRangeEnd - 1)->m_cUncuttableHighValues)) {
-         // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
-         // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
-         // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
-         // add one to our remaining cuts to account for the implicit cut that we get at the end
-         ++cRemainingCuts;
-      }
-
-      EBM_ASSERT(cCuttingRanges <= cRemainingCuts);
-      cRemainingCuts -= cCuttingRanges;
-      if(LIKELY(0 != cRemainingCuts)) {
-         // the queue can initially be empty if all the ranges are too short to make them cSamplesPerBinMin
-         while(LIKELY(!queue.empty())) {
-            CuttingRange * const pCuttingRangeAdd = queue.top();
-            queue.pop();
-
-            // this is how many ranges we were assigned before deciding that this range would recieve a new cut
-            const size_t cRangesPrev = pCuttingRangeAdd->m_cRangesAssigned;
-            // now that this range has been decided as the receiver of a new cut, it now has this many ranges
-            const size_t cRangesCur = cRangesPrev + size_t { 1 };
-            pCuttingRangeAdd->m_cRangesAssigned = cRangesCur;
-
-            EBM_ASSERT(1 <= cRemainingCuts);
-            --cRemainingCuts;
-            if(UNLIKELY(0 == cRemainingCuts)) {
-               break;
-            }
-
-            if(LIKELY(pCuttingRangeAdd->m_cRangesMax != cRangesCur)) {
-               // we need to re-add our CuttingRange back into the priority queue.  If we were assigned a new range
-               // again, this is how many we'd be at
-               const size_t cRangesNext = cRangesCur + size_t { 1 };
-               const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableValues;
-               // use more exact integer math here
-               if(LIKELY(cSamplesPerBinMin <= cCuttableItems / cRangesNext)) {
-                  const FloatEbmType avgRangeWidthAfterAddingOneCut =
-                     static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRangesNext);
-
-                  // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
-                  // size_t values, it should have exactly the same value when cCuttableItems and cRangesNext
-                  // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
-                  // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
-                  // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
-                  // priorities, unlike for CutPoints
-                  pCuttingRangeAdd->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
-                  queue.push(pCuttingRangeAdd);
-               }
-            }
-         }
-      }
-   } catch(...) {
-      LOG_0(TraceLevelWarning, "WARNING StuffCutsIntoCuttingRanges exception");
-      return true;
+   size_t cRemainingCuts = cCutsAssignable;
+   if(UNLIKELY(0 == aCuttingRange[0].m_cUncuttableLowValues)) {
+      // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
+      // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
+      // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
+      // add one to our remaining cuts to account for the implicit cut that we get at the start
+      ++cRemainingCuts;
    }
-   return false;
+
+   if(UNLIKELY(0 == (pCuttingRangeEnd - 1)->m_cUncuttableHighValues)) {
+      // if our tail end is a pure tail with no uncuttable range on it's side, then we can get a range with just
+      // one cut since the end of the values provides us an implicit cut.  If our tail end is an uncutable range,
+      // then we need to put cuts on both ends to get a single range, so we don't get an implicit cut
+      // add one to our remaining cuts to account for the implicit cut that we get at the end
+      ++cRemainingCuts;
+   }
+
+   EBM_ASSERT(cCuttingRanges <= cRemainingCuts);
+   cRemainingCuts -= cCuttingRanges;
+   // the queue can initially be empty if all the ranges are too short to make them cSamplesPerBinMin
+   while(LIKELY(0 != cRemainingCuts)) {
+      if(AddCutToRanges(queue, cSamplesPerBinMin)) {
+         break;
+      }
+      --cRemainingCuts;
+   }
 }
 
 // VERIFIED 08-2020
@@ -2373,26 +2443,6 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
          pStartEqualRange : pValuesEnd;
       pCuttingRange->m_cCuttableValues = pCuttableRangeEnd - pCuttableValuesStart;
    }
-}
-
-// VERIFIED 08-2020
-INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangePointers(
-   const size_t cCuttingRanges,
-   CuttingRange ** const apCuttingRange,
-   CuttingRange * const aCuttingRange
-) noexcept {
-   EBM_ASSERT(1 <= cCuttingRanges);
-   EBM_ASSERT(nullptr != apCuttingRange);
-   EBM_ASSERT(nullptr != aCuttingRange);
-
-   CuttingRange ** ppCuttingRange = apCuttingRange;
-   const CuttingRange * const * const apCuttingRangeEnd = apCuttingRange + cCuttingRanges;
-   CuttingRange * pCuttingRange = aCuttingRange;
-   do {
-      *ppCuttingRange = pCuttingRange;
-      ++pCuttingRange;
-      ++ppCuttingRange;
-   } while(apCuttingRangeEnd != ppCuttingRange);
 }
 
 // VERIFIED 08-2020
@@ -3149,15 +3199,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         const size_t cBytesCombined = sizeof(CuttingRange) + sizeof(CuttingRange *);
-         if(UNLIKELY(IsMultiplyError(cCuttingRanges, cBytesCombined))) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cCuttingRanges, cBytesCombined)");
-
-            countCutPointsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-            goto exit_with_log;
-         }
-
          // TODO: we can allocate all our memory in one single allocation!
 
          NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
@@ -3187,13 +3228,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         // TODO: if we're not going to use the apCuttingRange itself to re-order how we process CuttingRanges
-         // we shouldn't allocate these extra pointers
-
-         // use the same memory allocation for both the Junction items and the pointers to the junctions that we'll use for sorting
-         CuttingRange ** const apCuttingRange = static_cast<CuttingRange **>(EbmMalloc<void>(cCuttingRanges * cBytesCombined));
-         if(UNLIKELY(nullptr == apCuttingRange)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == apCuttingRange");
+         CuttingRange * const aCuttingRange = EbmMalloc<CuttingRange>(cCuttingRanges);
+         if(UNLIKELY(nullptr == aCuttingRange)) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aCuttingRange");
 
             free(aCutPoints);
             free(aNeighbourJumps);
@@ -3202,9 +3239,6 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
-
-         CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(apCuttingRange + cCuttingRanges);
-         FillCuttingRangePointers(cCuttingRanges, apCuttingRange, aCuttingRange);
 
          bool bRandomSymmetryTiebreaker = DetermineSymmetryRandomDirection(cSamples, featureValues);
 
@@ -3212,46 +3246,48 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          randomStream.Initialize(k_randomSeed);
 
          // we don't need tiebreakers in the endpoints
-         FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCutPointsMax, aCutPoints + 1);
          FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, featureValues, cCuttingRanges, aCuttingRange);
 
-         if(UNLIKELY(StuffCutsIntoCuttingRanges(
-            cCuttingRanges,
-            aCuttingRange,
-            cSamplesPerBinMin,
-            cCutPointsMax
-         ))) {
-            // we've already written an error message within StuffCutsIntoCuttingRanges
-
-            free(apCuttingRange);
-            free(aCutPoints);
-            free(aNeighbourJumps);
-
-            countCutPointsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-            goto exit_with_log;
-         }
-
-         // TODO: use the apCuttingRange array to sort the ranges by some kind of criteria (including the randomness)
-         // AND process them in a consistent ordering that works with our symmetry randomness values
-
          FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
-         CuttingRange * pCuttingRange = aCuttingRange;
-         const CuttingRange * const pCuttingRangeEnd = aCuttingRange + cCuttingRanges;
-         do {
-            // TODO first let's tackle the short ranges between big ranges (or at the tails) where we know there 
-            // will be a cut to separate the big ranges to either side, but the short range isn't big enough to cut.  
-            // In otherwords, there are less than cSamplesPerBinMin items we start with the biggest long ranges 
-            // and essentially try to push whatever mass there is away from them and continue down the list
+         try {
+            std::set<CuttingRange *, CompareCuttingRange> queue;
+            StuffCutsIntoCuttingRanges(
+               queue,
+               cCuttingRanges,
+               aCuttingRange,
+               cSamplesPerBinMin,
+               cCutPointsMax
+            );
+            do {
+               EBM_ASSERT(!queue.empty());
+               // remove the item that is the worst CuttingRange for us to add a new cut to.  We'll keep
+               // the cutting ranges that are closest to the threshold for adding new cuts in the queue so that
+               // if we can't use all our cuts, we can move the cuts to the next best choice
+               auto iterator = prev(queue.end());
+               CuttingRange * const pCuttingRange = *iterator;
+               queue.erase(iterator);
 
-            const size_t cRanges = pCuttingRange->m_cRangesAssigned;
-            if(PREDICTABLE(size_t { 1 } < cRanges)) {
-               // we have cuts on our ends, either explicit or implicit at the tail ends that don't have unsplitable
-               // ranges on the tails, and at least one cut in our center, so we have to make decisions
-               try {
+               const size_t cRanges = pCuttingRange->m_cRangesAssigned;
+
+#ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+               LOG_N(TraceLevelVerbose, "Dequque CuttingRange: %zu, %zu, %zu, %zu, %zu, %zu, %zu, %" FloatEbmTypePrintf,
+                  pCuttingRange->m_uniqueTiebreaker,
+                  pCuttingRange->m_cRangesAssigned,
+                  pCuttingRange->m_cCuttableValues,
+                  static_cast<size_t>(pCuttingRange->m_pCuttableValuesFirst - featureValues),
+                  pCuttingRange->m_cUncuttableHighValues,
+                  pCuttingRange->m_cUncuttableLowValues,
+                  pCuttingRange->m_cRangesMax,
+                  pCuttingRange->m_avgCuttableRangeWidthAfterAddingOneCut
+               );
+#endif // LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+
+               if(PREDICTABLE(size_t { 1 } < cRanges)) {
+                  // we have cuts on our ends, either explicit or implicit at the tail ends that don't have unsplitable
+                  // ranges on the tails, and at least one cut in our center, so we have to make decisions
                   std::set<CutPoint *, CompareCutPoint> bestCutPoints;
 
 #ifdef NEVER
@@ -3284,6 +3320,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   std::set<CutPoint *, CompareCutPoint> fillTheVoids;
 #endif // NEVER
 
+                  // in order to preserve symmetry, we require that our algorithm encounter the tiebreakers in the
+                  // same order each time.  If we fill the tiebreakers once and then re-use them, then we
+                  // would need to ensure that we get placed on the correct cut that has the same tiebreaker
+                  // each time, which only works if they are centered and we always reach them in order, but
+                  // for the sake of randomness, let's re-generate random numbres each time to give the entire
+                  // sytem a little more variability
+                  FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
                   if(TradeCutSegment(
                      &bestCutPoints,
                      cSamples,
@@ -3298,7 +3341,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   )) {
                      // any error messages should have been written to the log inside TradeCutSegment
 
-                     free(apCuttingRange);
+                     free(aCuttingRange);
                      free(aCutPoints);
                      free(aNeighbourJumps);
 
@@ -3349,116 +3392,122 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      *pCutPointsLowerBoundInclusive = cut;
                      ++pCutPointsLowerBoundInclusive;
                   }
-               } catch(...) {
-                  LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
-                  free(apCuttingRange);
-                  free(aCutPoints);
-                  free(aNeighbourJumps);
+               } else if(PREDICTABLE(size_t { 1 } == cRanges)) {
+                  // we have cuts on both our ends (either explicit or implicit), so
+                  // we don't have to make any hard decisions, but we do have to be careful of the scenarios
+                  // where some of our cuts are implicit
 
-                  countCutPointsRet = IntEbmType { 0 };
-                  ret = IntEbmType { 1 };
-                  goto exit_with_log;
-               }
-            } else if(PREDICTABLE(size_t { 1 } == cRanges)) {
-               // we have cuts on both our ends (either explicit or implicit), so
-               // we don't have to make any hard decisions, but we do have to be careful of the scenarios
-               // where some of our cuts are implicit
+                  if(0 != pCuttingRange->m_cUncuttableLowValues) {
+                     // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                     // otherwise put in the cut
+                     const FloatEbmType * const pCut = pCuttingRange->m_pCuttableValuesFirst;
+                     EBM_ASSERT(featureValues < pCut);
+                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                     *pCutPointsLowerBoundInclusive = cut;
+                     ++pCutPointsLowerBoundInclusive;
+                  }
+                  if(0 != pCuttingRange->m_cUncuttableHighValues) {
+                     // if it's zero then it's an implicit cut and we shouldn't put one there, 
+                     // otherwise put in the cut
+                     const FloatEbmType * const pCut =
+                        pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
+                     EBM_ASSERT(featureValues < pCut);
+                     EBM_ASSERT(pCut < featureValues + countSamples);
+                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
+                     *pCutPointsLowerBoundInclusive = cut;
+                     ++pCutPointsLowerBoundInclusive;
+                  }
+               } else {
+                  EBM_ASSERT(0 == cRanges);
+                  // we have only 1 cut to place, and no cuts on our boundaries, so we need to figure out
+                  // where in our range to place it, taking into consideration that we might have neighbours on our
+                  // sides that could be large
 
-               if(0 != pCuttingRange->m_cUncuttableLowValues) {
-                  // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                  // otherwise put in the cut
-                  const FloatEbmType * const pCut = pCuttingRange->m_pCuttableValuesFirst;
-                  EBM_ASSERT(featureValues < pCut);
-                  EBM_ASSERT(pCut < featureValues + countSamples);
-                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                  *pCutPointsLowerBoundInclusive = cut;
-                  ++pCutPointsLowerBoundInclusive;
-               }
-               if(0 != pCuttingRange->m_cUncuttableHighValues) {
-                  // if it's zero then it's an implicit cut and we shouldn't put one there, 
-                  // otherwise put in the cut
-                  const FloatEbmType * const pCut =
-                     pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
-                  EBM_ASSERT(featureValues < pCut);
-                  EBM_ASSERT(pCut < featureValues + countSamples);
-                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                  *pCutPointsLowerBoundInclusive = cut;
-                  ++pCutPointsLowerBoundInclusive;
-               }
-            } else {
-               EBM_ASSERT(0 == cRanges);
-               // we have only 1 cut to place, and no cuts on our boundaries, so we need to figure out
-               // where in our range to place it, taking into consideration that we might have neighbours on our
-               // sides that could be large
+                  // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
+                  // be handled above
+                  EBM_ASSERT(0 != pCuttingRange->m_cUncuttableLowValues || 0 != pCuttingRange->m_cUncuttableHighValues);
 
-               // if we had implicit cuts on both ends and zero assigned cuts, we'd have 1 range and would
-               // be handled above
-               EBM_ASSERT(0 != pCuttingRange->m_cUncuttableLowValues || 0 != pCuttingRange->m_cUncuttableHighValues);
+                  // if one side or the other was an implicit cut, then we have zero cuts left after
+                  // the implicit cut is accounted for, so do nothing
+                  if(LIKELY(LIKELY(0 != pCuttingRange->m_cUncuttableLowValues) && 
+                     LIKELY(0 != pCuttingRange->m_cUncuttableHighValues))) {
+                     // even though we could reduce our squared error length more, it probably makes sense to 
+                     // include a little bit of our available numbers on one long range and the other, so let's put
+                     // the cut in the middle and only make the low/high decision to settle long-ish ranges
+                     // in the center
 
-               // if one side or the other was an implicit cut, then we have zero cuts left after
-               // the implicit cut is accounted for, so do nothing
-               if(LIKELY(LIKELY(0 != pCuttingRange->m_cUncuttableLowValues) && 
-                  LIKELY(0 != pCuttingRange->m_cUncuttableHighValues))) {
-                  // even though we could reduce our squared error length more, it probably makes sense to 
-                  // include a little bit of our available numbers on one long range and the other, so let's put
-                  // the cut in the middle and only make the low/high decision to settle long-ish ranges
-                  // in the center
+                     const FloatEbmType * pCut = pCuttingRange->m_pCuttableValuesFirst;
+                     const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
+                     if(LIKELY(0 != cCuttableItems)) {
+                        // if 0 == m_cCuttableItems then we get bumped into the neighbour jumps object for our
+                        // uncuttable range above, and the next value is way far away from our current cutting
+                        // range
 
-                  const FloatEbmType * pCut = pCuttingRange->m_pCuttableValuesFirst;
-                  const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
-                  if(LIKELY(0 != cCuttableItems)) {
-                     // if 0 == m_cCuttableItems then we get bumped into the neighbour jumps object for our
-                     // uncuttable range above, and the next value is way far away from our current cutting
-                     // range
+                        const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
+                        const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
+                        const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 
-                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
-                     const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
-                     const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
+                        const size_t iStartCur = pNeighbourJump->m_iStartCur;
+                        const size_t iStartNext = pNeighbourJump->m_iStartNext;
 
-                     const size_t iStartCur = pNeighbourJump->m_iStartCur;
-                     const size_t iStartNext = pNeighbourJump->m_iStartNext;
+                        size_t cDistanceLow = iStartCur - iRangeFirst;
+                        size_t cDistanceHigh = iRangeFirst + cCuttableItems - iStartNext;
 
-                     size_t cDistanceLow = iStartCur - iRangeFirst;
-                     size_t cDistanceHigh = iRangeFirst + cCuttableItems - iStartNext;
-
-                     size_t iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
-                     if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                        // we're equidistant to both edges.  Next try to see which is closer to the outer
-                        // edge if we include the uncuttable ranges beyond
-                        cDistanceLow = pCuttingRange->m_cUncuttableLowValues;
-                        cDistanceHigh = pCuttingRange->m_cUncuttableHighValues;
-                        iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
+                        size_t iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
                         if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                           // next, let's try to the edges of our full array
-                           cDistanceLow = iStartCur;
-                           cDistanceHigh = cSamples - iStartNext;
+                           // we're equidistant to both edges.  Next try to see which is closer to the outer
+                           // edge if we include the uncuttable ranges beyond
+                           cDistanceLow = pCuttingRange->m_cUncuttableLowValues;
+                           cDistanceHigh = pCuttingRange->m_cUncuttableHighValues;
                            iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
                            if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                              // wow, we're at the center of the entire array AND the center of the outer
-                              // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
-                              // is to resort to our symmetric determination
-                              iResult = UNPREDICTABLE(bRandomSymmetryTiebreaker) ? iStartCur : iStartNext;
+                              // next, let's try to the edges of our full array
+                              cDistanceLow = iStartCur;
+                              cDistanceHigh = cSamples - iStartNext;
+                              iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
+                              if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
+                                 // wow, we're at the center of the entire array AND the center of the outer
+                                 // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
+                                 // is to resort to our symmetric determination
+                                 iResult = UNPREDICTABLE(bRandomSymmetryTiebreaker) ? iStartCur : iStartNext;
+                              }
                            }
                         }
+                        pCut = featureValues + iResult;
                      }
-                     pCut = featureValues + iResult;
+                     EBM_ASSERT(featureValues < pCut);
+                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
+                     *pCutPointsLowerBoundInclusive = cut;
+                     ++pCutPointsLowerBoundInclusive;
                   }
-                  EBM_ASSERT(featureValues < pCut);
-                  const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
-                  *pCutPointsLowerBoundInclusive = cut;
-                  ++pCutPointsLowerBoundInclusive;
                }
-            }
-            ++pCuttingRange;
-         } while(pCuttingRangeEnd != pCuttingRange);
+            } while(!queue.empty());
+         } catch(...) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
+
+            free(aCuttingRange);
+            free(aCutPoints);
+            free(aNeighbourJumps);
+
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
 
          EBM_ASSERT(cutPointsLowerBoundInclusiveOut <= pCutPointsLowerBoundInclusive);
+         const size_t cCutPointsRet = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveOut;
+
+         // all our cut points are guaranteed unique, and they have a single valid ordereding, so we can create them 
+         // in any order we wish based on priority, and then later sort them to ensure that they are in correct order
+         std::sort(cutPointsLowerBoundInclusiveOut, cutPointsLowerBoundInclusiveOut + cCutPointsRet);
+
          // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
          // specified, and that value came to us as an IntEbmType
-         countCutPointsRet = static_cast<IntEbmType>(pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveOut);
+         countCutPointsRet = static_cast<IntEbmType>(cCutPointsRet);
          EBM_ASSERT(countCutPointsRet <= countCutPoints);
 
-         free(apCuttingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
+         free(aCuttingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
          free(aCutPoints);
          free(aNeighbourJumps);
 

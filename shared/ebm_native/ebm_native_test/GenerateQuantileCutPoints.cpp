@@ -10,6 +10,22 @@
 
 static const TestPriority k_filePriority = TestPriority::GenerateQuantileCutPoints;
 
+class CompareFloatWithNan final {
+public:
+   inline bool operator() (const FloatEbmType & lhs, const FloatEbmType & rhs) const noexcept {
+      if(std::isnan(lhs)) {
+         return false;
+      } else {
+         if(std::isnan(rhs)) {
+            return true;
+         } else {
+            // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+            return lhs < rhs;
+         }
+      }
+   }
+};
+
 void GetExpectedStats(
    const IntEbmType countSamples,
    const FloatEbmType * const aFeatureValues,
@@ -723,14 +739,14 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    // first and last SplittingRanges are special in that they may have no long ranges on the tail ends, 
    // you still end up with one or more SplittingRanges that can't have a cut if you don't take the ceiling.
 
-   constexpr bool bTestReverse = true;
+   constexpr bool bTestReverse = false;
    constexpr size_t cCutPointsMax = 26;
    constexpr size_t cSamplesPerBinMin = 2;
    const std::vector<FloatEbmType> featureValues { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
       13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 
       27, 27, 28, 28, 29, 29 };
-   const std::vector<FloatEbmType> expectedCutPoints { 1.5, 3.5, 4.5, 5.5, 6.5, 7.5, 9.5, 10.5, 11.5,
-      12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5 };
+   const std::vector<FloatEbmType> expectedCutPoints { 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5,
+      12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 25.5, 27.5 };
 
    TestQuantileBinning(
       testCaseHidden,
@@ -910,8 +926,6 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          );
 
          memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
-         std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
-            [](FloatEbmType & val) { return -val; });
 
          IntEbmType countCutPointsForward = static_cast<IntEbmType>(cCutPoints);
          IntEbmType ret = GenerateQuantileCutPoints(
@@ -933,6 +947,9 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          CHECK(countNegativeInfinityExpected == countNegativeInfinity);
          CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
          CHECK(countPositiveInfinityExpected == countPositiveInfinity);
+
+         std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
+            [](FloatEbmType & val) { return -val; });
 
          IntEbmType countCutPointsReversed = static_cast<IntEbmType>(cCutPoints);
          ret = GenerateQuantileCutPoints(
@@ -957,6 +974,8 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
 
          CHECK(countCutPointsForward == countCutPointsReversed);
 
+         std::sort(featureValues, featureValues + countSamples, CompareFloatWithNan());
+
          assert(1 == randomMax % 2); // our random numbers need a center value as well
          constexpr size_t iHistogramExactMiddle = cCutHistogram / 2;
          const size_t iCutExactMiddle = randomMax / 2;
@@ -966,13 +985,12 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          for(size_t iCutPoint = 0; iCutPoint < cCutPointsReturned; ++iCutPoint) {
             const FloatEbmType cutPointForward = cutPointsLowerBoundInclusiveForward[iCutPoint];
             if(countCutPointsForward == countCutPointsReversed) {
-               // TODO: turn the reveral test back on!
-               // For now we've turned off the reversal tests, since they aren't exact, and we need
-               // to take a better look at symmetry in the future.  We still get some benefits though from 
-               // running the tests backwards to look for assert failures.
+               const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
 
-               //const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
-               //CHECK_APPROX(cutPointReversed, cutPointForward);
+               const FloatEbmType cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
+               const FloatEbmType cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
+
+               CHECK_APPROX(cutPointForwardNext, cutPointReversedNext);
             }
             // cutPoint can be a number between 0.5 and (randomMax - 0.5)
             const size_t iCut = static_cast<size_t>(std::round(cutPointForward - FloatEbmType { 1.5 }));
@@ -1072,8 +1090,6 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       );
 
       memcpy(featureValuesForward, featureValues, sizeof(featureValues[0]) * countSamples);
-      std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
-         [](FloatEbmType & val) { return -val; });
 
       IntEbmType countCutPointsForward = static_cast<IntEbmType>(cCutPoints);
       IntEbmType ret = GenerateQuantileCutPoints(
@@ -1096,6 +1112,9 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
       CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
+      std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
+         [](FloatEbmType & val) { return -val; });
+
       IntEbmType countCutPointsReversed = static_cast<IntEbmType>(cCutPoints);
       ret = GenerateQuantileCutPoints(
          countSamples,
@@ -1117,25 +1136,22 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
       CHECK(countNegativeInfinityExpected == countPositiveInfinity);
 
-      // TODO: turn the reveral test back on!
-      // For now we've turned off the reversal tests, since they aren't exact, and we need
-      // to take a better look at symmetry in the future.  We still get some benefits though from 
-      // running the tests backwards to look for assert failures.
 
-      //CHECK(countCutPointsForward == countCutPointsReversed);
-      //if(countCutPointsForward == countCutPointsReversed) {
-      //   const size_t cCutPointsReturned = static_cast<size_t>(countCutPointsForward);
-      //   for(size_t iCutPoint = 0; iCutPoint < cCutPointsReturned; ++iCutPoint) {
-      //      const FloatEbmType cutPointForward = cutPointsLowerBoundInclusiveForward[iCutPoint];
-      //      // TODO: turn the reveral test back on!
-      //      // For now we've turned off the reversal tests, since they aren't exact, and we need
-      //      // to take a better look at symmetry in the future.  We still get some benefits though from 
-      //      // running the tests backwards to look for assert failures.
+      CHECK(countCutPointsForward == countCutPointsReversed);
+      if(countCutPointsForward == countCutPointsReversed) {
+         std::sort(featureValues, featureValues + countSamples, CompareFloatWithNan());
 
-      //      const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
-      //      CHECK_APPROX(cutPointReversed, cutPointForward);
-      //   }
-      //}
+         const size_t cCutPointsReturned = static_cast<size_t>(countCutPointsForward);
+         for(size_t iCutPoint = 0; iCutPoint < cCutPointsReturned; ++iCutPoint) {
+            const FloatEbmType cutPointForward = cutPointsLowerBoundInclusiveForward[iCutPoint];
+            const FloatEbmType cutPointReversed = -cutPointsLowerBoundInclusiveReversed[cCutPointsReturned - 1 - iCutPoint];
+
+            const FloatEbmType cutPointForwardNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointForward);
+            const FloatEbmType cutPointReversedNext = *std::upper_bound(featureValues, featureValues + countSamples - 1 - countMissingValuesExpected, cutPointReversed);
+
+            CHECK_APPROX(cutPointForwardNext, cutPointReversedNext);
+         }
+      }
    }
 }
 
