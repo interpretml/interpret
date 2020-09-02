@@ -948,6 +948,18 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
          CHECK(maxNonInfinityValueExpected == maxNonInfinityValue);
          CHECK(countPositiveInfinityExpected == countPositiveInfinity);
 
+         //DisplayCuts(
+         //   countSamples,
+         //   featureValues,
+         //   cCutPoints + 1,
+         //   countSamplesPerBinMin,
+         //   countCutPointsForward,
+         //   cutPointsLowerBoundInclusiveForward,
+         //   0 != countMissingValues,
+         //   minNonInfinityValue,
+         //   maxNonInfinityValue
+         //);
+
          std::transform(featureValues, featureValues + countSamples, featureValuesReversed,
             [](FloatEbmType & val) { return -val; });
 
@@ -1028,16 +1040,19 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
    FloatEbmType cutPointsLowerBoundInclusiveReversed[cCutPoints];
 
    constexpr IntEbmType countSamplesPerBinMin = 3;
-   constexpr size_t cSamples = 100;
+   constexpr size_t cSamplesMax = 100;
    constexpr size_t maxRandomVal = 70;
-   const size_t cLongBinLength = static_cast<size_t>(
-      std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cCutPoints + 1))
-      );
-   FloatEbmType featureValues[cSamples]; // preserve these for debugging purposes
-   FloatEbmType featureValuesForward[cSamples];
-   FloatEbmType featureValuesReversed[cSamples];
+   FloatEbmType featureValues[cSamplesMax]; // preserve these for debugging purposes
+   FloatEbmType featureValuesForward[cSamplesMax];
+   FloatEbmType featureValuesReversed[cSamplesMax];
 
-   for(int iIteration = 0; iIteration < 30000; ++iIteration) {
+   for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
+      // test both even and odd numbers of items
+      const size_t cSamples = cSamplesMax - iIteration % 90;
+
+      const size_t cLongBinLength = static_cast<size_t>(
+         std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cCutPoints + 1)));
+
       memset(featureValues, 0, sizeof(featureValues));
 
       size_t i = 0;
