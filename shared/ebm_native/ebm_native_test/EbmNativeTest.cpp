@@ -648,7 +648,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0],
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         randomSeed,
+         k_randomSeed,
          nullptr
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
@@ -673,7 +673,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0],
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         randomSeed,
+         k_randomSeed,
          nullptr
       );
    } else {

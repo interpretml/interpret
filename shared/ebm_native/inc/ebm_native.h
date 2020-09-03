@@ -410,6 +410,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -421,6 +422,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -432,6 +434,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Genera
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,

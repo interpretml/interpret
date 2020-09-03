@@ -106,7 +106,6 @@ k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits :
 constexpr int k_iExp = 3 + k_cDigitsAfterPeriod;
 constexpr int k_cCharsFloatPrint = k_iExp + 2 + k_cExponentTextDigits + 1;
 
-constexpr IntEbmType k_randomSeed = 42424242;
 constexpr size_t k_CutExploreDistance = 20;
 constexpr FloatEbmType k_noCutPriority = std::numeric_limits<FloatEbmType>::lowest();
 constexpr ptrdiff_t k_MovementCutValue = std::numeric_limits<ptrdiff_t>::lowest();
@@ -155,7 +154,7 @@ struct CutPoint final {
    FloatEbmType   m_priority;
 
    // the higher the m_uniqueTiebreaker, the more likely it is that it'll be chosen to cut (after considering priority)
-   // the tiebreakers are ordered with symetry in mind such that items are ranked first by distance to the end
+   // the tiebreakers are ordered with symmetry in mind such that items are ranked first by distance to the end
    // points and secondly by a random number generator.  The randomness only comes into play to break ties when
    // comparing two CutPoints that have the same distance to their endpoints
    size_t         m_uniqueTiebreaker;
@@ -961,7 +960,7 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
 
 static void BuildNeighbourhoodPlan(
    const size_t cSamples,
-   const bool bRandomSymmetryTiebreaker,
+   const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
    const size_t iValuesStart,
    const size_t cCuttableItems,
@@ -1095,14 +1094,22 @@ static void BuildNeighbourhoodPlan(
    // that we don't fall on an exact integer boundary anymore and therefore this problem goes away from a practical
    // point of view.  After flipping direction, we found that both directions were attempted, but they had different
    // unique values from one direction to the next and the splitting diverged at that point
-   
-   const FloatEbmType smallTweak = bRandomSymmetryTiebreaker ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
+   //   
    // using m_iValAspirationalFloat without tweaking it a bit is problematic due to the fact that often we're
    // dividing up a space with an integer number of items by an integer number of cuts which leaves us with an integer
    // m_iValAspirationalFloat.  In that case, if we're doing a symmetric reversal of the input data, we land on the
    // same integer in both directions.  In that case our resulting iStartNext is different and we sometimes get
    // different results due to the fact that the m_uniqueTiebreaker value will be different when we process it in
    // one direction or the other
+   // 
+   // We use bSymmetryReversal because we need there to be a consistent bias accross test points
+   // If we fall exactly on a conversion integer which happens to be the exact transition point between two
+   // unequal numbers, then we want the m_iStartNext of the current neighbour jump to be the future m_iStartCur 
+   // of the next jump.  If we randomly flip these then sometimes we'll miss cuts as we deflect away from them
+   // in both directions.  Using a consitent bias prevents this, even though it does introduce a VERY slight overall
+   // directional bias in the splitting.  
+
+   const FloatEbmType smallTweak = bSymmetryReversal ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
 
    size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
@@ -1312,10 +1319,7 @@ static void BuildNeighbourhoodPlan(
                pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
             } else {
                // we're at the center of the entire array. Our final fallback is to resort to our symmetric determination
-
-               // TODO: see if there's any benefit in flipping the value of bRandomSymmetryTiebreaker when we determine it
-
-               if(UNPREDICTABLE(bRandomSymmetryTiebreaker)) {
+               if(UNPREDICTABLE(bSymmetryReversal)) {
                   pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
                   pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
                } else {
@@ -1359,7 +1363,7 @@ static bool CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
    const size_t cSamples,
-   const bool bRandomSymmetryTiebreaker,
+   const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -1717,7 +1721,7 @@ static bool CutCuttingRange(
 
             BuildNeighbourhoodPlan(
                cSamples,
-               bRandomSymmetryTiebreaker,
+               bSymmetryReversal,
 
                cSamplesPerBinMin,
                iValuesStart,
@@ -1778,7 +1782,7 @@ static bool CutCuttingRange(
 
             BuildNeighbourhoodPlan(
                cSamples,
-               bRandomSymmetryTiebreaker,
+               bSymmetryReversal,
 
                cSamplesPerBinMin,
                iValuesStart,
@@ -1967,7 +1971,7 @@ static bool TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
 
    const size_t cSamples,
-   const bool bRandomSymmetryTiebreaker,
+   const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -2068,7 +2072,7 @@ static bool TreeSearchCutSegment(
 
          BuildNeighbourhoodPlan(
             cSamples,
-            bRandomSymmetryTiebreaker,
+            bSymmetryReversal,
             cSamplesPerBinMin,
             iValuesStart,
             cCuttableItems,
@@ -2148,7 +2152,7 @@ static bool TreeSearchCutSegment(
    return CutCuttingRange(
       pBestCutPoints,
       cSamples,
-      bRandomSymmetryTiebreaker,
+      bSymmetryReversal,
       cSamplesPerBinMin,
       iValuesStart,
       cCuttableItems,
@@ -2161,7 +2165,7 @@ INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
    const size_t cSamples,
-   const bool bRandomSymmetryTiebreaker,
+   const bool bSymmetryReversal,
    const size_t cSamplesPerBinMin,
 
    const size_t iValuesStart,
@@ -2188,7 +2192,7 @@ INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    return TreeSearchCutSegment(
       pBestCutPoints, 
       cSamples,
-      bRandomSymmetryTiebreaker,
+      bSymmetryReversal,
       cSamplesPerBinMin,
       iValuesStart, 
       cCuttableItems, 
@@ -2521,49 +2525,60 @@ INLINE_RELEASE_UNTEMPLATED static void FillCuttingRangeBasics(
 // VERIFIED 08-2020
 template<typename T>
 INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
-   bool bReverseSymmetry,
+   const bool bSymmetryReversal,
    RandomStream * const pRandomStream,
    const size_t cItems,
    T * const aItems
 ) noexcept {
 
    // occasionally there will be ties in our priority calculation. We need a repeatable method to break
-   // those ties so that our outputs are repetable in a consistent cross platform way.  We also like symetry
+   // those ties so that our outputs are repetable in a consistent cross platform way.  We also like symmetry
    // such that if we reversed the order of our input values, we'd get the same cuts.  This isn't possible
-   // in 100% of all cases, but we can get this property in 99% of cases by first detecting a symetry order
-   // ourside of this function, then using a repeatable random number generator which will order our tiebreakers
-   // in a consistent way based on the symetry starting side.  We also use the tiebreaker value to add some
-   // consistent priority to our splits to combat floating point inexactnes issues.  We therefore want our
-   // tiebreakers to roughly also follow a priority order.  Since in generall, all things being equal, we
-   // prefer our initial cuts to be at the ends we want the biggest numbers at the ends and zero in the center
-   
+   // in 100% of all cases, but we can get this property in 99.99999% of cases by first detecting a consistent 
+   // symmetry order outside of this function, then using a repeatable random number generator which will order 
+   // our tiebreakers in a consistent way based on the symmetry starting side.  We also use the tiebreaker value 
+   // to add some consistent priority to our splits to combat floating point inexactnes issues.  We therefore want our
+   // tiebreakers to roughly also follow a priority order.  Since in general, all things being equal, we
+   // prefer our initial cuts to be at the ends, we want the biggest numbers at the ends and zero in the center
+
+   // If we have an odd number of items, we want the center one to have either 0 or 1, because we want to flip 
+   // that value depending on the value of bSymmetryReversal, and if we have a single value at the center (0) then
+   // we can't get that consistent flipping. For even numbers of items, we want the two center ones to be 
+   // either 0 or 1, which is reversible
+
+   // a nice property of m_uniqueTiebreaker is that we can use it to detect distance to the center by shifting by
+   // 1, or we can get a random consistent bit which is symmetric consistent by ANDing with 1.
+   // In order to preserve the distance when shifting by 1, we need the last value for odd numbers of items to
+   // be 1 or 0, and the last two central items to be 1 or 0 for even numbers of items
+
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(size_t { 1 } <= cItems);
    EBM_ASSERT(nullptr != aItems);
 
    // this conversion to a signed number should be ok since cItems is allocated memory with more than 
    // 2 bytes, so we should have room for the negative values.
-   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>(cItems - size_t { 1 });
-   // bReverseSymmetry helps us ensure symetry because we pick true or false based on a fingerprint of the original 
+   ptrdiff_t tiebreaker = static_cast<ptrdiff_t>((cItems - size_t { 1 }) | size_t { 1 });
+
+   EBM_ASSERT(ptrdiff_t { 1 } <= tiebreaker);
+   EBM_ASSERT(size_t { 1 } == static_cast<size_t>(tiebreaker) % 2); // we should always have an odd tiebreaker to start
+
+   // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
    // values so if the values are flipped in a transform, then we'll flip reverseSymmetryXor and get the same 
    // cuts mirror on the opposite sides from the ends
-   size_t reverseSymmetryXor = bReverseSymmetry ? size_t { 1 } : size_t { 0 };
+   size_t symmetryReversalXor = bSymmetryReversal ? size_t { 1 } : size_t { 0 };
    T * pLow = aItems;
    T * pHigh = aItems + cItems - size_t { 1 };
    do {
       // our random stream is repetable, and with reverseSymmetryXor it will preserve symmetry of the cuts
-      size_t randomBit = pRandomStream->Next(size_t { 2 });
+      const size_t randomBit = symmetryReversalXor ^ pRandomStream->Next(size_t { 2 });
       EBM_ASSERT(size_t { 0 } == randomBit || size_t { 1 } == randomBit);
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
+      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } != randomBit) ? tiebreaker : tiebreakerMinusOne;
+      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } != randomBit) ? tiebreakerMinusOne : tiebreaker;
 
-      randomBit ^= reverseSymmetryXor;
-
-      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } == randomBit) ? tiebreaker : tiebreakerMinusOne;
-      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } == randomBit) ? tiebreakerMinusOne : tiebreaker;
-
-      EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker1);
-      EBM_ASSERT(ptrdiff_t { -1 } <= tiebreaker2);
+      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker1);
+      EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker2);
       EBM_ASSERT(pLow <= pHigh);
 
       // if we have an even number of items, the last write will be aliased (both pointers will point to the same
@@ -2580,37 +2595,27 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
       --pHigh;
 
       tiebreaker -= ptrdiff_t { 2 };
-   } while(ptrdiff_t { 0 } <= tiebreaker);
+   } while(ptrdiff_t { 0 } < tiebreaker);
 
-   EBM_ASSERT(ptrdiff_t { -2 } == tiebreaker || ptrdiff_t { -1 } == tiebreaker);
+   EBM_ASSERT(ptrdiff_t { -1 } == tiebreaker);
 
-   if(ptrdiff_t { -1 } != tiebreaker) {
-      // we had an odd number of items.  We will have either a -1 or 0 in the last center tiebreaker, but we
-      // want the consistenty of always having a zero, so zero it here
-      EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 });
-      EBM_ASSERT(pHigh + 1 == pLow - 1);
+   EBM_ASSERT(size_t { 0 } == cItems % size_t { 2 } || pHigh + 1 == pLow - 1);
+   EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 } || pHigh + 1 == pLow);
 
-      EBM_ASSERT(size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
-         static_cast<size_t>(ptrdiff_t { -1 }) == (aItems + cItems / 2)->m_uniqueTiebreaker);
-
-      // we had an odd number of items, so the last center one was written either a -1 or a 0 randomly.
-      // we want this to consistently be zero, so overwrite whatever is there with a zero
-      (pHigh + 1)->m_uniqueTiebreaker = size_t { 0 };
-   } else {
-      // we had an even number of items.  no fixup required
-      EBM_ASSERT(size_t { 0 } == cItems % size_t { 2 });
-      EBM_ASSERT(pHigh + 1 == pLow);
-      EBM_ASSERT(
-         size_t { 0 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
-         size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
-         size_t { 1 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
-         size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker
-      );
-   }
+   EBM_ASSERT(size_t { 0 } == cItems % size_t { 2 } || (
+      size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
+      size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker
+   ));
+   EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 } || (
+      size_t { 0 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
+      size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
+      size_t { 1 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
+      size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker
+   ));
 }
 
 // VERIFIED 08-2020
-INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetryRandomDirection(
+INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
    const size_t cSamples,
    const FloatEbmType * const aSingleFeatureValues
 ) noexcept {
@@ -2936,7 +2941,7 @@ INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities
    // since that violates our no infinity cut point rule above.  A good compromise is to turn +infinity
    // into max_float.  If we do it here, our cutting algorithm won't need to deal with the odd case of indicating
    // a cut and removing it later.  In theory we could separate -infinity and min_float, since a cut value of
-   // min_float would separate the two, but we convert -infinity to min_float here for symetry with the positive
+   // min_float would separate the two, but we convert -infinity to min_float here for symmetry with the positive
    // case and for simplicity.
 
    // when +-infinity values and min_float/max_float values are present, they usually don't represent real values,
@@ -3026,6 +3031,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
    IntEbmType countSamples,
    FloatEbmType * featureValues,
    IntEbmType countSamplesPerBinMin,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -3313,13 +3319,18 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         bool bRandomSymmetryTiebreaker = DetermineSymmetryRandomDirection(cSamples, featureValues);
-
          RandomStream randomStream;
-         randomStream.Initialize(k_randomSeed);
+         randomStream.Initialize(randomSeed);
+
+         // TODO: make a NextBool on RandomStream and use it throughout!
+
+         // by using our random seed and mixing it with our determination, we get randomness in our symmetry
+         // direction under any datasource, but it's still repeatable with the same seed
+         const bool bSymmetryReversal = (size_t { 0 } != randomStream.Next(size_t { 2 })) !=
+            DetermineSymmetricDirection(cSamples, featureValues);
 
          // we don't need tiebreakers in the endpoints
-         FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cCuttingRanges, aCuttingRange);
+         FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, featureValues, cCuttingRanges, aCuttingRange);
@@ -3399,11 +3410,17 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   // each time, which only works if they are centered and we always reach them in order, but
                   // for the sake of randomness, let's re-generate random numbres each time to give the entire
                   // sytem a little more variability
-                  FillTiebreakers(bRandomSymmetryTiebreaker, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
+
+                  // TODO: find out why using the m_uniqueTiebreaker value here causes us to fail the symmetry checks
+                  //       in our tests.  I would have though since the m_uniqueTiebreaker values are symmetric it
+                  //       would have been fine to use it
+                  bool bLocalSymmetryReversal = bSymmetryReversal; // 0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker);
+
+                  FillTiebreakers(bLocalSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
                   if(TradeCutSegment(
                      &bestCutPoints,
                      cSamples,
-                     bRandomSymmetryTiebreaker,
+                     bLocalSymmetryReversal,
                      cSamplesPerBinMin,
                      pCuttingRange->m_pCuttableValuesFirst - featureValues,
                      pCuttingRange->m_cCuttableValues,
@@ -3543,7 +3560,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                                  // wow, we're at the center of the entire array AND the center of the outer
                                  // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
                                  // is to resort to our symmetric determination
-                                 iResult = UNPREDICTABLE(bRandomSymmetryTiebreaker) ? iStartCur : iStartNext;
+
+                                 // TODO: find out why using the m_uniqueTiebreaker value here causes us to fail the symmetry checks
+                                 //       in our tests.  I would have though since the m_uniqueTiebreaker values are symmetric it
+                                 //       would have been fine to use it
+                                 bool bLocalSymmetryReversal = bSymmetryReversal; // 0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker);
+
+                                 iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                               }
                            }
                         }
@@ -3637,6 +3660,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -3647,6 +3671,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
+   UNUSED(randomSeed);
    UNUSED(countCutPointsInOut);
    UNUSED(cutPointsLowerBoundInclusiveOut);
    UNUSED(countMissingValuesOut);
@@ -3663,6 +3688,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateI
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
+   IntEbmType randomSeed,
    IntEbmType * countCutPointsInOut,
    FloatEbmType * cutPointsLowerBoundInclusiveOut,
    IntEbmType * countMissingValuesOut,
@@ -3673,6 +3699,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 ) {
    UNUSED(countSamples);
    UNUSED(featureValues);
+   UNUSED(randomSeed);
    UNUSED(countCutPointsInOut);
    UNUSED(cutPointsLowerBoundInclusiveOut);
    UNUSED(countMissingValuesOut);

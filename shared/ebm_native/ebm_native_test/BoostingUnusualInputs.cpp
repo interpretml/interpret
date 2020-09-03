@@ -28,7 +28,7 @@ TEST_CASE("null validationMetricOut, boosting, regression") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -65,7 +65,7 @@ TEST_CASE("null validationMetricOut, boosting, binary") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -102,7 +102,7 @@ TEST_CASE("null validationMetricOut, boosting, multiclass") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(

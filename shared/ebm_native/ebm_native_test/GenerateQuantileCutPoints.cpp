@@ -107,6 +107,7 @@ void TestQuantileBinning(
       featureValues1.size(),
       0 == featureValues1.size() ? nullptr : &featureValues1[0],
       countSamplesPerBinMin,
+      k_randomSeed,
       &countCutPoints,
       &cutPointsLowerBoundInclusive[1],
       &countMissingValues,
@@ -144,6 +145,7 @@ void TestQuantileBinning(
          featureValues2.size(),
          0 == featureValues2.size() ? nullptr : &featureValues2[0],
          countSamplesPerBinMin,
+         k_randomSeed,
          &countCutPoints,
          &cutPointsLowerBoundInclusive[1],
          &countMissingValues,
@@ -748,6 +750,10 @@ TEST_CASE("GenerateQuantileCutPoints, average division sizes that requires the c
    const std::vector<FloatEbmType> expectedCutPoints { 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5,
       12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 26.5, 28.5 };
 
+
+   //const std::vector<FloatEbmType> expectedCutPoints { 2.5, 4.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5,
+   //   12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5, 25.5, 26.5, 27.5, 28.5, 29.5 };
+
    TestQuantileBinning(
       testCaseHidden,
       bTestReverse,
@@ -871,7 +877,7 @@ TEST_CASE("GenerateQuantileCutPoints, stress test the guarantee of one split per
 }
 
 TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
-   RandomStreamTest randomStream(randomSeed);
+   RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
    }
@@ -932,6 +938,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countSamples,
             featureValuesForward,
             countSamplesPerBinMin,
+            k_randomSeed,
             &countCutPointsForward,
             cutPointsLowerBoundInclusiveForward,
             &countMissingValues,
@@ -968,6 +975,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
             countSamples,
             featureValuesReversed,
             countSamplesPerBinMin,
+            k_randomSeed,
             &countCutPointsReversed,
             cutPointsLowerBoundInclusiveReversed,
             &countMissingValues,
@@ -1030,7 +1038,7 @@ TEST_CASE("GenerateQuantileCutPoints, randomized fairness check") {
 }
 
 TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
-   RandomStreamTest randomStream(randomSeed);
+   RandomStreamTest randomStream(k_randomSeed);
    if(!randomStream.IsSuccess()) {
       exit(1);
    }
@@ -1117,6 +1125,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countSamples,
          featureValuesForward,
          countSamplesPerBinMin,
+         k_randomSeed,
          &countCutPointsForward,
          cutPointsLowerBoundInclusiveForward,
          &countMissingValues,
@@ -1141,6 +1150,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
          countSamples,
          featureValuesReversed,
          countSamplesPerBinMin,
+         k_randomSeed,
          &countCutPointsReversed,
          cutPointsLowerBoundInclusiveReversed,
          &countMissingValues,
