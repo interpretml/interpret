@@ -1035,20 +1035,26 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       exit(1);
    }
 
-   constexpr size_t cCutPoints = 9;
-   FloatEbmType cutPointsLowerBoundInclusiveForward[cCutPoints];
-   FloatEbmType cutPointsLowerBoundInclusiveReversed[cCutPoints];
+   constexpr size_t cSamplesMin = 1;
+   constexpr size_t cSamplesMax = 250;
+   constexpr size_t cCutPointsMin = 1;
+   constexpr size_t cCutPointsMax = 70;
+   constexpr IntEbmType countSamplesPerBinMinMin = 1;
+   constexpr IntEbmType countSamplesPerBinMinMax = 3;
 
-   constexpr IntEbmType countSamplesPerBinMin = 3;
-   constexpr size_t cSamplesMax = 100;
-   constexpr size_t maxRandomVal = 70;
+   constexpr size_t randomValMax = 70; // the min is 1 since the value doesn't really matter
+
+   FloatEbmType cutPointsLowerBoundInclusiveForward[cCutPointsMax];
+   FloatEbmType cutPointsLowerBoundInclusiveReversed[cCutPointsMax];
+
    FloatEbmType featureValues[cSamplesMax]; // preserve these for debugging purposes
    FloatEbmType featureValuesForward[cSamplesMax];
    FloatEbmType featureValuesReversed[cSamplesMax];
 
    for(size_t iIteration = 0; iIteration < 30000; ++iIteration) {
-      // test both even and odd numbers of items
-      const size_t cSamples = cSamplesMax - iIteration % 90;
+      const size_t cSamples = randomStream.Next(cSamplesMax - cSamplesMin + 1) + cSamplesMin;
+      const size_t cCutPoints = randomStream.Next(cCutPointsMax - cCutPointsMin + 1) + cCutPointsMin;
+      const IntEbmType countSamplesPerBinMin = randomStream.Next(countSamplesPerBinMinMax - countSamplesPerBinMinMin + 1) + countSamplesPerBinMinMin;
 
       const size_t cLongBinLength = static_cast<size_t>(
          std::ceil(static_cast<FloatEbmType>(cSamples) / static_cast<FloatEbmType>(cCutPoints + 1)));
@@ -1059,7 +1065,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       size_t cLongRanges = randomStream.Next(6);
       for(size_t iLongRange = 0; iLongRange < cLongRanges; ++iLongRange) {
          size_t cItems = randomStream.Next(cLongBinLength) + cLongBinLength;
-         size_t val = randomStream.Next(maxRandomVal) + 1;
+         size_t val = randomStream.Next(randomValMax) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
             featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
             ++i;
@@ -1068,7 +1074,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       size_t cShortRanges = randomStream.Next(6);
       for(size_t iShortRange = 0; iShortRange < cShortRanges; ++iShortRange) {
          size_t cItems = randomStream.Next(cLongBinLength);
-         size_t val = randomStream.Next(maxRandomVal) + 1;
+         size_t val = randomStream.Next(randomValMax) + 1;
          for(size_t iItem = 0; iItem < cItems; ++iItem) {
             featureValues[i % cSamples] = static_cast<FloatEbmType>(val);
             ++i;
@@ -1076,7 +1082,7 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       }
       for(size_t iSample = 0; iSample < cSamples; ++iSample) {
          if(0 == featureValues[iSample]) {
-            featureValues[iSample] = static_cast<FloatEbmType>(randomStream.Next(maxRandomVal) + 1);
+            featureValues[iSample] = static_cast<FloatEbmType>(randomStream.Next(randomValMax) + 1);
          }
       }
 
@@ -1150,7 +1156,6 @@ TEST_CASE("GenerateQuantileCutPoints, chunky randomized check") {
       CHECK(countPositiveInfinityExpected == countNegativeInfinity);
       CHECK(-minNonInfinityValueExpected == maxNonInfinityValue);
       CHECK(countNegativeInfinityExpected == countPositiveInfinity);
-
 
       CHECK(countCutPointsForward == countCutPointsReversed);
       if(countCutPointsForward == countCutPointsReversed) {

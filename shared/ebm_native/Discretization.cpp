@@ -223,6 +223,7 @@ static_assert(std::is_pod<CuttingRange>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
 
+// VERIFIED 2020-08
 class CompareCuttingRange final {
 public:
    INLINE_ALWAYS bool operator() (const CuttingRange * const & lhs, const CuttingRange * const & rhs) const noexcept {
@@ -974,8 +975,7 @@ static void BuildNeighbourhoodPlan(
    const size_t iValHigh,
    const FloatEbmType iValAspirationalHighFloat,
 
-   // NOTE: m_iValAspirationalFloat is the only value that we can count on from pCutCur to reflect our current
-   // situation.  All other fields are being overwritten as we nuke them, or they were uninitialized
+   // m_iValAspirationalFloat and m_uniqueTiebreaker are the only values in pCurCut that are pre-initialized
    CutPoint * const pCutCur
 ) noexcept {
 
@@ -1087,7 +1087,17 @@ static void BuildNeighbourhoodPlan(
 
    const size_t cRanges = cRangesLow + cRangesHigh; // after this the compiler can forget cRangesHigh
 
-   size_t iValAspirationalCur = static_cast<size_t>(pCutCur->m_iValAspirationalFloat);
+   // often we'll find that pCutCur->m_iValAspirationalFloat will be an exact integer because we're being slotted
+   // between two other exact integers.  When pCutCur->m_iValAspirationalFloat happens to be exactly the integerized
+   // version, then we find that when we access aNeighbourJumps we'll get different ending up points on flipped
+   // symmetric input data.  This means that we'll flip the side we jump to afterwards.  By adding a tiny bit of
+   // noise that correlated to the input data direction, we can ensure that in the vast vast majority of cases
+   // that we don't fall on an exact integer boundary anymore and therefore this problem goes away from a practical
+   // point of view.  After flipping direction, we found that both directions were attempted, but they had different
+   // unique values from one direction to the next and the splitting diverged at that point
+   
+   const FloatEbmType smallTweak = bRandomSymmetryTiebreaker ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
+   size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
       // handle the very very unlikely situation where m_iAspirationalFloat rounds up to 
       // cCuttableItems due to floating point issues
@@ -1338,7 +1348,7 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
-static bool CutSegment(
+static bool CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
    const size_t cSamples,
@@ -1945,6 +1955,7 @@ static bool CutSegment(
    return false;
 }
 
+// VERIFIED 2020-09
 static bool TreeSearchCutSegment(
    std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
 
@@ -1964,17 +1975,19 @@ static bool TreeSearchCutSegment(
       EBM_ASSERT(nullptr != pBestCutPoints);
       EBM_ASSERT(pBestCutPoints->empty());
 
+      EBM_ASSERT(2 <= cSamples); // we need at least 2 to split, otherwise we'd have exited before calling here
       EBM_ASSERT(1 <= cSamplesPerBinMin);
+
       EBM_ASSERT(nullptr != aNeighbourJumps);
 
       EBM_ASSERT(2 <= cRanges);
-      EBM_ASSERT(cRanges <= cCuttableItems / cSamplesPerBinMin);
+      EBM_ASSERT(cSamplesPerBinMin <= cCuttableItems / cRanges);
       EBM_ASSERT(nullptr != aCutsWithENDPOINTS);
 
       // - TODO: EXPLORING BOTH SIDES
       //   - this function calls CutSegment, which greedily materializes cuts, so when it's unsure about a cut
       //     it needs to be conservative and pick the least likley cut to cause problems down the road
-      //   - at this higher level, we can try cutting both low AND high AND skip the cut.  We use CutSegment to
+      //   - at this higher level, we can try cutting both low AND high AND skip the cut.  We use CutCuttingRange to
       //     do the full exploration of both options and then we pick the better one.
       //   - we can also explore N steps in the future to pick the best first step, then delete the worst 1st step
       //     and keep all the work we did along the choice that we made (the remaining 128 options) then we can pick
@@ -1999,27 +2012,51 @@ static bool TreeSearchCutSegment(
       pCutCur->m_pNext = pCutNext;
       pCutCur->SetCut();
       pCutCur->m_iValAspirationalFloat = FloatEbmType { 0 };
-      pCutCur->m_iVal = 0;
+      pCutCur->m_iVal = size_t { 0 };
 
       const FloatEbmType stepInit = static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRanges);
-      for(size_t iNeighbours = 1; iNeighbours < cRanges; ++iNeighbours) {
+      EBM_ASSERT(cSamplesPerBinMin <= 1.00001 * stepInit);
+
+      const FloatEbmType cCuttableItemsFloat = static_cast<FloatEbmType>(cCuttableItems);
+      size_t iCutCur = 1;
+      size_t iValLow = size_t { 0 };
+      FloatEbmType iValAspirationalLowFloat = FloatEbmType { 0 };
+      size_t cRangesHigh = k_CutExploreDistance;
+      size_t iValHigh = k_illegalIndex;
+      do {
          pCutNext->m_pPrev = pCutCur;
          pCutCur = pCutNext;
          ++pCutNext;
          pCutCur->m_pNext = pCutNext;
 
-         const size_t iLowBound = iNeighbours <= k_CutExploreDistance ? 0 : iNeighbours - k_CutExploreDistance;
-         size_t iHighBound = iNeighbours + k_CutExploreDistance;
-         iHighBound = cRanges < iHighBound ? cRanges : iHighBound;
+         size_t cRangesLow;
+         const ptrdiff_t iRangeLow = 
+            static_cast<ptrdiff_t>(iCutCur) - static_cast<ptrdiff_t>(k_CutExploreDistance);
+         if(UNLIKELY(iRangeLow <= ptrdiff_t { 0 })) {
+            cRangesLow = iCutCur;
+            EBM_ASSERT(size_t { 0 } == iValLow);
+            EBM_ASSERT(FloatEbmType { 0 } == iValAspirationalLowFloat);
+         } else {
+            cRangesLow = k_CutExploreDistance;
+            iValLow = k_illegalIndex;
+            iValAspirationalLowFloat = stepInit * static_cast<FloatEbmType>(static_cast<size_t>(iRangeLow));
+         }
 
-         EBM_ASSERT(iLowBound < iNeighbours);
-         EBM_ASSERT(iNeighbours < iHighBound);
+         FloatEbmType iValAspirationalHighFloat;
+         size_t iRangeHigh = iCutCur + k_CutExploreDistance;
+         if(UNLIKELY(cRanges <= iRangeHigh)) {
+            cRangesHigh = cRanges - iCutCur;
+            iValHigh = cCuttableItems;
+            iValAspirationalHighFloat = cCuttableItemsFloat;
+         } else {
+            EBM_ASSERT(k_CutExploreDistance == cRangesHigh);
+            EBM_ASSERT(k_illegalIndex == iValHigh);
+            iValAspirationalHighFloat = stepInit * static_cast<FloatEbmType>(iRangeHigh);
+         }
 
-         const FloatEbmType iLowValFloat = stepInit * iLowBound;
-         const FloatEbmType iValAspirationalCurFloat = stepInit * iNeighbours;
-         const FloatEbmType iHighValFloat = stepInit * iHighBound;
-
+         const FloatEbmType iValAspirationalCurFloat = stepInit * static_cast<FloatEbmType>(iCutCur);
          pCutCur->m_iValAspirationalFloat = iValAspirationalCurFloat;
+
          EBM_ASSERT(pCutCur->m_uniqueTiebreaker < cRanges);
 
          BuildNeighbourhoodPlan(
@@ -2029,51 +2066,79 @@ static bool TreeSearchCutSegment(
             iValuesStart,
             cCuttableItems,
             aNeighbourJumps,
-            iNeighbours - iLowBound,
-            size_t { 0 } == iLowBound ? size_t { 0 } : k_illegalIndex,
-            iLowValFloat,
-            iHighBound - iNeighbours,
-            cRanges == iHighBound ? cCuttableItems : k_illegalIndex,
-            iHighValFloat,
+            cRangesLow,
+            iValLow,
+            iValAspirationalLowFloat,
+            cRangesHigh,
+            iValHigh,
+            iValAspirationalHighFloat,
             pCutCur
          );
-      }
+         ++iCutCur;
+      } while(iCutCur < cRanges);
 
       pCutNext->m_pPrev = pCutCur;
       pCutNext->m_pNext = nullptr;
       pCutNext->SetCut();
-      pCutNext->m_iValAspirationalFloat = static_cast<FloatEbmType>(cCuttableItems);
+      pCutNext->m_iValAspirationalFloat = cCuttableItemsFloat;
       pCutNext->m_iVal = cCuttableItems;
 
-      size_t iPriority = 1;
-      // we might write code above that removes CutPoints, which if it were true could mean no legal cuts
-      for(CutPoint * pCut = aCutsWithENDPOINTS[0].m_pNext ; pCutNext != pCut ; pCut = pCut->m_pNext) {
-         const size_t iLowBound = iPriority <= k_CutExploreDistance ? 0 : iPriority - k_CutExploreDistance;
-         size_t iHighBound = iPriority + k_CutExploreDistance;
-         iHighBound = cRanges < iHighBound ? cRanges : iHighBound;
 
-         EBM_ASSERT(iLowBound < iPriority);
-         EBM_ASSERT(iPriority < iHighBound);
+      // now calculate priorities
+      CutPoint * pCutLow = &aCutsWithENDPOINTS[0];
+      CutPoint * pCutCenter = &aCutsWithENDPOINTS[1];
+      const size_t iRangeHigh = cRanges <= size_t { 1 } + k_CutExploreDistance ? 
+         cRanges : size_t { 1 } + k_CutExploreDistance;
+      CutPoint * pCutHigh = &aCutsWithENDPOINTS[iRangeHigh];
 
-         const FloatEbmType iLowValFloat = stepInit * iLowBound;
-         const FloatEbmType iHighValFloat = stepInit * iHighBound;
+#ifndef NDEBUG
+
+      EBM_ASSERT(aCutsWithENDPOINTS[0].m_pNext == pCutCenter); // this will fail if we remove items above in the future
+      CutPoint * pCutDebug = pCutCenter;
+      for(size_t cDebugRemaining = k_CutExploreDistance; nullptr != pCutDebug->m_pNext && 0 < cDebugRemaining ; 
+         --cDebugRemaining) 
+      {
+         pCutDebug = pCutDebug->m_pNext;
+      }
+      // this will fail if we remove items above in the future
+      EBM_ASSERT(pCutDebug == pCutHigh);
+
+#endif // NDEBUG
+
+      size_t cLowRanges = 1;
+      do {
+         // in the future we might write code above that removes CutPoints, which if it were true could mean no legal cuts
+         EBM_ASSERT(nullptr != pCutCenter->m_pNext);
+         EBM_ASSERT(pCutLow < pCutCenter);
+         EBM_ASSERT(pCutCenter < pCutHigh);
 
          CalculatePriority(
-            iLowValFloat,
-            iHighValFloat,
-            pCut
+            pCutLow->m_iValAspirationalFloat,
+            pCutHigh->m_iValAspirationalFloat,
+            pCutCenter
          );
-         EBM_ASSERT(!pCut->IsCut());
-         pBestCutPoints->insert(pCut);
-         ++iPriority;
-      }
+
+         EBM_ASSERT(!pCutCenter->IsCut());
+         pBestCutPoints->insert(pCutCenter);
+
+         if(UNLIKELY(k_CutExploreDistance != cLowRanges)) {
+            ++cLowRanges;
+         } else {
+            pCutLow = pCutLow->m_pNext;
+         }
+
+         if(UNLIKELY(pCutNext != pCutHigh)) {
+            pCutHigh = pCutHigh->m_pNext;
+         }
+
+         pCutCenter = pCutCenter->m_pNext;
+      } while(pCutNext != pCutCenter);
    } catch(...) {
-      // TODO: handle this!
       LOG_0(TraceLevelWarning, "WARNING TreeSearchCutSegment exception");
-      exit(1); // for now take this draconian step
+      return true;
    }
 
-   return CutSegment(
+   return CutCuttingRange(
       pBestCutPoints,
       cSamples,
       bRandomSymmetryTiebreaker,
@@ -2084,8 +2149,9 @@ static bool TreeSearchCutSegment(
    );
 }
 
+// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
-   std::set<CutPoint *, CompareCutPoint> * pBestCutPoints,
+   std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
    const size_t cSamples,
    const bool bRandomSymmetryTiebreaker,
@@ -2099,9 +2165,9 @@ INLINE_RELEASE_UNTEMPLATED static bool TradeCutSegment(
    // for efficiency we include space for the end point cuts even if they don't exist
    CutPoint * const aCutsWithENDPOINTS
 ) noexcept {
-   // - TODO: ABOVE THE COUNT FIXING
+   // - TODO:
    //   - we can examine what it would look like to have 1 more cut and 1 less cut that our original choice
-   //   - then we can try and sort the best to worst subtraction and addition, and then try and swap the best subtraction with the best addition and repeat
+   //     then we can try and sort the best to worst subtraction and addition, and then try and swap the best subtraction with the best addition and repeat
    //   - calculate the maximum number of cuts based on the minimum bunch size.  we should be able to do this by
    //     doing a single pass where we make every range the minimum
    //   - then we can loop from our current cuts to the maximum and stop when we hit the maximum (perahps there are long 
