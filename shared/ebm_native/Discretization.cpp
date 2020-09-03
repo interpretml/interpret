@@ -287,13 +287,13 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    if(2 <= cSide) {
       const size_t denominator = cRanges - cSide + 1;
       FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / denominator);
-      EBM_ASSERT(avgOther <= avg);
+      EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
    if(2 <= cRanges - cSide) {
       const size_t denominator = cSide + 1;
       FloatEbmType avgOther = std::min(sideDistance / denominator, (totalDistance - sideDistance) / (cRanges - cSide - 1));
-      EBM_ASSERT(avgOther <= avg);
+      EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
 #endif
@@ -1097,6 +1097,13 @@ static void BuildNeighbourhoodPlan(
    // unique values from one direction to the next and the splitting diverged at that point
    
    const FloatEbmType smallTweak = bRandomSymmetryTiebreaker ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
+   // using m_iValAspirationalFloat without tweaking it a bit is problematic due to the fact that often we're
+   // dividing up a space with an integer number of items by an integer number of cuts which leaves us with an integer
+   // m_iValAspirationalFloat.  In that case, if we're doing a symmetric reversal of the input data, we land on the
+   // same integer in both directions.  In that case our resulting iStartNext is different and we sometimes get
+   // different results due to the fact that the m_uniqueTiebreaker value will be different when we process it in
+   // one direction or the other
+
    size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
       // handle the very very unlikely situation where m_iAspirationalFloat rounds up to 
