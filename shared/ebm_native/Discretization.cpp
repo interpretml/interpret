@@ -1092,8 +1092,7 @@ static void BuildNeighbourhoodPlan(
    // symmetric input data.  This means that we'll flip the side we jump to afterwards.  By adding a tiny bit of
    // noise that correlated to the input data direction, we can ensure that in the vast vast majority of cases
    // that we don't fall on an exact integer boundary anymore and therefore this problem goes away from a practical
-   // point of view.  After flipping direction, we found that both directions were attempted, but they had different
-   // unique values from one direction to the next and the splitting diverged at that point
+   // point of view. 
    //   
    // using m_iValAspirationalFloat without tweaking it a bit is problematic due to the fact that often we're
    // dividing up a space with an integer number of items by an integer number of cuts which leaves us with an integer
@@ -1101,15 +1100,9 @@ static void BuildNeighbourhoodPlan(
    // same integer in both directions.  In that case our resulting iStartNext is different and we sometimes get
    // different results due to the fact that the m_uniqueTiebreaker value will be different when we process it in
    // one direction or the other
-   // 
-   // We use bSymmetryReversal because we need there to be a consistent bias accross test points
-   // If we fall exactly on a conversion integer which happens to be the exact transition point between two
-   // unequal numbers, then we want the m_iStartNext of the current neighbour jump to be the future m_iStartCur 
-   // of the next jump.  If we randomly flip these then sometimes we'll miss cuts as we deflect away from them
-   // in both directions.  Using a consitent bias prevents this, even though it does introduce a VERY slight overall
-   // directional bias in the splitting.  
 
-   const FloatEbmType smallTweak = bSymmetryReversal ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
+   const bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCutCur->m_uniqueTiebreaker)) != bSymmetryReversal;
+   const FloatEbmType smallTweak = bLocalSymmetryReversal ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
 
    size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
@@ -1319,7 +1312,7 @@ static void BuildNeighbourhoodPlan(
                pCutCur->m_cPredeterminedMovementOnCut = transferRangesHigh;
             } else {
                // we're at the center of the entire array. Our final fallback is to resort to our symmetric determination
-               if(UNPREDICTABLE(bSymmetryReversal)) {
+               if(UNPREDICTABLE(bLocalSymmetryReversal)) {
                   pCutCur->m_iVal = static_cast<size_t>(iValLowChoice);
                   pCutCur->m_cPredeterminedMovementOnCut = transferRangesLow;
                } else {
@@ -2531,26 +2524,36 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    T * const aItems
 ) noexcept {
 
-   // occasionally there will be ties in our priority calculation. We need a repeatable method to break
-   // those ties so that our outputs are repetable in a consistent cross platform way.  We also like symmetry
+   // Occasionally there will be ties in our priority calculation. We need a repeatable method to break
+   // those ties so that our outputs are repetable in a consistent cross platform way.  We also want to have symmetry
    // such that if we reversed the order of our input values, we'd get the same cuts.  This isn't possible
-   // in 100% of all cases, but we can get this property in 99.99999% of cases by first detecting a consistent 
-   // symmetry order outside of this function, then using a repeatable random number generator which will order 
-   // our tiebreakers in a consistent way based on the symmetry starting side.  We also use the tiebreaker value 
-   // to add some consistent priority to our splits to combat floating point inexactnes issues.  We therefore want our
-   // tiebreakers to roughly also follow a priority order.  Since in general, all things being equal, we
-   // prefer our initial cuts to be at the ends, we want the biggest numbers at the ends and zero in the center
+   // in 100% of all cases, but we can get this property in 99.99999% of cases.
+   
+   // Before calling this function, we first detect a consistent starting side by looking for patterns which should
+   // be the most invariant to transformations of the values (we first look for ranges of equal values).
+   // Then we use a repeatable random number generator which will order our tiebreakers in a consistent way 
+   // relative from the side we've chosen as our starting point based on the detected symmetry.
+   
+   // We add some consistent/repeatable noise to our priority for splitting to combat floating point inexactnes issues.
+   // We therefore want our tiebreakers to roughly also follow a priority order.  Since in general, all things being 
+   // equal, we prefer our initial cuts to be at the ends, we want the biggest numbers at the ends and smaller 
+   // values at the center.  This will only have a practical effect when the number of samples is huge, but when
+   // that happens neighbours have roughly the same priority skews, so it tends not to change the cuts in local
+   // regions.  This will likekly bias cuts towards the tail ends, but that's generally what we want anyways.
 
-   // If we have an odd number of items, we want the center one to have either 0 or 1, because we want to flip 
-   // that value depending on the value of bSymmetryReversal, and if we have a single value at the center (0) then
-   // we can't get that consistent flipping. For even numbers of items, we want the two center ones to be 
-   // either 0 or 1, which is reversible
-
-   // a nice property of m_uniqueTiebreaker is that we can use it to detect distance to the center by shifting by
-   // 1, or we can get a random consistent bit which is symmetric consistent by ANDing with 1.
+   // a nice ancillary property of m_uniqueTiebreaker is that we can use it to detect distance from the center by 
+   // shifting by 1, or we can get a consistent random bit which is symmetric consistent by ANDing with 1.
    // In order to preserve the distance when shifting by 1, we need the last value for odd numbers of items to
    // be 1 or 0, and the last two central items to be 1 or 0 for even numbers of items
 
+   // If we have an odd number of items, the central item needs to be either 0 or 1 randomly to preserve the random
+   // last bit property that we've created.  BUT, it's critical that this last center random bit is NOT dependent
+   // on the symmetry detected.  If we get a 1 going from right to left we need to get a 1 going from left to right
+   // Example: "3 1 0 2 4" when reversed is "4 2 0 1 3".  So if a transform is applies that reverses the symmetry
+   // then we'll see the 3 first, then the 1, then the 0, then the 2, then the 4 consistently (or the reverse). 
+   // If the center values was flipped, then you'd see a 1 in the opposite direction, which would screw up our
+   // symmetry
+   
    EBM_ASSERT(nullptr != pRandomStream);
    EBM_ASSERT(size_t { 1 } <= cItems);
    EBM_ASSERT(nullptr != aItems);
@@ -2605,13 +2608,26 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    EBM_ASSERT(size_t { 0 } == cItems % size_t { 2 } || (
       size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
       size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker
-   ));
+      ));
    EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 } || (
       size_t { 0 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
       size_t { 1 } == (aItems + cItems / 2)->m_uniqueTiebreaker ||
       size_t { 1 } == (aItems + cItems / 2 - 1)->m_uniqueTiebreaker &&
       size_t { 0 } == (aItems + cItems / 2)->m_uniqueTiebreaker
    ));
+
+   T * const pCenter = pHigh + size_t { 1 };
+   if(pCenter != pLow) {
+      // we had an odd number of items.  We will have either a 1 or 0 in the last center tiebreaker, but we
+      // want the last central bit to only be random and not change when our symmetry changes.
+
+      EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 });
+      EBM_ASSERT(&aItems[cItems >> 1] == pCenter);
+      EBM_ASSERT(pCenter == pLow - size_t { 1 });
+
+      // undo the application of bSymmetryReversal to the center value (see reasons at top of function)
+      pCenter->m_uniqueTiebreaker ^= symmetryReversalXor;
+   }
 }
 
 // VERIFIED 08-2020
@@ -3411,10 +3427,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   // for the sake of randomness, let's re-generate random numbres each time to give the entire
                   // sytem a little more variability
 
-                  // TODO: find out why using the m_uniqueTiebreaker value here causes us to fail the symmetry checks
-                  //       in our tests.  I would have though since the m_uniqueTiebreaker values are symmetric it
-                  //       would have been fine to use it
-                  bool bLocalSymmetryReversal = bSymmetryReversal; // 0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker);
+                  bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker)) != bSymmetryReversal;
 
                   FillTiebreakers(bLocalSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
                   if(TradeCutSegment(
@@ -3536,6 +3549,10 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                         const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
                         const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
+
+                        // TODO: we need to add random direction HERE (similar to how we use it in BuildNeighbourhoodPlan)!
+                        //       or is the fact that we're using ints above solve the floating point issues??
+
                         const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 
                         const size_t iStartCur = pNeighbourJump->m_iStartCur;
@@ -3561,10 +3578,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                                  // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
                                  // is to resort to our symmetric determination
 
-                                 // TODO: find out why using the m_uniqueTiebreaker value here causes us to fail the symmetry checks
-                                 //       in our tests.  I would have though since the m_uniqueTiebreaker values are symmetric it
-                                 //       would have been fine to use it
-                                 bool bLocalSymmetryReversal = bSymmetryReversal; // 0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker);
+                                 bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker)) != bSymmetryReversal;
 
                                  iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                               }
