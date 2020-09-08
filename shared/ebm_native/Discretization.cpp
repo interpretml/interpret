@@ -1101,6 +1101,9 @@ static void BuildNeighbourhoodPlan(
    // different results due to the fact that the m_uniqueTiebreaker value will be different when we process it in
    // one direction or the other
 
+   // Ideally, we'd have a second set of random numbers here that we wouldn't share with the priority
+   // tweaking function that uses m_uniqueTiebreaker, but practically speaking this shouldn't make any difference
+
    const bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCutCur->m_uniqueTiebreaker)) != bSymmetryReversal;
    const FloatEbmType smallTweak = bLocalSymmetryReversal ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
 
@@ -2565,14 +2568,13 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    EBM_ASSERT(ptrdiff_t { 1 } <= tiebreaker);
    EBM_ASSERT(size_t { 1 } == static_cast<size_t>(tiebreaker) % 2); // we should always have an odd tiebreaker to start
 
-   // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
-   // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
-   // cuts mirror on the opposite sides from the ends
    T * pLow = aItems;
    T * pHigh = aItems + cItems - size_t { 1 };
    do {
-      // our random stream is repetable, and with bSymmetryReversal it will preserve symmetry of the cuts
-      const bool bRandom = bSymmetryReversal != pRandomStream->Next();
+      // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
+      // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
+      // cuts mirror on the opposite sides from the ends
+      const bool bRandom = pRandomStream->Next() != bSymmetryReversal; // this is an XOR for bools
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
       const ptrdiff_t tiebreaker1 = UNPREDICTABLE(bRandom) ? tiebreaker : tiebreakerMinusOne;
@@ -3333,8 +3335,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         // by using our random seed and mixing it with our symmetry determination, we get randomness in our symmetry
-         // direction under any datasource, but it's still repeatable with the same seed
+         // we always XOR (with != for bools) a random number with bSymmetryReversal, so there is no need to
+         // XOR bSymmetryReversal with a random number here
          const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, featureValues);
 
          RandomStream randomStream;
@@ -3414,19 +3416,11 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   std::set<CutPoint *, CompareCutPoint> fillTheVoids;
 #endif // NEVER
 
-                  // in order to preserve symmetry, we require that our algorithm encounter the tiebreakers in the
-                  // same order each time.  If we fill the tiebreakers once and then re-use them, then we
-                  // would need to ensure that we get placed on the correct cut that has the same tiebreaker
-                  // each time, which only works if they are centered and we always reach them in order, but
-                  // for the sake of randomness, let's re-generate random numbres each time to give the entire
-                  // sytem a little more variability
-
-                  bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
-                  FillTiebreakers(bLocalSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
+                  FillTiebreakers(bSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
                   if(TradeCutSegment(
                      &bestCutPoints,
                      cSamples,
-                     bLocalSymmetryReversal,
+                     bSymmetryReversal,
                      cSamplesPerBinMin,
                      pCuttingRange->m_pCuttableValuesFirst - featureValues,
                      pCuttingRange->m_cCuttableValues,
@@ -3535,53 +3529,62 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
                      const FloatEbmType * pCut = pCuttingRange->m_pCuttableValuesFirst;
                      const size_t cCuttableItems = pCuttingRange->m_cCuttableValues;
-                     if(LIKELY(0 != cCuttableItems)) {
-                        // if 0 == m_cCuttableItems then we get bumped into the neighbour jumps object for our
-                        // uncuttable range above, and the next value is way far away from our current cutting
-                        // range
+                        
+                     const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
+                     const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
 
-                        const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
-                        const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
+                     // unlike in BuildNeighbourhoodPlan, we don't need to worry about the scenario that
+                     // a jumping range falls on the exact iCenterOfRange value, since for our purposes here
+                     // if we have a perfect answer that is perfectly in the center, then we always select that
+                     // one since we have no exclusion criteria here.  We never will seriously consider the 
+                     // iStartNext value if iStartCur is a perfectly centered match.
+                     // So we don't need to inject some randomness here, unlike in BuildNeighbourhoodPlan
 
-                        // unlike in BuildNeighbourhoodPlan, we don't need to worry about the scenario that
-                        // a jumping range falls on the exact iCenterOfRange value, since for our purposes here
-                        // if we have a perfect answer that is perfectly in the center, then we always select that
-                        // one since we have no exclusion criteria here.  We never will seriously consider the 
-                        // iStartNext value if iStartCur is a perfectly centered match.
-                        // So we don't need to inject some randomness here, unlike in BuildNeighbourhoodPlan
+                     const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 
-                        const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
+                     const size_t iStartCur = pNeighbourJump->m_iStartCur;
+                     const size_t iStartNext = pNeighbourJump->m_iStartNext;
 
-                        const size_t iStartCur = pNeighbourJump->m_iStartCur;
-                        const size_t iStartNext = pNeighbourJump->m_iStartNext;
+                     const ptrdiff_t cDistanceLow1 = static_cast<ptrdiff_t>(iStartCur - iRangeFirst);
+                     EBM_ASSERT(ptrdiff_t { 0 } <= cDistanceLow1);
+                     EBM_ASSERT(cDistanceLow1 <= static_cast<ptrdiff_t>(cCuttableItems >> 1));
+                     // cDistanceHigh1 can be negative if cCuttableItems is zero since then iStartNext
+                     // will reflect the boundary of the point after the unsplittable range above
+                     // our cut point, but since our cDistanceLow1 will be zero, it'll work out without
+                     // a special check
+                     const ptrdiff_t cDistanceHigh1 = static_cast<ptrdiff_t>(iRangeFirst + cCuttableItems) 
+                        - static_cast<ptrdiff_t>(iStartNext);
+                     EBM_ASSERT(cDistanceHigh1 <= static_cast<ptrdiff_t>(cCuttableItems >> 1));
+                     EBM_ASSERT(size_t { 1 } == cCuttableItems % size_t { 2 } ||
+                        cDistanceHigh1 < static_cast<ptrdiff_t>(cCuttableItems >> 1));
 
-                        size_t cDistanceLow = iStartCur - iRangeFirst;
-                        size_t cDistanceHigh = iRangeFirst + cCuttableItems - iStartNext;
+                     size_t iResult = UNPREDICTABLE(cDistanceHigh1 < cDistanceLow1) ? iStartCur : iStartNext;
+                     if(UNLIKELY(cDistanceHigh1 == cDistanceLow1)) {
+                        // per above, we can't get the situation where iCenterOfRange is the perfect center
+                        // past our if check above for cDistanceHigh1 == cDistanceLow1
+                        EBM_ASSERT(static_cast<size_t>(cDistanceLow1) * size_t { 2 } != cCuttableItems);
 
-                        size_t iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
-                        if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                           // we're equidistant to both edges.  Next try to see which is closer to the outer
-                           // edge if we include the uncuttable ranges beyond
-                           cDistanceLow = pCuttingRange->m_cUncuttableLowValues;
-                           cDistanceHigh = pCuttingRange->m_cUncuttableHighValues;
-                           iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
-                           if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                              // next, let's try to the edges of our full array
-                              cDistanceLow = iStartCur;
-                              cDistanceHigh = cSamples - iStartNext;
-                              iResult = UNPREDICTABLE(cDistanceHigh < cDistanceLow) ? iStartCur : iStartNext;
-                              if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
-                                 // wow, we're at the center of the entire array AND the center of the outer
-                                 // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
-                                 // is to resort to our symmetric determination (PLUS randomness)
+                        // we're equidistant to both edges.  Next try to see which is closer to the outer
+                        // edge if we include the uncuttable ranges beyond
+                        const size_t cDistanceLow2 = pCuttingRange->m_cUncuttableLowValues;
+                        const size_t cDistanceHigh2 = pCuttingRange->m_cUncuttableHighValues;
+                        iResult = UNPREDICTABLE(cDistanceHigh2 < cDistanceLow2) ? iStartCur : iStartNext;
+                        if(UNLIKELY(cDistanceHigh2 == cDistanceLow2)) {
+                           // next, let's try to the edges of our full array
+                           const size_t cDistanceLow3 = iStartCur;
+                           const size_t cDistanceHigh3 = cSamples - iStartNext;
+                           iResult = UNPREDICTABLE(cDistanceHigh3 < cDistanceLow3) ? iStartCur : iStartNext;
+                           if(UNLIKELY(cDistanceHigh3 == cDistanceLow3)) {
+                              // wow, we're at the center of the entire array AND the center of the outer
+                              // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
+                              // is to resort to our symmetric determination (PLUS randomness)
 
-                                 bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
-                                 iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
-                              }
+                              bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
+                              iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                            }
                         }
-                        pCut = featureValues + iResult;
                      }
+                     pCut = featureValues + iResult;
                      EBM_ASSERT(featureValues < pCut);
                      const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
                      *pCutPointsLowerBoundInclusive = cut;
