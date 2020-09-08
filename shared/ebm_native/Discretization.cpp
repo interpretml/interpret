@@ -2568,17 +2568,15 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
    // values so if the values are flipped in a transform, then we'll flip reverseSymmetryXor and get the same 
    // cuts mirror on the opposite sides from the ends
-   size_t symmetryReversalXor = bSymmetryReversal ? size_t { 1 } : size_t { 0 };
    T * pLow = aItems;
    T * pHigh = aItems + cItems - size_t { 1 };
    do {
-      // our random stream is repetable, and with reverseSymmetryXor it will preserve symmetry of the cuts
-      const size_t randomBit = symmetryReversalXor ^ pRandomStream->Next(size_t { 2 });
-      EBM_ASSERT(size_t { 0 } == randomBit || size_t { 1 } == randomBit);
+      // our random stream is repetable, and with bSymmetryReversal it will preserve symmetry of the cuts
+      const bool bRandom = bSymmetryReversal != pRandomStream->Next();
 
       const ptrdiff_t tiebreakerMinusOne = tiebreaker - ptrdiff_t { 1 };
-      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(size_t { 0 } != randomBit) ? tiebreaker : tiebreakerMinusOne;
-      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(size_t { 0 } != randomBit) ? tiebreakerMinusOne : tiebreaker;
+      const ptrdiff_t tiebreaker1 = UNPREDICTABLE(bRandom) ? tiebreaker : tiebreakerMinusOne;
+      const ptrdiff_t tiebreaker2 = UNPREDICTABLE(bRandom) ? tiebreakerMinusOne : tiebreaker;
 
       EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker1);
       EBM_ASSERT(ptrdiff_t { 0 } <= tiebreaker2);
@@ -2626,7 +2624,7 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
       EBM_ASSERT(pCenter == pLow - size_t { 1 });
 
       // undo the application of bSymmetryReversal to the center value (see reasons at top of function)
-      pCenter->m_uniqueTiebreaker ^= symmetryReversalXor;
+      pCenter->m_uniqueTiebreaker ^= bSymmetryReversal ? size_t { 1 } : size_t { 0 };
    }
 }
 
@@ -3342,8 +3340,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          // by using our random seed and mixing it with our determination, we get randomness in our symmetry
          // direction under any datasource, but it's still repeatable with the same seed
-         const bool bSymmetryReversal = (size_t { 0 } != randomStream.Next(size_t { 2 })) !=
-            DetermineSymmetricDirection(cSamples, featureValues);
+         const bool bSymmetryReversal = randomStream.Next() != DetermineSymmetricDirection(cSamples, featureValues);
 
          // we don't need tiebreakers in the endpoints
          FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
@@ -3550,8 +3547,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         const size_t iRangeFirst = pCuttingRange->m_pCuttableValuesFirst - featureValues;
                         const size_t iCenterOfRange = iRangeFirst + (cCuttableItems >> 1);
 
-                        // TODO: we need to add random direction HERE (similar to how we use it in BuildNeighbourhoodPlan)!
-                        //       or is the fact that we're using ints above solve the floating point issues??
+                        // unlike in BuildNeighbourhoodPlan, we don't need to worry about the scenario that
+                        // a jumping range falls on the exact iCenterOfRange value, since for our purposes here
+                        // if we have a perfect answer that is perfectly in the center, then we always select that
+                        // one since we have no exclusion criteria here.  We never will seriously consider the 
+                        // iStartNext value if iStartCur is a perfectly centered match.
+                        // So we don't need to inject some randomness here, unlike in BuildNeighbourhoodPlan
 
                         const NeighbourJump * const pNeighbourJump = &aNeighbourJumps[iCenterOfRange];
 

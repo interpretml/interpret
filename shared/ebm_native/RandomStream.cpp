@@ -155,6 +155,4 @@ exit_loop:;
    m_state1 = sanitizedSeed;
    m_state2 = sanitizedSeed;
    m_stateSeedConst = sanitizedSeed;
-   m_randomRemainingMax = uint_fast64_t { 0 };
-   m_randomRemaining = uint_fast64_t { 0 };
 }
