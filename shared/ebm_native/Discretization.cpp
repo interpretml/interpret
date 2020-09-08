@@ -2566,7 +2566,7 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
    EBM_ASSERT(size_t { 1 } == static_cast<size_t>(tiebreaker) % 2); // we should always have an odd tiebreaker to start
 
    // bSymmetryReversal helps us ensure symmetry because we pick true or false based on a fingerprint of the original 
-   // values so if the values are flipped in a transform, then we'll flip reverseSymmetryXor and get the same 
+   // values so if the values are flipped in a transform, then we'll flip bSymmetryReversal and get the same 
    // cuts mirror on the opposite sides from the ends
    T * pLow = aItems;
    T * pHigh = aItems + cItems - size_t { 1 };
@@ -2583,9 +2583,7 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
       EBM_ASSERT(pLow <= pHigh);
 
       // if we have an even number of items, the last write will be aliased (both pointers will point to the same
-      // location), and we'll write either a -1 or 0 in that location selected randomly.  After we exit the loop
-      // we'll write a 0 into the memory if needed to ensure that we don't have a negative value
-      // NOTE: if tiebreaker1 or tiebreaker2 is negative, conversion to an unsigned size_t is defined behavior in C++
+      // location), and we'll write either a 0 or 1 in that location selected randomly.
       pLow->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker1);
       pHigh->m_uniqueTiebreaker = static_cast<size_t>(tiebreaker2);
 
@@ -2619,7 +2617,7 @@ INLINE_RELEASE_TEMPLATED static void FillTiebreakers(
       // we had an odd number of items.  We will have either a 1 or 0 in the last center tiebreaker, but we
       // want the last central bit to only be random and not change when our symmetry changes.
 
-      EBM_ASSERT(size_t { 0 } != cItems % size_t { 2 });
+      EBM_ASSERT(size_t { 1 } == cItems % size_t { 2 });
       EBM_ASSERT(&aItems[cItems >> 1] == pCenter);
       EBM_ASSERT(pCenter == pLow - size_t { 1 });
 
@@ -2662,7 +2660,7 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       const bool lowIdentical = lowPrev == lowCur;
       const bool highIdentical = highPrev == highCur;
 
-      if(lowIdentical != highIdentical) {
+      if(UNLIKELY(lowIdentical != highIdentical)) {
          // if cSamples was 2, then they should be symetric in terms of identicality since they are the same numbers
          EBM_ASSERT(size_t { 3 } <= cSamples);
          return highIdentical;
@@ -2688,7 +2686,7 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
       const FloatEbmType lowCur = std::abs(*pLow);
       const FloatEbmType highCur = std::abs(*pHigh);
 
-      if(lowCur != highCur) {
+      if(UNLIKELY(lowCur != highCur)) {
          return lowCur < highCur;
       }
 
@@ -3076,6 +3074,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       "countSamples=%" IntEbmTypePrintf ", "
       "featureValues=%p, "
       "countSamplesPerBinMin=%" IntEbmTypePrintf ", "
+      "randomSeed=%" IntEbmTypePrintf ", "
       "countCutPointsInOut=%p, "
       "cutPointsLowerBoundInclusiveOut=%p, "
       "countMissingValuesOut=%p, "
@@ -3087,6 +3086,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
       countSamples,
       static_cast<void *>(featureValues),
       countSamplesPerBinMin,
+      randomSeed,
       static_cast<void *>(countCutPointsInOut),
       static_cast<void *>(cutPointsLowerBoundInclusiveOut),
       static_cast<void *>(countMissingValuesOut),
@@ -3333,16 +3333,13 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
+         // by using our random seed and mixing it with our symmetry determination, we get randomness in our symmetry
+         // direction under any datasource, but it's still repeatable with the same seed
+         const bool bSymmetryReversal = DetermineSymmetricDirection(cSamples, featureValues);
+
          RandomStream randomStream;
          randomStream.Initialize(randomSeed);
 
-         // TODO: make a NextBool on RandomStream and use it throughout!
-
-         // by using our random seed and mixing it with our determination, we get randomness in our symmetry
-         // direction under any datasource, but it's still repeatable with the same seed
-         const bool bSymmetryReversal = randomStream.Next() != DetermineSymmetricDirection(cSamples, featureValues);
-
-         // we don't need tiebreakers in the endpoints
          FillTiebreakers(bSymmetryReversal, &randomStream, cCuttingRanges, aCuttingRange);
 
          FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
@@ -3424,8 +3421,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   // for the sake of randomness, let's re-generate random numbres each time to give the entire
                   // sytem a little more variability
 
-                  bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker)) != bSymmetryReversal;
-
+                  bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
                   FillTiebreakers(bLocalSymmetryReversal, &randomStream, cRanges - size_t { 1 }, aCutPoints + 1);
                   if(TradeCutSegment(
                      &bestCutPoints,
@@ -3577,10 +3573,9 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                               if(UNLIKELY(cDistanceHigh == cDistanceLow)) {
                                  // wow, we're at the center of the entire array AND the center of the outer
                                  // unsplittable ranges, AND the center of the splitable ranges.  Our final fallback
-                                 // is to resort to our symmetric determination
+                                 // is to resort to our symmetric determination (PLUS randomness)
 
-                                 bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCuttingRange->m_uniqueTiebreaker)) != bSymmetryReversal;
-
+                                 bool bLocalSymmetryReversal = randomStream.Next() != bSymmetryReversal;
                                  iResult = UNPREDICTABLE(bLocalSymmetryReversal) ? iStartCur : iStartNext;
                               }
                            }
