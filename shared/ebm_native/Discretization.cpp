@@ -339,6 +339,9 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
+   EBM_ASSERT(FloatEbmType { 0 } <= low);
+   EBM_ASSERT(FloatEbmType { 0 } < high);
+
    EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
 
    static_assert(std::numeric_limits<FloatEbmType>::is_iec559,
@@ -382,7 +385,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
       // this check has the added advantage of checking for -infinity
       avg = high;
    }
-   if(UNLIKELY(UNLIKELY(high < avg))) {
+   if(UNLIKELY(high < avg)) {
       // because so many compilers claim to be IEEE 754, but are not, we have this fallback to prevent us
       // from crashing due to unexpected outputs.  high is a legal value to return since we use lower bound 
       // inclusivity.  I don't see how, even in a bad compiler/platform, we'd get a NaN result I'm not including it
@@ -395,7 +398,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    return avg;
 }
 
-static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbmType high) noexcept {
+static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
@@ -404,15 +407,10 @@ static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbm
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
+   EBM_ASSERT(FloatEbmType { 0 } <= low);
+   EBM_ASSERT(FloatEbmType { 0 } < high);
+
    EBM_ASSERT(low < high);
-
-   // geometric mean requires the same sign, which we filter our before calling this function
-   EBM_ASSERT(low < FloatEbmType { 0 } && high < FloatEbmType { 0 } || 
-      FloatEbmType { 0 } <= low && FloatEbmType { 0 } <= high);
-
-   // If both low and high are zero or positive, and high is higher than low, high must be greater than zero.  
-   // If both are negative high can't be zero either
-   EBM_ASSERT(FloatEbmType { 0 } != high);
 
    FloatEbmType result;
    if(PREDICTABLE(FloatEbmType { 0 } == low)) {
@@ -424,10 +422,9 @@ static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbm
       result = high * FloatEbmType { 0.5 };
       EBM_ASSERT(!std::isnan(result));
       EBM_ASSERT(!std::isinf(result)); // even in a pathalogic processor I don't see how this would get +-infinity
-      // high was checked as positive above for 0 == low, and it's hard to see how even a bad floating point
-      // implementation would make this negative.
+      // high was positive, and it's hard to see how even a bad floating point implementation would make this negative.
       EBM_ASSERT(FloatEbmType { 0 } <= result);
-      if(result <= FloatEbmType { 0 }) {
+      if(FloatEbmType { 0 } == result) {
          // if high is very small, underflow is possible.  In that case high must be very close to zero, so
          // we can just return high.  We can't return zero since with lower bound inclusivity that would put zero
          // in the wrong bin
@@ -459,11 +456,7 @@ static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbm
          // there is no way that the result of log is going to overflow, so we add before multiplying by 0.5 
          // since multiplication is more expensive.
 
-         if(PREDICTABLE(low < FloatEbmType { 0 })) {
-            result = -std::exp((std::log(-low) + std::log(-high)) * FloatEbmType { 0.5 });
-         } else {
-            result = std::exp((std::log(low) + std::log(high)) * FloatEbmType { 0.5 });
-         }
+         result = std::exp((std::log(low) + std::log(high)) * FloatEbmType { 0.5 });
 
          // IEEE 754 doesn't give us a lot of guarantees about log and exp.  They don't have have "correct rounding"
          // guarantees, unlike basic operators, so we could obtain results outside of our bounds, or perhaps
@@ -493,12 +486,6 @@ static FloatEbmType GeometricMeanSameSign(const FloatEbmType low, const FloatEbm
          EBM_ASSERT(!std::isnan(result));
          // no positive number should generate an infinity for sqrt in a reasonable implementation
          EBM_ASSERT(!std::isinf(result));
-
-         if(PREDICTABLE(low < FloatEbmType { 0 })) {
-            EBM_ASSERT(high < FloatEbmType { 0 });
-            // geometic mean of two negative numbers should be negative
-            result = -result;
-         }
 
          // floating point jitter might have put us outside our bounds, but if that were to happen we'd be required
          // to have very very close low and high results.  In that case we can just use the arithmetic mean.
@@ -540,7 +527,7 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    }
    char ch;
    ch = str[0];
-   if('+' != ch && '-' != ch) {
+   if('+' != ch) {
       return true;
    }
    ch = str[1];
@@ -649,10 +636,11 @@ static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdentica
       return ret;
    }
 
+   EBM_ASSERT('+' == str[0]);
+
    // according to the C++ docs, nextafter won't exceed the to parameter, so we don't have to worry about this
    // generating infinities
-   ret = std::nextafter(ret, '-' == str[0] ? std::numeric_limits<FloatEbmType>::lowest() :
-      std::numeric_limits<FloatEbmType>::max());
+   ret = std::nextafter(ret, std::numeric_limits<FloatEbmType>::max());
 
    return ret;
 }
@@ -660,8 +648,8 @@ static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdentica
 static void StringToFloatChopped(
    const char * const pStr,
    int iTruncateMantissaTextDigitsAfter,
-   FloatEbmType & lowChop,
-   FloatEbmType & highChop
+   FloatEbmType & lowChopOut,
+   FloatEbmType & highChopOut
 ) noexcept {
    EBM_ASSERT(nullptr != pStr);
    // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
@@ -677,11 +665,8 @@ static void StringToFloatChopped(
    memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
    strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[k_iExp]);
 
-   if('-' == pStr[0]) {
-      highChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-   } else {
-      lowChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-   }
+   EBM_ASSERT('+' == pStr[0]);
+   lowChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
 
    char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - 1];
    char ch;
@@ -713,25 +698,15 @@ static void StringToFloatChopped(
       }
       --pIncrement;
    }
-   if('-' == pStr[0]) {
-      lowChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-   } else {
-      highChop = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-   }
+   highChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
    return;
 }
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
-   const FloatEbmType low, 
-   const FloatEbmType high
+   FloatEbmType low, 
+   FloatEbmType high
 ) noexcept {
-   // TODO : add logs here when we find a condition we didn't think was possible, but that occurs
-
-   // TODO: if the low value is min_float (which could be a converted -infinity), then disregard the low value and
-   //       place the cut close to the high value (the first single digit number below it (example:
-   //       for 6.8535e22, choose 6e22.  Similarily, if the high value is max_float, then disregard the high value
-   //       and put the put just a bit above the low value, example, for 6.8535e22, choose 7e22.  These super big 
-   //       numbers skew the data, and they aren't representative of real numbers since they're just the max
+   // TODO : add logs or asserts here when we find a condition we didn't think was possible, but that occurs
 
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
@@ -742,104 +717,141 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    EBM_ASSERT(!std::isinf(high));
 
    EBM_ASSERT(low < high); // if two numbers were equal, we wouldn't put a cut point between them
+   EBM_ASSERT(low < std::numeric_limits<FloatEbmType>::max());
+   EBM_ASSERT(std::numeric_limits<FloatEbmType>::lowest() < high);
 
    // if our numbers pass the asserts above, all combinations of low and high values can get a legal cut point, 
    // since we can always return the high value given that our binning is lower bound inclusive
 
-   if(low < FloatEbmType { 0 } && FloatEbmType { 0 } <= high) {
-      // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
-      // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
-      // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
-      // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
-      return FloatEbmType { 0 };
+   bool bNegative = false;
+   if(low < FloatEbmType { 0 }) {
+      if(FloatEbmType { 0 } <= high) {
+         // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
+         // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
+         // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
+         // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
+         return FloatEbmType { 0 };
+      }
+      const FloatEbmType tmpLow = low;
+      low = -high;
+      high = -tmpLow;
+      bNegative = true;
    }
+
+   EBM_ASSERT(FloatEbmType { 0 } <= low);
+   EBM_ASSERT(FloatEbmType { 0 } < high);
+   EBM_ASSERT(low < std::numeric_limits<FloatEbmType>::max());
+   EBM_ASSERT(high <= std::numeric_limits<FloatEbmType>::max());
 
    char strLow[k_cCharsFloatPrint];
-   char strHigh[k_cCharsFloatPrint];
-   char strAvg[k_cCharsFloatPrint];
-
-   if(FloatToString(low, strLow)) {
-      return high;
-   }
-   if(FloatToString(high, strHigh)) {
-      return high;
-   }
-   int lowExp = GetExponent(strLow);
-   int highExp = GetExponent(strHigh);
-
-   EBM_ASSERT(low < FloatEbmType { 0 } && highExp <= lowExp || FloatEbmType { 0 } <= low && lowExp <= highExp);
-
-   int expMin = std::min(lowExp, highExp);
-   int expMax = std::max(lowExp, highExp);
-
-   FloatEbmType avg;
-   if(expMin + 2 <= expMax) {
-      avg = GeometricMeanSameSign(low, high);
-   } else {
-      avg = ArithmeticMean(low, high);
-   }
-   EBM_ASSERT(!std::isnan(avg));
-   EBM_ASSERT(!std::isinf(avg));
-   EBM_ASSERT(low < avg);
-   EBM_ASSERT(avg <= high);
-
-   if(FloatToString(avg, strAvg)) {
-      return high;
-   }
 
    FloatEbmType lowChop;
    FloatEbmType highChop;
 
-   if(expMin + 2 <= expMax) {
-      EBM_ASSERT(low < avg);
-      EBM_ASSERT(avg < high);
+   FloatEbmType ret = high; // our fallback is high
+   if(std::numeric_limits<FloatEbmType>::max() == high) {
+      // ignore the high value since it's clearly not a natural number.  We should focus on putting the cut
+      // close to the low value which should have more meaning
 
-      StringToFloatChopped(strAvg, 0, lowChop, highChop);
-
-      // TODO : handle low == 0.  We probalby want to invert these divisions, or change them to multiplications
-      const FloatEbmType highRatio = high / lowChop;
-      const FloatEbmType lowRatio = highChop / low;
-
-      if(highRatio < lowRatio) {
-         return highChop;
-      } else {
-         return lowChop;
+      if(FloatToString(low, strLow)) {
+         goto done;
       }
+
+      StringToFloatChopped(strLow, 0, lowChop, highChop);
+
+      ret = highChop;
+      goto done;
    } else {
-      for(int i = 0; i < k_cDigitsAfterPeriod; ++i) {
-         FloatEbmType lowLow;
-         FloatEbmType lowHigh;
-         FloatEbmType avgLow;
-         FloatEbmType avgHigh;
-         FloatEbmType highLow;
-         FloatEbmType highHigh;
+      char strAvg[k_cCharsFloatPrint];
+      char strHigh[k_cCharsFloatPrint];
 
-         StringToFloatChopped(strLow, i, lowLow, lowHigh);
-         StringToFloatChopped(strAvg, i, avgLow, avgHigh);
-         StringToFloatChopped(strHigh, i, highLow, highHigh);
+      if(FloatToString(low, strLow)) {
+         goto done;
+      }
+      if(FloatToString(high, strHigh)) {
+         goto done;
+      }
+      int lowExp = GetExponent(strLow);
+      int highExp = GetExponent(strHigh);
 
-         if(lowHigh < avgLow && avgLow < highLow && low < avgLow && avgLow <= high) {
-            // avgLow is a possibility
-            if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
-               // avgHigh is a possibility
-               FloatEbmType lowDistance = high - avgLow;
-               FloatEbmType highDistance = avgHigh - low;
-               if(highDistance < lowDistance) {
-                  return avgHigh;
+      EBM_ASSERT(lowExp <= highExp);
+
+      FloatEbmType avg;
+      if(lowExp + 2 <= highExp) {
+         avg = GeometricMeanPositives(low, high);
+      } else {
+         avg = ArithmeticMean(low, high);
+      }
+      EBM_ASSERT(!std::isnan(avg));
+      EBM_ASSERT(!std::isinf(avg));
+      EBM_ASSERT(low < avg);
+      EBM_ASSERT(avg <= high);
+
+      if(FloatToString(avg, strAvg)) {
+         goto done;
+      }
+
+      if(lowExp + 2 <= highExp) {
+         EBM_ASSERT(low < avg);
+         EBM_ASSERT(avg < high);
+
+         StringToFloatChopped(strAvg, 0, lowChop, highChop);
+
+         // TODO : handle low == 0.  We probalby want to invert these divisions, or change them to multiplications
+         const FloatEbmType highRatio = high / lowChop;
+         const FloatEbmType lowRatio = highChop / low;
+
+         if(highRatio <= lowRatio) {
+            ret = lowChop;
+         } else {
+            ret = highChop;
+         }
+         goto done;
+      } else {
+         for(int i = 0; i < k_cDigitsAfterPeriod; ++i) {
+            FloatEbmType lowLow;
+            FloatEbmType lowHigh;
+            FloatEbmType avgLow;
+            FloatEbmType avgHigh;
+            FloatEbmType highLow;
+            FloatEbmType highHigh;
+
+            StringToFloatChopped(strLow, i, lowLow, lowHigh);
+            StringToFloatChopped(strAvg, i, avgLow, avgHigh);
+            StringToFloatChopped(strHigh, i, highLow, highHigh);
+
+            if(lowHigh < avgLow && avgLow < highLow && low < avgLow && avgLow <= high) {
+               // avgLow is a possibility
+               if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
+                  // avgHigh is a possibility
+                  FloatEbmType lowDistance = high - avgLow;
+                  FloatEbmType highDistance = avgHigh - low;
+                  if(highDistance < lowDistance) {
+                     ret = avgHigh;
+                     goto done;
+                  }
+               }
+               ret = avgLow;
+               goto done;
+            } else {
+               if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
+                  // avgHigh is a possibility
+                  ret = avgHigh;
+                  goto done;
                }
             }
-            return avgLow;
-         } else {
-            if(lowHigh < avgHigh && avgHigh < highLow && low < avgHigh && avgHigh <= high) {
-               // avgHigh is a possibility
-               return avgHigh;
-            }
          }
-      }
 
-      // this was already checked to be valid
-      return avg;
+         // this was already checked to be valid
+         ret = avg;
+      }
    }
+
+done:;
+   if(bNegative) {
+      ret = -ret;
+   }
+   return ret;
 }
 
 INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
