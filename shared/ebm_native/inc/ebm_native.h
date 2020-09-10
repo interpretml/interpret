@@ -450,7 +450,6 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discre
    const FloatEbmType * cutPointsLowerBoundInclusive,
    IntEbmType * discretizedOut
 );
-
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
    IntEbmType * countCutPoints,
    FloatEbmType * cutPointsLowerBoundInclusive,

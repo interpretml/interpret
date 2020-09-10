@@ -62,15 +62,17 @@
 //  - cut range - the values between two CutPoint
 
 // 1073741824 is 2^30.  Using a power of two with no detail in the mantissa might help multiplication
+// VERIFIED 2020-09
 constexpr FloatEbmType tweakIncrement = std::numeric_limits<FloatEbmType>::epsilon() * FloatEbmType { 1073741824 };
-INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiple(const size_t iTweak) noexcept {
+INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultiplePositive(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } + tweakIncrement * static_cast<FloatEbmType>(iTweak);
 }
+// VERIFIED 2020-09
 INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultipleNegative(const size_t iTweak) noexcept {
    return FloatEbmType { 1 } - tweakIncrement * static_cast<FloatEbmType>(iTweak);
 }
 
-// VERIFIED
+// VERIFIED 2020-09
 INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
    return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
@@ -92,7 +94,7 @@ constexpr int k_cDigitsAfterPeriod = std::numeric_limits<FloatEbmType>::max_digi
 constexpr int k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
 constexpr int k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1;
 constexpr int k_cExponentTextDigits =
-k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
+   k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
 
 // we have a function that ensures our output is exactly in the format that we require.  That format is:
 // "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
@@ -106,10 +108,12 @@ k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits :
 constexpr int k_iExp = 3 + k_cDigitsAfterPeriod;
 constexpr int k_cCharsFloatPrint = k_iExp + 2 + k_cExponentTextDigits + 1;
 
-constexpr size_t k_CutExploreDistance = 20;
-constexpr FloatEbmType k_noCutPriority = std::numeric_limits<FloatEbmType>::lowest();
-constexpr ptrdiff_t k_MovementCutValue = std::numeric_limits<ptrdiff_t>::lowest();
-constexpr size_t k_illegalIndex = std::numeric_limits<size_t>::max();
+// TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
+// TODO: change this to 1, and try some other distances in between just to stress the algorithm a bit more
+constexpr size_t k_cutExploreDistance = 20;
+constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
+constexpr FloatEbmType k_priorityNoCutsPossible = std::numeric_limits<FloatEbmType>::lowest();
+constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
 
 struct NeighbourJump final {
 
@@ -137,18 +141,13 @@ struct CutPoint final {
    CutPoint *   m_pPrev;
    CutPoint *   m_pNext;
 
+   // after cutting, we set m_iValAspirationalFloat to m_iVal to avoid needing if statements in some places
+   FloatEbmType   m_iValAspirationalFloat;
+
+   size_t         m_iVal;
    // m_cPredeterminedMovementOnCut is a valid number until we cut it.  After cutting we don't 
    // need a movement value, so we set it to k_cutValue and use it to detect whether this CutPoint was cut
    ptrdiff_t      m_cPredeterminedMovementOnCut;
-
-   FloatEbmType   m_iValAspirationalFloat;
-
-   // TODO: can we put m_iVal and m_priority into a union.  One feature must be outside the union to signal
-   // if we should use the pre or post cut determination (that's m_cPredeterminedMovementOnCut for us).  
-   // m_iValAspirationalFloat we want to keep around as a faster version of m_iVal when a float is needed
-   // which leaves m_iVal and m_priority for our union.
-
-   size_t         m_iVal;
 
    // the higher the m_priority, the more likely it is that it'll be chosen to cut
    FloatEbmType   m_priority;
@@ -160,10 +159,10 @@ struct CutPoint final {
    size_t         m_uniqueTiebreaker;
 
    INLINE_ALWAYS void SetCut() noexcept {
-      m_cPredeterminedMovementOnCut = k_MovementCutValue;
+      m_cPredeterminedMovementOnCut = k_movementDoneCut;
    }
-   INLINE_ALWAYS bool IsCut() noexcept {
-      return k_MovementCutValue == m_cPredeterminedMovementOnCut;
+   INLINE_ALWAYS bool IsCut() const noexcept {
+      return k_movementDoneCut == m_cPredeterminedMovementOnCut;
    }
 };
 static_assert(std::is_standard_layout<CutPoint>::value,
@@ -304,7 +303,7 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
       // number of ranges we can avoid divergence on exact matches
       if(cSide < cRangesSideOriginal) {
          // we're below the original.  check to see if increasing the number helps us any
-         cSide = static_cast<size_t>(result * GetTweakingMultiple(1));
+         cSide = static_cast<size_t>(result * GetTweakingMultiplePositive(1));
          // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
          // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
          // Same thing on the top end, we'd have to skip over an entire range
@@ -877,10 +876,11 @@ INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    //     moves along
 }
 
-INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
+// VERIFIED 2020-09
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType CalculatePriority(
    const FloatEbmType iValLowerFloat,
    const FloatEbmType iValHigherFloat,
-   CutPoint * const pCutCur
+   const CutPoint * const pCutCur
 ) noexcept {
    EBM_ASSERT(!pCutCur->IsCut());
 
@@ -897,8 +897,8 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
 
    // if the m_iVal value was set to k_illegalIndex, then there are no legal cuts, 
    // so leave it with the most terrible possible priority
-   FloatEbmType priority = k_noCutPriority;
-   if(LIKELY(k_illegalIndex != pCutCur->m_iVal)) {
+   FloatEbmType priority = k_priorityNoCutsPossible;
+   if(LIKELY(k_valNotLegal != pCutCur->m_iVal)) {
       // TODO: This calculation doesn't take into account that we can trade our cut points with neighbours
       // with m_cPredeterminedMovementOnCut.  For an example, see test:
       // GenerateQuantileCutPoints, left+unsplitable+splitable+unsplitable+splitable
@@ -909,6 +909,8 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
       // absolute value of m_cPredeterminedMovementOnCut, then by the priority.
 
       // TODO : these are not guaranteed due to floating point inexactness.  We should detect this scenario
+      //        For now, we don't need to worry about violations of these.  It would take truely huge datasets
+      //        to reach the big number required where changes in the floating point numbers exceeded integers
       EBM_ASSERT(iValLowerFloat < pCutCur->m_iVal); // it would violate cSamplesPerBinMin if these were equal
       EBM_ASSERT(iValLowerFloat < pCutCur->m_iValAspirationalFloat);
       EBM_ASSERT(pCutCur->m_iVal < iValHigherFloat); // it would violate cSamplesPerBinMin if these were equal
@@ -955,9 +957,8 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
       // on the ends anyways, and our tiebreaker selection algorithm will put the higher priority numbers at
       // the tail ends, which is perfect
       
-      priority *= GetTweakingMultiple(pCutCur->m_uniqueTiebreaker);
+      priority *= GetTweakingMultiplePositive(pCutCur->m_uniqueTiebreaker);
    }
-   pCutCur->m_priority = priority;
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
    LOG_N(TraceLevelVerbose, "Prioritized CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
@@ -968,8 +969,11 @@ INLINE_RELEASE_UNTEMPLATED static void CalculatePriority(
       priority
    );
 #endif // LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+
+   return priority;
 }
 
+// VERIFIED 2020-09
 static void BuildNeighbourhoodPlan(
    const size_t cSamples,
    const bool bSymmetryReversal,
@@ -998,11 +1002,11 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(1 <= cRangesLow);
    EBM_ASSERT(1 <= cRangesHigh);
 
-   EBM_ASSERT(k_illegalIndex == iValLow || (iValAspirationalLowFloat * FloatEbmType { 0.9999 } <=
+   EBM_ASSERT(k_valNotLegal == iValLow || (iValAspirationalLowFloat * FloatEbmType { 0.9999 } <=
       static_cast<FloatEbmType>(iValLow) && static_cast<FloatEbmType>(iValLow) <=
       iValAspirationalLowFloat * FloatEbmType { 1.0001 }));
 
-   EBM_ASSERT(k_illegalIndex == iValHigh || (iValAspirationalHighFloat * FloatEbmType { 0.9999 } <=
+   EBM_ASSERT(k_valNotLegal == iValHigh || (iValAspirationalHighFloat * FloatEbmType { 0.9999 } <=
       static_cast<FloatEbmType>(iValHigh) && static_cast<FloatEbmType>(iValHigh) <=
       iValAspirationalHighFloat * FloatEbmType { 1.0001 }));
 
@@ -1117,7 +1121,7 @@ static void BuildNeighbourhoodPlan(
    // tweaking function that uses m_uniqueTiebreaker, but practically speaking this shouldn't make any difference
 
    const bool bLocalSymmetryReversal = (0 != (size_t { 1 } & pCutCur->m_uniqueTiebreaker)) != bSymmetryReversal;
-   const FloatEbmType smallTweak = bLocalSymmetryReversal ? GetTweakingMultiple(1) : GetTweakingMultipleNegative(1);
+   const FloatEbmType smallTweak = bLocalSymmetryReversal ? GetTweakingMultiplePositive(1) : GetTweakingMultipleNegative(1);
 
    size_t iValAspirationalCur = static_cast<size_t>(smallTweak * pCutCur->m_iValAspirationalFloat);
    if(UNLIKELY(cCuttableItems <= iValAspirationalCur)) {
@@ -1155,7 +1159,7 @@ static void BuildNeighbourhoodPlan(
 
    const ptrdiff_t lowHighBound = iValLowChoice + static_cast<ptrdiff_t>(cSamplesPerBinMin);
    const ptrdiff_t highHighBound = iValHighChoice + static_cast<ptrdiff_t>(cSamplesPerBinMin);
-   if(UNLIKELY(k_illegalIndex == iValLow)) {
+   if(UNLIKELY(k_valNotLegal == iValLow)) {
       // we always start from the low index because for floating points the low numbers have more resolution
       totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
       distanceLowLowFloat = static_cast<FloatEbmType>(iValLowChoice) - iValAspirationalLowFloat;
@@ -1165,7 +1169,7 @@ static void BuildNeighbourhoodPlan(
          static_cast<FloatEbmType>(iValLowChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
       const FloatEbmType highLowBoundFloat = 
          static_cast<FloatEbmType>(iValHighChoice - static_cast<ptrdiff_t>(cSamplesPerBinMin));
-      if(UNLIKELY(k_illegalIndex == iValHigh)) {
+      if(UNLIKELY(k_valNotLegal == iValHigh)) {
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
 
@@ -1204,23 +1208,23 @@ static void BuildNeighbourhoodPlan(
       //
       // iValLowChoice, iValHighChoice, and iValLow values should be convertible to a ptrdiff_t, since they refer to indexes
       // for data structures much larger than 2 bytes, so we should have room for the negatives here
-      const ptrdiff_t distanceLowSizeT = iValLowChoice - static_cast<ptrdiff_t>(iValLow);
-      const ptrdiff_t distanceHighSizeT = iValHighChoice - static_cast<ptrdiff_t>(iValLow);
-      distanceLowLowFloat = static_cast<FloatEbmType>(distanceLowSizeT);
-      distanceHighLowFloat = static_cast<FloatEbmType>(distanceHighSizeT);
-      if(UNLIKELY(k_illegalIndex == iValHigh)) {
+      const ptrdiff_t distanceLowPtrdiffT = iValLowChoice - static_cast<ptrdiff_t>(iValLow);
+      const ptrdiff_t distanceHighPtrdiffT = iValHighChoice - static_cast<ptrdiff_t>(iValLow);
+      distanceLowLowFloat = static_cast<FloatEbmType>(distanceLowPtrdiffT);
+      distanceHighLowFloat = static_cast<FloatEbmType>(distanceHighPtrdiffT);
+      if(UNLIKELY(k_valNotLegal == iValHigh)) {
          totalDistance = iValAspirationalHighFloat - iValAspirationalLowFloat;
 
          // given all our indexes and counts refer to an existing array with more than 4 bytes, 
          // they should not be able to overflow when adding any of these numbers
 
          // check our soft bounds and hard bounds (to avoid floating point issues)
-         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT) &&
+         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowPtrdiffT) &&
             LIKELY(static_cast<FloatEbmType>(lowHighBound) <= iValAspirationalHighFloat) &&
             LIKELY(lowHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
 
          bCanCutHigh = LIKELY(LIKELY(static_cast<FloatEbmType>(highHighBound) <= iValAspirationalHighFloat) &&
-            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT) &&
+            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighPtrdiffT) &&
             LIKELY(highHighBound <= static_cast<ptrdiff_t>(cCuttableItems)));
       } else {
          // reduce floating point noise when we have have exact distances
@@ -1231,11 +1235,11 @@ static void BuildNeighbourhoodPlan(
 
          EBM_ASSERT(iValHigh <= cCuttableItems);
 
-         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowSizeT) &&
+         bCanCutLow = LIKELY(LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceLowPtrdiffT) &&
             LIKELY(lowHighBound <= static_cast<ptrdiff_t>(iValHigh)));
 
          bCanCutHigh = LIKELY(LIKELY(highHighBound <= static_cast<ptrdiff_t>(iValHigh)) &&
-            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighSizeT));
+            LIKELY(static_cast<ptrdiff_t>(cSamplesPerBinMin) <= distanceHighPtrdiffT));
       }
    }
 
@@ -1252,8 +1256,14 @@ static void BuildNeighbourhoodPlan(
          const size_t cRangesHighHigh = cRanges - cRangesHighLow;
          EBM_ASSERT(1 <= cRangesHighHigh);
 
+         FloatEbmType distanceHigh;
+         if(UNLIKELY(k_valNotLegal == iValHigh)) {
+            distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValHighChoice);
+         } else {
+            distanceHigh = static_cast<FloatEbmType>(iValHigh - iValHighChoice);
+         }
+         const FloatEbmType avgLengthHighHigh = distanceHigh / cRangesHighHigh;
          const FloatEbmType avgLengthHighLow = distanceHighLowFloat / cRangesHighLow;
-         const FloatEbmType avgLengthHighHigh = (totalDistance - distanceHighLowFloat) / cRangesHighHigh;
 
          scoreHigh = std::min(avgLengthHighLow, avgLengthHighHigh);
          transferRangesHigh = static_cast<ptrdiff_t>(cRangesHighLow) - static_cast<ptrdiff_t>(cRangesLow);
@@ -1272,8 +1282,14 @@ static void BuildNeighbourhoodPlan(
          const size_t cRangesLowHigh = cRanges - cRangesLowLow;
          EBM_ASSERT(1 <= cRangesLowHigh);
 
+         FloatEbmType distanceHigh;
+         if(UNLIKELY(k_valNotLegal == iValHigh)) {
+            distanceHigh = iValAspirationalHighFloat - static_cast<FloatEbmType>(iValLowChoice);
+         } else {
+            distanceHigh = static_cast<FloatEbmType>(iValHigh - iValLowChoice);
+         }
+         const FloatEbmType avgLengthLowHigh = distanceHigh / cRangesLowHigh;
          const FloatEbmType avgLengthLowLow = distanceLowLowFloat / cRangesLowLow;
-         const FloatEbmType avgLengthLowHigh = (totalDistance - distanceLowLowFloat) / cRangesLowHigh;
 
          scoreLow = std::min(avgLengthLowLow, avgLengthLowHigh);
          transferRangesLow = static_cast<ptrdiff_t>(cRangesLowLow) - static_cast<ptrdiff_t>(cRangesLow);
@@ -1351,13 +1367,13 @@ static void BuildNeighbourhoodPlan(
 
    } else if(LIKELY(bCanCutLow)) {
       scoreHigh = k_badScore;
-      transferRangesHigh = 0;
+      transferRangesHigh = ptrdiff_t { 0 };
 
       goto do_low;
 
    } else {
       // can't cut either high or low, so exit indicating we're at an impossible cut
-      pCutCur->m_iVal = k_illegalIndex;
+      pCutCur->m_iVal = k_valNotLegal;
       pCutCur->m_cPredeterminedMovementOnCut = 0; // set this to indicate that we aren't cut
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
@@ -1367,6 +1383,7 @@ static void BuildNeighbourhoodPlan(
    EBM_ASSERT(!pCutCur->IsCut());
 }
 
+// VERIFIED 2020-09
 static bool CutCuttingRange(
    std::set<CutPoint *, CompareCutPoint> * const pBestCutPoints,
 
@@ -1380,9 +1397,14 @@ static bool CutCuttingRange(
 ) noexcept {
    EBM_ASSERT(nullptr != pBestCutPoints);
 
+   EBM_ASSERT(2 <= cSamples); // we wouldn't be cutting this if there weren't two potential bins
+
    EBM_ASSERT(1 <= cSamplesPerBinMin);
+
    // we need to be able to put down at least one cut not at the edges
+   EBM_ASSERT(2 <= cCuttableItems); // we wouldn't be cutting this if there weren't two potential bins
    EBM_ASSERT(2 <= cCuttableItems / cSamplesPerBinMin);
+   EBM_ASSERT(cCuttableItems <= cSamples);
    EBM_ASSERT(nullptr != aNeighbourJumps);
 
    // TODO: someday, for performance, it might make sense to use a non-allocating tree, like:
@@ -1392,7 +1414,7 @@ static bool CutCuttingRange(
       while(!pBestCutPoints->empty()) {
          // We've located our desired cut points previously.  Sometimes those desired cut points
          // are placed in the bulk of a long run of identical values and we have to decide if we'll be putting
-         // the cut at the start or the end of those long run of identical values.
+         // the cut at the start or the end of those long runs of identical values.
          //
          // Before this function in the call stack, we do some expensive exploration of the hardest cut point placement
          // decisions that we need to make.  We do a full exploration of both the lower and higher placements of the long 
@@ -1467,7 +1489,7 @@ static bool CutCuttingRange(
          //    1) Pull a high priority item from the queue (which has a pre-calculated direction to cut and all other
          //       cutting decisions already calculated beforehand)
          //    1) execute our pre-determined cut placement AND move cuts from one side to the other if called for in our pre-plan
-         //    2) re-calculate the aspiration cut points and for each of those do a first pass combination exploration
+         //    2) re-calculate the aspirational cut points and for each of those do a first pass combination exploration
          //       to choose the best materialied cut point based on just ourselves
          //    3) Re-pass through our semi-materialized cuts points and jiggle them as necessary against their neighbours
          //       since the "view of the world" is different for each cut point and they don't match perfectly even if
@@ -1478,10 +1500,8 @@ static bool CutCuttingRange(
          //       And re-add them with our newly calculated priority, which can examine any cuts within
          //       the N item window at any point (but won't change them)
 
+         // all fields of our pCutBest should have been filled with initialized data previously
          CutPoint * const pCutBest = *pBestCutPoints->begin();
-
-         EBM_ASSERT(nullptr != pCutBest->m_pPrev);
-         EBM_ASSERT(nullptr != pCutBest->m_pNext);
 
 #ifdef LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
          LOG_N(TraceLevelVerbose, "Dequeue CutPoint: %zu, %zu, %" FloatEbmTypePrintf ", %td, %" FloatEbmTypePrintf,
@@ -1493,157 +1513,178 @@ static bool CutCuttingRange(
          );
 #endif // LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
 
-         if(k_noCutPriority == pCutBest->m_priority) {
-            // k_noCutPriority means there are no legal cuts, and also that all the remaining items in the queue
-            // are also uncuttable, so exit
-            break;
-         }
-
-         EBM_ASSERT(!pCutBest->IsCut());
+         EBM_ASSERT(nullptr != pCutBest->m_pPrev);
+         EBM_ASSERT(nullptr != pCutBest->m_pNext);
+         EBM_ASSERT(!pCutBest->IsCut()); // this checks m_cPredeterminedMovementOnCut
 
          // we can't move past our outer boundaries
-         EBM_ASSERT(-ptrdiff_t { k_CutExploreDistance } < pCutBest->m_cPredeterminedMovementOnCut &&
-            pCutBest->m_cPredeterminedMovementOnCut < ptrdiff_t { k_CutExploreDistance });
+         EBM_ASSERT(-ptrdiff_t { k_cutExploreDistance } < pCutBest->m_cPredeterminedMovementOnCut &&
+            pCutBest->m_cPredeterminedMovementOnCut < ptrdiff_t { k_cutExploreDistance });
+
+         EBM_ASSERT(!std::isnan(pCutBest->m_iValAspirationalFloat));
+         EBM_ASSERT(!std::isinf(pCutBest->m_iValAspirationalFloat));
+         EBM_ASSERT(FloatEbmType { 0 } < pCutBest->m_iValAspirationalFloat);
+
+         EBM_ASSERT(!std::isnan(pCutBest->m_priority));
+         EBM_ASSERT(!std::isinf(pCutBest->m_priority));
+
+         const size_t iVal = pCutBest->m_iVal; // preserve the location of our cut in case we end up moving
+         if(k_valNotLegal == iVal) {
+            // k_valNoCutsPossible means there are no legal cuts, and also that all the remaining items 
+            // in the queue are also uncuttable, so exit.
+            EBM_ASSERT(k_priorityNoCutsPossible == pCutBest->m_priority);
+            break;
+         }
+         EBM_ASSERT(FloatEbmType { 0 } <= pCutBest->m_priority);
 
          // find our visibility window region
-         CutPoint * pCutLowBoundary = pCutBest;
-         size_t cLowRangesBoundary = k_CutExploreDistance;
+         CutPoint * pCutLowModificationExclusiveBoundary = pCutBest;
+         size_t cRangesLowModification = k_cutExploreDistance;
          ptrdiff_t cPredeterminedMovementOnCutLowLow;
          do {
-            pCutLowBoundary = pCutLowBoundary->m_pPrev;
-            cPredeterminedMovementOnCutLowLow = pCutLowBoundary->m_cPredeterminedMovementOnCut;
-            --cLowRangesBoundary;
-         } while(0 != cLowRangesBoundary && k_MovementCutValue != cPredeterminedMovementOnCutLowLow);
-         cLowRangesBoundary = k_CutExploreDistance - cLowRangesBoundary;
-         EBM_ASSERT(1 <= cLowRangesBoundary);
-         EBM_ASSERT(cLowRangesBoundary <= k_CutExploreDistance);
-         EBM_ASSERT(-pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cLowRangesBoundary));
+            pCutLowModificationExclusiveBoundary = pCutLowModificationExclusiveBoundary->m_pPrev;
+            cPredeterminedMovementOnCutLowLow = pCutLowModificationExclusiveBoundary->m_cPredeterminedMovementOnCut;
+            --cRangesLowModification;
+         } while(LIKELY(LIKELY(k_movementDoneCut != cPredeterminedMovementOnCutLowLow) && 
+            LIKELY(size_t { 0 } != cRangesLowModification)));
 
-         CutPoint * pCutHighBoundary = pCutBest;
-         size_t cHighRangesBoundary = k_CutExploreDistance;
+         cRangesLowModification = k_cutExploreDistance - cRangesLowModification;
+         EBM_ASSERT(1 <= cRangesLowModification);
+         EBM_ASSERT(cRangesLowModification <= k_cutExploreDistance);
+         EBM_ASSERT(-pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cRangesLowModification));
+
+         EBM_ASSERT(FloatEbmType { 0 } <= pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat);
+
+         // this should be exact, since we would have set it like this
+         EBM_ASSERT(!pCutLowModificationExclusiveBoundary->IsCut() || pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<FloatEbmType>(pCutLowModificationExclusiveBoundary->m_iVal));
+         EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iVal <= pCutBest->m_iVal);
+         EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat < pCutBest->m_iValAspirationalFloat);
+
+         CutPoint * pCutHighModificationExclusiveBoundary = pCutBest;
+         size_t cRangesHighModification = k_cutExploreDistance;
          ptrdiff_t cPredeterminedMovementOnCutHighHigh;
          do {
-            pCutHighBoundary = pCutHighBoundary->m_pNext;
-            cPredeterminedMovementOnCutHighHigh = pCutHighBoundary->m_cPredeterminedMovementOnCut;
-            --cHighRangesBoundary;
-         } while(0 != cHighRangesBoundary && k_MovementCutValue != cPredeterminedMovementOnCutHighHigh);
-         cHighRangesBoundary = k_CutExploreDistance - cHighRangesBoundary;
-         EBM_ASSERT(1 <= cHighRangesBoundary);
-         EBM_ASSERT(cHighRangesBoundary <= k_CutExploreDistance);
-         EBM_ASSERT(pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cHighRangesBoundary));
+            pCutHighModificationExclusiveBoundary = pCutHighModificationExclusiveBoundary->m_pNext;
+            cPredeterminedMovementOnCutHighHigh = pCutHighModificationExclusiveBoundary->m_cPredeterminedMovementOnCut;
+            --cRangesHighModification;
+         } while(LIKELY(LIKELY(k_movementDoneCut != cPredeterminedMovementOnCutHighHigh) && 
+            LIKELY(size_t { 0 } != cRangesHighModification)));
 
-         // we're allowed to move cuts from our low to high side before cutting, so let's find our new home
+         cRangesHighModification = k_cutExploreDistance - cRangesHighModification;
+         EBM_ASSERT(1 <= cRangesHighModification);
+         EBM_ASSERT(cRangesHighModification <= k_cutExploreDistance);
+         EBM_ASSERT(pCutBest->m_cPredeterminedMovementOnCut < static_cast<ptrdiff_t>(cRangesHighModification));
+
+         EBM_ASSERT(FloatEbmType { 0 } < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
+
+         // this should be exact, since we would have set it like this
+         EBM_ASSERT(!pCutHighModificationExclusiveBoundary->IsCut() || pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat == static_cast<FloatEbmType>(pCutHighModificationExclusiveBoundary->m_iVal));
+         EBM_ASSERT(pCutBest->m_iVal <= pCutHighModificationExclusiveBoundary->m_iVal);
+         EBM_ASSERT(pCutBest->m_iValAspirationalFloat < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
+
+         // we're allowed to move cuts between our sides before cutting, so let's find our new home
          ptrdiff_t cPredeterminedMovementOnCut = pCutBest->m_cPredeterminedMovementOnCut;
-         const size_t iVal = pCutBest->m_iVal;
 
          CutPoint * pCutCur = pCutBest;
 
-         CutPoint * pCutLowLowWindow = pCutLowBoundary;
-         size_t cLowLowRangesWindow = cLowRangesBoundary;
+         CutPoint * pCutLowLowVisibilityInclusiveBoundary = pCutLowModificationExclusiveBoundary;
+         size_t cRangesLowLowPlan = cRangesLowModification;
 
-         CutPoint * pCutHighHighWindow = pCutHighBoundary;
-         size_t cHighHighRangesWindow = cHighRangesBoundary;
+         CutPoint * pCutHighHighVisibilityInclusiveBoundary = pCutHighModificationExclusiveBoundary;
+         size_t cRangesHighHighPlan = cRangesHighModification;
 
-         cLowRangesBoundary += cPredeterminedMovementOnCut;
-         cHighRangesBoundary -= cPredeterminedMovementOnCut;
+         cRangesLowModification = 
+            static_cast<size_t>(static_cast<ptrdiff_t>(cRangesLowModification) + cPredeterminedMovementOnCut);
+         cRangesHighModification = 
+            static_cast<size_t>(static_cast<ptrdiff_t>(cRangesHighModification) - cPredeterminedMovementOnCut);
 
-         EBM_ASSERT(1 <= cLowRangesBoundary);
-         EBM_ASSERT(1 <= cHighRangesBoundary);
+         EBM_ASSERT(size_t { 1 } <= cRangesLowModification);
+         EBM_ASSERT(size_t { 1 } <= cRangesHighModification);
 
-         if(0 != cPredeterminedMovementOnCut) {
+         if(UNLIKELY(ptrdiff_t { 0 } != cPredeterminedMovementOnCut)) {
 
-            // If we push aspirational cuts from our left to right, we don't change the window bounds when that happens
-            // because if we did, then there would be no bounds on where we can 100% guarantee that no changes will affect
-            // outside regions
+            // If we push cuts either left or right, we don't change the window bounds within which we modify
+            // the aspirational cuts, because if we did, then there would be no bounds on where we can 
+            // 100% guarantee that no changes will affect outside regions
+            // we do however keep track of our visibility bounds since we'll use that when computing
+            // the plan and the priority of our cuts since those can observe other aspirational cuts
+            // outside of the bounds which we modify the aspirational cuts
 
-            if(cPredeterminedMovementOnCut < 0) {
+            if(UNPREDICTABLE(cPredeterminedMovementOnCut < ptrdiff_t { 0 })) {
                do {
                   pCutCur = pCutCur->m_pPrev;
                   EBM_ASSERT(!pCutCur->IsCut());
 
-                  if(k_MovementCutValue != cPredeterminedMovementOnCutLowLow) {
-                     pCutLowLowWindow = pCutLowLowWindow->m_pPrev;
-                     cPredeterminedMovementOnCutLowLow = pCutLowLowWindow->m_cPredeterminedMovementOnCut;
+                  if(k_movementDoneCut != cPredeterminedMovementOnCutLowLow) {
+                     pCutLowLowVisibilityInclusiveBoundary = pCutLowLowVisibilityInclusiveBoundary->m_pPrev;
+                     cPredeterminedMovementOnCutLowLow = pCutLowLowVisibilityInclusiveBoundary->m_cPredeterminedMovementOnCut;
                   } else {
                      // we've hit a cut boundary which we can't move, so we get closer to it
-                     EBM_ASSERT(2 <= cLowLowRangesWindow);
-                     --cLowLowRangesWindow;
+                     EBM_ASSERT(2 <= cRangesLowLowPlan);
+                     --cRangesLowLowPlan;
                   }
-                  EBM_ASSERT((k_MovementCutValue == cPredeterminedMovementOnCutLowLow) == pCutLowLowWindow->IsCut());
+                  EBM_ASSERT((k_movementDoneCut == cPredeterminedMovementOnCutLowLow) == pCutLowLowVisibilityInclusiveBoundary->IsCut());
 
-                  // TODO: since the movement of pCutHighHighWindow is dependent on hitting a maximum, we should
-                  // be able to calculate the required movement, and then loop it without all this checking and
-                  // conditional increments.
-                  if(cHighHighRangesWindow == k_CutExploreDistance) {
-                     pCutHighHighWindow = pCutHighHighWindow->m_pPrev;
-                     EBM_ASSERT(!pCutHighHighWindow->IsCut());
+                  if(k_cutExploreDistance == cRangesHighHighPlan) {
+                     pCutHighHighVisibilityInclusiveBoundary = pCutHighHighVisibilityInclusiveBoundary->m_pPrev;
+                     EBM_ASSERT(!pCutHighHighVisibilityInclusiveBoundary->IsCut());
                   } else {
-                     EBM_ASSERT(pCutHighHighWindow->IsCut());
-                     // we've escape the length that we need for our window, so we're in the void
-                     ++cHighHighRangesWindow;
+                     EBM_ASSERT(pCutHighHighVisibilityInclusiveBoundary->IsCut());
+                     ++cRangesHighHighPlan;
                   }
 
                   ++cPredeterminedMovementOnCut;
-               } while(0 != cPredeterminedMovementOnCut);
-               cPredeterminedMovementOnCutHighHigh = pCutHighHighWindow->m_cPredeterminedMovementOnCut;
-               EBM_ASSERT((k_MovementCutValue == cPredeterminedMovementOnCutLowLow) == pCutLowLowWindow->IsCut());
+               } while(UNLIKELY(ptrdiff_t { 0 } != cPredeterminedMovementOnCut));
+               cPredeterminedMovementOnCutHighHigh = pCutHighHighVisibilityInclusiveBoundary->m_cPredeterminedMovementOnCut;
             } else {
                do {
                   pCutCur = pCutCur->m_pNext;
-                  // TODO: since the movement of pCutLowLowWindow is dependent on hitting a maximum, we should
-                  // be able to calculate the required movement, and then loop it without all this checking and
-                  // conditional increments.
-                  if(cLowLowRangesWindow == k_CutExploreDistance) {
-                     pCutLowLowWindow = pCutLowLowWindow->m_pNext;
-                     EBM_ASSERT(!pCutLowLowWindow->IsCut());
+                  EBM_ASSERT(!pCutCur->IsCut());
+
+                  if(k_cutExploreDistance == cRangesLowLowPlan) {
+                     pCutLowLowVisibilityInclusiveBoundary = pCutLowLowVisibilityInclusiveBoundary->m_pNext;
+                     EBM_ASSERT(!pCutLowLowVisibilityInclusiveBoundary->IsCut());
                   } else {
-                     EBM_ASSERT(pCutLowLowWindow->IsCut());
-                     // we've escape the length that we need for our window, so we're in the void
-                     ++cLowLowRangesWindow;
+                     EBM_ASSERT(pCutLowLowVisibilityInclusiveBoundary->IsCut());
+                     ++cRangesLowLowPlan;
                   }
-                  if(k_MovementCutValue != cPredeterminedMovementOnCutHighHigh) {
-                     pCutHighHighWindow = pCutHighHighWindow->m_pNext;
-                     cPredeterminedMovementOnCutHighHigh = pCutHighHighWindow->m_cPredeterminedMovementOnCut;
+
+                  if(k_movementDoneCut != cPredeterminedMovementOnCutHighHigh) {
+                     pCutHighHighVisibilityInclusiveBoundary = pCutHighHighVisibilityInclusiveBoundary->m_pNext;
+                     cPredeterminedMovementOnCutHighHigh = pCutHighHighVisibilityInclusiveBoundary->m_cPredeterminedMovementOnCut;
                   } else {
                      // we've hit a cut boundary which we can't move, so we get closer to it
-                     EBM_ASSERT(2 <= cHighHighRangesWindow);
-                     --cHighHighRangesWindow;
+                     EBM_ASSERT(2 <= cRangesHighHighPlan);
+                     --cRangesHighHighPlan;
                   }
-                  EBM_ASSERT((k_MovementCutValue == cPredeterminedMovementOnCutHighHigh) == pCutHighHighWindow->IsCut());
+                  EBM_ASSERT((k_movementDoneCut == cPredeterminedMovementOnCutHighHigh) == pCutHighHighVisibilityInclusiveBoundary->IsCut());
 
                   --cPredeterminedMovementOnCut;
-               } while(0 != cPredeterminedMovementOnCut);
-               cPredeterminedMovementOnCutLowLow = pCutLowLowWindow->m_cPredeterminedMovementOnCut;
-               EBM_ASSERT((k_MovementCutValue == cPredeterminedMovementOnCutHighHigh) == pCutHighHighWindow->IsCut());
+               } while(UNLIKELY(ptrdiff_t { 0 } != cPredeterminedMovementOnCut));
+               cPredeterminedMovementOnCutLowLow = pCutLowLowVisibilityInclusiveBoundary->m_cPredeterminedMovementOnCut;
             }
          }
 
-         EBM_ASSERT(1 <= cLowLowRangesWindow);
-         EBM_ASSERT(1 <= cHighHighRangesWindow);
-
-         EBM_ASSERT(pCutLowBoundary < pCutCur);
-         EBM_ASSERT(pCutCur < pCutHighBoundary);
-
-         EBM_ASSERT(pCutLowLowWindow < pCutCur);
-         EBM_ASSERT(pCutCur < pCutHighHighWindow);
+         EBM_ASSERT(size_t { 1 } <= cRangesLowLowPlan);
+         EBM_ASSERT(size_t { 1 } <= cRangesHighHighPlan);
 
          EBM_ASSERT(!pCutCur->IsCut());
 
          pCutCur->SetCut();
 
-         // TODO: after we set m_iVal, do we really still need to keep m_iValAspirationalFloat??
-         pCutCur->m_iValAspirationalFloat = static_cast<FloatEbmType>(iVal);
+         const FloatEbmType iValFloat = static_cast<FloatEbmType>(iVal);
+
+         pCutCur->m_iValAspirationalFloat = iValFloat;
          pCutCur->m_iVal = iVal;
 
-         // TODO: ok, we've just finished materializing the cut based on the plan we developed earlier.  We'll
+         // TODO: We've just finished materializing the cut based on the plan we developed earlier.  We'll
          // now go and re-do our aspirational cut plan for all the aspirational cuts within our visibility windows
          // on each side.  Before we do that though, we can do a quick check to find out what the maximum number of 
          // cuts we could place is between our new materialized cut and our visibility windows.  If it's not possible
          // even in theory to place 20 cuts on our low side, then our aspirational plans shouldn't even consider that
          // Also, if we delete/move aspirational cuts early, there's a higher chance that we'll be able to re-use them
-         // in a good place.  I think fundamentally if we move between two boundaries if we move by the minimum window
-         // size we should get the same minimum if we start from the left or right, but I might be wrong about that,
-         // so check it with NDEBUG code.  There's actually two subtle issues here that we need to handle differently:
+         // in a good place.  See the DetermineRangesMax(...) function on how to do this.
+         // There's actually two subtle issues here that we need to handle differently:
          //  1) we need to determine if we should delete any cuts on our left or right.  To do this go from our
          //     materialized cut and jump by cSamplesPerBinMin using aNeighbourJumps until we hit the aspirational
          //     or materialized window.  If the window is aspirational we can either use the edge that's within the
@@ -1659,73 +1700,93 @@ static bool CutCuttingRange(
          //  2) We want to know how many potential cuts there are on each side of each aspirational cut that we're
          //     we're considering.  Since we're processing like 20-50 of these, we can slide the value window
          //     with cSamplesPerBinMin as we slide the visiblility windows to the left or right
+         //
+         // We only need to know if we have more than k_cutExploreDistance items, since we can't have more than
+         // that number of cuts until our border.  We can allocate a fixed size array on the stack with 
+         // k_cutExploreDistance size_t indexes and fill these from the lower and higher sides, and then if we
+         // cross any of those indexes we know if we've gone below a limit.
 
 
-         // TODO : improve this if our boundary is a size_t
-         FloatEbmType stepPoint = pCutLowBoundary->m_iValAspirationalFloat;
-         FloatEbmType stepLength = (static_cast<FloatEbmType>(iVal) - stepPoint) / 
-            static_cast<FloatEbmType>(cLowRangesBoundary);
+         FloatEbmType stepPoint = pCutLowModificationExclusiveBoundary->m_iValAspirationalFloat;
+         FloatEbmType stepLength;
+         if(pCutLowModificationExclusiveBoundary->IsCut()) {
+            EBM_ASSERT(pCutLowModificationExclusiveBoundary->m_iVal < iVal);
+            stepLength = static_cast<FloatEbmType>(iVal - pCutLowModificationExclusiveBoundary->m_iVal);
+         } else {
+            EBM_ASSERT(stepPoint < iValFloat);
+            stepLength = iValFloat - stepPoint;
+         }
+         stepLength /= static_cast<FloatEbmType>(cRangesLowModification);
 
          CutPoint * pCutAspirational = pCutCur;
-         while(0 != --cLowRangesBoundary) {
+         while(LIKELY(size_t { 0 } != --cRangesLowModification)) {
             pCutAspirational = pCutAspirational->m_pPrev;
             const FloatEbmType iValAspirationalFloat = stepPoint + 
-               stepLength * static_cast<FloatEbmType>(cLowRangesBoundary);
+               stepLength * static_cast<FloatEbmType>(cRangesLowModification);
             pCutAspirational->m_iValAspirationalFloat = iValAspirationalFloat;
          }
 
-         // TODO : improve this if our boundary is a size_t
-         stepPoint = static_cast<FloatEbmType>(iVal);
-         stepLength = (pCutHighBoundary->m_iValAspirationalFloat - stepPoint) /
-            static_cast<FloatEbmType>(cHighRangesBoundary);
+         stepPoint = iValFloat;
+         if(pCutHighModificationExclusiveBoundary->IsCut()) {
+            EBM_ASSERT(iVal < pCutHighModificationExclusiveBoundary->m_iVal);
+            stepLength = static_cast<FloatEbmType>(pCutHighModificationExclusiveBoundary->m_iVal - iVal);
+         } else {
+            EBM_ASSERT(iValFloat < pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat);
+            stepLength = pCutHighModificationExclusiveBoundary->m_iValAspirationalFloat - stepPoint;
+         }
+         stepLength /= static_cast<FloatEbmType>(cRangesHighModification);
 
-         pCutAspirational = pCutHighBoundary;
-         while(0 != --cHighRangesBoundary) {
+         pCutAspirational = pCutHighModificationExclusiveBoundary;
+         while(size_t { 0 } != --cRangesHighModification) {
             pCutAspirational = pCutAspirational->m_pPrev;
             const FloatEbmType iValAspirationalFloat = stepPoint + 
-               stepLength * static_cast<FloatEbmType>(cHighRangesBoundary);
+               stepLength * static_cast<FloatEbmType>(cRangesHighModification);
             pCutAspirational->m_iValAspirationalFloat = iValAspirationalFloat;
          }
 
-         CutPoint * pCutLowLowNeighbourhoodWindow = pCutLowLowWindow;
-         CutPoint * pCutLowHighNeighbourhoodWindow = pCutCur;
-         size_t cLowHighRangesNeighbourhoodWindow = 0;
+         CutPoint * pCutLowLowPlanInclusiveBoundary = pCutLowLowVisibilityInclusiveBoundary;
+         CutPoint * pCutLowHighPlanInclusiveBoundary = pCutCur;
+         size_t cRangesLowHighPlan = size_t { 0 };
 
-         size_t iValLowLow = k_MovementCutValue == cPredeterminedMovementOnCutLowLow ? pCutLowLowNeighbourhoodWindow->m_iVal : k_illegalIndex;
-         size_t iValLowHigh = iVal;
+         size_t iValLowLowPlan = LIKELY(k_movementDoneCut == cPredeterminedMovementOnCutLowLow) ? 
+            pCutLowLowPlanInclusiveBoundary->m_iVal : k_valNotLegal;
+         size_t iValLowHighPlan = iVal;
 
-         CutPoint * pCutLowNeighbourhoodCur = pCutCur;
+         CutPoint * pCutLowPlanCur = pCutCur;
 
          while(true) {
-            if(PREDICTABLE(k_illegalIndex == iValLowLow)) {
-               EBM_ASSERT(!pCutLowLowNeighbourhoodWindow->IsCut());
-               pCutLowLowNeighbourhoodWindow = pCutLowLowNeighbourhoodWindow->m_pPrev;
-               if(UNLIKELY(pCutLowLowNeighbourhoodWindow->IsCut())) {
-                  iValLowLow = pCutLowLowNeighbourhoodWindow->m_iVal;
+            if(UNLIKELY(k_valNotLegal == iValLowLowPlan)) {
+               EBM_ASSERT(!pCutLowLowPlanInclusiveBoundary->IsCut());
+               pCutLowLowPlanInclusiveBoundary = pCutLowLowPlanInclusiveBoundary->m_pPrev;
+               if(UNLIKELY(pCutLowLowPlanInclusiveBoundary->IsCut())) {
+                  iValLowLowPlan = pCutLowLowPlanInclusiveBoundary->m_iVal;
                }
             } else {
-               EBM_ASSERT(pCutLowLowNeighbourhoodWindow->IsCut());
-               --cLowLowRangesWindow;
-               if(UNLIKELY(0 == cLowLowRangesWindow)) {
+               EBM_ASSERT(pCutLowLowPlanInclusiveBoundary->IsCut());
+               --cRangesLowLowPlan;
+               if(UNLIKELY(0 == cRangesLowLowPlan)) {
+                  // we've reached the hard boundary of a materialized cut
                   break;
                }
             }
 
-            if(PREDICTABLE(k_CutExploreDistance == cLowHighRangesNeighbourhoodWindow)) {
-               pCutLowHighNeighbourhoodWindow = pCutLowHighNeighbourhoodWindow->m_pPrev;
-               EBM_ASSERT(!pCutLowHighNeighbourhoodWindow->IsCut());
-               iValLowHigh = k_illegalIndex;
-               if(UNLIKELY(pCutLowHighNeighbourhoodWindow == pCutLowBoundary)) {
+            if(UNLIKELY(k_cutExploreDistance == cRangesLowHighPlan)) {
+               pCutLowHighPlanInclusiveBoundary = pCutLowHighPlanInclusiveBoundary->m_pPrev;
+               EBM_ASSERT(!pCutLowHighPlanInclusiveBoundary->IsCut());
+               iValLowHighPlan = k_valNotLegal;
+               if(UNLIKELY(pCutLowHighPlanInclusiveBoundary == pCutLowModificationExclusiveBoundary)) {
+                  // we've reached the boundary of where we changed the aspirational cuts, so no changes should
+                  // occur beyond this point
                   break;
                }
             } else {
-               EBM_ASSERT(pCutLowHighNeighbourhoodWindow->IsCut());
-               EBM_ASSERT(k_illegalIndex != iValLowHigh);
-               ++cLowHighRangesNeighbourhoodWindow;
+               EBM_ASSERT(pCutLowHighPlanInclusiveBoundary->IsCut());
+               EBM_ASSERT(k_valNotLegal != iValLowHighPlan);
+               ++cRangesLowHighPlan;
             }
 
-            pCutLowNeighbourhoodCur = pCutLowNeighbourhoodCur->m_pPrev;
-            EBM_ASSERT(!pCutLowNeighbourhoodCur->IsCut()); // we should have exited on 0 == cCutLowerLower beforehand
+            pCutLowPlanCur = pCutLowPlanCur->m_pPrev;
+            EBM_ASSERT(!pCutLowPlanCur->IsCut()); // we should have exited on 0 == cRangesLowLowPlan beforehand
 
             BuildNeighbourhoodPlan(
                cSamples,
@@ -1736,57 +1797,61 @@ static bool CutCuttingRange(
                cCuttableItems,
                aNeighbourJumps,
 
-               cLowLowRangesWindow,
-               iValLowLow,
-               pCutLowLowNeighbourhoodWindow->m_iValAspirationalFloat,
+               cRangesLowLowPlan,
+               iValLowLowPlan,
+               pCutLowLowPlanInclusiveBoundary->m_iValAspirationalFloat,
 
-               cLowHighRangesNeighbourhoodWindow,
-               iValLowHigh,
-               pCutLowHighNeighbourhoodWindow->m_iValAspirationalFloat,
+               cRangesLowHighPlan,
+               iValLowHighPlan,
+               pCutLowHighPlanInclusiveBoundary->m_iValAspirationalFloat,
 
-               pCutLowNeighbourhoodCur
+               pCutLowPlanCur
             );
          }
 
-         CutPoint * pCutHighHighNeighbourhoodWindow = pCutHighHighWindow;
-         CutPoint * pCutHighLowNeighbourhoodWindow = pCutCur;
-         size_t cHighLowRangesNeighbourhoodWindow = 0;
+         CutPoint * pCutHighHighPlanInclusiveBoundary = pCutHighHighVisibilityInclusiveBoundary;
+         CutPoint * pCutHighLowPlanInclusiveBoundary = pCutCur;
+         size_t cRangesHighLowPlan = size_t { 0 };
 
-         size_t iValHighHigh = k_MovementCutValue == cPredeterminedMovementOnCutHighHigh ? pCutHighHighNeighbourhoodWindow->m_iVal : k_illegalIndex;
-         size_t iValHighLow = iVal;
+         size_t iValHighHighPlan = LIKELY(k_movementDoneCut == cPredeterminedMovementOnCutHighHigh) ? 
+            pCutHighHighPlanInclusiveBoundary->m_iVal : k_valNotLegal;
+         size_t iValHighLowPlan = iVal;
 
-         CutPoint * pCutHighNeighbourhoodCur = pCutCur;
+         CutPoint * pCutHighPlanCur = pCutCur;
 
          while(true) {
-            if(PREDICTABLE(k_illegalIndex == iValHighHigh)) {
-               EBM_ASSERT(!pCutHighHighNeighbourhoodWindow->IsCut());
-               pCutHighHighNeighbourhoodWindow = pCutHighHighNeighbourhoodWindow->m_pNext;
-               if(UNLIKELY(pCutHighHighNeighbourhoodWindow->IsCut())) {
-                  iValHighHigh = pCutHighHighNeighbourhoodWindow->m_iVal;
+            if(UNLIKELY(k_valNotLegal == iValHighHighPlan)) {
+               EBM_ASSERT(!pCutHighHighPlanInclusiveBoundary->IsCut());
+               pCutHighHighPlanInclusiveBoundary = pCutHighHighPlanInclusiveBoundary->m_pNext;
+               if(UNLIKELY(pCutHighHighPlanInclusiveBoundary->IsCut())) {
+                  iValHighHighPlan = pCutHighHighPlanInclusiveBoundary->m_iVal;
                }
             } else {
-               EBM_ASSERT(pCutHighHighNeighbourhoodWindow->IsCut());
-               --cHighHighRangesWindow;
-               if(UNLIKELY(0 == cHighHighRangesWindow)) {
+               EBM_ASSERT(pCutHighHighPlanInclusiveBoundary->IsCut());
+               --cRangesHighHighPlan;
+               if(UNLIKELY(0 == cRangesHighHighPlan)) {
+                  // we've reached the hard boundary of a materialized cut
                   break;
                }
             }
 
-            if(PREDICTABLE(k_CutExploreDistance == cHighLowRangesNeighbourhoodWindow)) {
-               pCutHighLowNeighbourhoodWindow = pCutHighLowNeighbourhoodWindow->m_pNext;
-               EBM_ASSERT(!pCutHighLowNeighbourhoodWindow->IsCut());
-               iValHighLow = k_illegalIndex;
-               if(UNLIKELY(pCutHighLowNeighbourhoodWindow == pCutHighBoundary)) {
+            if(UNLIKELY(k_cutExploreDistance == cRangesHighLowPlan)) {
+               pCutHighLowPlanInclusiveBoundary = pCutHighLowPlanInclusiveBoundary->m_pNext;
+               EBM_ASSERT(!pCutHighLowPlanInclusiveBoundary->IsCut());
+               iValHighLowPlan = k_valNotLegal;
+               if(UNLIKELY(pCutHighLowPlanInclusiveBoundary == pCutHighModificationExclusiveBoundary)) {
+                  // we've reached the boundary of where we changed the aspirational cuts, so no changes should
+                  // occur beyond this point
                   break;
                }
             } else {
-               EBM_ASSERT(pCutHighLowNeighbourhoodWindow->IsCut());
-               EBM_ASSERT(k_illegalIndex != iValHighLow);
-               ++cHighLowRangesNeighbourhoodWindow;
+               EBM_ASSERT(pCutHighLowPlanInclusiveBoundary->IsCut());
+               EBM_ASSERT(k_valNotLegal != iValHighLowPlan);
+               ++cRangesHighLowPlan;
             }
 
-            pCutHighNeighbourhoodCur = pCutHighNeighbourhoodCur->m_pNext;
-            EBM_ASSERT(!pCutHighNeighbourhoodCur->IsCut());
+            pCutHighPlanCur = pCutHighPlanCur->m_pNext;
+            EBM_ASSERT(!pCutHighPlanCur->IsCut()); // we should have exited on 0 == cRangesHighHighPlan beforehand
 
             BuildNeighbourhoodPlan(
                cSamples,
@@ -1797,32 +1862,27 @@ static bool CutCuttingRange(
                cCuttableItems,
                aNeighbourJumps,
 
-               cHighLowRangesNeighbourhoodWindow,
-               iValHighLow,
-               pCutHighLowNeighbourhoodWindow->m_iValAspirationalFloat,
+               cRangesHighLowPlan,
+               iValHighLowPlan,
+               pCutHighLowPlanInclusiveBoundary->m_iValAspirationalFloat,
 
-               cHighHighRangesWindow,
-               iValHighHigh,
-               pCutHighHighNeighbourhoodWindow->m_iValAspirationalFloat,
+               cRangesHighHighPlan,
+               iValHighHighPlan,
+               pCutHighHighPlanInclusiveBoundary->m_iValAspirationalFloat,
 
-               pCutHighNeighbourhoodCur
+               pCutHighPlanCur
             );
          }
 
-         // TODO: Ok, so each cut point we've examined our neighbours and selected a right/left decison that we can live with
-         // for ourselves.  Each cut point does this independently.  We can then maybe do an analysis to see if our
+         // TODO: For each cut point we've examined our neighbourhood and selected a right/left decison that we can live with
+         // for that cut point independent of all the other ones.  We can then maybe do an analysis to see if our
          // ideas for the neighbours match up with theirs and do some jiggering if the outcome within a window is bad
-         // this allows us to see a bigger area, so we have to be careful that we don't look beyond our visibility
+         // this allows us to see a bigger area, so we have to be careful that changes don't cascade beyond our visibility
          // window.  Perhaps we allow changes to ASPIRATIONAL cuts within our hard change boundary, but don't
          // change things outside of this window.
 
          EBM_ASSERT(pBestCutPoints->end() != pBestCutPoints->find(pCutCur));
          pBestCutPoints->erase(pCutCur);
-
-         CutPoint * pCutLowLowPriorityWindow = pCutLowLowWindow;
-         CutPoint * pCutLowHighPriorityWindow = pCutCur;
-         size_t cLowHighRangesPriorityWindow = 0;
-         CutPoint * pCutLowPriorityCur = pCutCur;
 
          // Ok, so now we've computed our aspirational cut points, and decided where we'd go for each cut point if we
          // were forced to select a cut point now.  We now need to calculate the PRIORITY for all our cut points
@@ -1873,8 +1933,9 @@ static bool CutCuttingRange(
          //      stretch from either boundary (the low boundary and the high boundary).  Take the one that has the highest
          //      percentage stretch
          //
-         // I like #3 (it's the one we have implemented now), because after we choose each cut everything (within the windows) get re-shuffed.  We might not
-         // even fall on some of the problematic ranges anymore.  Choosing the cuts with the highest "tension" causes
+         // I like #3 (it's the one we have implemented now), because after we choose each cut everything 
+         // within the visibility windows gets re-shuffed.  We might not even fall on some of the problematic 
+         // ranges anymore.  Choosing the cuts with the highest "tension" causes
          // us to decide the longest ranges that are the closest to one of our existing imovable boundaries thus
          // we're nailing down the ones that'll cause the most movement first while we have the most room, and it also
          // captures the idea that these are bad ones that need to be selected.  It'll tend to try deciding cuts
@@ -1882,91 +1943,123 @@ static bool CutCuttingRange(
          // the boundaries are more critical.  As we materialize cuts we'll get closer to the center and those will start
          // to want attention
 
-         while(true) {
-            if(PREDICTABLE(k_CutExploreDistance == cLowHighRangesPriorityWindow)) {
-               pCutLowHighPriorityWindow = pCutLowHighPriorityWindow->m_pPrev;
-               EBM_ASSERT(!pCutLowHighPriorityWindow->IsCut());
-               if(UNLIKELY(pCutLowHighPriorityWindow == pCutLowBoundary)) {
-                  break;
-               }
-            } else {
-               EBM_ASSERT(pCutLowHighPriorityWindow->IsCut());
-               ++cLowHighRangesPriorityWindow;
-            }
+         CutPoint * pCutLowLowPriorityInclusiveBoundary = pCutLowLowVisibilityInclusiveBoundary;
+         CutPoint * pCutLowHighPriorityInclusiveBoundary = pCutCur;
+         size_t cRangesLowHighPriority = 0;
+         CutPoint * pCutLowPriorityCur = pCutCur;
 
+         while(true) {
             pCutLowPriorityCur = pCutLowPriorityCur->m_pPrev;
-            if(PREDICTABLE(k_MovementCutValue != cPredeterminedMovementOnCutLowLow)) {
-               EBM_ASSERT(!pCutLowLowPriorityWindow->IsCut());
-               pCutLowLowPriorityWindow = pCutLowLowPriorityWindow->m_pPrev;
-               cPredeterminedMovementOnCutLowLow = pCutLowLowPriorityWindow->m_cPredeterminedMovementOnCut;
+            if(PREDICTABLE(k_movementDoneCut != cPredeterminedMovementOnCutLowLow)) {
+               EBM_ASSERT(!pCutLowLowPriorityInclusiveBoundary->IsCut());
+               pCutLowLowPriorityInclusiveBoundary = pCutLowLowPriorityInclusiveBoundary->m_pPrev;
+               cPredeterminedMovementOnCutLowLow = pCutLowLowPriorityInclusiveBoundary->m_cPredeterminedMovementOnCut;
             } else {
-               EBM_ASSERT(pCutLowLowPriorityWindow->IsCut());
-               if(UNLIKELY(pCutLowPriorityCur == pCutLowLowPriorityWindow)) {
+               EBM_ASSERT(pCutLowLowPriorityInclusiveBoundary->IsCut());
+               if(UNLIKELY(pCutLowPriorityCur == pCutLowLowPriorityInclusiveBoundary)) {
                   EBM_ASSERT(pCutLowPriorityCur->IsCut());
                   break;
                }
             }
             EBM_ASSERT(!pCutLowPriorityCur->IsCut());
-            EBM_ASSERT(pBestCutPoints->end() != pBestCutPoints->find(pCutLowPriorityCur));
-            pBestCutPoints->erase(pCutLowPriorityCur);
 
-            CalculatePriority(
-               pCutLowLowPriorityWindow->m_iValAspirationalFloat,
-               pCutLowHighPriorityWindow->m_iValAspirationalFloat,
-               pCutLowPriorityCur
-            );
+            if(PREDICTABLE(k_cutExploreDistance == cRangesLowHighPriority)) {
+               pCutLowHighPriorityInclusiveBoundary = pCutLowHighPriorityInclusiveBoundary->m_pPrev;
+               EBM_ASSERT(!pCutLowHighPriorityInclusiveBoundary->IsCut());
+               if(UNLIKELY(pCutLowHighPriorityInclusiveBoundary == pCutLowModificationExclusiveBoundary)) {
 
-            EBM_ASSERT(!pCutLowPriorityCur->IsCut());
-            pBestCutPoints->insert(pCutLowPriorityCur);
-         }
+#ifndef NDEBUG
 
-         CutPoint * pCutHighHighPriorityWindow = pCutHighHighWindow;
-         CutPoint * pCutHighLowPriorityWindow = pCutCur;
-         size_t cHighLowRangesPriorityWindow = 0;
-         CutPoint * pCutHighPriorityCur = pCutCur;
+                  FloatEbmType debugPriority = CalculatePriority(
+                     pCutLowLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
+                     pCutLowHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
+                     pCutLowPriorityCur
+                  );
 
-         while(true) {
-            if(PREDICTABLE(k_CutExploreDistance == cHighLowRangesPriorityWindow)) {
-               pCutHighLowPriorityWindow = pCutHighLowPriorityWindow->m_pNext;
-               EBM_ASSERT(!pCutHighLowPriorityWindow->IsCut());
-               if(UNLIKELY(pCutHighLowPriorityWindow == pCutHighBoundary)) {
+                  // these should be calculated via the same pathway, so should be identical
+                  EBM_ASSERT(debugPriority == pCutLowPriorityCur->m_priority);
+
+#endif // NDEBUG
+
                   break;
                }
             } else {
-               EBM_ASSERT(pCutHighLowPriorityWindow->IsCut());
-               ++cHighLowRangesPriorityWindow;
+               EBM_ASSERT(pCutLowHighPriorityInclusiveBoundary->IsCut());
+               ++cRangesLowHighPriority;
             }
 
+            EBM_ASSERT(pBestCutPoints->end() != pBestCutPoints->find(pCutLowPriorityCur));
+            pBestCutPoints->erase(pCutLowPriorityCur);
+
+            pCutLowPriorityCur->m_priority = CalculatePriority(
+               pCutLowLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
+               pCutLowHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
+               pCutLowPriorityCur
+            );
+
+            pBestCutPoints->insert(pCutLowPriorityCur);
+         }
+
+         CutPoint * pCutHighHighPriorityInclusiveBoundary = pCutHighHighVisibilityInclusiveBoundary;
+         CutPoint * pCutHighLowPriorityInclusiveBoundary = pCutCur;
+         size_t cRangesHighLowPriority = 0;
+         CutPoint * pCutHighPriorityCur = pCutCur;
+
+         while(true) {
             pCutHighPriorityCur = pCutHighPriorityCur->m_pNext;
-            if(PREDICTABLE(k_MovementCutValue != cPredeterminedMovementOnCutHighHigh)) {
-               EBM_ASSERT(!pCutHighHighPriorityWindow->IsCut());
-               pCutHighHighPriorityWindow = pCutHighHighPriorityWindow->m_pNext;
-               cPredeterminedMovementOnCutHighHigh = pCutHighHighPriorityWindow->m_cPredeterminedMovementOnCut;
+            if(PREDICTABLE(k_movementDoneCut != cPredeterminedMovementOnCutHighHigh)) {
+               EBM_ASSERT(!pCutHighHighPriorityInclusiveBoundary->IsCut());
+               pCutHighHighPriorityInclusiveBoundary = pCutHighHighPriorityInclusiveBoundary->m_pNext;
+               cPredeterminedMovementOnCutHighHigh = pCutHighHighPriorityInclusiveBoundary->m_cPredeterminedMovementOnCut;
             } else {
-               EBM_ASSERT(pCutHighHighPriorityWindow->IsCut());
-               if(UNLIKELY(pCutHighPriorityCur == pCutHighHighPriorityWindow)) {
+               EBM_ASSERT(pCutHighHighPriorityInclusiveBoundary->IsCut());
+               if(UNLIKELY(pCutHighPriorityCur == pCutHighHighPriorityInclusiveBoundary)) {
                   EBM_ASSERT(pCutHighPriorityCur->IsCut());
                   break;
                }
             }
             EBM_ASSERT(!pCutHighPriorityCur->IsCut());
+
+            if(PREDICTABLE(k_cutExploreDistance == cRangesHighLowPriority)) {
+               pCutHighLowPriorityInclusiveBoundary = pCutHighLowPriorityInclusiveBoundary->m_pNext;
+               EBM_ASSERT(!pCutHighLowPriorityInclusiveBoundary->IsCut());
+               if(UNLIKELY(pCutHighLowPriorityInclusiveBoundary == pCutHighModificationExclusiveBoundary)) {
+
+#ifndef NDEBUG
+
+                  FloatEbmType debugPriority = CalculatePriority(
+                     pCutHighLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
+                     pCutHighHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
+                     pCutHighPriorityCur
+                  );
+
+                  // these should be calculated via the same pathway, so should be identical
+                  EBM_ASSERT(debugPriority == pCutHighPriorityCur->m_priority);
+
+#endif // NDEBUG
+
+                  break;
+               }
+            } else {
+               EBM_ASSERT(pCutHighLowPriorityInclusiveBoundary->IsCut());
+               ++cRangesHighLowPriority;
+            }
+
             EBM_ASSERT(pBestCutPoints->end() != pBestCutPoints->find(pCutHighPriorityCur));
             pBestCutPoints->erase(pCutHighPriorityCur);
 
-            CalculatePriority(
-               pCutHighLowPriorityWindow->m_iValAspirationalFloat,
-               pCutHighHighPriorityWindow->m_iValAspirationalFloat,
+            pCutHighPriorityCur->m_priority = CalculatePriority(
+               pCutHighLowPriorityInclusiveBoundary->m_iValAspirationalFloat,
+               pCutHighHighPriorityInclusiveBoundary->m_iValAspirationalFloat,
                pCutHighPriorityCur
             );
 
-            EBM_ASSERT(!pCutHighPriorityCur->IsCut());
             pBestCutPoints->insert(pCutHighPriorityCur);
          }
       }
    } catch(...) {
-      // TODO : HANDLE THIS
       LOG_0(TraceLevelWarning, "WARNING CutSegment exception");
-      exit(1); // for now take this draconian step
+      return true;
    }
 
    IronCuts();
@@ -2040,8 +2133,8 @@ static bool TreeSearchCutSegment(
       size_t iCutCur = 1;
       size_t iValLow = size_t { 0 };
       FloatEbmType iValAspirationalLowFloat = FloatEbmType { 0 };
-      size_t cRangesHigh = k_CutExploreDistance;
-      size_t iValHigh = k_illegalIndex;
+      size_t cRangesHigh = k_cutExploreDistance;
+      size_t iValHigh = k_valNotLegal;
       do {
          pCutNext->m_pPrev = pCutCur;
          pCutCur = pCutNext;
@@ -2050,26 +2143,26 @@ static bool TreeSearchCutSegment(
 
          size_t cRangesLow;
          const ptrdiff_t iRangeLow = 
-            static_cast<ptrdiff_t>(iCutCur) - static_cast<ptrdiff_t>(k_CutExploreDistance);
+            static_cast<ptrdiff_t>(iCutCur) - static_cast<ptrdiff_t>(k_cutExploreDistance);
          if(UNLIKELY(iRangeLow <= ptrdiff_t { 0 })) {
             cRangesLow = iCutCur;
             EBM_ASSERT(size_t { 0 } == iValLow);
             EBM_ASSERT(FloatEbmType { 0 } == iValAspirationalLowFloat);
          } else {
-            cRangesLow = k_CutExploreDistance;
-            iValLow = k_illegalIndex;
+            cRangesLow = k_cutExploreDistance;
+            iValLow = k_valNotLegal;
             iValAspirationalLowFloat = stepInit * static_cast<FloatEbmType>(static_cast<size_t>(iRangeLow));
          }
 
          FloatEbmType iValAspirationalHighFloat;
-         size_t iRangeHigh = iCutCur + k_CutExploreDistance;
+         size_t iRangeHigh = iCutCur + k_cutExploreDistance;
          if(UNLIKELY(cRanges <= iRangeHigh)) {
             cRangesHigh = cRanges - iCutCur;
             iValHigh = cCuttableItems;
             iValAspirationalHighFloat = cCuttableItemsFloat;
          } else {
-            EBM_ASSERT(k_CutExploreDistance == cRangesHigh);
-            EBM_ASSERT(k_illegalIndex == iValHigh);
+            EBM_ASSERT(k_cutExploreDistance == cRangesHigh);
+            EBM_ASSERT(k_valNotLegal == iValHigh);
             iValAspirationalHighFloat = stepInit * static_cast<FloatEbmType>(iRangeHigh);
          }
 
@@ -2106,15 +2199,15 @@ static bool TreeSearchCutSegment(
       // now calculate priorities
       CutPoint * pCutLow = &aCutsWithENDPOINTS[0];
       CutPoint * pCutCenter = &aCutsWithENDPOINTS[1];
-      const size_t iRangeHigh = cRanges <= size_t { 1 } + k_CutExploreDistance ? 
-         cRanges : size_t { 1 } + k_CutExploreDistance;
+      const size_t iRangeHigh = cRanges <= size_t { 1 } + k_cutExploreDistance ? 
+         cRanges : size_t { 1 } + k_cutExploreDistance;
       CutPoint * pCutHigh = &aCutsWithENDPOINTS[iRangeHigh];
 
 #ifndef NDEBUG
 
       EBM_ASSERT(aCutsWithENDPOINTS[0].m_pNext == pCutCenter); // this will fail if we remove items above in the future
       CutPoint * pCutDebug = pCutCenter;
-      for(size_t cDebugRemaining = k_CutExploreDistance; nullptr != pCutDebug->m_pNext && 0 < cDebugRemaining ; 
+      for(size_t cDebugRemaining = k_cutExploreDistance; nullptr != pCutDebug->m_pNext && 0 < cDebugRemaining ; 
          --cDebugRemaining) 
       {
          pCutDebug = pCutDebug->m_pNext;
@@ -2131,7 +2224,7 @@ static bool TreeSearchCutSegment(
          EBM_ASSERT(pCutLow < pCutCenter);
          EBM_ASSERT(pCutCenter < pCutHigh);
 
-         CalculatePriority(
+         pCutCenter->m_priority = CalculatePriority(
             pCutLow->m_iValAspirationalFloat,
             pCutHigh->m_iValAspirationalFloat,
             pCutCenter
@@ -2140,7 +2233,7 @@ static bool TreeSearchCutSegment(
          EBM_ASSERT(!pCutCenter->IsCut());
          pBestCutPoints->insert(pCutCenter);
 
-         if(UNLIKELY(k_CutExploreDistance != cLowRanges)) {
+         if(UNLIKELY(k_cutExploreDistance != cLowRanges)) {
             ++cLowRanges;
          } else {
             pCutLow = pCutLow->m_pNext;
@@ -3361,22 +3454,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
 
          FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
          try {
-            std::set<CuttingRange *, CompareCuttingRange> queue;
+            std::set<CuttingRange *, CompareCuttingRange> priorityQueue;
             StuffCutsIntoCuttingRanges(
-               queue,
+               priorityQueue,
                cCuttingRanges,
                aCuttingRange,
                cSamplesPerBinMin,
                cCutPointsMax
             );
             do {
-               EBM_ASSERT(!queue.empty());
+               EBM_ASSERT(!priorityQueue.empty());
                // remove the item that is the worst CuttingRange for us to add a new cut to.  We'll keep
                // the cutting ranges that are closest to the threshold for adding new cuts in the queue so that
                // if we can't use all our cuts, we can move the cuts to the next best choice
-               auto iterator = prev(queue.end());
+               auto iterator = prev(priorityQueue.end());
                CuttingRange * const pCuttingRange = *iterator;
-               queue.erase(iterator);
+               priorityQueue.erase(iterator);
 
                const size_t cRanges = pCuttingRange->m_cRangesAssigned;
 
@@ -3469,7 +3562,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   const CutPoint * pNext = pCutPoint->m_pNext;
                   while(LIKELY(nullptr != pNext)) {
                      const size_t iVal = pCutPoint->m_iVal;
-                     if(LIKELY(k_illegalIndex != iVal)) {
+                     if(LIKELY(k_valNotLegal != iVal)) {
                         const FloatEbmType * const pCut = pCuttableValuesStart + iVal;
                         EBM_ASSERT(featureValues < pCut);
                         EBM_ASSERT(pCut < featureValues + countSamples);
@@ -3603,7 +3696,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      ++pCutPointsLowerBoundInclusive;
                   }
                }
-            } while(!queue.empty());
+            } while(!priorityQueue.empty());
          } catch(...) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
 
