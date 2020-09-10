@@ -223,9 +223,6 @@ jobs:
   dependsOn: 'Build_Package'
   strategy:
     matrix:
-      LinuxPython35:
-        python.version: '3.5'
-        image.name: 'ubuntu-18.04'
       LinuxPython36:
         python.version: '3.6'
         image.name: 'ubuntu-18.04'
@@ -235,9 +232,6 @@ jobs:
       LinuxPython38:
         python.version: '3.8'
         image.name: 'ubuntu-18.04'
-#      WindowsPython35:
-#        python.version: '3.5'
-#        image.name: 'windows-2019'
       WindowsPython36:
         python.version: '3.6'
         image.name: 'windows-2019'
@@ -247,9 +241,6 @@ jobs:
       WindowsPython38:
         python.version: '3.8'
         image.name: 'windows-2019'
-#       MacPython35:
-#         python.version: '3.5'
-#         image.name: 'macOS-10.14'
       MacPython36:
         python.version: '3.6'
         image.name: 'macOS-10.14'
