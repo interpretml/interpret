@@ -73,48 +73,49 @@ INLINE_ALWAYS constexpr static FloatEbmType GetTweakingMultipleNegative(const si
 }
 
 // VERIFIED 2020-09
-INLINE_ALWAYS constexpr static int CountBase10CharactersAbs(int n) noexcept {
+INLINE_ALWAYS constexpr static size_t CountBase10CharactersAbs(int n) noexcept {
    // this works for negative numbers too
-   return int { 0 } == n / int { 10 } ? int { 1 } : int { 1 } + CountBase10CharactersAbs(n / int { 10 });
+   return int { 0 } == n / int { 10 } ? size_t { 1 } : size_t { 1 } + CountBase10CharactersAbs(n / int { 10 });
 }
 
 // According to the C++ documentation, std::numeric_limits<FloatEbmType>::max_digits10 - 1 digits 
 // are required after the period in +9.1234567890123456e-301 notation, so for a double, the values would be 
 // 17 == std::numeric_limits<FloatEbmType>::max_digits10, and printf format specifier "%.16e"
-constexpr int k_cDigitsAfterPeriod = std::numeric_limits<FloatEbmType>::max_digits10 - 1;
+constexpr size_t k_cDigitsAfterPeriod = size_t { std::numeric_limits<FloatEbmType>::max_digits10 } - size_t { 1 };
 
 // Unfortunately, min_exponent10 doesn't seem to include subnormal numbers, so although it's the true
 // minimum exponent in terms of the floating point exponential representation, it isn't the true minimum exponent 
 // when considering numbers converted into text.  To counter this, we add 1 extra digit.  For double numbers
-// the largest exponent (308), smallest exponent for normal (-307), and the smallest exponent for subnormal (-324) 
+// the largest exponent (+308), the smallest exponent for normal (-308), and the smallest exponent for subnormal (-324) 
 // all have 3 digits, but in the more general scenario we might go from N to N+1 digits, but I think
 // it's really unlikely to go from N to N+2, since in the simplest case that would be a factor of 10 in the 
 // exponential term (if the low number was almost N and the high number was just a bit above N+2), and 
 // subnormal numbers shouldn't increase the exponent by that much ever.
-constexpr int k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
-constexpr int k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + 1;
-constexpr int k_cExponentTextDigits =
+constexpr size_t k_cExponentMaxTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::max_exponent10);
+constexpr size_t k_cExponentMinTextDigits = CountBase10CharactersAbs(std::numeric_limits<FloatEbmType>::min_exponent10) + size_t { 1 };
+constexpr size_t k_cExponentTextDigits =
    k_cExponentMaxTextDigits < k_cExponentMinTextDigits ? k_cExponentMinTextDigits : k_cExponentMaxTextDigits;
 
 // we have a function that ensures our output is exactly in the format that we require.  That format is:
 // "+9.1234567890123456e-301" (this is when 16 == cDigitsAfterPeriod, the value for doubles)
-// the exponential term can have some variation.  It can be any number of digits and the +- isn't required
+// the exponential term can have some variation.  It can be any number of digits and the '+' isn't required
 // our text float handling code handles these conditions without requiring modification.
 // 3 characters for "+9."
 // cDigitsAfterPeriod characters for the mantissa text
 // 2 characters for "e-"
 // cExponentTextDigits characters for the exponent text
 // 1 character for null terminator
-constexpr int k_iExp = 3 + k_cDigitsAfterPeriod;
-constexpr int k_cCharsFloatPrint = k_iExp + 2 + k_cExponentTextDigits + 1;
+constexpr size_t k_iExp = size_t { 3 } + k_cDigitsAfterPeriod;
+constexpr size_t k_cCharsFloatPrint = k_iExp + size_t { 2 } + k_cExponentTextDigits + size_t { 1 };
 
 // TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
-// TODO: change this to 1, and try some other distances in between just to stress the algorithm a bit more
+// TODO: change k_cutExploreDistance to 1, and try some other distances in between just to stress the algorithm a bit more
 constexpr size_t k_cutExploreDistance = 20;
 constexpr ptrdiff_t k_movementDoneCut = std::numeric_limits<ptrdiff_t>::lowest();
 constexpr FloatEbmType k_priorityNoCutsPossible = std::numeric_limits<FloatEbmType>::lowest();
 constexpr size_t k_valNotLegal = std::numeric_limits<size_t>::max();
 
+// VERIFIED 2020-09
 struct NeighbourJump final {
 
    NeighbourJump() = default; // preserve our POD status
@@ -132,6 +133,7 @@ static_assert(std::is_trivial<NeighbourJump>::value,
 static_assert(std::is_pod<NeighbourJump>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
+// VERIFIED 2020-09
 struct CutPoint final {
    CutPoint() = default; // preserve our POD status
    ~CutPoint() = default; // preserve our POD status
@@ -175,6 +177,7 @@ static_assert(std::is_pod<CutPoint>::value,
 // there is no legal negative value, so having this negative value provides us a safe priority for the queue
 constexpr FloatEbmType k_illegalAvgCuttableRangeWidthAfterAddingOneCut = std::numeric_limits<FloatEbmType>::lowest();
 
+// VERIFIED 2020-09
 struct CuttingRange final {
 
    // we divide the space into long segments of uncuttable equal values separated by spaces where we can put
@@ -254,6 +257,7 @@ public:
    }
 };
 
+// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
    const FloatEbmType sideDistance, 
    const FloatEbmType totalDistance, 
@@ -262,7 +266,7 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
 ) noexcept {
    // our goal is to, as much as possible, avoid having small ranges at the end.  We don't care as much
    // about having long ranges so much as small range since small ranges allow the boosting algorithm to overfit
-   // more easily.  This function takes a 
+   // more easily.
 
    EBM_ASSERT(2 <= cRanges); // we require there to be at least one range on the left and one range on the right
    EBM_ASSERT(0 <= sideDistance);
@@ -281,60 +285,52 @@ INLINE_RELEASE_UNTEMPLATED size_t CalculateRangesMaximizeMin(
 
 #ifndef NDEBUG
 
-   FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
+   const FloatEbmType avg = std::min(sideDistance / cSide, (totalDistance - sideDistance) / (cRanges - cSide));
    if(2 <= cSide) {
-      const size_t denominator = cRanges - cSide + 1;
-      FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / denominator);
+      const FloatEbmType avgOther = std::min(sideDistance / (cSide - 1), (totalDistance - sideDistance) / (cRanges - cSide + 1));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
    if(2 <= cRanges - cSide) {
-      const size_t denominator = cSide + 1;
-      FloatEbmType avgOther = std::min(sideDistance / denominator, (totalDistance - sideDistance) / (cRanges - cSide - 1));
+      const FloatEbmType avgOther = std::min(sideDistance / (cSide + 1), (totalDistance - sideDistance) / (cRanges - cSide - 1));
       EBM_ASSERT(avgOther <= avg * 1.00001);
    }
 
 #endif
 
-   if(cSide != cRangesSideOriginal) {
+   if(UNLIKELY(cSide != cRangesSideOriginal)) {
       // sometimes, "cRangesPlusOne * sideDistance == totalDistance" and when that happens we can get a situation
       // where symmetry breaks down as we round up when the numbers are in one orientation and round down (since
       // they are reversed) in the opposite direction.  By adding a slight bias towards keeping the original 
       // number of ranges we can avoid divergence on exact matches
-      if(cSide < cRangesSideOriginal) {
-         // we're below the original.  check to see if increasing the number helps us any
-         cSide = static_cast<size_t>(result * GetTweakingMultiplePositive(1));
-         // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
-         // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
-         // Same thing on the top end, we'd have to skip over an entire range
-         // But maybe, under some extreme floating point ranges, it might be possible, so keep these checks for now
-         cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
-         cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
-         EBM_ASSERT(0 < cSide);
-         EBM_ASSERT(cSide < cRanges);
-      } else {
-         // we're above our original.  check to see if decreasing the number helps us any
-         cSide = static_cast<size_t>(result * GetTweakingMultipleNegative(1));
-         // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
-         // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
-         // Same thing on the top end, we'd have to skip over an entire range
-         // But maybe, under some extreme floating point ranges, it might be possible, so keep these checks for now
-         cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
-         cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
-         EBM_ASSERT(0 < cSide);
-         EBM_ASSERT(cSide < cRanges);
-      }
+
+      // move slighly in the direction towards zero to put us off exact integers and move us in a helpful direction
+      const FloatEbmType multiple = UNPREDICTABLE(cSide < cRangesSideOriginal) ? 
+         GetTweakingMultiplePositive(1) : GetTweakingMultipleNegative(1);
+
+      cSide = static_cast<size_t>(result * multiple);
+
+      // I don't see how our new cSide could be outside of boundaries since cRangesSideOriginal would need
+      // to be 2 to even consider a 1 in the new range, and then it'd have to actually be less than 1.
+      // Same thing on the top end, we'd have to skip over an entire range
+      // But maybe, under some extreme floating point ranges, it might be possible, so keep these checks for now
+      cSide = std::max(size_t { 1 }, cSide); // don't allow zero ranges on the low side
+      cSide = std::min(cSide, cRanges - 1); // don't allow zero ranges on the high side
    }
+   EBM_ASSERT(0 < cSide);
+   EBM_ASSERT(cSide < cRanges);
 
    return cSide;
 }
 
+// VERIFIED 2020-09
 static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
 
-   // -infinity is converted to min_float and +infinity is converted to max_float in our data prior to discretization
+   // -infinity is converted to std::numeric_limits<FloatEbmType>::lowest() and 
+   // +infinity is converted to std::numeric_limits<FloatEbmType>::max() in our data prior to discretization
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
@@ -365,7 +361,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
 
    // these should be correct in IEEE 754, even with floating point inexactness, due to "correct rounding"
    // in theory, EBM_ASSERT(low <= avg); AND EBM_ASSERT(avg < high); should be ok, but there are bad IEEE 754 
-   // implementations that might correctly implement "correct rounding", like the Intel x87 instructions
+   // implementations that might incorrectly implement "correct rounding", like the Intel x87 instructions
 
    // if our result is equal to low, then high should be guaranteed to be the next highest floating point number
    // in theory, EBM_ASSERT(low < avg || low == avg && std::nextafter(low, high) == high); should be ok, but
@@ -377,7 +373,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
       // In that case, our only option is to make our cut equal to high, since we use lower bound inclusive semantics
       //
       // this check has the added benefit that if we have a compiler/platform that isn't truely IEEE 754 compliant,
-      // which is sadly often the case due to double rounding and other issues, then we'd return high, 
+      // which is sadly common due to double rounding and other issues, then we'd return high, 
       // which is a legal value for us to cut on, and if we have values this close, it's appropriate to just return
       // high instead of doing a more exhaustive examination
       //
@@ -397,6 +393,7 @@ static FloatEbmType ArithmeticMean(const FloatEbmType low, const FloatEbmType hi
    return avg;
 }
 
+// VERIFIED 2020-09
 static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEbmType high) noexcept {
    // nan values represent missing, and are filtered out from our data prior to discretization
    EBM_ASSERT(!std::isnan(low));
@@ -423,7 +420,7 @@ static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEb
       EBM_ASSERT(!std::isinf(result)); // even in a pathalogic processor I don't see how this would get +-infinity
       // high was positive, and it's hard to see how even a bad floating point implementation would make this negative.
       EBM_ASSERT(FloatEbmType { 0 } <= result);
-      if(FloatEbmType { 0 } == result) {
+      if(UNLIKELY(FloatEbmType { 0 } == result)) {
          // if high is very small, underflow is possible.  In that case high must be very close to zero, so
          // we can just return high.  We can't return zero since with lower bound inclusivity that would put zero
          // in the wrong bin
@@ -438,18 +435,21 @@ static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEb
       // some compilers with some compiler settings.  Using <= helps avoid optimization away because the compiler
       // might assume that nothing is larger than max if it thinks there's no +infinity.  If we reach exactly max, then
       // no harm in computing via exp and log
-      if(UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= result)) {
-         // if we overflow, which is certainly possible with multiplication, use an exponential approach
+      if(UNLIKELY(UNLIKELY(std::numeric_limits<FloatEbmType>::max() <= result) || 
+         UNLIKELY(result <= 1048576 * std::numeric_limits<FloatEbmType>::min()))) 
+      {
+         // if we overflow, which is certainly possible with multiplication, use an exponential approach.  If we 
+         // underflow to zero, or get close to it to the point we'd be losing precision, use an exponential approach.
 
-         // if low was zero, then the multiplication should not have overflowed to infinity even in a pathalogical implementation
          EBM_ASSERT(FloatEbmType { 0 } < low);
+         EBM_ASSERT(FloatEbmType { 0 } < high);
 
-         // in a reasonable world, with both low and high being non-zero, non-nan, non-infinity, and both having been 
-         // made to be positive values before calling log, log should return a non-overflowing or non-underflowing 
+         // in a reasonable world, with both low and high being non-zero, non-nan, non-infinity, and 
+         // positive values before calling log, log should return a non-overflowing or non-underflowing 
          // value since all floating point values from -min to +max for floats give us reasonable log values.  
          // Since our logs should average to a number that is between them, the exp value should result in a value 
          // between them in almost all cases, so it shouldn't overflow or underflow either.  BUT, with floating
-         // point jitter, we might get any of these scenarios, but this is a real corner case that we can presume
+         // point jitter, we might get any of these scenarios.  This is a real corner case that we can presume
          // is very very very rare.
 
          // there is no way that the result of log is going to overflow, so we add before multiplying by 0.5 
@@ -496,7 +496,11 @@ static FloatEbmType GeometricMeanPositives(const FloatEbmType low, const FloatEb
    return result;
 }
 
+// VERIFIED 2020-09
 static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
+   EBM_ASSERT(FloatEbmType { 0 } <= val);
+   EBM_ASSERT(nullptr != str);
+
    // NOTE: str must be a buffer with k_cCharsFloatPrint characters available 
 
    // the C++ standard is pretty good about harmonizing the "e" format.  There is some openess to what happens
@@ -517,11 +521,14 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
       str,
       k_cCharsFloatPrint,
       g_pPrintfForRoundTrip,
-      k_cDigitsAfterPeriod,
+      int { k_cDigitsAfterPeriod },
       val
    );
-   if(cCharsWithoutNullTerminator <= k_iExp || k_cCharsFloatPrint <= cCharsWithoutNullTerminator) {
-      // cCharsWithoutNullTerminator <= iExp checks for both negative values returned and strings that are too short
+   if(cCharsWithoutNullTerminator < int { k_iExp + size_t { 2 } } || 
+      int { k_cCharsFloatPrint } <= cCharsWithoutNullTerminator) 
+   {
+      // cCharsWithoutNullTerminator < iExp + 2 checks for both negative values returned and strings that are too short
+      // we need the 'e' and at least one digit, so +2 is legal, and anything less is illegal
       return true;
    }
    char ch;
@@ -559,44 +566,19 @@ static bool FloatToString(const FloatEbmType val, char * const str) noexcept {
    ++pch;
    char * endptr = pch; // set it to the error value so that even if the function doesn't set it we get an error
    strtol(pch, &endptr, 10);
-   if(endptr == pch) {
+   if(endptr <= pch) {
       return true;
    }
    return false;
 }
 
-INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * str) noexcept {
-   str = &str[k_iExp + 1];
+// VERIFIED 2020-09
+INLINE_RELEASE_UNTEMPLATED static long GetExponent(const char * const str) noexcept {
    // we previously checked that this converted to a long in FloatToString
-   return strtol(str, nullptr, 10);
+   return strtol(&str[k_iExp + size_t { 1 }], nullptr, int { 10 });
 }
 
-INLINE_ALWAYS static int IntToString(const int val, char * const str, const int index) noexcept {
-   // TODO: add some static checks either here or our caller that ensures we have enough room in the str buffer to
-   // write the integer that we're writing (we check below that we don't overwrite, so that's good)
-   // TODO: also, is the val we usually write actually a long, since we use strtol above??
-
-   // snprintf says to use the buffer size for the "n" term, but in alternate unicode versions it says # of characters
-   // with the null terminator as one of the characters, so a string of 5 characters plus a null terminator would be 6.
-   // For char strings, the number of bytes and the number of characters is the same.  I use number of characters for 
-   // future-proofing the n term to unicode versions, so n-1 characters other than the null terminator can fill 
-   // the buffer.  According to the docs, snprintf returns the number of characters that would have been written MINUS 
-   // the null terminator.
-
-   constexpr static char g_pPrintfLongInt[] = "%d";
-
-   const int cRemainingChars = k_cCharsFloatPrint - index;
-   int cCharsWithoutNullTerminator = snprintf(
-      &str[index],
-      cRemainingChars,
-      g_pPrintfLongInt,
-      val
-   );
-   cCharsWithoutNullTerminator = UNLIKELY(k_cCharsFloatPrint - index <= cCharsWithoutNullTerminator) ? -1 :
-      cCharsWithoutNullTerminator;
-   return cCharsWithoutNullTerminator;
-}
-
+// VERIFIED 2020-09
 INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept {
    // we only convert str values that we've verified to conform, OR chopped versions of these which we know to be legal
    // If the chopped representations underflow (possible on chopping to lower) or 
@@ -624,7 +606,11 @@ INLINE_ALWAYS static FloatEbmType StringToFloat(const char * const str) noexcept
    return val;
 }
 
-static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdenticalCharsRequired) noexcept {
+// VERIFIED 2020-09
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType StringToFloatWithFixup(
+   const char * const str, 
+   const size_t iIdenticalCharsRequired
+) noexcept {
    char strRehydrate[k_cCharsFloatPrint];
    FloatEbmType ret = StringToFloat(str);
    if(FloatToString(ret, strRehydrate)) {
@@ -644,22 +630,22 @@ static FloatEbmType StringToFloatWithFixup(const char * const str, int iIdentica
    return ret;
 }
 
-static void StringToFloatChopped(
+static bool StringToFloatChopped(
    const char * const pStr,
-   int iTruncateMantissaTextDigitsAfter,
+   size_t iTruncateMantissaTextDigitsAfter,
    FloatEbmType & lowChopOut,
    FloatEbmType & highChopOut
 ) noexcept {
    EBM_ASSERT(nullptr != pStr);
    // don't pass us a non-truncated string, since we should handle anything that gets to that level differently
-   EBM_ASSERT(iTruncateMantissaTextDigitsAfter <= k_cDigitsAfterPeriod);
+   EBM_ASSERT(iTruncateMantissaTextDigitsAfter < k_cDigitsAfterPeriod);
 
    char strTruncated[k_cCharsFloatPrint];
 
-   iTruncateMantissaTextDigitsAfter = 0 < iTruncateMantissaTextDigitsAfter ?
-      1 + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
+   iTruncateMantissaTextDigitsAfter = size_t { 0 } < iTruncateMantissaTextDigitsAfter ?
+      size_t { 1 } + iTruncateMantissaTextDigitsAfter : iTruncateMantissaTextDigitsAfter;
 
-   iTruncateMantissaTextDigitsAfter += 2; // add one for the sign character and one for the first character
+   iTruncateMantissaTextDigitsAfter += size_t { 2 }; // add one for the sign character and one for the first character
 
    memcpy(strTruncated, pStr, iTruncateMantissaTextDigitsAfter);
    strcpy(&strTruncated[iTruncateMantissaTextDigitsAfter], &pStr[k_iExp]);
@@ -667,9 +653,9 @@ static void StringToFloatChopped(
    EBM_ASSERT('+' == pStr[0]);
    lowChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
 
-   char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - 1];
+   char * pIncrement = &strTruncated[iTruncateMantissaTextDigitsAfter - size_t { 1 }];
    char ch;
-   if(2 == iTruncateMantissaTextDigitsAfter) {
+   if(size_t { 2 } == iTruncateMantissaTextDigitsAfter) {
       goto start_at_top;
    }
    while(true) {
@@ -680,10 +666,23 @@ static void StringToFloatChopped(
          ch = *pIncrement;
          if('9' == ch) {
             // oh, great.  now we need to increment our exponential
+            int exponent = GetExponent(pStr) + 1;
             *pIncrement = '1';
             *(pIncrement + 1) = 'e';
-            int exponent = GetExponent(pStr) + 1;
-            IntToString(exponent, strTruncated, 3);
+
+            constexpr static char g_pPrintfLongInt[] = "%+d";
+            // for the size -> one for the '+' or '-' sign, k_cExponentTextDigits for the digits, 1 for null terminator
+            int cCharsWithoutNullTerminator = snprintf(
+               pIncrement + size_t { 2 },
+               size_t { 1 } + k_cExponentTextDigits + size_t { 1 },
+               g_pPrintfLongInt,
+               exponent
+            );
+            if(cCharsWithoutNullTerminator <= int { 0 } || 
+               int { size_t { 1 } + k_cExponentTextDigits } < cCharsWithoutNullTerminator) 
+            {
+               return true;
+            }
          } else {
             *pIncrement = ch + 1;
          }
@@ -698,7 +697,7 @@ static void StringToFloatChopped(
       --pIncrement;
    }
    highChopOut = StringToFloatWithFixup(strTruncated, iTruncateMantissaTextDigitsAfter);
-   return;
+   return false;
 }
 
 INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
@@ -711,7 +710,8 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    EBM_ASSERT(!std::isnan(low));
    EBM_ASSERT(!std::isnan(high));
 
-   // -infinity is converted to min_float and +infinity is converted to max_float in our data prior to discretization
+   // -infinity is converted to std::numeric_limits<FloatEbmType>::lowest() and 
+   // +infinity is converted to std::numeric_limits<FloatEbmType>::max() in our data prior to discretization
    EBM_ASSERT(!std::isinf(low));
    EBM_ASSERT(!std::isinf(high));
 
@@ -723,18 +723,29 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
    // since we can always return the high value given that our binning is lower bound inclusive
 
    bool bNegative = false;
-   if(low < FloatEbmType { 0 }) {
-      if(FloatEbmType { 0 } <= high) {
-         // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
-         // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
-         // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
-         // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
-         return FloatEbmType { 0 };
+   if(low <= FloatEbmType { 0 }) {
+      if(FloatEbmType { 0 } == low) {
+         // TODO : SOMETHING
+      } else {
+
+         if(FloatEbmType { 0 } <= high) {
+            if(FloatEbmType { 0 } == high) {
+               // TODO : SOMETHING
+            }
+
+            // if low is negative and high is zero or positive, a natural cut point is zero.  Also, this solves the issue
+            // that we can't take the geometric mean of mixed positive/negative numbers.  This works since we use 
+            // lower bound inclusivity, so a cut point of 0 will include the number 0 in the upper bin.  Normally we try 
+            // to avoid putting a cut directly on one of the numbers, but in the case of zero it seems appropriate.
+            return FloatEbmType { 0 };
+         }
+         const FloatEbmType tmpLow = low;
+         low = -high;
+         high = -tmpLow;
+         bNegative = true;
       }
-      const FloatEbmType tmpLow = low;
-      low = -high;
-      high = -tmpLow;
-      bNegative = true;
+   } else {
+      EBM_ASSERT(FloatEbmType { 0 } < high);
    }
 
    EBM_ASSERT(FloatEbmType { 0 } <= low);
@@ -756,9 +767,14 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
          goto done;
       }
 
-      StringToFloatChopped(strLow, 0, lowChop, highChop);
+      StringToFloatChopped(strLow, size_t { 0 }, lowChop, ret);
+      // ignore the return since we previously set ret to high
 
-      ret = highChop;
+      EBM_ASSERT(ret <= high); // it's hard to be above std::numeric_limits<FloatEbmType>::max()
+      if(ret <= low) {
+         ret = high;
+      }
+
       goto done;
    } else {
       char strAvg[k_cCharsFloatPrint];
@@ -790,11 +806,16 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
          goto done;
       }
 
+      // TODO: instead of using a difference in the number of digits, use a proportial measurement that needs to
+      // be 100 higher.  
       if(lowExp + 2 <= highExp) {
          EBM_ASSERT(low < avg);
          EBM_ASSERT(avg < high);
 
-         StringToFloatChopped(strAvg, 0, lowChop, highChop);
+         if(StringToFloatChopped(strAvg, size_t { 0 }, lowChop, highChop)) {
+            // TODO: something
+         }
+         // TODO: handle lowChop and/or highChop being out of bounds
 
          // TODO : handle low == 0.  We probalby want to invert these divisions, or change them to multiplications
          const FloatEbmType highRatio = high / lowChop;
@@ -807,7 +828,7 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
          }
          goto done;
       } else {
-         for(int i = 0; i < k_cDigitsAfterPeriod; ++i) {
+         for(size_t i = 0; i < k_cDigitsAfterPeriod; ++i) {
             FloatEbmType lowLow;
             FloatEbmType lowHigh;
             FloatEbmType avgLow;
@@ -815,9 +836,18 @@ INLINE_RELEASE_UNTEMPLATED static FloatEbmType GetInterpretableCutPointFloat(
             FloatEbmType highLow;
             FloatEbmType highHigh;
 
-            StringToFloatChopped(strLow, i, lowLow, lowHigh);
-            StringToFloatChopped(strAvg, i, avgLow, avgHigh);
-            StringToFloatChopped(strHigh, i, highLow, highHigh);
+            if(StringToFloatChopped(strLow, i, lowLow, lowHigh)) {
+               // TODO: something
+            }
+            // TODO: handle lowLow and/or lowHigh being out of bounds
+            if(StringToFloatChopped(strAvg, i, avgLow, avgHigh)) {
+               // TODO: something
+            }
+            // TODO: handle avgLow and/or avgHigh being out of bounds
+            if(StringToFloatChopped(strHigh, i, highLow, highHigh)) {
+               // TODO: something
+            }
+            // TODO: handle highLow and/or highHigh being out of bounds
 
             if(lowHigh < avgLow && avgLow < highLow && low < avgLow && avgLow <= high) {
                // avgLow is a possibility
@@ -853,6 +883,7 @@ done:;
    return ret;
 }
 
+// VERIFIED 2020-09
 INLINE_RELEASE_UNTEMPLATED static void IronCuts() noexcept {
    // - TODO: POST-HEALING
    //   Our cutting algorithm is greedy and some of the early decisions might not have been optimal.  
@@ -2371,9 +2402,9 @@ INLINE_RELEASE_UNTEMPLATED static size_t DetermineRangesMax(
    return cRanges;
 }
 
+// VERIFIED 2020-09
 static bool AddCutToRanges(
-   std::set<CuttingRange *, CompareCuttingRange> & queue,
-   const size_t cSamplesPerBinMin
+   std::set<CuttingRange *, CompareCuttingRange> & queue
 ) {
    EBM_ASSERT(!queue.empty());
 
@@ -2392,23 +2423,22 @@ static bool AddCutToRanges(
    pCuttingRangeAdd->m_cRangesAssigned = cRangesCur;
 
    FloatEbmType avgRangeWidthAfterAddingOneCut = k_illegalAvgCuttableRangeWidthAfterAddingOneCut;
+   EBM_ASSERT(cRangesCur <= pCuttingRangeAdd->m_cRangesMax);
    if(LIKELY(pCuttingRangeAdd->m_cRangesMax != cRangesCur)) {
       // we need to re-add our CuttingRange back into the priority queue.  If we were assigned a new range
       // again, this is how many we'd be at
       const size_t cRangesNext = cRangesCur + size_t { 1 };
       const size_t cCuttableItems = pCuttingRangeAdd->m_cCuttableValues;
-      // use more exact integer math here
-      if(LIKELY(cSamplesPerBinMin <= cCuttableItems / cRangesNext)) {
-         avgRangeWidthAfterAddingOneCut =
-            static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRangesNext);
 
-         // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
-         // size_t values, it should have exactly the same value when cCuttableItems and cRangesNext
-         // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
-         // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
-         // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
-         // priorities, unlike for CutPoints
-      }
+      avgRangeWidthAfterAddingOneCut =
+         static_cast<FloatEbmType>(cCuttableItems) / static_cast<FloatEbmType>(cRangesNext);
+
+      // don't muliply by GetTweakingMultiple, since avgRangeWidthAfterAddingOneCut is derrived from
+      // size_t values, it should have exactly the same value when cCuttableItems and cRangesNext
+      // are the same, so we should then get to compare on m_uniqueTiebreaker after seeing the exact
+      // floating point equality.  Also, unlike the CutPoint priority value, we don't want to affect
+      // m_avgCuttableRangeWidthAfterAddingOneCut since even distant regions shouldn't have divergent
+      // priorities, unlike for CutPoints
    }
    pCuttingRangeAdd->m_avgCuttableRangeWidthAfterAddingOneCut = avgRangeWidthAfterAddingOneCut;
    queue.insert(pCuttingRangeAdd);
@@ -2519,7 +2549,7 @@ static void StuffCutsIntoCuttingRanges(
    cRemainingCuts -= cCuttingRanges;
    // the queue can initially be empty if all the ranges are too short to make them cSamplesPerBinMin
    while(LIKELY(0 != cRemainingCuts)) {
-      if(AddCutToRanges(queue, cSamplesPerBinMin)) {
+      if(AddCutToRanges(queue)) {
          break;
       }
       --cRemainingCuts;
@@ -2812,17 +2842,14 @@ INLINE_RELEASE_UNTEMPLATED static bool DetermineSymmetricDirection(
 }
 
 // VERIFIED 08-2020
-INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
+INLINE_RELEASE_UNTEMPLATED static void ConstructJumps(
    const size_t cSamples, 
-   const FloatEbmType * const aValues
+   const FloatEbmType * const aValues, 
+   NeighbourJump * const aNeighbourJump
 ) noexcept {
    EBM_ASSERT(1 <= cSamples);
    EBM_ASSERT(nullptr != aValues);
-
-   NeighbourJump * const aNeighbourJump = EbmMalloc<NeighbourJump>(cSamples);
-   if(nullptr == aNeighbourJump) {
-      return nullptr;
-   }
+   EBM_ASSERT(nullptr != aNeighbourJump);
 
    FloatEbmType valNext = aValues[0];
    const FloatEbmType * pValue = aValues;
@@ -2843,7 +2870,7 @@ INLINE_RELEASE_UNTEMPLATED static NeighbourJump * ConstructJumps(
                ++pNeighbourJump;
             } while(PREDICTABLE(pNeighbourJumpEnd != pNeighbourJump));
 
-            return aNeighbourJump;
+            return;
          }
          valNext = *pValue;
       } while(PREDICTABLE(valNext == valCur));
@@ -3399,16 +3426,21 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
             goto exit_with_log;
          }
 
-         // TODO: we can allocate all our memory in one single allocation!
-
-         NeighbourJump * const aNeighbourJumps = ConstructJumps(cSamples, featureValues);
-         if(UNLIKELY(nullptr == aNeighbourJumps)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aNeighbourJumps");
-
+         if(UNLIKELY(IsMultiplyError(cSamples, sizeof(NeighbourJump)))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cSamples, sizeof(NeighbourJump))");
             countCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
+         const size_t cBytesNeighbourJumps = cSamples * sizeof(NeighbourJump);
+
+         if(UNLIKELY(IsMultiplyError(cCutPointsMax, sizeof(FloatEbmType *)))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cCutPointsMax, sizeof(FloatEbmType *))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesValueCutPointers = cCutPointsMax * sizeof(FloatEbmType *);
 
          // we limit the cCutPointsMax to no more than cSamples - 1.  cSamples can't be anywhere close to
          // the maximum size_t though since the caller must have allocated cSamples floats in featureValues, and
@@ -3417,28 +3449,64 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          EBM_ASSERT(cCutPointsMax <= std::numeric_limits<size_t>::max() - size_t { 2 });
          // include storage for the end points
          const size_t cCutPointsWithEndpointsMax = cCutPointsMax + size_t { 2 };
-         CutPoint * const aCutPoints = EbmMalloc<CutPoint>(cCutPointsWithEndpointsMax);
-         if(UNLIKELY(nullptr == aCutPoints)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aCutPoints");
+         if(UNLIKELY(IsMultiplyError(cCutPointsWithEndpointsMax, sizeof(CutPoint)))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cCutPointsWithEndpointsMax, sizeof(CutPoint))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesCutPoints = cCutPointsWithEndpointsMax * sizeof(CutPoint);
 
-            free(aNeighbourJumps);
+         if(UNLIKELY(IsMultiplyError(cCuttingRanges, sizeof(CuttingRange)))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsMultiplyError(cCuttingRanges, sizeof(CuttingRange))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesCuttingRanges = cCuttingRanges * sizeof(CuttingRange);
 
+
+         const size_t cBytesToNeighbourJump = size_t { 0 };
+         const size_t cBytesToValueCutPointers = cBytesToNeighbourJump + cBytesNeighbourJumps;
+
+         if(UNLIKELY(IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsAddError(cBytesToValueCutPointers, cBytesValueCutPointers))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesToCutPoints = cBytesToValueCutPointers + cBytesValueCutPointers;
+
+         if(UNLIKELY(IsAddError(cBytesToCutPoints, cBytesCutPoints))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsAddError(cBytesToCutPoints, cBytesCutPoints))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesToCuttingRange = cBytesToCutPoints + cBytesCutPoints;
+
+         if(UNLIKELY(IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints IsAddError(cBytesToCuttingRange, cBytesCuttingRanges))");
+            countCutPointsRet = IntEbmType { 0 };
+            ret = IntEbmType { 1 };
+            goto exit_with_log;
+         }
+         const size_t cBytesToEnd = cBytesToCuttingRange + cBytesCuttingRanges;
+
+         char * const pMem = static_cast<char *>(malloc(cBytesToEnd));
+         if(UNLIKELY(nullptr == pMem)) {
+            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == pMem");
             countCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
 
-         CuttingRange * const aCuttingRange = EbmMalloc<CuttingRange>(cCuttingRanges);
-         if(UNLIKELY(nullptr == aCuttingRange)) {
-            LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints nullptr == aCuttingRange");
+         NeighbourJump * const aNeighbourJumps = reinterpret_cast<NeighbourJump *>(pMem + cBytesToNeighbourJump);
+         const FloatEbmType ** const apValueCutTops = reinterpret_cast<const FloatEbmType **>(pMem + cBytesToValueCutPointers);
+         CutPoint * const aCutPoints = reinterpret_cast<CutPoint *>(pMem + cBytesToCutPoints);
+         CuttingRange * const aCuttingRange = reinterpret_cast<CuttingRange *>(pMem + cBytesToCuttingRange);
 
-            free(aCutPoints);
-            free(aNeighbourJumps);
-
-            countCutPointsRet = IntEbmType { 0 };
-            ret = IntEbmType { 1 };
-            goto exit_with_log;
-         }
+         ConstructJumps(cSamples, featureValues, aNeighbourJumps);
 
          // we always XOR (with != for bools) a random number with bSymmetryReversal, so there is no need to
          // XOR bSymmetryReversal with a random number here
@@ -3452,7 +3520,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
          FillCuttingRangeBasics(cSamples, featureValues, cUncuttableRangeLengthMin, cSamplesPerBinMin, cCuttingRanges, aCuttingRange);
          FillCuttingRangeNeighbours(cSamples, featureValues, cCuttingRanges, aCuttingRange);
 
-         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
+         const FloatEbmType ** ppValueCutTop = apValueCutTops;
          try {
             std::set<CuttingRange *, CompareCuttingRange> priorityQueue;
             StuffCutsIntoCuttingRanges(
@@ -3536,9 +3604,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                   )) {
                      // any error messages should have been written to the log inside TradeCutSegment
 
-                     free(aCuttingRange);
-                     free(aCutPoints);
-                     free(aNeighbourJumps);
+                     free(pMem);
 
                      countCutPointsRet = IntEbmType { 0 };
                      ret = IntEbmType { 1 };
@@ -3553,9 +3619,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      const FloatEbmType * const pCut = pCuttableValuesStart;
                      EBM_ASSERT(featureValues < pCut);
                      EBM_ASSERT(pCut < featureValues + countSamples);
-                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                     *pCutPointsLowerBoundInclusive = cut;
-                     ++pCutPointsLowerBoundInclusive;
+                     *ppValueCutTop = pCut;
+                     ++ppValueCutTop;
                   }
 
                   const CutPoint * pCutPoint = aCutPoints->m_pNext;
@@ -3568,9 +3633,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         EBM_ASSERT(pCut < featureValues + countSamples);
                         EBM_ASSERT(pCuttingRange->m_pCuttableValuesFirst < pCut);
                         EBM_ASSERT(pCut < pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues);
-                        const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                        *pCutPointsLowerBoundInclusive = cut;
-                        ++pCutPointsLowerBoundInclusive;
+                        *ppValueCutTop = pCut;
+                        ++ppValueCutTop;
                      }
                      pCutPoint = pNext;
                      pNext = pCutPoint->m_pNext;
@@ -3583,9 +3647,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         pCuttableValuesStart + pCuttingRange->m_cCuttableValues;
                      EBM_ASSERT(featureValues < pCut);
                      EBM_ASSERT(pCut < featureValues + countSamples);
-                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                     *pCutPointsLowerBoundInclusive = cut;
-                     ++pCutPointsLowerBoundInclusive;
+                     *ppValueCutTop = pCut;
+                     ++ppValueCutTop;
                   }
                } else if(PREDICTABLE(size_t { 1 } == cRanges)) {
                   // we have cuts on both our ends (either explicit or implicit), so
@@ -3598,9 +3661,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      const FloatEbmType * const pCut = pCuttingRange->m_pCuttableValuesFirst;
                      EBM_ASSERT(featureValues < pCut);
                      EBM_ASSERT(pCut < featureValues + countSamples);
-                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                     *pCutPointsLowerBoundInclusive = cut;
-                     ++pCutPointsLowerBoundInclusive;
+                     *ppValueCutTop = pCut;
+                     ++ppValueCutTop;
                   }
                   if(0 != pCuttingRange->m_cUncuttableHighValues) {
                      // if it's zero then it's an implicit cut and we shouldn't put one there, 
@@ -3609,9 +3671,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                         pCuttingRange->m_pCuttableValuesFirst + pCuttingRange->m_cCuttableValues;
                      EBM_ASSERT(featureValues < pCut);
                      EBM_ASSERT(pCut < featureValues + countSamples);
-                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - 1), *pCut);
-                     *pCutPointsLowerBoundInclusive = cut;
-                     ++pCutPointsLowerBoundInclusive;
+                     *ppValueCutTop = pCut;
+                     ++ppValueCutTop;
                   }
                } else {
                   EBM_ASSERT(0 == cRanges);
@@ -3691,39 +3752,42 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQ
                      }
                      pCut = featureValues + iResult;
                      EBM_ASSERT(featureValues < pCut);
-                     const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
-                     *pCutPointsLowerBoundInclusive = cut;
-                     ++pCutPointsLowerBoundInclusive;
+                     *ppValueCutTop = pCut;
+                     ++ppValueCutTop;
                   }
                }
             } while(!priorityQueue.empty());
          } catch(...) {
             LOG_0(TraceLevelWarning, "WARNING GenerateQuantileCutPoints exception");
 
-            free(aCuttingRange);
-            free(aCutPoints);
-            free(aNeighbourJumps);
+            free(pMem);
 
             countCutPointsRet = IntEbmType { 0 };
             ret = IntEbmType { 1 };
             goto exit_with_log;
          }
 
-         EBM_ASSERT(cutPointsLowerBoundInclusiveOut <= pCutPointsLowerBoundInclusive);
-         const size_t cCutPointsRet = pCutPointsLowerBoundInclusive - cutPointsLowerBoundInclusiveOut;
+         std::sort(apValueCutTops, ppValueCutTop);
 
-         // all our cut points are guaranteed unique, and they have a single valid ordereding, so we can create them 
-         // in any order we wish based on priority, and then later sort them to ensure that they are in correct order
-         std::sort(cutPointsLowerBoundInclusiveOut, cutPointsLowerBoundInclusiveOut + cCutPointsRet);
+         EBM_ASSERT(apValueCutTops <= ppValueCutTop);
+         const size_t cCutPointsRet = ppValueCutTop - apValueCutTops;
+
+         FloatEbmType * pCutPointsLowerBoundInclusive = cutPointsLowerBoundInclusiveOut;
+         const FloatEbmType ** ppValueCutTops2 = apValueCutTops;
+         do {
+            const FloatEbmType * const pCut = *ppValueCutTops2;
+            const FloatEbmType cut = GetInterpretableCutPointFloat(*(pCut - size_t { 1 }), *pCut);
+            *pCutPointsLowerBoundInclusive = cut;
+            ++pCutPointsLowerBoundInclusive;
+            ++ppValueCutTops2;
+         } while(ppValueCutTops2 != ppValueCutTop);
 
          // this conversion is guaranteed to work since the number of cut points can't exceed the number our user
          // specified, and that value came to us as an IntEbmType
          countCutPointsRet = static_cast<IntEbmType>(cCutPointsRet);
          EBM_ASSERT(countCutPointsRet <= countCutPoints);
 
-         free(aCuttingRange); // both the junctions and the pointers to the junctions are in the same memory allocation
-         free(aCutPoints);
-         free(aNeighbourJumps);
+         free(pMem);
 
          ret = IntEbmType { 0 };
       }
