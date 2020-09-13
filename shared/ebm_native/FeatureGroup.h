@@ -31,10 +31,10 @@ class FeatureGroup final {
    size_t m_cItemsPerBitPackedDataUnit;
    size_t m_cFeatures;
    size_t m_iInputData;
-   unsigned int m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
-   unsigned int m_cLogExitGenerateModelFeatureGroupUpdateMessages;
-   unsigned int m_cLogEnterApplyModelFeatureGroupUpdateMessages;
-   unsigned int m_cLogExitApplyModelFeatureGroupUpdateMessages;
+   int m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
+   int m_cLogExitGenerateModelFeatureGroupUpdateMessages;
+   int m_cLogEnterApplyModelFeatureGroupUpdateMessages;
+   int m_cLogExitApplyModelFeatureGroupUpdateMessages;
 
    // use the "struct hack" since Flexible array member method is not available in C++
    // m_FeatureGroupEntry must be the last item in this struct
@@ -95,19 +95,19 @@ public:
       return ArrayToPointer(m_FeatureGroupEntry);
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogEnterGenerateModelFeatureGroupUpdateMessages() {
       return &m_cLogEnterGenerateModelFeatureGroupUpdateMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogExitGenerateModelFeatureGroupUpdateMessages() {
       return &m_cLogExitGenerateModelFeatureGroupUpdateMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogEnterApplyModelFeatureGroupUpdateMessages() {
       return &m_cLogEnterApplyModelFeatureGroupUpdateMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages() {
       return &m_cLogExitApplyModelFeatureGroupUpdateMessages;
    }
 };

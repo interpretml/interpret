@@ -25,8 +25,8 @@ class EbmInteractionState final {
 
    DataSetByFeature m_dataSet;
 
-   unsigned int m_cLogEnterMessages;
-   unsigned int m_cLogExitMessages;
+   int m_cLogEnterMessages;
+   int m_cLogExitMessages;
 
 public:
 
@@ -51,11 +51,11 @@ public:
       return m_runtimeLearningTypeOrCountTargetClasses;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogEnterMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogEnterMessages() {
       return &m_cLogEnterMessages;
    }
 
-   INLINE_ALWAYS unsigned int * GetPointerCountLogExitMessages() {
+   INLINE_ALWAYS int * GetPointerCountLogExitMessages() {
       return &m_cLogExitMessages;
    }
 

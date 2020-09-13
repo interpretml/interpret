@@ -93,15 +93,22 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
          "We only support increasing the required trace level after N iterations. It doesn't make sense to have equal values, otherwise just use LOG_0(..)"); \
       const signed char LOG__traceLevel = g_traceLevel; \
       if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = (pLogMessage); \
-         unsigned int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
-         const unsigned int LOG__logCount = *LOG__pLogCountDecrement; \
-         if(UNLIKELY(0 < LOG__logCount)) { \
-            *LOG__pLogCountDecrement = LOG__logCount - 1; \
-            InteralLogWithoutArguments(LOG__traceLevelBefore, LOG__originalMessage); \
-         } else if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
-            InteralLogWithoutArguments(LOG__traceLevelAfter, LOG__originalMessage); \
-         } \
+         do { \
+            signed char LOG__traceLevelLogging; \
+            if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
+               int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
+               const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \
+               if(LIKELY(LOG__logCount < int { 0 })) { \
+                  break; \
+               } \
+               *LOG__pLogCountDecrement = LOG__logCount; \
+               LOG__traceLevelLogging = LOG__traceLevelBefore; \
+            } else { \
+               LOG__traceLevelLogging = LOG__traceLevelAfter; \
+            }\
+            constexpr static char LOG__originalMessage[] = (pLogMessage); \
+            InteralLogWithoutArguments(LOG__traceLevelLogging, LOG__originalMessage); \
+         } while(false); \
       } \
    } while(AlwaysFalse())
 
@@ -121,15 +128,22 @@ constexpr INLINE_ALWAYS bool AlwaysFalse() {
          "We only support increasing the required trace level after N iterations and it doesn't make sense to have equal values, otherwise just use LOG_N(...)"); \
       const signed char LOG__traceLevel = g_traceLevel; \
       if(UNLIKELY(LOG__traceLevelBefore <= LOG__traceLevel)) { \
-         constexpr static char LOG__originalMessage[] = (pLogMessage); \
-         unsigned int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
-         const unsigned int LOG__logCount = *LOG__pLogCountDecrement; \
-         if(UNLIKELY(0 < LOG__logCount)) { \
-            *LOG__pLogCountDecrement = LOG__logCount - 1; \
-            InteralLogWithArguments(LOG__traceLevelBefore, LOG__originalMessage, __VA_ARGS__); \
-         } else if(UNLIKELY(LOG__traceLevelAfter <= LOG__traceLevel)) { \
-            InteralLogWithArguments(LOG__traceLevelAfter, LOG__originalMessage, __VA_ARGS__); \
-         } \
+         do { \
+            signed char LOG__traceLevelLogging; \
+            if(LIKELY(LOG__traceLevel < LOG__traceLevelAfter)) { \
+               int * const LOG__pLogCountDecrement = (pLogCountDecrement); \
+               const int LOG__logCount = *LOG__pLogCountDecrement - int { 1 }; \
+               if(LIKELY(LOG__logCount < int { 0 })) { \
+                  break; \
+               } \
+               *LOG__pLogCountDecrement = LOG__logCount; \
+               LOG__traceLevelLogging = LOG__traceLevelBefore; \
+            } else { \
+               LOG__traceLevelLogging = LOG__traceLevelAfter; \
+            }\
+            constexpr static char LOG__originalMessage[] = (pLogMessage); \
+            InteralLogWithArguments(LOG__traceLevelLogging, LOG__originalMessage, __VA_ARGS__); \
+         } while(false); \
       } \
    } while(AlwaysFalse())
 

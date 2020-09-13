@@ -131,7 +131,7 @@ static IntEbmType ApplyModelFeatureGroupUpdateInternal(
 // getting the count.  By making this global we can send a log message incase a bad EbmBoostingState object is sent into us
 // we only decrease the count if the count is non-zero, so at worst if there is a race condition then we'll output this log message more 
 // times than desired, but we can live with that
-static unsigned int g_cLogApplyModelFeatureGroupUpdateParametersMessages = 10;
+static int g_cLogApplyModelFeatureGroupUpdateParametersMessages = 10;
 
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting,

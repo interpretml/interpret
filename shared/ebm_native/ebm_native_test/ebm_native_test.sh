@@ -137,6 +137,12 @@ elif [ "$os_type" = "Linux" ]; then
       # TODO consider NOT running sudo inside this script and move that requirement to the caller
       #      per https://askubuntu.com/questions/425754/how-do-i-run-a-sudo-command-inside-a-script
 
+      sudo apt-get -y update
+      ret_code=$?
+      if [ $ret_code -ne 0 ]; then 
+         exit $ret_code
+      fi
+
       sudo apt-get -y install valgrind
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 

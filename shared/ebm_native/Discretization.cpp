@@ -3169,8 +3169,8 @@ INLINE_RELEASE_UNTEMPLATED static size_t RemoveMissingValuesAndReplaceInfinities
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
-static unsigned int g_cLogEnterGenerateQuantileCutPointsParametersMessages = 25;
-static unsigned int g_cLogExitGenerateQuantileCutPointsParametersMessages = 25;
+static int g_cLogEnterGenerateQuantileCutPointsParametersMessages = 25;
+static int g_cLogExitGenerateQuantileCutPointsParametersMessages = 25;
 
 // VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
@@ -4000,8 +4000,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateE
 //       transpose_16384 = 7.73406
 
 // don't bother using a lock here.  We don't care if an extra log message is written out due to thread parallism
-static unsigned int g_cLogEnterDiscretizeParametersMessages = 25;
-static unsigned int g_cLogExitDiscretizeParametersMessages = 25;
+static int g_cLogEnterDiscretizeParametersMessages = 25;
+static int g_cLogExitDiscretizeParametersMessages = 25;
 
 // VERIFIED 08-2020
 EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
