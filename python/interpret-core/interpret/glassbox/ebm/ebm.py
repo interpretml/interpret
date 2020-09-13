@@ -149,7 +149,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         Returns:
             Itself.
         """
-        # self.col_bin_counts_ = {}
+        self.col_bin_counts_ = {}
         self.col_bin_edges_ = {}
 
         self.hist_counts_ = {}
@@ -196,9 +196,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     else:  # pragma: no cover
                         raise ValueError("Unknown binning: '{}'.".format(self.binning))
 
-                _, bin_edges = np.histogram(col_data, bins=bins)
+                bin_counts, bin_edges = np.histogram(col_data, bins=bins)
 
                 hist_counts, hist_edges = np.histogram(col_data, bins="doane")
+                self.col_bin_counts_[col_idx] = bin_counts
                 self.col_bin_edges_[col_idx] = bin_edges
 
                 self.hist_edges_[col_idx] = hist_edges
@@ -291,14 +292,14 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         else:  # pragma: no cover
             raise Exception("Cannot get counts for type: {0}".format(col_type))
 
-    # def get_bin_counts(self, feature_index):
-    #     col_type = self.col_types_[feature_index]
-    #     if col_type == 'continuous':
-    #         return list(self.col_bin_counts_[feature_index])
-    #     elif col_type == 'categorical':
-    #         return list(self.col_mapping_counts_[feature_index])
-    #     else:
-    #         raise Exception("Cannot get counts for type: {0}".format(col_type))
+    def get_bin_counts(self, feature_index):
+        col_type = self.col_types_[feature_index]
+        if col_type == 'continuous':
+            return list(self.col_bin_counts_[feature_index])
+        elif col_type == 'categorical':
+            return list(self.col_mapping_counts_[feature_index])
+        else:
+            raise Exception("Cannot get counts for type: {0}".format(col_type))
 
     def get_bin_labels(self, feature_index):
         """ Returns bin labels for a given feature index.
