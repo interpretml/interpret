@@ -41,15 +41,12 @@ class RandomStream final {
    // that detects a cycle and increments to the next valid internal seed.  Then we'd have 2^118 unique random 
    // 64 bit numbers, according to the paper.
 
-   // If we memcopied RandomStream cross machine we would want these to be uint64_t instead of uint_fast64_t
+   // If we had memcopied RandomStream cross machine we would want these to be uint64_t instead of uint_fast64_t
    // but we only copy seeds cross machine, so we can leave them as uint_fast64_t
 
    uint_fast64_t m_state1;
    uint_fast64_t m_state2;
    uint_fast64_t m_stateSeedConst;
-
-   uint_fast64_t m_randomRemainingMax;
-   uint_fast64_t m_randomRemaining;
 
    static uint_fast64_t GetOneTimePadConversion(uint_fast64_t seed);
 
@@ -94,57 +91,57 @@ public:
       m_state1 = other.m_state1;
       m_state2 = other.m_state2;
       m_stateSeedConst = other.m_stateSeedConst;
-      m_randomRemainingMax = other.m_randomRemainingMax;
-      m_randomRemaining = other.m_randomRemaining;
    }
 
-   INLINE_ALWAYS bool NextBit() {
-      // TODO : If there is a use case for getting single bits, implement this by directly striping bits off 
-      //        randomRemaining and randomRemainingMax
-      EBM_ASSERT(false);
-      return false;
+   INLINE_ALWAYS bool Next() {
+      return uint_fast32_t { 0 } != (uint_fast32_t { 1 } & Rand32());
    }
 
    INLINE_ALWAYS size_t Next(const size_t maxValueExclusive) {
-      static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint64_t>::max(), 
+      EBM_ASSERT(size_t { 1 } <= maxValueExclusive);
+
+      // let's say that we are given maxValueExclusiveConverted == 7.  In that case we take our 32 bit
+      // number and take modulo 7, giving us random numbers 0, 1, 2, 3, 4, 5, and 6.
+      // but there's a problem if rand is 4294967295 (the maximum 32 bit number) because 
+      // 4294967295 % 7 == 3, which means there are more opportunities to return 0, 1, 2, 3 than there are
+      // to return 4, 5, or 6.  To avoid this, we throw our any random numbers equal or above
+      // 4294967292.  Calculating the exact number 4294967292 is expensive though, so we instead find the
+      // highest number that the rounded down multiple can be before we reject it.  In the case of 7,
+      // any rounded down muliple that is higher than (UINT32_MAX + 1) - 7 will lead to imbalanced
+      // random number generation, since the next higher up muliple of 7 will overflow.  (UINT32_MAX + 1)
+      // overlfows to 0, but since underflow and overlfow of unsigned numbers is legal in C++, we can use
+      // this fact, and the fact that maxValueExclusiveConverted needs to be at least 1 to generate the
+      // low bound that we need.
+
+#if !defined(UINT32_MAX) || !defined(SIZE_MAX) || UINT32_MAX < SIZE_MAX
+      static_assert(std::numeric_limits<size_t>::max() <= std::numeric_limits<uint64_t>::max(),
          "we must be able to at least generate a real random size_t value");
 
-      const uint_fast64_t maxValueExclusiveConverted = static_cast<uint_fast64_t>(maxValueExclusive);
-
-      // let's say our user requests a value of 6 exclusive, so we have 6 possible random values (0,1,2,3,4,5)
-      // let's say our randomRemainingMax is 6 or 7.  If randomRemaining is 6 or 7, we don't want to use 6%6 or 7%6 and re-use 0 or 1, since then 0 and 1 
-      // are twice as likley as 0-5.  So if randomRemaining is equal to 6 or above, we want to re-generate the random numbers and odd case arrises if 
-      // randomRemainingMax == 5, because then there is no illegal value for randomRemaining.  We can optionally regenerate the random number since it's 
-      // balanced anyways if randomRemainingMax == 4, then we want to re-generate it since we can't express 5
-      //
-      // per above, we could instead use randomRemainingMax + 1, but then we'd overflow if randomRemainingMax was std::numeric_limits<uint64_t>::max()
-      // when randomRemainingMax + 1 == maxValueExclusiveConverted,or in fact whenever (randomRemainingMax + 1) % maxValueExclusiveConverted == 0 then we 
-      // have a special case where no random value is bad since our random value is perfectly divisible by maxValueExclusiveConverted.  We can re-generate 
-      // it though, and that's the easiest thing to do in that case, so avoid an additional check by regenerating
-      uint_fast64_t randomRemainingTempMax = m_randomRemainingMax;
-      uint_fast64_t randomRemainingTemp = m_randomRemaining;
-      while(true) {
-         // TODO : given that our random number generator is 4 assembly instructions, and given that division
-         //        is still very expensive, even for integers, perhaps we should eliminate this code that attepts
-         //        to maximize the benefit that we get from random bits.  Perf test generating a new random number
-         //        each time.  It might even be possible to eliminate both divisions if we were willing to throw
-         //        away some results if we divided by a power of 2 and then multiplied to find where the throw
-         //        away point was for a particular random number
-         randomRemainingTempMax /= maxValueExclusiveConverted;
-         const uint_fast64_t randomRemainingIllegal = randomRemainingTempMax * maxValueExclusiveConverted;
-         if(LIKELY(randomRemainingTemp < randomRemainingIllegal)) {
-            break;
-         }
-         randomRemainingTemp = Rand64();
-         randomRemainingTempMax = static_cast<uint_fast64_t>(std::numeric_limits<uint64_t>::max());
+      if(size_t { std::numeric_limits<uint32_t>::max() } < maxValueExclusive) {
+         const uint64_t maxValueExclusiveConverted = static_cast<uint64_t>(maxValueExclusive);
+         uint64_t rand;
+         uint64_t randMult;
+         do {
+            rand = static_cast<uint64_t>(Rand64());
+            const uint64_t randDivided = rand / maxValueExclusiveConverted;
+            randMult = randDivided * maxValueExclusiveConverted;
+         } while(UNLIKELY(uint64_t { 0 } - maxValueExclusiveConverted < randMult));
+         EBM_ASSERT(randMult <= rand);
+         return rand - randMult;
+      } else 
+#endif // UINT32_MAX < SIZE_MAX
+      {
+         const uint32_t maxValueExclusiveConverted = static_cast<uint32_t>(maxValueExclusive);
+         uint32_t rand;
+         uint32_t randMult;
+         do {
+            rand = static_cast<uint32_t>(Rand32());
+            const uint32_t randDivided = rand / maxValueExclusiveConverted;
+            randMult = randDivided * maxValueExclusiveConverted;
+         } while(UNLIKELY(uint32_t { 0 } - maxValueExclusiveConverted < randMult));
+         EBM_ASSERT(randMult <= rand);
+         return rand - randMult;
       }
-      // if 0 == randomRemainingMax then we would have stayed in the loop since randomRemaining could not be less than zero
-      EBM_ASSERT(0 < randomRemainingTempMax);
-      m_randomRemainingMax = randomRemainingTempMax - 1; // the top range can no longer be fairly represented
-      const uint_fast64_t ret = randomRemainingTemp % maxValueExclusiveConverted;
-      m_randomRemaining = randomRemainingTemp / maxValueExclusiveConverted;
-
-      return static_cast<size_t>(ret);
    }
 };
 static_assert(std::is_standard_layout<RandomStream>::value,

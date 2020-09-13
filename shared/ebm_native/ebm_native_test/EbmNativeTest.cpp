@@ -46,6 +46,13 @@ extern void FAILED(TestCaseHidden * const pTestCaseHidden) {
    pTestCaseHidden->m_bPassed = false;
 }
 
+void EBM_NATIVE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
+   UNUSED(traceLevel);
+   // don't display the message, but we want to test all our messages, so have them call us here
+   strlen(message); // test that the string memory is accessible
+//   printf("%d - %s\n", traceLevel, message);
+}
+
 static int g_countEqualityFailures = 0;
 
 extern std::vector<TestCaseHidden> & GetAllTestsHidden() {
@@ -641,7 +648,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationClassificationTargets[0],
          0 == m_validationClassificationTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         randomSeed,
+         k_randomSeed,
          nullptr
       );
    } else if(k_learningTypeRegression == m_learningTypeOrCountTargetClasses) {
@@ -666,7 +673,7 @@ void TestApi::InitializeBoosting(const IntEbmType countInnerBags) {
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationRegressionTargets[0],
          0 == m_validationRegressionTargets.size() ? nullptr : &m_validationPredictionScores[0],
          countInnerBags,
-         randomSeed,
+         k_randomSeed,
          nullptr
       );
    } else {
@@ -710,7 +717,7 @@ FloatEbmType TestApi::Boost(
       exit(1);
    }
 
-   FloatEbmType validationMetricReturn = FloatEbmType { 0 };
+   FloatEbmType validationMetricOut = FloatEbmType { 0 };
    const IntEbmType ret = BoostingStep(
       m_pEbmBoosting,
       indexFeatureGroup,
@@ -719,12 +726,12 @@ FloatEbmType TestApi::Boost(
       countSamplesRequiredForChildSplitMin,
       0 == trainingWeights.size() ? nullptr : &trainingWeights[0],
       0 == validationWeights.size() ? nullptr : &validationWeights[0],
-      &validationMetricReturn
+      &validationMetricOut
    );
    if(0 != ret) {
       exit(1);
    }
-   return validationMetricReturn;
+   return validationMetricOut;
 }
 
 FloatEbmType TestApi::GetBestModelPredictorScore(
@@ -1008,18 +1015,18 @@ FloatEbmType TestApi::InteractionScore(
       }
    }
 
-   FloatEbmType interactionScoreReturn = FloatEbmType { 0 };
+   FloatEbmType interactionScoreOut = FloatEbmType { 0 };
    const IntEbmType ret = CalculateInteractionScore(
       m_pEbmInteraction,
       featuresInGroup.size(),
       0 == featuresInGroup.size() ? nullptr : &featuresInGroup[0],
       countSamplesRequiredForChildSplitMin,
-      &interactionScoreReturn
+      &interactionScoreOut
    );
    if(0 != ret) {
       exit(1);
    }
-   return interactionScoreReturn;
+   return interactionScoreOut;
 }
 
 extern void DisplayCuts(
@@ -1073,13 +1080,6 @@ extern void DisplayCuts(
    std::cout << std::endl << std::endl;
 }
 
-
-void EBM_NATIVE_CALLING_CONVENTION LogMessage(signed char traceLevel, const char * message) {
-   UNUSED(traceLevel);
-   // don't display the message, but we want to test all our messages, so have them call us here
-   strlen(message); // test that the string memory is accessible
-//   printf("%d - %s\n", traceLevel, message);
-}
 
 int main() {
    SetLogMessageFunction(&LogMessage);

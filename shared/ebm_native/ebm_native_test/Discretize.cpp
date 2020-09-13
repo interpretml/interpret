@@ -32,130 +32,65 @@ TEST_CASE("Discretize, zero samples") {
    );
 }
 
-TEST_CASE("Discretize, zero cuts, missing") {
-   FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 };
-
-   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cSamples and expectedDiscretized must be the same length"
-      );
-   constexpr IntEbmType countCuts = 0;
-   IntEbmType singleFeatureDiscretized[cSamples];
-   const bool bMissing = std::any_of(featureValues, featureValues + cSamples, [](const FloatEbmType val) { return std::isnan(val); });
-
-   Discretize(
-      IntEbmType { cSamples },
-      featureValues,
-      countCuts,
-      nullptr,
-      singleFeatureDiscretized
-   );
-
-   for(size_t i = 0; i < cSamples; ++i) {
-      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
-   }
-}
-
-TEST_CASE("Discretize, missing") {
-   const FloatEbmType cutPointsLowerBoundInclusive[] { 1, 2, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9 };
-   FloatEbmType featureValues[] { 0, 0.9, 1, 1.1, 1.9, 2, 2.1, std::numeric_limits<FloatEbmType>::quiet_NaN(), 2.75, 3 };
-   const IntEbmType expectedDiscretized[] { 0, 0, 1, 1, 1, 2, 2, 10, 7, 9 };
-
-   constexpr size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]);
-   static_assert(cSamples == sizeof(expectedDiscretized) / sizeof(expectedDiscretized[0]),
-      "cSamples and expectedDiscretized must be the same length"
-      );
-   constexpr IntEbmType countCuts = sizeof(cutPointsLowerBoundInclusive) / sizeof(cutPointsLowerBoundInclusive[0]);
-   IntEbmType singleFeatureDiscretized[cSamples];
-   const bool bMissing = std::any_of(featureValues, featureValues + cSamples, [](const FloatEbmType val) { return std::isnan(val); });
-
-   Discretize(
-      IntEbmType { cSamples },
-      featureValues,
-      countCuts,
-      cutPointsLowerBoundInclusive,
-      singleFeatureDiscretized
-   );
-
-   for(size_t i = 0; i < cSamples; ++i) {
-      CHECK(expectedDiscretized[i] == singleFeatureDiscretized[i]);
-   }
-}
-
 TEST_CASE("Discretize, increasing lengths") {
-   FloatEbmType featureValues[1];
-   IntEbmType singleFeatureDiscretized[1];
+   constexpr size_t cCutPointsEnd = 1024 * 2 + 100;
+   FloatEbmType cutPointsLowerBoundInclusive[cCutPointsEnd];
+   FloatEbmType featureValues[11 * cCutPointsEnd];
+   IntEbmType singleFeatureDiscretized[11 * cCutPointsEnd];
+   for(size_t iCutPoint = 0; iCutPoint < cCutPointsEnd; ++iCutPoint) {
+      const FloatEbmType cutPoint = static_cast<FloatEbmType>(iCutPoint);
+      cutPointsLowerBoundInclusive[iCutPoint] = cutPoint;
 
-   constexpr size_t cCutPointsMax = 259;
-   FloatEbmType cutPointsLowerBoundInclusive[cCutPointsMax];
-   for(size_t iCutPoint = 0; iCutPoint < cCutPointsMax; ++iCutPoint) {
-      cutPointsLowerBoundInclusive[iCutPoint] = static_cast<FloatEbmType>(iCutPoint);
+      // we have 11 items here, which will put these odd values into various positions for SIMD testing
+      // we wrap missing at the first and last positions for additional testing of initial memory slots
+
+      featureValues[11 * iCutPoint + 0] = std::numeric_limits<FloatEbmType>::lowest();
+      featureValues[11 * iCutPoint + 1] = std::numeric_limits<FloatEbmType>::quiet_NaN();
+
+      featureValues[11 * iCutPoint + 2] = -std::numeric_limits<FloatEbmType>::denorm_min();
+      featureValues[11 * iCutPoint + 3] = std::numeric_limits<FloatEbmType>::denorm_min();
+
+      featureValues[11 * iCutPoint + 4] = std::nextafter(cutPoint, std::numeric_limits<FloatEbmType>::lowest());
+      featureValues[11 * iCutPoint + 5] = cutPoint;
+      featureValues[11 * iCutPoint + 6] = std::nextafter(cutPoint, std::numeric_limits<FloatEbmType>::max());
+      featureValues[11 * iCutPoint + 7] = std::numeric_limits<FloatEbmType>::max();
+      featureValues[11 * iCutPoint + 8] = std::numeric_limits<FloatEbmType>::infinity();
+
+      featureValues[11 * iCutPoint + 9] = std::numeric_limits<FloatEbmType>::signaling_NaN();
+      featureValues[11 * iCutPoint + 10] = -std::numeric_limits<FloatEbmType>::infinity();
    }
-   // this doesn't check 0 cuts, or having missing values
-   for(size_t cCutPoints = 1; cCutPoints <= cCutPointsMax; ++cCutPoints) {
-      for(size_t iCutPoint = 0; iCutPoint < cCutPoints; ++iCutPoint) {
-         // first try it without missing values
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint));
 
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1); // any exact matches are inclusive to the upper bound
+   for(size_t cCutPoints = 0; cCutPoints < cCutPointsEnd; ++cCutPoints) {
+      // the first pass fills in all values, then we permute the addresses randomly, but our first and last
+      // values are fixed
+      size_t cRemoveLow = 0 == cCutPoints % 3 ? size_t { 0 } : size_t { 1 };
+      size_t cRemoveHigh = 0 == cCutPoints % 7 ? size_t { 0 } : size_t { 1 };
 
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1);
+      size_t cSamples = sizeof(featureValues) / sizeof(featureValues[0]) - cRemoveLow - cRemoveHigh;
+      memset(singleFeatureDiscretized + cRemoveLow, 0, cSamples * sizeof(*singleFeatureDiscretized));
+      Discretize(
+         static_cast<IntEbmType>(cSamples),
+         featureValues + cRemoveLow,
+         cCutPoints,
+         cutPointsLowerBoundInclusive,
+         singleFeatureDiscretized + cRemoveLow
+      );
 
-         // now try it indicating that there can be missing values, which should take the 0 value position and bump everything else up
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] - FloatEbmType { 0.5 };
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint));
+      for(size_t iCutPoint = 0; iCutPoint < cCutPointsEnd; ++iCutPoint) {
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 0] == size_t { 0 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 1] == static_cast<IntEbmType>(cCutPoints + size_t { 1 }));
 
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint];
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1); // any exact matches are inclusive to the upper bound
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 2] == size_t { 0 });
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 3] == size_t { 0 } == cCutPoints ? IntEbmType { 0 } : IntEbmType { 1 });
 
-         featureValues[0] = cutPointsLowerBoundInclusive[iCutPoint] + FloatEbmType { 0.5 };
-         Discretize(
-            1,
-            featureValues,
-            cCutPoints,
-            cutPointsLowerBoundInclusive,
-            singleFeatureDiscretized
-         );
-         CHECK(singleFeatureDiscretized[0] == static_cast<IntEbmType>(iCutPoint) + 1);
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 4] == static_cast<IntEbmType>(std::min(iCutPoint, cCutPoints)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 5] == static_cast<IntEbmType>(std::min(iCutPoint + 1, cCutPoints)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 6] == static_cast<IntEbmType>(std::min(iCutPoint + 1, cCutPoints)));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 7] == static_cast<IntEbmType>(cCutPoints));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 8] == static_cast<IntEbmType>(cCutPoints));
+
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 9] == static_cast<IntEbmType>(cCutPoints + size_t { 1 }));
+         CHECK(singleFeatureDiscretized[11 * iCutPoint + 10] == size_t { 0 });
       }
    }
 }

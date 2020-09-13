@@ -101,7 +101,7 @@ class Native:
             ct.c_longlong,
             # double * cutPointsLowerBoundInclusive
             ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"),
-            # int64_t * discretizedReturn
+            # int64_t * discretizedOut
             ndpointer(dtype=ct.c_longlong, ndim=1, flags="C_CONTIGUOUS"),
         ]
         self.lib.Discretize.restype = ct.c_longlong
@@ -199,7 +199,7 @@ class Native:
             # double * validationWeights
             # ndpointer(dtype=np.float64, ndim=1),
             ct.c_void_p,
-            # double * gainReturn
+            # double * gainOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.GenerateModelFeatureGroupUpdate.restype = ct.POINTER(ct.c_double)
@@ -211,7 +211,7 @@ class Native:
             ct.c_longlong,
             # double * modelFeatureGroupUpdateTensor
             ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),
-            # double * validationMetricReturn
+            # double * validationMetricOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.ApplyModelFeatureGroupUpdate.restype = ct.c_longlong
@@ -286,7 +286,7 @@ class Native:
             ndpointer(dtype=np.int64, ndim=1),
             # int64_t countSamplesRequiredForChildSplitMin
             ct.c_longlong,
-            # double * interactionScoreReturn
+            # double * interactionScoreOut
             ct.POINTER(ct.c_double),
         ]
         self.lib.CalculateInteractionScore.restype = ct.c_longlong
@@ -765,14 +765,6 @@ class NativeEBMBoosting:
 
             # TODO PK make sure the None value here is handled by our caller
             return None
-
-        # TODO PK v.2 currently we return only a single logit for binary classification
-        #             for the positive case (the one with target 1).  scikit also
-        #             stores and returns 1 logit, but they say to do softmax, make the
-        #             target0 logit equal to the negative of the target1 logit.
-        #             this has the nice property that it would closely match what you'd
-        #             see in a multiclass problem with very few cases other than the 0th and 1th
-        #             cases.  Do we want to do the same for conformance and in graphing
 
         array_p = self._native.lib.GetBestModelFeatureGroup(
             self._booster_pointer, feature_group_index

@@ -291,6 +291,15 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION SetTraceLeve
 //       - if missing is in the 0th bin, we can do any cuts at the beginning of processing a range, and that means any cut in the model would be the first, 
 //         so we can initialze it by writing the cut model directly without bothering to handle inserting into the tree at the end
 
+
+// TODO: we should change our interface such that long running work items will return instantly but are working on
+//       a background thread.  The caller will get back a token to the work.  They can either start a number of
+//       work items simultaneously, or call a blocking function that waits on any/all work items to complete.
+//       The log in this world would be a circular buffer and wouldn't be writtent out unless the C++ code was
+//       controlling the main thread (either during calls to the non-blocking components, or while the caller is
+//       in the waiting function).  We would drop anything that exceeds the circular buffer.  This allows us to have
+//       threaded code inside non-threaded languages.
+
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE PEbmBoosting EBM_NATIVE_CALLING_CONVENTION InitializeBoostingClassification(
    IntEbmType countTargetClasses,
    IntEbmType countFeatures,
@@ -336,13 +345,13 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION Ge
    IntEbmType countSamplesRequiredForChildSplitMin, 
    const FloatEbmType * trainingWeights, 
    const FloatEbmType * validationWeights, 
-   FloatEbmType * gainReturn
+   FloatEbmType * gainOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyModelFeatureGroupUpdate(
    PEbmBoosting ebmBoosting, 
    IntEbmType indexFeatureGroup, 
    const FloatEbmType * modelFeatureGroupUpdateTensor,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingStep(
    PEbmBoosting ebmBoosting,
@@ -352,7 +361,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Boosti
    IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
    PEbmBoosting ebmBoosting, 
@@ -391,7 +400,7 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Calcul
    IntEbmType countFeaturesInGroup, 
    const IntEbmType * featureIndexes, 
    IntEbmType countSamplesRequiredForChildSplitMin,
-   FloatEbmType * interactionScoreReturn
+   FloatEbmType * interactionScoreOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteraction(
    PEbmInteraction ebmInteraction
@@ -400,42 +409,58 @@ EBM_NATIVE_IMPORT_EXPORT_INCLUDE void EBM_NATIVE_CALLING_CONVENTION FreeInteract
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateQuantileCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
    IntEbmType countSamplesPerBinMin,
-   IntEbmType * countCutPointsReturn,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   IntEbmType randomSeed,
+   IntEbmType * countCutPointsInOut,
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countMissingValuesOut,
+   FloatEbmType * minNonInfinityValueOut,
+   IntEbmType * countNegativeInfinityOut,
+   FloatEbmType * maxNonInfinityValueOut,
+   IntEbmType * countPositiveInfinityOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateImprovedEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   IntEbmType randomSeed,
+   IntEbmType * countCutPointsInOut,
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countMissingValuesOut,
+   FloatEbmType * minNonInfinityValueOut,
+   IntEbmType * countNegativeInfinityOut,
+   FloatEbmType * maxNonInfinityValueOut,
+   IntEbmType * countPositiveInfinityOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION GenerateEqualWidthCutPoints(
    IntEbmType countSamples,
    FloatEbmType * featureValues,
-   IntEbmType countBinsMax,
-   IntEbmType * countCutPointsReturn,
-   FloatEbmType * cutPointsLowerBoundInclusiveReturn,
-   IntEbmType * isMissingPresentReturn,
-   FloatEbmType * minValueReturn,
-   FloatEbmType * maxValueReturn
+   IntEbmType randomSeed,
+   IntEbmType * countCutPointsInOut,
+   FloatEbmType * cutPointsLowerBoundInclusiveOut,
+   IntEbmType * countMissingValuesOut,
+   FloatEbmType * minNonInfinityValueOut,
+   IntEbmType * countNegativeInfinityOut,
+   FloatEbmType * maxNonInfinityValueOut,
+   IntEbmType * countPositiveInfinityOut
 );
 EBM_NATIVE_IMPORT_EXPORT_INCLUDE IntEbmType EBM_NATIVE_CALLING_CONVENTION Discretize(
    IntEbmType countSamples,
    const FloatEbmType * featureValues,
    IntEbmType countCutPoints,
    const FloatEbmType * cutPointsLowerBoundInclusive,
-   IntEbmType * discretizedReturn
+   IntEbmType * discretizedOut
 );
-
+EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION SuggestGraphBounds(
+   IntEbmType * countCutPoints,
+   FloatEbmType * cutPointsLowerBoundInclusive,
+   IntEbmType countMissingValues,
+   FloatEbmType minNonInfinityValue,
+   IntEbmType countNegativeInfinity,
+   FloatEbmType maxNonInfinityValue,
+   IntEbmType countPositiveInfinity,
+   FloatEbmType * lowBoundOut,
+   FloatEbmType * highBoundOut
+);
 
 // TODO PK Implement the following for memory efficiency and speed of initialization :
 //   - NOTE: FOR RawArray ->  import multiprocessing ++ from multiprocessing import RawArray ++ RawArray(ct.c_ubyte, memory_size) ++ ct.POINTER(ct.c_ubyte)

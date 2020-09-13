@@ -137,47 +137,47 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
    PEbmBoosting ebmBoosting,
    IntEbmType indexFeatureGroup,
    const FloatEbmType * modelFeatureGroupUpdateTensor,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 ) {
    LOG_COUNTED_N(
       &g_cLogApplyModelFeatureGroupUpdateParametersMessages,
       TraceLevelInfo,
       TraceLevelVerbose,
       "ApplyModelFeatureGroupUpdate parameters: ebmBoosting=%p, indexFeatureGroup=%" IntEbmTypePrintf
-      ", modelFeatureGroupUpdateTensor=%p, validationMetricReturn=%p",
+      ", modelFeatureGroupUpdateTensor=%p, validationMetricOut=%p",
       static_cast<void *>(ebmBoosting),
       indexFeatureGroup,
       static_cast<const void *>(modelFeatureGroupUpdateTensor),
-      static_cast<void *>(validationMetricReturn)
+      static_cast<void *>(validationMetricOut)
    );
 
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    if(nullptr == pEbmBoostingState) {
-      if(LIKELY(nullptr != validationMetricReturn)) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != validationMetricOut)) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate ebmBoosting cannot be nullptr");
       return 1;
    }
    if(indexFeatureGroup < 0) {
-      if(LIKELY(nullptr != validationMetricReturn)) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != validationMetricOut)) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup must be positive");
       return 1;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
-      if(LIKELY(nullptr != validationMetricReturn)) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != validationMetricOut)) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup is too high to index");
       return 1;
    }
    size_t iFeatureGroup = static_cast<size_t>(indexFeatureGroup);
    if(pEbmBoostingState->GetCountFeatureGroups() <= iFeatureGroup) {
-      if(LIKELY(nullptr != validationMetricReturn)) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(LIKELY(nullptr != validationMetricOut)) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       LOG_0(TraceLevelError, "ERROR ApplyModelFeatureGroupUpdate indexFeatureGroup above the number of feature groups that we have");
       return 1;
@@ -195,8 +195,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // modelFeatureGroupUpdateTensor can be nullptr (then nothing gets updated).  This could happen for
       // if there was only 1 class, meaning we would be 100% confident in the outcome and no tensor would be retunred
       // since we can eliminate one class, and if there's only 1 class then we eliminate all logits
-      if(nullptr != validationMetricReturn) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(nullptr != validationMetricOut) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       LOG_COUNTED_0(
          pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
@@ -211,8 +211,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
       // length array logits, which means for our representation that we have zero items in the array total.
       // since we can predit the output with 100% accuracy, our log loss is 0.
-      if(nullptr != validationMetricReturn) {
-         *validationMetricReturn = 0;
+      if(nullptr != validationMetricOut) {
+         *validationMetricOut = 0;
       }
       LOG_COUNTED_0(
          pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
@@ -227,22 +227,22 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION ApplyMode
       pEbmBoostingState,
       iFeatureGroup,
       modelFeatureGroupUpdateTensor,
-      validationMetricReturn
+      validationMetricOut
    );
    if(0 != ret) {
       LOG_N(TraceLevelWarning, "WARNING ApplyModelFeatureGroupUpdate returned %" IntEbmTypePrintf, ret);
    }
 
-   if(nullptr != validationMetricReturn) {
-      EBM_ASSERT(!std::isnan(*validationMetricReturn)); // NaNs can happen, but we should have edited those before here
-      EBM_ASSERT(!std::isinf(*validationMetricReturn)); // infinities can happen, but we should have edited those before here
+   if(nullptr != validationMetricOut) {
+      EBM_ASSERT(!std::isnan(*validationMetricOut)); // NaNs can happen, but we should have edited those before here
+      EBM_ASSERT(!std::isinf(*validationMetricOut)); // infinities can happen, but we should have edited those before here
       // both log loss and RMSE need to be above zero.  We previously zero any values below zero, which can happen due to floating point instability.
-      EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricReturn);
+      EBM_ASSERT(FloatEbmType { 0 } <= *validationMetricOut);
       LOG_COUNTED_N(
          pEbmBoostingState->GetFeatureGroups()[iFeatureGroup]->GetPointerCountLogExitApplyModelFeatureGroupUpdateMessages(),
          TraceLevelInfo,
          TraceLevelVerbose,
-         "Exited ApplyModelFeatureGroupUpdate %" FloatEbmTypePrintf, *validationMetricReturn
+         "Exited ApplyModelFeatureGroupUpdate %" FloatEbmTypePrintf, *validationMetricOut
       );
    } else {
       LOG_COUNTED_0(

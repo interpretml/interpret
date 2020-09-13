@@ -9,7 +9,7 @@
 
 static const TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
-TEST_CASE("null validationMetricReturn, boosting, regression") {
+TEST_CASE("null validationMetricOut, boosting, regression") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
@@ -28,7 +28,7 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -45,7 +45,7 @@ TEST_CASE("null validationMetricReturn, boosting, regression") {
    FreeBoosting(pEbmBoosting);
 }
 
-TEST_CASE("null validationMetricReturn, boosting, binary") {
+TEST_CASE("null validationMetricOut, boosting, binary") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
@@ -65,7 +65,7 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(
@@ -82,7 +82,7 @@ TEST_CASE("null validationMetricReturn, boosting, binary") {
    FreeBoosting(pEbmBoosting);
 }
 
-TEST_CASE("null validationMetricReturn, boosting, multiclass") {
+TEST_CASE("null validationMetricOut, boosting, multiclass") {
    EbmNativeFeatureGroup groups[1];
    groups->countFeaturesInGroup = 0;
 
@@ -102,7 +102,7 @@ TEST_CASE("null validationMetricReturn, boosting, multiclass") {
       nullptr,
       nullptr,
       0,
-      randomSeed,
+      k_randomSeed,
       nullptr
    );
    const IntEbmType ret = BoostingStep(

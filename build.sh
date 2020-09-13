@@ -282,7 +282,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/release/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86.so"
       log_file="$intermediate_path/ebm_native_release_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m32 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -DNDEBUG -O3 -o \"$bin_path/$bin_file\" 2>&1"
       
       if [ ! -d "$intermediate_path" ]; then
          printf "%s\n" "Doing first time installation of x86"
@@ -335,7 +335,7 @@ elif [ "$os_type" = "Linux" ]; then
       bin_path="$root_path/tmp/gcc/bin/debug/linux/x86/ebm_native"
       bin_file="lib_ebm_native_linux_x86_debug.so"
       log_file="$intermediate_path/ebm_native_debug_linux_x86_build_log.txt"
-      compile_command="$g_pp_bin $compile_linux -m32 -O1 -o \"$bin_path/$bin_file\" 2>&1"
+      compile_command="$g_pp_bin $compile_linux -msse2 -mfpmath=sse -m32 -O1 -o \"$bin_path/$bin_file\" 2>&1"
       
       [ -d "$intermediate_path" ] || mkdir -p "$intermediate_path"
       ret_code=$?

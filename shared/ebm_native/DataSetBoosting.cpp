@@ -15,7 +15,7 @@
 #include "FeatureGroup.h"
 #include "DataSetBoosting.h"
 
-INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cSamples, const size_t cVectorLength) {
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructResidualErrors(const size_t cSamples, const size_t cVectorLength) {
    LOG_0(TraceLevelInfo, "Entered DataSetByFeatureGroup::ConstructResidualErrors");
 
    EBM_ASSERT(1 <= cSamples);
@@ -33,7 +33,7 @@ INLINE_RELEASE static FloatEbmType * ConstructResidualErrors(const size_t cSampl
    return aResidualErrors;
 }
 
-INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
+INLINE_RELEASE_UNTEMPLATED static FloatEbmType * ConstructPredictorScores(
    const size_t cSamples, 
    const size_t cVectorLength, 
    const FloatEbmType * const aPredictorScoresFrom
@@ -78,7 +78,7 @@ INLINE_RELEASE static FloatEbmType * ConstructPredictorScores(
    return aPredictorScoresTo;
 }
 
-INLINE_RELEASE static StorageDataType * ConstructTargetData(
+INLINE_RELEASE_UNTEMPLATED static StorageDataType * ConstructTargetData(
    const size_t cSamples, 
    const IntEbmType * const aTargets, 
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses
@@ -106,14 +106,14 @@ INLINE_RELEASE static StorageDataType * ConstructTargetData(
          free(aTargetData);
          return nullptr;
       }
-      if(!IsNumberConvertable<StorageDataType, IntEbmType>(data)) {
+      if(!IsNumberConvertable<StorageDataType>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
          LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
          free(aTargetData);
          return nullptr;
       }
-      if(!IsNumberConvertable<size_t, IntEbmType>(data)) {
+      if(!IsNumberConvertable<size_t>(data)) {
          // this shouldn't be possible since we previously checked that we could convert our target,
          // so if this is failing then we'll be larger than the maximum number of classes
          LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructTargetData data target too big to reference memory");
@@ -152,7 +152,7 @@ static_assert(std::is_trivial<InputDataPointerAndCountBins>::value,
 static_assert(std::is_pod<InputDataPointerAndCountBins>::value,
    "We use a lot of C constructs, so disallow non-POD types in general");
 
-INLINE_RELEASE static StorageDataType * * ConstructInputData(
+INLINE_RELEASE_UNTEMPLATED static StorageDataType * * ConstructInputData(
    const size_t cFeatureGroups, 
    const FeatureGroup * const * const apFeatureGroup, 
    const size_t cSamples, 
@@ -246,7 +246,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
                      LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value cannot be negative");
                      goto free_all;
                   }
-                  if(!IsNumberConvertable<size_t, IntEbmType>(inputData)) {
+                  if(!IsNumberConvertable<size_t>(inputData)) {
                      LOG_0(TraceLevelError, "ERROR DataSetByFeatureGroup::ConstructInputData inputData value too big to reference memory");
                      goto free_all;
                   }
@@ -273,7 +273,7 @@ INLINE_RELEASE static StorageDataType * * ConstructInputData(
                bits |= tensorIndex << shift;
                shift += cBitsPerItemMax;
             } while(shiftEnd != shift);
-            EBM_ASSERT((IsNumberConvertable<StorageDataType, size_t>(bits)));
+            EBM_ASSERT(IsNumberConvertable<StorageDataType>(bits));
             *pInputDataTo = static_cast<StorageDataType>(bits);
             ++pInputDataTo;
          }

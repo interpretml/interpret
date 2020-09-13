@@ -61,7 +61,7 @@ public:
          ++pTargetData;
          EBM_ASSERT(0 <= targetOriginal);
          // if we can't fit it, then we should increase our StorageDataType size!
-         EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(targetOriginal)));
+         EBM_ASSERT(IsNumberConvertable<size_t>(targetOriginal));
          const size_t target = static_cast<size_t>(targetOriginal);
          EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
          FloatEbmType * pExpVector = aExpVector;
@@ -150,7 +150,7 @@ public:
          ++pTargetData;
          EBM_ASSERT(0 <= targetOriginal);
          // if we can't fit it, then we should increase our StorageDataType size!
-         EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(targetOriginal)));
+         EBM_ASSERT(IsNumberConvertable<size_t>(targetOriginal));
          const size_t target = static_cast<size_t>(targetOriginal);
          EBM_ASSERT(target < static_cast<size_t>(runtimeLearningTypeOrCountTargetClasses));
          const FloatEbmType predictionScore = *pPredictorScores;

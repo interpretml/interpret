@@ -85,7 +85,7 @@ EbmInteractionState * EbmInteractionState::Allocate(
             free(aFeatures);
             return nullptr;
          }
-         if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
+         if(!IsNumberConvertable<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING EbmInteractionState::Allocate countBins is too high for us to allocate enough memory");
             free(aFeatures);
             return nullptr;
@@ -189,12 +189,12 @@ static EbmInteractionState * AllocateInteraction(
       LOG_0(TraceLevelError, "ERROR AllocateInteraction predictorScores cannot be nullptr if 0 < countSamples");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
+   if(!IsNumberConvertable<size_t>(countFeatures)) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t>(countFeatures)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countSamples)) {
-      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t, IntEbmType>(countSamples)");
+   if(!IsNumberConvertable<size_t>(countSamples)) {
+      LOG_0(TraceLevelError, "ERROR AllocateInteraction !IsNumberConvertable<size_t>(countSamples)");
       return nullptr;
    }
 
@@ -249,8 +249,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmInteraction EBM_NATIVE_CALLING_CONVENTION Init
       LOG_0(TraceLevelError, "ERROR InitializeInteractionClassification countTargetClasses can't be zero unless there are no samples");
       return nullptr;
    }
-   if(!IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeInteractionClassification !IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)");
+   if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeInteractionClassification !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);

@@ -33,6 +33,69 @@ def warn(*args, **kwargs):
 
 warnings.warn = warn
 
+@pytest.mark.slow
+def test_unknown_multiclass_category():
+    data = iris_classification()
+    X_train = data["train"]["X"]
+    y_train = data["train"]["y"]
+
+    X_test = data["test"]["X"]
+    y_test = data["test"]["y"]
+
+    # Add categorical feature
+    X_train['cat_feature'] = [np.random.choice(['a', 'b', 'c']) for x in range(X_train.shape[0])]
+    X_test['cat_feature'] = ['d' for x in range(X_test.shape[0])]  # Unknown category in test set
+
+    clf = ExplainableBoostingClassifier()
+    clf.fit(X_train, y_train)
+
+    # Term contributions for categorical feature should always be 0 in test
+    assert np.all(clf.explain_local(X_train).data(0)['scores'][-1] != 0)
+    assert np.all(clf.explain_local(X_test).data(0)['scores'][-1] == 0)
+
+@pytest.mark.slow
+def test_unknown_binary_category():
+    data = adult_classification()
+    X_tr = data["train"]["X"]
+    y_tr = data["train"]["y"]
+    X_te = data["test"]["X"]
+    y_te = data["test"]["y"]
+
+    ebm = ExplainableBoostingClassifier(n_jobs=2, outer_bags=2, interactions=[[0, 13], [13, 3], [1, 2]])
+    ebm.fit(X_tr, y_tr)
+
+    test_point = X_te[[0]].copy()
+    perturbed_point = test_point.copy()
+    perturbed_point[0, -1] = 'Unseen Categorical'  # Change country to unseen value
+
+    # Perturbed feature contribution
+    country_contrib = ebm.explain_local(test_point).data(0)['scores'][-4]
+    perturbed_contrib = ebm.explain_local(perturbed_point).data(0)['scores'][-4]
+
+    assert country_contrib != 0
+    assert perturbed_contrib == 0
+
+    # Perturbed interaction contribution (dim 1)
+    country_inter_contrib = ebm.explain_local(test_point).data(0)['scores'][-3]
+    perturbed_inter_contrib = ebm.explain_local(perturbed_point).data(0)['scores'][-3]
+
+    assert country_inter_contrib != 0
+    assert perturbed_inter_contrib == 0
+
+    # Perturbed interaction contribution (dim 2)
+    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)['scores'][-2]
+    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)['scores'][-2]
+
+    assert country_inter_contrib_2 != 0
+    assert perturbed_inter_contrib_2 == 0
+
+    # Sum(logit) differences from decision_function should only come from perturbed columns
+    test_logit = ebm.decision_function(test_point)
+    perturbed_logit = ebm.decision_function(perturbed_point)
+
+    assert test_logit != perturbed_logit
+    assert np.allclose(test_logit, (perturbed_logit + country_contrib + country_inter_contrib + country_inter_contrib_2))
+
 
 @pytest.mark.visual
 @pytest.mark.slow
@@ -78,8 +141,8 @@ def test_ebm_synthetic_multiclass_pairwise():
 
 @pytest.mark.slow
 def test_ebm_synthetic_pairwise():
-    a = np.random.randint(low=0, high=50, size=10000)
-    b = np.random.randint(low=0, high=20, size=10000)
+    a = np.random.randint(low=0, high=50, size=1000)
+    b = np.random.randint(low=0, high=20, size=1000)
 
     df = pd.DataFrame(np.c_[a, b], columns=["a", "b"])
     df["y"] = [

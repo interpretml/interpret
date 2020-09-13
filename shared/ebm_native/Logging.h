@@ -10,7 +10,11 @@
 #include "ebm_native.h" // LOG_MESSAGE_FUNCTION
 #include "EbmInternal.h" // UNLIKELY
 
+extern const char g_trueString[];
+extern const char g_falseString[];
+
 extern signed char g_traceLevel;
+
 extern void InteralLogWithArguments(const signed char traceLevel, const char * const pOriginalMessage, ...);
 extern void InteralLogWithoutArguments(const signed char traceLevel, const char * const pOriginalMessage);
 extern void LogAssertFailure(

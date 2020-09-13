@@ -117,7 +117,7 @@ constexpr size_t GetVectorLength(const ptrdiff_t learningTypeOrCountTargetClasse
 #endif // EXPAND_BINARY_LOGITS
 }
 
-constexpr IntEbmType randomSeed = -42;
+constexpr IntEbmType k_randomSeed = -42;
 enum class FeatureType : IntEbmType {
    Ordinal = FeatureTypeOrdinal, Nominal = FeatureTypeNominal
 };

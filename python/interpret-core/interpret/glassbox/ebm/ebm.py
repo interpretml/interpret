@@ -324,14 +324,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             raise Exception("Unknown column type")
 
 
-# TODO: Clean up
 class BaseCoreEBM:
     """Internal use EBM."""
 
-    # TODO PK decide if we should follow any kind of sklearn convention here with
-    # our private class with respect to using trailing underscores
-
-    # TODO PK do we really need all of these parameters??
     def __init__(
         self,
         model_type,
@@ -600,25 +595,12 @@ class BaseEBM(BaseEstimator):
         feature_types,
         # Data
         #
-        # TODO PK v.3 add a bin_cuts parameter to allow the user to control binning
         # Ensemble
         outer_bags,
         inner_bags,
         # Core
-        # TODO PK v.3 mains will be deprecated in the future in favor of "boosting_stage_plan"
+        # TODO PK v.3 replace mains in favor of a "boosting stage plan"
         mains,
-        # TODO PK v.2 we should probably have two types of interaction terms.
-        #             The first is either a number or array of numbres that indicates
-        #             how many interactions at each dimension level (starting at two)
-        #             The second parameter would be a list of specific interaction sets
-        #             that people may want to use.  There isn't a good way to separate the two concepts
-        #             without issues.
-        # TODO PK v.2 change interactions to n_interactions which can either be a number for pairs
-        #             or can be a list/tuple of integers which denote the number of interactions per dimension
-        #             so (3,2,1) would mean 3 pairs, 2 tripples, 1 quadruple
-        # TODO PK v.2 add specific_interactions list of interactions to include (n_interactions will not re-pick these).
-        #             Allow these to be in any order and don't sort that order, unlike the n_interactions parameter
-        # TODO PK v.2 exclude -> exclude feature_groups, either mains, or pairs or whatever.  This will take precedence over specific_interactions so anything there will be excluded
         interactions,
         validation_size,
         max_rounds,
@@ -638,7 +620,9 @@ class BaseEBM(BaseEstimator):
         binning,
         max_bins,
     ):
-        # TODO PK sanity check all our inputs
+        # NOTE: Per scikit-learn convention, we shouldn't attempt to sanity check these inputs here.  We just
+        #       Store these values for future use.  Validate inputs in the fit or other functions.  More details in:
+        #       https://scikit-learn.org/stable/developers/develop.html
 
         # Arguments for explainer
         self.feature_names = feature_names
@@ -669,12 +653,6 @@ class BaseEBM(BaseEstimator):
         self.binning = binning
         self.max_bins = max_bins
 
-    # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
-    #       doesn't like parameters in the fit function, other than ones like weights that have
-    #       the same length as the number of samples.  See:
-    #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
-    #
-    # NOTE: Consider refactoring later.
     def fit(self, X, y):  # noqa: C901
         """ Fits model to provided samples.
 
@@ -685,6 +663,17 @@ class BaseEBM(BaseEstimator):
         Returns:
             Itself.
         """
+
+        # NOTE: Generally, we want to keep parameters in the __init__ function, since scikit-learn
+        #       doesn't like parameters in the fit function, other than ones like weights that have
+        #       the same length as the number of samples.  See:
+        #       https://scikit-learn.org/stable/developers/develop.html
+        #       https://github.com/microsoft/LightGBM/issues/2628#issue-536116395
+        #
+
+
+        # TODO PK sanity check all our inputs from the __init__ function, and this fit fuction
+
         # TODO PK we shouldn't expose our internal state until we are 100% sure that we succeeded
         #         so move everything to local variables until the end when we assign them to self.*
 
@@ -874,6 +863,8 @@ class BaseEBM(BaseEstimator):
             self.breakpoint_iteration_.append(inter_episode_idxs)
 
         # Extract feature names and feature types.
+        # TODO PK v.3 don't overwrite feature_names and feature_types.  Create new fields called feature_names_out and
+        #             feature_types_out_
         self.feature_names = []
         self.feature_types = []
         for index, feature_indices in enumerate(self.feature_groups_):
@@ -925,6 +916,7 @@ class BaseEBM(BaseEstimator):
             self.feature_importances_.append(mean_abs_score)
 
         # Generate selector
+        # TODO PK v.3 shouldn't this be self._global_selector_ ??
         self.global_selector = gen_global_selector(
             X_orig, self.feature_names, self.feature_types, None
         )
@@ -1343,7 +1335,7 @@ class BaseEBM(BaseEstimator):
 class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
     """ Explainable Boosting Classifier. The arguments will change in a future release, watch the changelog. """
 
-    # TODO PK v.2 use underscores here like ClassifierMixin._estimator_type?
+    # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
 
@@ -1477,7 +1469,7 @@ class ExplainableBoostingClassifier(BaseEBM, ClassifierMixin, ExplainerMixin):
 class ExplainableBoostingRegressor(BaseEBM, RegressorMixin, ExplainerMixin):
     """ Explainable Boosting Regressor. The arguments will change in a future release, watch the changelog. """
 
-    # TODO PK v.2 use underscores here like RegressorMixin._estimator_type?
+    # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations = ["global", "local"]
     explainer_type = "model"
 

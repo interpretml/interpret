@@ -233,7 +233,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
-         if(!IsNumberConvertable<size_t, IntEbmType>(countBins)) {
+         if(!IsNumberConvertable<size_t>(countBins)) {
             LOG_0(TraceLevelWarning, "WARNING EbmBoostingState::Initialize countBins is too high for us to allocate enough memory");
             EbmBoostingState::Free(pBooster);
             return nullptr;
@@ -300,7 +300,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
             EbmBoostingState::Free(pBooster);
             return nullptr;
          }
-         if(!IsNumberConvertable<size_t, IntEbmType>(countFeaturesInGroup)) {
+         if(!IsNumberConvertable<size_t>(countFeaturesInGroup)) {
             // if countFeaturesInGroup exceeds the size of size_t, then we wouldn't be able to find it
             // in the array passed to us
             LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize countFeaturesInGroup is too high to index");
@@ -327,7 +327,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
                   EbmBoostingState::Free(pBooster);
                   return nullptr;
                }
-               if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop)) {
+               if(!IsNumberConvertable<size_t>(indexFeatureInterop)) {
                   LOG_0(TraceLevelError, "ERROR EbmBoostingState::Initialize featureGroupIndexes value too big to reference memory");
                   EbmBoostingState::Free(pBooster);
                   return nullptr;
@@ -379,7 +379,7 @@ EbmBoostingState * EbmBoostingState::Allocate(
             do {
                const IntEbmType indexFeatureInterop = *pFeatureGroupIndex;
                EBM_ASSERT(0 <= indexFeatureInterop);
-               EBM_ASSERT((IsNumberConvertable<size_t, IntEbmType>(indexFeatureInterop))); // this was checked above
+               EBM_ASSERT(IsNumberConvertable<size_t>(indexFeatureInterop)); // this was checked above
                const size_t iFeatureForGroup = static_cast<size_t>(indexFeatureInterop);
                EBM_ASSERT(iFeatureForGroup < cFeatures);
                const Feature * const pInputFeature = &pBooster->m_aFeatures[iFeatureForGroup];
@@ -624,30 +624,30 @@ static EbmBoostingState * AllocateBoosting(
       LOG_0(TraceLevelError, "ERROR AllocateBoosting countInnerBags must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countFeatures)) {
+   if(!IsNumberConvertable<size_t>(countFeatures)) {
       // the caller should not have been able to allocate enough memory in "features" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatures)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatures)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countFeatureGroups)) {
+   if(!IsNumberConvertable<size_t>(countFeatureGroups)) {
       // the caller should not have been able to allocate enough memory in "featureGroups" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countFeatureGroups)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countFeatureGroups)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countTrainingSamples)) {
+   if(!IsNumberConvertable<size_t>(countTrainingSamples)) {
       // the caller should not have been able to allocate enough memory in "trainingTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countTrainingSamples)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countTrainingSamples)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countValidationSamples)) {
+   if(!IsNumberConvertable<size_t>(countValidationSamples)) {
       // the caller should not have been able to allocate enough memory in "validationTargets" if this didn't fit in memory
-      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countValidationSamples)");
+      LOG_0(TraceLevelError, "ERROR AllocateBoosting !IsNumberConvertable<size_t>(countValidationSamples)");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(countInnerBags)) {
+   if(!IsNumberConvertable<size_t>(countInnerBags)) {
       // this is just a warning since the caller doesn't pass us anything material, but if it's this high
       // then our allocation would fail since it can't even in pricipal fit into memory
-      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t, IntEbmType>(countInnerBags)");
+      LOG_0(TraceLevelWarning, "WARNING AllocateBoosting !IsNumberConvertable<size_t>(countInnerBags)");
       return nullptr;
    }
 
@@ -746,8 +746,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY PEbmBoosting EBM_NATIVE_CALLING_CONVENTION Initial
       LOG_0(TraceLevelError, "ERROR InitializeBoostingClassification countTargetClasses can't be zero unless there are no training and no validation cases");
       return nullptr;
    }
-   if(!IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)) {
-      LOG_0(TraceLevelWarning, "WARNING InitializeBoostingClassification !IsNumberConvertable<ptrdiff_t, IntEbmType>(countTargetClasses)");
+   if(!IsNumberConvertable<ptrdiff_t>(countTargetClasses)) {
+      LOG_0(TraceLevelWarning, "WARNING InitializeBoostingClassification !IsNumberConvertable<ptrdiff_t>(countTargetClasses)");
       return nullptr;
    }
    const ptrdiff_t runtimeLearningTypeOrCountTargetClasses = static_cast<ptrdiff_t>(countTargetClasses);
@@ -845,7 +845,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
    IntEbmType countSamplesRequiredForChildSplitMin,
    const FloatEbmType * trainingWeights,
    const FloatEbmType * validationWeights,
-   FloatEbmType * validationMetricReturn
+   FloatEbmType * validationMetricOut
 ) {
    EbmBoostingState * pEbmBoostingState = reinterpret_cast<EbmBoostingState *>(ebmBoosting);
    if(nullptr == pEbmBoostingState) {
@@ -860,8 +860,8 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  The model is a tensor with zero 
          // length array logits, which means for our representation that we have zero items in the array total.
          // since we can predit the output with 100% accuracy, our gain will be 0.
-         if(nullptr != validationMetricReturn) {
-            *validationMetricReturn = FloatEbmType { 0 };
+         if(nullptr != validationMetricOut) {
+            *validationMetricOut = FloatEbmType { 0 };
          }
          LOG_0(TraceLevelWarning, "WARNING BoostingStep pEbmBoostingState->m_runtimeLearningTypeOrCountTargetClasses <= ptrdiff_t { 1 }");
          return 0;
@@ -883,12 +883,12 @@ EBM_NATIVE_IMPORT_EXPORT_BODY IntEbmType EBM_NATIVE_CALLING_CONVENTION BoostingS
       // if we get back a nullptr from GenerateModelFeatureGroupUpdate it either means that there's only
       // 1 class in our classification problem, or it means we encountered an error.  We assume here that
       // it was an error since the caller can check ahead of time if there was only 1 class before calling us
-      if(nullptr != validationMetricReturn) {
-         *validationMetricReturn = FloatEbmType { 0 };
+      if(nullptr != validationMetricOut) {
+         *validationMetricOut = FloatEbmType { 0 };
       }
       return 1;
    }
-   return ApplyModelFeatureGroupUpdate(ebmBoosting, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricReturn);
+   return ApplyModelFeatureGroupUpdate(ebmBoosting, indexFeatureGroup, pModelFeatureGroupUpdateTensor, validationMetricOut);
 }
 
 EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBestModelFeatureGroup(
@@ -911,7 +911,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetBe
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetBestModelFeatureGroup indexFeatureGroup is too high to index");
       return nullptr;
@@ -967,7 +967,7 @@ EBM_NATIVE_IMPORT_EXPORT_BODY FloatEbmType * EBM_NATIVE_CALLING_CONVENTION GetCu
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup must be positive");
       return nullptr;
    }
-   if(!IsNumberConvertable<size_t, IntEbmType>(indexFeatureGroup)) {
+   if(!IsNumberConvertable<size_t>(indexFeatureGroup)) {
       // we wouldn't have allowed the creation of an feature set larger than size_t
       LOG_0(TraceLevelError, "ERROR GetCurrentModelFeatureGroup indexFeatureGroup is too high to index");
       return nullptr;

@@ -909,7 +909,7 @@ SEXP BoostingStep_R(
       pValidationWeights = REAL(validationWeights);
    }
 
-   FloatEbmType validationMetricReturn;
+   FloatEbmType validationMetricOut;
    if(0 != BoostingStep(
       reinterpret_cast<PEbmBoosting>(pEbmBoosting), 
       iFeatureGroup, 
@@ -918,14 +918,14 @@ SEXP BoostingStep_R(
       cSamplesRequiredForChildSplitMin, 
       pTrainingWeights, 
       pValidationWeights, 
-      &validationMetricReturn
+      &validationMetricOut
    )) {
       LOG_0(TraceLevelWarning, "WARNING BoostingStep_R BoostingStep returned error code");
       return R_NilValue;
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = validationMetricReturn;
+   REAL(ret)[0] = validationMetricOut;
    UNPROTECT(1);
    return ret;
 }
@@ -1286,14 +1286,14 @@ SEXP CalculateInteractionScore_R(
       cSamplesRequiredForChildSplitMin = static_cast<IntEbmType>(doubleCountSamplesRequiredForChildSplitMin);
    }
 
-   FloatEbmType interactionScoreReturn;
-   if(0 != CalculateInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreReturn)) {
+   FloatEbmType interactionScoreOut;
+   if(0 != CalculateInteractionScore(reinterpret_cast<PEbmInteraction>(pEbmInteraction), countFeaturesInGroup, aFeatureIndexes, cSamplesRequiredForChildSplitMin, &interactionScoreOut)) {
       LOG_0(TraceLevelWarning, "WARNING CalculateInteractionScore_R CalculateInteractionScore returned error code");
       return R_NilValue;
    }
 
    SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
-   REAL(ret)[0] = interactionScoreReturn;
+   REAL(ret)[0] = interactionScoreOut;
    UNPROTECT(1);
    return ret;
 }
