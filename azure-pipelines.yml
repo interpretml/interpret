@@ -3,16 +3,24 @@
 
 # TODO: add ESLint once it's added to the "Secure Development Tools". TSLint is depricated.
 
+variables:
+- name: ubuntu_image
+  value: ubuntu-18.04
+- name: mac_image
+  value: macOS-10.14
+- name: windows_image
+  value: windows-2019
+
 jobs:
 - job: 'Build_ebm_native'
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-18.04'
+        image.name: '${{ variables.ubuntu_image }}'
       Mac:
-        image.name: 'macOS-10.14'
+        image.name: '${{ variables.mac_image }}'
       Windows:
-        image.name: 'windows-2019'
+        image.name: '${{ variables.windows_image }}'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
@@ -96,11 +104,11 @@ jobs:
   strategy:
     matrix:
       Linux:
-        image.name: 'ubuntu-18.04'
+        image.name: '${{ variables.ubuntu_image }}'
       Mac:
-        image.name: 'macOS-10.14'
+        image.name: '${{ variables.mac_image }}'
       Windows:
-        image.name: 'windows-2019'
+        image.name: '${{ variables.windows_image }}'
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
@@ -136,7 +144,7 @@ jobs:
 
 - job: 'Build_JS_Inline'
   pool:
-    vmImage: 'ubuntu-18.04'
+    vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
@@ -164,7 +172,7 @@ jobs:
 - job: 'Build_Package'
   dependsOn: ['Build_ebm_native', 'Build_JS_Inline']
   pool:
-    vmImage: 'ubuntu-18.04'
+    vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
@@ -225,32 +233,32 @@ jobs:
     matrix:
       LinuxPython36:
         python.version: '3.6'
-        image.name: 'ubuntu-18.04'
+        image.name: '${{ variables.ubuntu_image }}'
       LinuxPython37:
         python.version: '3.7'
-        image.name: 'ubuntu-18.04'
+        image.name: '${{ variables.ubuntu_image }}'
       LinuxPython38:
         python.version: '3.8'
-        image.name: 'ubuntu-18.04'
+        image.name: '${{ variables.ubuntu_image }}'
       WindowsPython36:
         python.version: '3.6'
-        image.name: 'windows-2019'
+        image.name: '${{ variables.windows_image }}'
       WindowsPython37:
         python.version: '3.7'
-        image.name: 'windows-2019'
+        image.name: '${{ variables.windows_image }}'
       # NOTE: Temporary disable due to upstream dependencies.
       # WindowsPython38:
       #   python.version: '3.8'
-      #   image.name: 'windows-2019'
+      #   image.name: '${{ variables.windows_image }}'
       MacPython36:
         python.version: '3.6'
-        image.name: 'macOS-10.14'
+        image.name: '${{ variables.mac_image }}'
       MacPython37:
         python.version: '3.7'
-        image.name: 'macOS-10.14'
+        image.name: '${{ variables.mac_image }}'
       MacPython38:
         python.version: '3.8'
-        image.name: 'macOS-10.14'
+        image.name: '${{ variables.mac_image }}'
     maxParallel: 9
   pool:
     vmImage: '$(image.name)'
@@ -327,7 +335,7 @@ jobs:
 - job: 'Publish_Package'
   dependsOn: ['Test_ebm_native', 'Test']
   pool:
-    vmImage: 'ubuntu-18.04'
+    vmImage: '${{ variables.ubuntu_image }}'
   variables:
     runCodesignValidationInjection: false
   steps:
